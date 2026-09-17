@@ -55,6 +55,6 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Server running at http://localhost:${PORT}/ serving ${WEB_ROOT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on all interfaces at http://0.0.0.0:${PORT}/ (Local PC: http://localhost:${PORT}/, Wi-Fi: http://10.24.3.2:${PORT}/)`);
 });
