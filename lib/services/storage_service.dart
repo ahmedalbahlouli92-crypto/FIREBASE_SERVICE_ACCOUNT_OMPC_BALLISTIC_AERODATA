@@ -204,6 +204,17 @@ class StorageService {
     await file.writeAsString(buffer.toString(), mode: FileMode.write, flush: true);
   }
 
+  // Update existing record on Supabase cloud database
+  Future<void> updateRecord(BallisticRecord oldRecord, BallisticRecord newRecord, {String module = 'Lot Acceptance Test'}) async {
+    if (SupabaseService.isInitialized && oldRecord.id != null && oldRecord.id!.isNotEmpty) {
+      try {
+        await SupabaseService.updateRecord(oldRecord.id!, newRecord, module: module);
+      } catch (e) {
+        print("Supabase update record error: $e");
+      }
+    }
+  }
+
   // Clear all records for a specific module (e.g. Daily Test) locally and on Supabase
   Future<void> clearRecords({String module = 'Daily Test'}) async {
     if (SupabaseService.isInitialized) {

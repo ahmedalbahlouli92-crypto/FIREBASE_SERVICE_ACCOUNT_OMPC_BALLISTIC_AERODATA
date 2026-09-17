@@ -1914,7 +1914,7 @@ class _EntryTabState extends State<EntryTab> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.only(top: 8.0, bottom: 64.0),
       child: Form(
         key: _formKey,
         child: Column(
@@ -2395,7 +2395,7 @@ class _EntryTabState extends State<EntryTab> {
                         controller: _producedController,
                         focusNode: _producedFocusNode,
                         hint: '0',
-                        readOnly: (_testName == 'EPVAT test' && _epvatPressureType == 'Overall') || (_testName == 'Function Test' && _functionTempMode == 'All'),
+                        readOnly: false,
                         keyboardType: TextInputType.number,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Required';
@@ -3912,7 +3912,7 @@ class _EntryTabState extends State<EntryTab> {
                                                     _calculateOverallTempStats(t);
                                                   }
                                                 },
-                                                items: ({10, 20, 30, 40, 50, _epvatOverallRoundCount[t] ?? 30}.toList()..sort()).map((int count) {
+                                                items: ({5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 100, _epvatOverallRoundCount[t] ?? 30}.toList()..sort()).map((int count) {
                                                   return DropdownMenuItem<int>(
                                                     value: count,
                                                     child: Text('$count Rounds'),

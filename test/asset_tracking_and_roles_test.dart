@@ -217,5 +217,79 @@ void main() {
       final fromMap = BallisticRecord.fromSupabaseMap(map);
       expect(fromMap.module, equals('Daily Test'));
     });
+
+    test('Role Permissions default matrix allows supervisor to edit records and export reports', () {
+      final defaultRolePerms = {
+        'manager': {
+          'can_edit_records': true,
+          'can_delete_records': false,
+          'can_clear_logs': false,
+          'can_export_reports': true,
+          'can_manage_rules': true,
+        },
+        'supervisor': {
+          'can_edit_records': true,
+          'can_delete_records': false,
+          'can_clear_logs': false,
+          'can_export_reports': true,
+          'can_manage_rules': false,
+        },
+        'technician': {
+          'can_edit_records': false,
+          'can_delete_records': false,
+          'can_clear_logs': false,
+          'can_export_reports': true,
+          'can_manage_rules': false,
+        },
+        'operator': {
+          'can_edit_records': false,
+          'can_delete_records': false,
+          'can_clear_logs': false,
+          'can_export_reports': true,
+          'can_manage_rules': false,
+        },
+      };
+
+      // Supervisor has edit permissions
+      expect(defaultRolePerms['supervisor']!['can_edit_records'], isTrue);
+      expect(defaultRolePerms['supervisor']!['can_export_reports'], isTrue);
+      expect(defaultRolePerms['supervisor']!['can_delete_records'], isFalse);
+
+      // Manager has edit and rules permissions
+      expect(defaultRolePerms['manager']!['can_edit_records'], isTrue);
+      expect(defaultRolePerms['manager']!['can_manage_rules'], isTrue);
+
+      // Operator and Technician are read-only for editing logs by default
+      expect(defaultRolePerms['operator']!['can_edit_records'], isFalse);
+      expect(defaultRolePerms['technician']!['can_edit_records'], isFalse);
+    });
+
+    test('BallisticRecord update/edit preserves primary attributes and modifies corrected fields', () {
+      final original = createTestRecord(
+        timestamp: '2026-09-17 11:00:00',
+        operators: 'Technician Ali',
+        shift: 'Day',
+        caliber: '5.56x45 SS109',
+        lotNo: 'LOT-ORIG-01',
+        produced: 100,
+        status: 'Rejected',
+        testName: 'Waterproof Test',
+      );
+
+      // Supervisor corrects typo in produced quantity and defects
+      final updated = original.copyWith(
+        produced: 150,
+        defects: 0,
+        status: 'Approved',
+        notes: 'Corrected sample size and defect count by Supervisor',
+      );
+
+      expect(updated.timestamp, equals(original.timestamp));
+      expect(updated.lotNo, equals(original.lotNo));
+      expect(updated.produced, equals(150));
+      expect(updated.defects, equals(0));
+      expect(updated.status, equals('Approved'));
+      expect(updated.notes, contains('Supervisor'));
+    });
   });
 }

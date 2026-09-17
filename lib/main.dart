@@ -725,6 +725,37 @@ final Map<String, dynamic> _defaultRules = {
       'description': 'Superficial scratches, Minor cosmetic blemish, Slight discoloration',
     },
   },
+  'role_permissions': {
+    'manager': {
+      'can_edit_records': true,
+      'can_delete_records': false,
+      'can_clear_logs': false,
+      'can_export_reports': true,
+      'can_manage_rules': true,
+    },
+    'supervisor': {
+      'can_edit_records': true,
+      'can_delete_records': false,
+      'can_clear_logs': false,
+      'can_export_reports': true,
+      'can_manage_rules': false,
+    },
+    'technician': {
+      'can_edit_records': false,
+      'can_delete_records': false,
+      'can_clear_logs': false,
+      'can_export_reports': true,
+      'can_manage_rules': false,
+    },
+    'operator': {
+      'can_edit_records': false,
+      'can_delete_records': false,
+      'can_clear_logs': false,
+      'can_export_reports': true,
+      'can_manage_rules': false,
+    },
+  },
+  'submission_alerts_enabled': true,
 };
 
 class MainShell extends StatefulWidget {
@@ -739,6 +770,7 @@ class _MainShellState extends State<MainShell> {
   
   Map<String, dynamic> _adminRules = {};
   String _selectedRuleTest = 'Waterproof Test';
+  bool _submissionAlertsEnabled = true;
   int _activeTabIndex = 0;
   List<BallisticRecord> _records = [];
   List<BallisticRecord> _dailyTestRecords = [];
@@ -1348,6 +1380,28 @@ class _MainShellState extends State<MainShell> {
         activeRules['primer_sensitivity'] = pr;
       }
 
+      if (activeRules['role_permissions'] == null) {
+        activeRules['role_permissions'] = Map<String, dynamic>.from(_defaultRules['role_permissions']);
+      } else {
+        final curPerms = Map<String, dynamic>.from(activeRules['role_permissions'] as Map);
+        final defPerms = Map<String, dynamic>.from(_defaultRules['role_permissions'] as Map);
+        defPerms.forEach((role, perms) {
+          if (!curPerms.containsKey(role)) {
+            curPerms[role] = Map<String, dynamic>.from(perms as Map);
+          } else {
+            final curRoleMap = Map<String, dynamic>.from(curPerms[role] as Map);
+            (perms as Map).forEach((pk, pv) {
+              if (!curRoleMap.containsKey(pk)) curRoleMap[pk] = pv;
+            });
+            curPerms[role] = curRoleMap;
+          }
+        });
+        activeRules['role_permissions'] = curPerms;
+      }
+      if (activeRules['submission_alerts_enabled'] == null) {
+        activeRules['submission_alerts_enabled'] = true;
+      }
+
       // Save rules back to write out any migrated schemas
       await _storageService.saveRules(activeRules);
       
@@ -1360,6 +1414,7 @@ class _MainShellState extends State<MainShell> {
           _storagePath = dirPath;
           _operators = opsList;
           _adminRules = activeRules;
+          _submissionAlertsEnabled = activeRules['submission_alerts_enabled'] == true;
           _isLoading = false;
         });
         return;
@@ -1463,6 +1518,7 @@ class _MainShellState extends State<MainShell> {
         _storagePath = path;
         _operators = opsList;
         _adminRules = activeRules;
+        _submissionAlertsEnabled = activeRules['submission_alerts_enabled'] == true;
         _isLoading = false;
       });
     } catch (e) {
@@ -1472,6 +1528,23 @@ class _MainShellState extends State<MainShell> {
         _isLoading = false;
       });
     }
+  }
+
+  bool _hasPermission(String permissionKey) {
+    if (_currentUserRole == UserRole.admin) return true;
+    if (_currentUserRole == null) return false;
+    final roleName = _currentUserRole!.name.toLowerCase();
+    final perms = _adminRules['role_permissions'];
+    if (perms is Map && perms[roleName] is Map) {
+      final roleMap = perms[roleName] as Map;
+      return roleMap[permissionKey] == true;
+    }
+    final defPerms = _defaultRules['role_permissions'];
+    if (defPerms is Map && defPerms[roleName] is Map) {
+      final roleMap = defPerms[roleName] as Map;
+      return roleMap[permissionKey] == true;
+    }
+    return false;
   }
 
   Future<void> _handleNewRecord(BallisticRecord record) async {
@@ -1484,6 +1557,64 @@ class _MainShellState extends State<MainShell> {
         _dailyTestRecords = updated;
       }
     });
+
+    if (_submissionAlertsEnabled && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF0F172A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+            side: const BorderSide(color: Color(0xFF10B981), width: 1.2),
+          ),
+          content: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20.0),
+              ),
+              const SizedBox(width: 12.0),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Report Submitted Successfully',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.0, color: Colors.white),
+                    ),
+                    const SizedBox(height: 2.0),
+                    Text(
+                      '${record.testName} • Lot: ${record.lotNo} • Status: ${record.status} by ${record.operators}',
+                      style: TextStyle(fontSize: 11.5, color: Colors.white.withOpacity(0.8)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _submissionAlertsEnabled = false;
+                    _adminRules['submission_alerts_enabled'] = false;
+                  });
+                  _storageService.saveRules(_adminRules);
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+                child: const Text('Mute Alerts', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   void _openFolder() {
@@ -1704,6 +1835,65 @@ class _MainShellState extends State<MainShell> {
           _dailyTestRecords = currentRecords;
         }
       });
+    }
+  }
+
+  Future<void> _handleEditRecord(BallisticRecord original, BallisticRecord updated) async {
+    setState(() {
+      if (_currentModule == 'Lot Acceptance Test') {
+        final idx = _records.indexWhere((r) =>
+          (original.id != null && original.id!.isNotEmpty && r.id == original.id) ||
+          (r.timestamp == original.timestamp &&
+           r.lotNumber == original.lotNumber &&
+           r.produced == original.produced &&
+           r.defects == original.defects)
+        );
+        if (idx != -1) _records[idx] = updated;
+      } else {
+        final idx = _dailyTestRecords.indexWhere((r) =>
+          (original.id != null && original.id!.isNotEmpty && r.id == original.id) ||
+          (r.timestamp == original.timestamp &&
+           r.lotNumber == original.lotNumber &&
+           r.produced == original.produced &&
+           r.defects == original.defects)
+        );
+        if (idx != -1) _dailyTestRecords[idx] = updated;
+      }
+    });
+
+    try {
+      await _storageService.updateRecord(original, updated, module: _currentModule);
+      final recordsToSave = _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords;
+      await _storageService.overwriteRecords(recordsToSave, module: _currentModule);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Quality inspection record updated successfully.'),
+            backgroundColor: Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update record: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      final currentRecords = await _storageService.loadRecords(module: _currentModule);
+      if (mounted) {
+        setState(() {
+          if (_currentModule == 'Lot Acceptance Test') {
+            _records = currentRecords;
+          } else {
+            _dailyTestRecords = currentRecords;
+          }
+        });
+      }
     }
   }
 
@@ -2212,13 +2402,17 @@ class _MainShellState extends State<MainShell> {
                   // Personnel & Role Management (Admin only)
                   if (_currentUserRole == UserRole.admin)
                     _buildOperatorManagementCard(cardWidth),
+
+                  // Role Permissions & Access Matrix (Admin only)
+                  if (_currentUserRole == UserRole.admin)
+                    _buildRolePermissionsCard(cardWidth),
                   
                   // Equipment Fleet & Round Tracking (Admin only)
                   if (_currentUserRole == UserRole.admin)
                     _buildEquipmentFleetCard(cardWidth),
 
-                  // Rules Management (Admin only)
-                  if (_currentUserRole == UserRole.admin)
+                  // Rules Management (Admin only or authorized roles)
+                  if (_currentUserRole == UserRole.admin || _hasPermission('can_manage_rules'))
                     _buildRulesManagementCard(cardWidth),
                 ],
               );
@@ -2516,6 +2710,223 @@ class _MainShellState extends State<MainShell> {
             '$count $label${count != 1 ? 's' : ''}',
             style: TextStyle(color: color, fontSize: 11.0, fontWeight: FontWeight.bold),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRolePermissionsCard(double width) {
+    final roles = [
+      {'key': 'manager', 'label': 'Manager', 'color': const Color(0xFFEC4899), 'icon': Icons.verified_user_rounded},
+      {'key': 'supervisor', 'label': 'Supervisor', 'color': const Color(0xFFF59E0B), 'icon': Icons.supervisor_account_rounded},
+      {'key': 'technician', 'label': 'Technician', 'color': const Color(0xFF06B6D4), 'icon': Icons.build_circle_rounded},
+      {'key': 'operator', 'label': 'Operator', 'color': const Color(0xFF10B981), 'icon': Icons.person_rounded},
+    ];
+
+    final permsConfig = [
+      {
+        'key': 'can_edit_records',
+        'title': 'Edit Inspection Log Records',
+        'subtitle': 'Allow users in this role to edit report data if mistakes or typos are found in submitted logs.',
+      },
+      {
+        'key': 'can_delete_records',
+        'title': 'Delete Inspection Entries',
+        'subtitle': 'Allow removing specific ballistic test records from the database.',
+      },
+      {
+        'key': 'can_export_reports',
+        'title': 'Export Reports & Summaries',
+        'subtitle': 'Allow generating and downloading formal PDF, Excel, and Word inspection reports.',
+      },
+      {
+        'key': 'can_clear_logs',
+        'title': 'Clear Daily Testing History',
+        'subtitle': 'Allow wiping all test records from the Daily Test module.',
+      },
+      {
+        'key': 'can_manage_rules',
+        'title': 'Manage Testing Rules & Limits',
+        'subtitle': 'Allow modifying ballistic pass/fail thresholds, limits, and caliber configurations.',
+      },
+    ];
+
+    final rolePermsMap = Map<String, dynamic>.from(_adminRules['role_permissions'] ?? {});
+
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(24.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111524),
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFF59E0B), size: 20.0),
+              ),
+              const SizedBox(width: 12.0),
+              const Expanded(
+                child: Text(
+                  'Role Permissions & Access Matrix',
+                  style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+          const Text(
+            'Admin can grant permissions to specific roles (e.g., Supervisor can edit the data on the report if there is some mistake, delete records, or manage rules). Toggle permissions below; changes are saved and applied immediately.',
+            style: TextStyle(fontSize: 12.5, color: Color(0xFF8E96A3), height: 1.4),
+          ),
+          const SizedBox(height: 20.0),
+
+          // Submission Alerts Switch (Admin & System-wide default)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(
+                color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.3) : Colors.white.withOpacity(0.06),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
+                  color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF8E96A3),
+                  size: 22.0,
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Report Submission Alerts (All Users)',
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        'Display an instant popup alert notification for all users when a report is submitted. Can also be switched off at any time.',
+                        style: TextStyle(fontSize: 11.5, color: Colors.white.withOpacity(0.65)),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _submissionAlertsEnabled,
+                  activeColor: const Color(0xFF10B981),
+                  onChanged: (val) async {
+                    setState(() {
+                      _submissionAlertsEnabled = val;
+                      _adminRules['submission_alerts_enabled'] = val;
+                    });
+                    await _storageService.saveRules(_adminRules);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20.0),
+
+          // Roles List with Permissions
+          ...roles.map((role) {
+            final roleKey = role['key'] as String;
+            final roleLabel = role['label'] as String;
+            final roleColor = role['color'] as Color;
+            final roleIcon = role['icon'] as IconData;
+            final rolePerms = Map<String, dynamic>.from(rolePermsMap[roleKey] ?? {});
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16.0),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: roleColor.withOpacity(0.25)),
+              ),
+              child: ExpansionTile(
+                initiallyExpanded: roleKey == 'supervisor' || roleKey == 'manager',
+                collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                leading: Container(
+                  padding: const EdgeInsets.all(6.0),
+                  decoration: BoxDecoration(
+                    color: roleColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6.0),
+                  ),
+                  child: Icon(roleIcon, color: roleColor, size: 18.0),
+                ),
+                title: Row(
+                  children: [
+                    Text(
+                      roleLabel,
+                      style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 14.0),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: roleColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        rolePerms['can_edit_records'] == true ? 'Can Edit Data' : 'Read-only Logs',
+                        style: TextStyle(color: roleColor, fontSize: 10.0, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Text(
+                  'Manage permissions and capabilities for ${roleLabel.toLowerCase()}s',
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3)),
+                ),
+                children: permsConfig.map((p) {
+                  final pKey = p['key'] as String;
+                  final pTitle = p['title'] as String;
+                  final pSubtitle = p['subtitle'] as String;
+                  final bool isGranted = rolePerms[pKey] == true;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: Colors.white.withOpacity(0.04))),
+                    ),
+                    child: SwitchListTile(
+                      dense: true,
+                      activeColor: roleColor,
+                      title: Text(
+                        pTitle,
+                        style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        pSubtitle,
+                        style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0),
+                      ),
+                      value: isGranted,
+                      onChanged: (newVal) async {
+                        setState(() {
+                          rolePerms[pKey] = newVal;
+                          rolePermsMap[roleKey] = rolePerms;
+                          _adminRules['role_permissions'] = rolePermsMap;
+                        });
+                        await _storageService.saveRules(_adminRules);
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }).toList(),
         ],
       ),
     );
@@ -4859,10 +5270,14 @@ class _MainShellState extends State<MainShell> {
         records: _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords,
         onOpenFolder: _openFolder,
         isAdmin: _currentUserRole == UserRole.admin,
+        canEditRecords: _hasPermission('can_edit_records'),
+        canDeleteRecords: _hasPermission('can_delete_records'),
+        canExportReports: _hasPermission('can_export_reports'),
         onDeleteRecord: _handleDeleteRecord,
+        onEditRecord: _handleEditRecord,
         base64Logo: _base64Logo,
         adminRules: _adminRules,
-        onClearDailyTestLogs: _handleClearDailyTestLogs,
+        onClearDailyTestLogs: (_currentUserRole == UserRole.admin || _hasPermission('can_clear_logs')) ? _handleClearDailyTestLogs : null,
       ),
       _buildControlPanelTab(),
     ];
@@ -5121,6 +5536,21 @@ class _MainShellState extends State<MainShell> {
                     ),
                   ),
                 IconButton(
+                  icon: Icon(
+                    _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
+                    color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF8E96A3),
+                    size: 18.0,
+                  ),
+                  tooltip: _submissionAlertsEnabled ? 'Submission Alerts (ON) - Tap to turn off' : 'Submission Alerts (OFF) - Tap to turn on',
+                  onPressed: () {
+                    setState(() {
+                      _submissionAlertsEnabled = !_submissionAlertsEnabled;
+                      _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
+                    });
+                    _storageService.saveRules(_adminRules);
+                  },
+                ),
+                IconButton(
                   icon: const Icon(Icons.logout, color: Color(0xFFEF4444), size: 18.0),
                   onPressed: () {
                     setState(() {
@@ -5211,33 +5641,95 @@ class _MainShellState extends State<MainShell> {
         border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       padding: const EdgeInsets.all(4.0),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(subTabs.length, (index) {
-          final bool isActive = _activeTabIndex == index;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2.0),
-            child: TextButton.icon(
-              onPressed: () => setState(() => _activeTabIndex = index),
-              icon: Icon(subTabs[index]['icon'], size: 15.0, color: isActive ? const Color(0xFF06B6D4) : const Color(0xFF8E96A3)),
-              label: Text(
-                subTabs[index]['label'],
-                style: TextStyle(
-                  color: isActive ? Colors.white : const Color(0xFF8E96A3),
-                  fontSize: 12.5,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                ),
-              ),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                backgroundColor: isActive ? const Color(0xFF06B6D4).withOpacity(0.08) : Colors.transparent,
-                shape: RoundedRectangleBorder(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(subTabs.length, (index) {
+                final bool isActive = _activeTabIndex == index;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _activeTabIndex = index),
+                    icon: Icon(subTabs[index]['icon'], size: 15.0, color: isActive ? const Color(0xFF06B6D4) : const Color(0xFF8E96A3)),
+                    label: Text(
+                      subTabs[index]['label'],
+                      style: TextStyle(
+                        color: isActive ? Colors.white : const Color(0xFF8E96A3),
+                        fontSize: 12.5,
+                        fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                      backgroundColor: isActive ? const Color(0xFF06B6D4).withOpacity(0.08) : Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6.0),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(width: 16.0),
+            // Alert Notification Switch Pill for All Users
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _submissionAlertsEnabled = !_submissionAlertsEnabled;
+                  _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
+                });
+                _storageService.saveRules(_adminRules);
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: const Color(0xFF0F172A),
+                    content: Text(
+                      _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
+                      style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                    ),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(6.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+                decoration: BoxDecoration(
+                  color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.12) : Colors.white.withOpacity(0.04),
                   borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(
+                    color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.35) : Colors.white.withOpacity(0.08),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
+                      size: 15.0,
+                      color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF8E96A3),
+                    ),
+                    const SizedBox(width: 6.0),
+                    Text(
+                      _submissionAlertsEnabled ? 'Alerts: ON' : 'Alerts: OFF',
+                      style: TextStyle(
+                        color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF8E96A3),
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          );
-        }),
+            const SizedBox(width: 4.0),
+          ],
+        ),
       ),
     );
   }

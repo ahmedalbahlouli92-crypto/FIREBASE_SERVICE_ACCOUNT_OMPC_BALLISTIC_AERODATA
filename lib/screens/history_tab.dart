@@ -12,7 +12,11 @@ class HistoryTab extends StatefulWidget {
   final List<BallisticRecord> records;
   final VoidCallback onOpenFolder;
   final bool isAdmin;
+  final bool canEditRecords;
+  final bool canDeleteRecords;
+  final bool canExportReports;
   final Function(BallisticRecord) onDeleteRecord;
+  final Future<void> Function(BallisticRecord original, BallisticRecord updated)? onEditRecord;
   final String base64Logo;
   final Map<String, dynamic> adminRules;
   final VoidCallback? onClearDailyTestLogs;
@@ -23,7 +27,11 @@ class HistoryTab extends StatefulWidget {
     required this.records,
     required this.onOpenFolder,
     required this.isAdmin,
+    this.canEditRecords = false,
+    this.canDeleteRecords = false,
+    this.canExportReports = true,
     required this.onDeleteRecord,
+    this.onEditRecord,
     required this.base64Logo,
     this.adminRules = const {},
     this.onClearDailyTestLogs,
@@ -35,6 +43,8 @@ class HistoryTab extends StatefulWidget {
 
 class _HistoryTabState extends State<HistoryTab> {
   final _searchController = TextEditingController();
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
   String _caliberFilter = 'All';
   String _testNameFilter = 'All';
   String _statusFilter = 'All';
@@ -69,6 +79,8 @@ class _HistoryTabState extends State<HistoryTab> {
   @override
   void dispose() {
     _searchController.dispose();
+    _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -113,6 +125,326 @@ class _HistoryTabState extends State<HistoryTab> {
           ],
         );
       },
+    );
+  }
+
+  void _showEditRecordDialog(BallisticRecord r) {
+    final operatorsController = TextEditingController(text: r.operators);
+    final lotNoController = TextEditingController(text: r.lotNo);
+    final producedController = TextEditingController(text: '${r.produced}');
+    final defectsController = TextEditingController(text: '${r.defects}');
+    final notesController = TextEditingController(text: r.notes);
+    final pressureController = TextEditingController(text: r.pressureBar);
+    final viscosityController = TextEditingController(text: r.viscosity);
+    final testTimeController = TextEditingController(text: r.testTime);
+    final locationController = TextEditingController(text: r.samplingLocation);
+    final mouthSlowController = TextEditingController(text: '${r.mouthSlow}');
+    final mouthFastController = TextEditingController(text: '${r.mouthFast}');
+    final primerSlowController = TextEditingController(text: '${r.primerSlow}');
+    final primerFastController = TextEditingController(text: '${r.primerFast}');
+    final velMeanController = TextEditingController(text: r.velMean);
+    final barrelSNController = TextEditingController(text: r.barrelSN);
+    final roomTempController = TextEditingController(text: r.roomTemp);
+
+    String editShift = r.shift;
+    String editStatus = r.status;
+    String editCaliber = r.caliber;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF111524),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+                side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF06B6D4).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: const Icon(Icons.edit_note_rounded, color: Color(0xFF06B6D4), size: 22.0),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Edit Inspection Log Entry',
+                          style: TextStyle(fontSize: 17.0, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        Text(
+                          '${r.testName} • ${r.timestamp}',
+                          style: const TextStyle(fontSize: 12.0, color: Color(0xFF8E96A3)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 650.0,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section 1: Inspector & Shift
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: _buildDialogField(
+                              label: 'Operators / Inspectors',
+                              child: _buildDialogTextField(controller: operatorsController),
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 1,
+                            child: _buildDialogField(
+                              label: 'Shift Time',
+                              child: DropdownButtonFormField<String>(
+                                value: ['Day', 'Night'].contains(editShift) ? editShift : 'Day',
+                                dropdownColor: const Color(0xFF1A2035),
+                                style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                                decoration: _dialogInputDecoration(),
+                                items: ['Day', 'Night'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                onChanged: (v) => setDialogState(() => editShift = v!),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12.0),
+
+                      // Section 2: Caliber & Lot / Hopper
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: _buildDialogField(
+                              label: 'Caliber Specification',
+                              child: DropdownButtonFormField<String>(
+                                value: calibers.contains(editCaliber) ? editCaliber : calibers.first,
+                                dropdownColor: const Color(0xFF1A2035),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                decoration: _dialogInputDecoration(),
+                                items: calibers.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                                onChanged: (v) => setDialogState(() => editCaliber = v!),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 2,
+                            child: _buildDialogField(
+                              label: widget.currentModule == 'Daily Test' ? 'Hopper No. / Production Date' : 'Lot Number',
+                              child: _buildDialogTextField(controller: lotNoController),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12.0),
+
+                      // Section 3: Quantity Tested, Defects, Status
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: _buildDialogField(
+                              label: 'Quantity Tested',
+                              child: _buildDialogTextField(controller: producedController, keyboardType: TextInputType.number),
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 1,
+                            child: _buildDialogField(
+                              label: 'Defects',
+                              child: _buildDialogTextField(controller: defectsController, keyboardType: TextInputType.number),
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 2,
+                            child: _buildDialogField(
+                              label: 'Quality Sentencing Status',
+                              child: DropdownButtonFormField<String>(
+                                value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
+                                dropdownColor: const Color(0xFF1A2035),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                decoration: _dialogInputDecoration(),
+                                items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
+                                  final col = s == 'Approved'
+                                      ? const Color(0xFF10B981)
+                                      : s == 'Rejected'
+                                          ? const Color(0xFFEF4444)
+                                          : s == 'Retest'
+                                              ? const Color(0xFFF59E0B)
+                                              : const Color(0xFF06B6D4);
+                                  return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
+                                }).toList(),
+                                onChanged: (v) => setDialogState(() => editStatus = v!),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12.0),
+
+                      // Section 4: Remarks / Notes
+                      _buildDialogField(
+                        label: 'Remarks / Notes',
+                        child: _buildDialogTextField(controller: notesController, maxLines: 2),
+                      ),
+
+                      // Test-specific quick edits
+                      if (r.testName == 'Waterproof Test') ...[
+                        const SizedBox(height: 12.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
+                            const SizedBox(width: 12.0),
+                            Expanded(child: _buildDialogField(label: 'Viscosity', child: _buildDialogTextField(controller: viscosityController))),
+                            const SizedBox(width: 12.0),
+                            Expanded(child: _buildDialogField(label: 'Location', child: _buildDialogTextField(controller: locationController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mouth Slow', child: _buildDialogTextField(controller: mouthSlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Mouth Fast', child: _buildDialogTextField(controller: mouthFastController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Primer Slow', child: _buildDialogTextField(controller: primerSlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'Residual Stress Test') ...[
+                        const SizedBox(height: 12.0),
+                        _buildDialogField(label: 'Room Temperature (°C)', child: _buildDialogTextField(controller: roomTempController)),
+                      ] else if (r.testName == 'Accuracy Test' || r.testName == 'EPVAT test') ...[
+                        const SizedBox(height: 12.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
+                            const SizedBox(width: 12.0),
+                            Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF8E96A3))),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final int produced = int.tryParse(producedController.text.trim()) ?? r.produced;
+                    final int defects = int.tryParse(defectsController.text.trim()) ?? r.defects;
+                    final int mouthSlow = int.tryParse(mouthSlowController.text.trim()) ?? r.mouthSlow;
+                    final int mouthFast = int.tryParse(mouthFastController.text.trim()) ?? r.mouthFast;
+                    final int primerSlow = int.tryParse(primerSlowController.text.trim()) ?? r.primerSlow;
+                    final int primerFast = int.tryParse(primerFastController.text.trim()) ?? r.primerFast;
+
+                    final updated = r.copyWith(
+                      operators: operatorsController.text.trim(),
+                      shift: editShift,
+                      caliber: editCaliber,
+                      lotNo: lotNoController.text.trim(),
+                      produced: produced,
+                      defects: defects,
+                      status: editStatus,
+                      notes: notesController.text.trim(),
+                      pressureBar: pressureController.text.trim(),
+                      viscosity: viscosityController.text.trim(),
+                      samplingLocation: locationController.text.trim(),
+                      mouthSlow: mouthSlow,
+                      mouthFast: mouthFast,
+                      primerSlow: primerSlow,
+                      primerFast: primerFast,
+                      barrelSN: barrelSNController.text.trim(),
+                      velMean: velMeanController.text.trim(),
+                      roomTemp: roomTempController.text.trim(),
+                    );
+                    Navigator.pop(ctx);
+                    widget.onEditRecord?.call(r, updated);
+                  },
+                  icon: const Icon(Icons.check, size: 16.0),
+                  label: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF06B6D4),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogField({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6.0),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildDialogTextField({
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      style: const TextStyle(color: Colors.white, fontSize: 13.0),
+      decoration: _dialogInputDecoration(),
+    );
+  }
+
+  InputDecoration _dialogInputDecoration() {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.03),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: const BorderSide(color: Color(0xFF06B6D4)),
+      ),
     );
   }
 
@@ -373,146 +705,169 @@ class _HistoryTabState extends State<HistoryTab> {
                     ),
                   )
                 : Scrollbar(
+                    controller: _verticalScrollController,
+                    thumbVisibility: true,
+                    trackVisibility: true,
                     child: SingleChildScrollView(
+                      controller: _verticalScrollController,
                       scrollDirection: Axis.vertical,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: MaterialStateProperty.all(Colors.white.withOpacity(0.01)),
-                          columns: [
-                            const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                            const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                            const DataColumn(label: Text('SHIFT TIME', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                            const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                            const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                            DataColumn(
-                              label: Text(
-                                widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PRODUCTION DATE' : 'LOT NO. (H/B)',
-                                style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold),
+                      child: Scrollbar(
+                        controller: _horizontalScrollController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _horizontalScrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.only(bottom: 48.0, right: 32.0),
+                          child: DataTable(
+                            columnSpacing: 20.0,
+                            horizontalMargin: 16.0,
+                            headingRowColor: MaterialStateProperty.all(Colors.white.withOpacity(0.01)),
+                            columns: [
+                              const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                              const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                              const DataColumn(label: Text('SHIFT TIME', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                              const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                              const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                              DataColumn(
+                                label: Text(
+                                  widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PRODUCTION DATE' : 'LOT NO. (H/B)',
+                                  style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                ),
                               ),
-                            ),
-                            const DataColumn(label: Text('RESULT', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                            const DataColumn(label: Text('TOTAL TESTED QUANTITY', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                            const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                          ],
-                          rows: displayRecords.map((r) {
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF8E96A3)))),
-                                DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
-                                DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0))),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.03),
-                                      borderRadius: BorderRadius.circular(4.0),
-                                      border: Border.all(color: Colors.white.withOpacity(0.08)),
-                                    ),
-                                    child: Text(
-                                      r.caliber,
-                                      style: const TextStyle(color: Colors.white, fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF6366F1).withOpacity(0.08),
-                                      borderRadius: BorderRadius.circular(4.0),
-                                      border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
-                                    ),
-                                    child: Text(
-                                      r.testName,
-                                      style: const TextStyle(color: Color(0xFF818CF8), fontSize: 10.5, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    r.hopperNo.isEmpty && r.boxNo.isEmpty
-                                        ? r.lotNo
-                                        : '${r.lotNo} (H:${r.hopperNo}, B:${r.boxNo})',
-                                    style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0),
-                                  ),
-                                ),
-                                DataCell(_buildStatusBadge(r.status)),
-                                DataCell(
-                                  Builder(
-                                    builder: (context) {
-                                      if (r.testName == 'Waterproof Test') {
-                                        final totalLeaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
-                                        return Text(
-                                          '$totalLeaks leaks / ${r.produced} rounds',
-                                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
-                                        );
-                                      } else if (r.testName == 'Function Test') {
-                                        final extras = [
-                                          if (r.cyclicRateWeaponType.isNotEmpty) r.cyclicRateWeaponType,
-                                          if (r.cartridgeTemp.isNotEmpty) r.cartridgeTemp,
-                                        ].join(' • ');
-                                        return Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              '${r.defects} def (L1:${r.functionLevel1}, L2:${r.functionLevel2}, L3:${r.functionLevel3}, L4:${r.functionLevel4}) / ${r.produced} rounds',
-                                              style: TextStyle(
-                                                fontSize: 12.0,
-                                                fontWeight: FontWeight.w500,
-                                                color: r.defects > 0 ? const Color(0xFFEF4444) : Colors.white,
-                                              ),
-                                            ),
-                                            if (extras.isNotEmpty)
-                                              Text(
-                                                extras,
-                                                style: const TextStyle(fontSize: 10.5, color: Color(0xFF06B6D4)),
-                                              ),
-                                          ],
-                                        );
-                                      }
-                                      return Text('${r.produced} rounds', style: const TextStyle(fontSize: 12.5));
-                                    },
-                                  ),
-                                ),
-                                DataCell(
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (r.attachmentBase64.isNotEmpty) ...[
-                                        IconButton(
-                                          icon: const Icon(Icons.attach_file, color: Color(0xFF06B6D4), size: 18.0),
-                                          onPressed: () => _showAttachmentDialog(r),
-                                          tooltip: 'View Attachment (${r.attachmentName})',
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                        ),
-                                        const SizedBox(width: 8.0),
-                                      ],
-                                      IconButton(
-                                        icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF0EA5E9), size: 18.0),
-                                        onPressed: () => _showReportGenerationDialog([r], singleRecord: r),
-                                        tooltip: 'Generate Individual Report',
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
+                              const DataColumn(label: Text('RESULT', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                              const DataColumn(label: Text('QTY TESTED', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                              const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                            ],
+                            rows: displayRecords.map((r) {
+                              return DataRow(
+                                cells: [
+                                  DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF8E96A3)))),
+                                  DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+                                  DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0))),
+                                  DataCell(
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.03),
+                                        borderRadius: BorderRadius.circular(4.0),
+                                        border: Border.all(color: Colors.white.withOpacity(0.08)),
                                       ),
-                                      if (widget.isAdmin) ...[
-                                        const SizedBox(width: 8.0),
+                                      child: Text(
+                                        r.caliber,
+                                        style: const TextStyle(color: Colors.white, fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF6366F1).withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(4.0),
+                                        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+                                      ),
+                                      child: Text(
+                                        r.testName,
+                                        style: const TextStyle(color: Color(0xFF818CF8), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      r.hopperNo.isEmpty && r.boxNo.isEmpty
+                                          ? r.lotNo
+                                          : '${r.lotNo} (H:${r.hopperNo}, B:${r.boxNo})',
+                                      style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0),
+                                    ),
+                                  ),
+                                  DataCell(_buildStatusBadge(r.status)),
+                                  DataCell(
+                                    Builder(
+                                      builder: (context) {
+                                        if (r.testName == 'Waterproof Test') {
+                                          final totalLeaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
+                                          return Text(
+                                            '$totalLeaks leaks / ${r.produced} rounds',
+                                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                                          );
+                                        } else if (r.testName == 'Function Test') {
+                                          final extras = [
+                                            if (r.cyclicRateWeaponType.isNotEmpty) r.cyclicRateWeaponType,
+                                            if (r.cartridgeTemp.isNotEmpty) r.cartridgeTemp,
+                                          ].join(' • ');
+                                          return Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                '${r.defects} def (L1:${r.functionLevel1}, L2:${r.functionLevel2}, L3:${r.functionLevel3}, L4:${r.functionLevel4}) / ${r.produced} rounds',
+                                                style: TextStyle(
+                                                  fontSize: 12.0,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: r.defects > 0 ? const Color(0xFFEF4444) : Colors.white,
+                                                ),
+                                              ),
+                                              if (extras.isNotEmpty)
+                                                Text(
+                                                  extras,
+                                                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF06B6D4)),
+                                                ),
+                                            ],
+                                          );
+                                        }
+                                        return Text('${r.produced} rounds', style: const TextStyle(fontSize: 12.5));
+                                      },
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (r.attachmentBase64.isNotEmpty) ...[
+                                          IconButton(
+                                            icon: const Icon(Icons.attach_file, color: Color(0xFF06B6D4), size: 18.0),
+                                            onPressed: () => _showAttachmentDialog(r),
+                                            tooltip: 'View Attachment (${r.attachmentName})',
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                          const SizedBox(width: 8.0),
+                                        ],
                                         IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18.0),
-                                          onPressed: () => _confirmDelete(r),
-                                          tooltip: 'Delete Entry',
+                                          icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF0EA5E9), size: 18.0),
+                                          onPressed: () => _showReportGenerationDialog([r], singleRecord: r),
+                                          tooltip: 'Generate Individual Report',
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),
                                         ),
+                                        if (widget.isAdmin || widget.canEditRecords) ...[
+                                          const SizedBox(width: 8.0),
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_outlined, color: Color(0xFF06B6D4), size: 18.0),
+                                            onPressed: () => _showEditRecordDialog(r),
+                                            tooltip: 'Edit Entry',
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                        ],
+                                        if (widget.isAdmin || widget.canDeleteRecords) ...[
+                                          const SizedBox(width: 8.0),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18.0),
+                                            onPressed: () => _confirmDelete(r),
+                                            tooltip: 'Delete Entry',
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                        ],
                                       ],
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
+                                ],
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
                     ),
