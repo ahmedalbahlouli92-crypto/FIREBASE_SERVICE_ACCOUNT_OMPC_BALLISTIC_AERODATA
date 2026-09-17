@@ -9,6 +9,7 @@ import 'services/attachment_helper.dart';
 import 'screens/dashboard_tab.dart';
 import 'screens/entry_tab.dart';
 import 'screens/history_tab.dart';
+import 'screens/analysis_recommendation_tab.dart';
 import 'services/epvat_formula_helper.dart';
 import 'services/supabase_service.dart';
 
@@ -28,14 +29,14 @@ class OmpcBallisticAeroDataApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF090C15),
-        primaryColor: const Color(0xFF6366F1),
+        scaffoldBackgroundColor: const Color(0xFF081B30),
+        primaryColor: const Color(0xFF0284C7),
         fontFamily: 'Outfit',
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF6366F1),
-          secondary: Color(0xFF06B6D4),
-          background: Color(0xFF090C15),
-          surface: Color(0xFF111524),
+          primary: Color(0xFF0284C7),
+          secondary: Color(0xFF38BDF8),
+          background: Color(0xFF081B30),
+          surface: Color(0xFF0F253E),
         ),
       ),
       home: const MainShell(),
@@ -5279,6 +5280,11 @@ class _MainShellState extends State<MainShell> {
         adminRules: _adminRules,
         onClearDailyTestLogs: (_currentUserRole == UserRole.admin || _hasPermission('can_clear_logs')) ? _handleClearDailyTestLogs : null,
       ),
+      AnalysisRecommendationTab(
+        currentModule: _currentModule,
+        records: _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords,
+        adminRules: _adminRules,
+      ),
       _buildControlPanelTab(),
     ];
 
@@ -5312,8 +5318,8 @@ class _MainShellState extends State<MainShell> {
                 Container(
                   width: 250.0,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF06080E),
-                    border: Border(right: BorderSide(color: Colors.white.withOpacity(0.06))),
+                    color: const Color(0xFF061527),
+                    border: Border(right: BorderSide(color: const Color(0xFF0284C7).withOpacity(0.2))),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
                   child: Column(
@@ -5573,15 +5579,16 @@ class _MainShellState extends State<MainShell> {
                     currentIndex: _activeTabIndex,
                     onTap: (index) => setState(() => _activeTabIndex = index),
                     type: BottomNavigationBarType.fixed,
-                    backgroundColor: const Color(0xFF06080E),
-                    selectedItemColor: const Color(0xFF06B6D4),
-                    unselectedItemColor: const Color(0xFF8E96A3),
+                    backgroundColor: const Color(0xFF061527),
+                    selectedItemColor: const Color(0xFF38BDF8),
+                    unselectedItemColor: const Color(0xFF90CDF4),
                     selectedFontSize: 11.5,
                     unselectedFontSize: 11.5,
                     items: const [
                       BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
                       BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline), label: 'Log Entry'),
                       BottomNavigationBarItem(icon: Icon(Icons.table_chart_outlined), label: 'Logs'),
+                      BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'AI Advisory'),
                       BottomNavigationBarItem(icon: Icon(Icons.settings_input_component_outlined), label: 'Controls'),
                     ],
                   )
@@ -5601,11 +5608,11 @@ class _MainShellState extends State<MainShell> {
           _currentModule = label;
           _activeTabIndex = 0; // Reset sub-tab
         }),
-        icon: Icon(icon, color: isActive ? activeColor : const Color(0xFF8E96A3), size: 18.0),
+        icon: Icon(icon, color: isActive ? activeColor : const Color(0xFF90CDF4), size: 18.0),
         label: Text(
           label,
           style: TextStyle(
-            color: isActive ? Colors.white : const Color(0xFF8E96A3),
+            color: isActive ? Colors.white : const Color(0xFF90CDF4),
             fontSize: 13.0,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
           ),
@@ -5613,11 +5620,11 @@ class _MainShellState extends State<MainShell> {
         style: TextButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          backgroundColor: isActive ? activeColor.withOpacity(0.08) : Colors.transparent,
+          backgroundColor: isActive ? activeColor.withOpacity(0.12) : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8.0),
             side: BorderSide(
-              color: isActive ? activeColor.withOpacity(0.15) : Colors.transparent,
+              color: isActive ? activeColor.withOpacity(0.25) : Colors.transparent,
             ),
           ),
         ),
@@ -5630,15 +5637,16 @@ class _MainShellState extends State<MainShell> {
       {'label': 'Dashboard', 'icon': Icons.dashboard_outlined},
       {'label': 'Log Entry', 'icon': Icons.add_circle_outline},
       {'label': 'Inspection Logs', 'icon': Icons.table_chart_outlined},
+      {'label': 'Analysis & Recommendations', 'icon': Icons.auto_awesome},
       {'label': 'Controls', 'icon': Icons.settings_input_component_outlined},
     ];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF111524),
+        color: const Color(0xFF0C2138),
         borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
+        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.25)),
       ),
       padding: const EdgeInsets.all(4.0),
       child: SingleChildScrollView(
@@ -5654,20 +5662,23 @@ class _MainShellState extends State<MainShell> {
                   padding: const EdgeInsets.symmetric(horizontal: 2.0),
                   child: TextButton.icon(
                     onPressed: () => setState(() => _activeTabIndex = index),
-                    icon: Icon(subTabs[index]['icon'], size: 15.0, color: isActive ? const Color(0xFF06B6D4) : const Color(0xFF8E96A3)),
+                    icon: Icon(subTabs[index]['icon'], size: 15.0, color: isActive ? const Color(0xFF38BDF8) : const Color(0xFF90CDF4)),
                     label: Text(
                       subTabs[index]['label'],
                       style: TextStyle(
-                        color: isActive ? Colors.white : const Color(0xFF8E96A3),
+                        color: isActive ? Colors.white : const Color(0xFF90CDF4),
                         fontSize: 12.5,
                         fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
                       ),
                     ),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                      backgroundColor: isActive ? const Color(0xFF06B6D4).withOpacity(0.08) : Colors.transparent,
+                      backgroundColor: isActive ? const Color(0xFF0284C7).withOpacity(0.2) : Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6.0),
+                        side: BorderSide(
+                          color: isActive ? const Color(0xFF0284C7).withOpacity(0.4) : Colors.transparent,
+                        ),
                       ),
                     ),
                   ),
@@ -5688,7 +5699,7 @@ class _MainShellState extends State<MainShell> {
                   SnackBar(
                     duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
-                    backgroundColor: const Color(0xFF0F172A),
+                    backgroundColor: const Color(0xFF0C2138),
                     content: Text(
                       _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
                       style: const TextStyle(color: Colors.white, fontSize: 12.0),
@@ -5712,13 +5723,13 @@ class _MainShellState extends State<MainShell> {
                     Icon(
                       _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
                       size: 15.0,
-                      color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF8E96A3),
+                      color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF90CDF4),
                     ),
                     const SizedBox(width: 6.0),
                     Text(
                       _submissionAlertsEnabled ? 'Alerts: ON' : 'Alerts: OFF',
                       style: TextStyle(
-                        color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF8E96A3),
+                        color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF90CDF4),
                         fontSize: 12.0,
                         fontWeight: FontWeight.w600,
                       ),

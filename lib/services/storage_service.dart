@@ -123,7 +123,7 @@ class StorageService {
           if (kIsWeb) {
             overwriteWebRecords(filtered, cleanModule);
           }
-          return filtered;
+          return BallisticRecord.consolidateRecords(filtered);
         }
       } catch (e) {
         print("Supabase load error: $e");
@@ -136,13 +136,14 @@ class StorageService {
         return [];
       }
       final webList = getWebRecords(cleanModule);
-      return webList.where((r) {
+      final filteredWeb = webList.where((r) {
         if (isDaily) {
           return r.module == 'Daily Test';
         } else {
           return r.module.isEmpty || r.module == 'Lot Acceptance Test';
         }
       }).toList();
+      return BallisticRecord.consolidateRecords(filteredWeb);
     }
     try {
       final file = await ensureDailyFileExists(module: cleanModule) as File;
@@ -165,7 +166,7 @@ class StorageService {
           }
         }
       }
-      return records;
+      return BallisticRecord.consolidateRecords(records);
     } catch (e) {
       print("Error loading local records: $e");
       return [];

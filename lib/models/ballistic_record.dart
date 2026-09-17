@@ -1022,4 +1022,98 @@ class BallisticRecord {
       module: module ?? this.module,
     );
   }
+
+  /// Consolidates split temperature records (EPVAT / Function Test) into single unified records
+  /// where sample size is the sum of all temperature rounds.
+  static List<BallisticRecord> consolidateRecords(List<BallisticRecord> records) {
+    if (records.isEmpty) return records;
+    final List<BallisticRecord> result = [];
+    final Map<String, List<BallisticRecord>> epvatGroups = {};
+    final Map<String, List<BallisticRecord>> funcGroups = {};
+
+    for (final r in records) {
+      final isEpvat = r.testName.contains('EPVAT');
+      final isFunc = r.testName.toLowerCase().contains('function');
+
+      // Group key: lotNo + date (first 10 chars of timestamp) + caliber
+      final dateKey = r.timestamp.length >= 10 ? r.timestamp.substring(0, 10) : r.timestamp;
+
+      if (isEpvat && (r.notes.contains('Multi-Temperature Consolidated') || r.cartridgeTemp.contains(','))) {
+        // Already unified
+        result.add(r);
+      } else if (isEpvat && r.cartridgeTemp.isNotEmpty) {
+        // Individual temp record to consolidate
+        final key = '${r.lotNo}_${r.caliber}_$dateKey';
+        epvatGroups.putIfAbsent(key, () => []).add(r);
+      } else if (isFunc && (r.notes.contains('Consolidated Multi-Temperature') || r.cartridgeTemp.contains(','))) {
+        // Already unified
+        result.add(r);
+      } else if (isFunc && r.cartridgeTemp.isNotEmpty) {
+        final key = '${r.lotNo}_${r.caliber}_$dateKey';
+        funcGroups.putIfAbsent(key, () => []).add(r);
+      } else {
+        result.add(r);
+      }
+    }
+
+    // Merge EPVAT groups
+    epvatGroups.forEach((key, group) {
+      if (group.length == 1) {
+        result.add(group.first);
+      } else {
+        final base = group.first;
+        final totalSample = group.fold<int>(0, (sum, item) => sum + item.produced);
+        final totalDefects = group.fold<int>(0, (sum, item) => sum + item.defects);
+        final temps = group.map((e) => e.cartridgeTemp).where((t) => t.isNotEmpty).toSet().join(', ');
+        final notes = 'Consolidated EPVAT ($temps) | Total: $totalSample rds';
+        final anyRejected = group.any((e) => e.status.toUpperCase() == 'REJECTED');
+        final anyHold = group.any((e) => e.status.toUpperCase() == 'HOLD');
+        final status = anyRejected ? 'REJECTED' : (anyHold ? 'HOLD' : 'ACCEPTED');
+
+        result.add(base.copyWith(
+          produced: totalSample,
+          defects: totalDefects,
+          cartridgeTemp: temps,
+          notes: notes,
+          status: status,
+        ));
+      }
+    });
+
+    // Merge Function groups
+    funcGroups.forEach((key, group) {
+      if (group.length == 1) {
+        result.add(group.first);
+      } else {
+        final base = group.first;
+        final totalSample = group.fold<int>(0, (sum, item) => sum + item.produced);
+        final totalDefects = group.fold<int>(0, (sum, item) => sum + item.defects);
+        final totalL1 = group.fold<int>(0, (sum, item) => sum + item.functionLevel1);
+        final totalL2 = group.fold<int>(0, (sum, item) => sum + item.functionLevel2);
+        final totalL3 = group.fold<int>(0, (sum, item) => sum + item.functionLevel3);
+        final totalL4 = group.fold<int>(0, (sum, item) => sum + item.functionLevel4);
+        final temps = group.map((e) => e.cartridgeTemp).where((t) => t.isNotEmpty).toSet().join(', ');
+        final anyRejected = group.any((e) => e.status.toUpperCase() == 'REJECTED');
+        final anyHold = group.any((e) => e.status.toUpperCase() == 'HOLD');
+        final status = anyRejected ? 'REJECTED' : (anyHold ? 'HOLD' : 'ACCEPTED');
+
+        result.add(base.copyWith(
+          produced: totalSample,
+          defects: totalDefects,
+          functionLevel1: totalL1,
+          functionLevel2: totalL2,
+          functionLevel3: totalL3,
+          functionLevel4: totalL4,
+          cartridgeTemp: temps,
+          notes: 'Consolidated Function Test ($temps) - Total Sample: $totalSample rds, Defects: $totalDefects',
+          status: status,
+        ));
+      }
+    });
+
+    // Sort by timestamp desc
+    result.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return result;
+  }
 }
+

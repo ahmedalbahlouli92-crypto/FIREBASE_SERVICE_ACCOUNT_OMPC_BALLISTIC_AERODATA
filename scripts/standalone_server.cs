@@ -20,7 +20,7 @@ namespace OmpcBallisticAeroData
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             _webRoot = Path.Combine(baseDir, "build", "web");
 
-            if (!Directory.Exists(_webRoot))
+            if (!Directory.Exists(_webRoot) || !File.Exists(Path.Combine(_webRoot, "index.html")))
             {
                 // Also check if running directly inside build/web or alongside web files
                 if (File.Exists(Path.Combine(baseDir, "index.html")))
@@ -29,13 +29,23 @@ namespace OmpcBallisticAeroData
                 }
                 else
                 {
-                    System.Windows.Forms.MessageBox.Show(
-                        "Cannot find the web application assets in 'build/web' or current folder.\n" +
-                        "Please ensure the application folder is intact.",
-                        "OMPC Ballistic AeroData - Error",
-                        System.Windows.Forms.MessageBoxButtons.OK,
-                        System.Windows.Forms.MessageBoxIcon.Error);
-                    return;
+                    // Attempt automatic self-extraction from embedded resource
+                    string unpackedDir;
+                    bool extracted = TryExtractEmbeddedWebBundle(out unpackedDir);
+                    if (extracted && Directory.Exists(unpackedDir) && File.Exists(Path.Combine(unpackedDir, "index.html")))
+                    {
+                        _webRoot = unpackedDir;
+                    }
+                    else
+                    {
+                        System.Windows.Forms.MessageBox.Show(
+                            "Cannot find the web application assets in 'build/web' or current folder.\n" +
+                            "Please ensure the application folder is intact.",
+                            "OMPC Ballistic AeroData - Error",
+                            System.Windows.Forms.MessageBoxButtons.OK,
+                            System.Windows.Forms.MessageBoxIcon.Error);
+                        return;
+                    }
                 }
             }
 
@@ -204,12 +214,79 @@ namespace OmpcBallisticAeroData
                 case ".jpg": case ".jpeg": return "image/jpeg";
                 case ".ico": return "image/x-icon";
                 case ".svg": return "image/svg+xml";
-                case ".ttf": return "font/ttf";
-                case ".otf": return "font/otf";
                 case ".woff": return "font/woff";
                 case ".woff2": return "font/woff2";
                 default: return "application/octet-stream";
             }
         }
+
+        private static bool TryExtractEmbeddedWebBundle(out string targetDir)
+        {
+            try
+            {
+                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                targetDir = Path.Combine(localAppData, "OMPC_Ballistic_AeroData", "web_app");
+
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                string[] resourceNames = assembly.GetManifestResourceNames();
+                string zipResourceName = null;
+                foreach (string name in resourceNames)
+                {
+                    if (name.EndsWith("web_bundle.zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        zipResourceName = name;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(zipResourceName))
+                {
+                    return false;
+                }
+
+                using (Stream resStream = assembly.GetManifestResourceStream(zipResourceName))
+                {
+                    if (resStream == null) return false;
+
+                    long resourceLength = resStream.Length;
+                    string markerFile = Path.Combine(targetDir, "bundle_size.txt");
+
+                    // Check if already extracted and matches current executable bundle size
+                    if (Directory.Exists(targetDir) && File.Exists(Path.Combine(targetDir, "index.html")) && File.Exists(markerFile))
+                    {
+                        string savedSize = File.ReadAllText(markerFile).Trim();
+                        if (savedSize == resourceLength.ToString())
+                        {
+                            return true;
+                        }
+                    }
+
+                    // Clean and extract bundle
+                    if (Directory.Exists(targetDir))
+                    {
+                        try { Directory.Delete(targetDir, true); } catch { }
+                    }
+                    Directory.CreateDirectory(targetDir);
+
+                    string tempZip = Path.Combine(Path.GetTempPath(), "ompc_bundle_" + Guid.NewGuid().ToString("N") + ".zip");
+                    using (FileStream fs = new FileStream(tempZip, FileMode.Create, FileAccess.Write))
+                    {
+                        resStream.CopyTo(fs);
+                    }
+
+                    System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, targetDir);
+                    try { File.Delete(tempZip); } catch { }
+                    try { File.WriteAllText(markerFile, resourceLength.ToString()); } catch { }
+
+                    return true;
+                }
+            }
+            catch
+            {
+                targetDir = null;
+                return false;
+            }
+        }
     }
 }
+

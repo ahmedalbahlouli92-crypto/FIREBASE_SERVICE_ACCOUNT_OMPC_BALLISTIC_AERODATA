@@ -1453,92 +1453,117 @@ class _EntryTabState extends State<EntryTab> {
         // If no temps have values entered, fallback to the currently active tab
         final tempsToSave = validTemps.isNotEmpty ? validTemps : [temps[_activeEpvatTempTabIndex]];
 
+        // SUM THE SAMPLE SIZES ACROSS TEMPERATURES INTO ONE UNIFIED TEST
+        int totalProduced = 0;
+        final List<String> tempDetails = [];
         for (var t in tempsToSave) {
           final count = _epvatOverallRoundCount[t] ?? 30;
-          final record = BallisticRecord(
-            module: widget.currentModule,
-            timestamp: formattedDate,
-            operators: _operatorsController.text.trim(),
-            shift: _shift,
-            caliber: _caliber,
-            lotNo: finalLotNo,
-            produced: count, // rounds per temperature
-            defects: 0,
-            notes: _notesController.text.trim(),
-            status: finalStatus,
-            testName: _testName,
-            pressureBar: '',
-            viscosity: '',
-            testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
-            gp6Serial: _gp6SerialController.text.trim(),
-            userRole: widget.userRole,
-            samplingLocation: _locationController.text.trim(),
-            mouthSlow: 0,
-            mouthFast: 0,
-            primerSlow: 0,
-            primerFast: 0,
-            hopperNo: '',
-            boxNo: '',
-            requirement: _requirementController.text.trim(),
-            barrelSN: _barrelSNController.text.trim(),
-            barrelType: '',
-            velocityDistance: _distanceController.text.trim(),
-            // Velocity stats for this temp
-            velMean: _overallEpvatControllers[t]!['vel_mean']!.text.trim(),
-            velMax: _overallEpvatControllers[t]!['vel_max']!.text.trim(),
-            velMin: _overallEpvatControllers[t]!['vel_min']!.text.trim(),
-            velRange: _overallEpvatControllers[t]!['vel_range']!.text.trim(),
-            velSD: _overallEpvatControllers[t]!['vel_sd']!.text.trim(),
-            // Action Time stats for this temp
-            actionTimeMean: _overallEpvatControllers[t]!['action_time_mean']?.text.trim() ?? '',
-            actionTimeMax: _overallEpvatControllers[t]!['action_time_max']?.text.trim() ?? '',
-            actionTimeMin: _overallEpvatControllers[t]!['action_time_min']?.text.trim() ?? '',
-            actionTimeRange: _overallEpvatControllers[t]!['action_time_range']?.text.trim() ?? '',
-            actionTimeSD: _overallEpvatControllers[t]!['action_time_sd']?.text.trim() ?? '',
-            // Cartridge temp
-            cartridgeTemp: t,
-            epvatPressureType: 'Overall',
-            epvatPressureUnit: _epvatPressureUnit,
-            // P1 stats for this temp
-            epvatMeanPressure: _overallEpvatControllers[t]!['p1_mean']!.text.trim(),
-            epvatMaxPressure: _overallEpvatControllers[t]!['p1_max']!.text.trim(),
-            epvatMinPressure: _overallEpvatControllers[t]!['p1_min']!.text.trim(),
-            epvatRangePressure: _overallEpvatControllers[t]!['p1_range']!.text.trim(),
-            epvatSDPressure: _overallEpvatControllers[t]!['p1_sd']!.text.trim(),
-            // P2 stats for this temp
-            epvatP2MeanPressure: _overallEpvatControllers[t]!['p2_mean']!.text.trim(),
-            epvatP2MaxPressure: _overallEpvatControllers[t]!['p2_max']!.text.trim(),
-            epvatP2MinPressure: _overallEpvatControllers[t]!['p2_min']!.text.trim(),
-            epvatP2RangePressure: _overallEpvatControllers[t]!['p2_range']!.text.trim(),
-            epvatP2SDPressure: _overallEpvatControllers[t]!['p2_sd']!.text.trim(),
-            // Serialization rounds if Individual Rounds selected
-            epvatPressureRounds: _epvatOverallSubMode[t] == 'Individual Rounds'
-                ? _overallEpvatP1RoundsControllers[t]!.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',')
-                : '',
-            epvatP2PressureRounds: _epvatOverallSubMode[t] == 'Individual Rounds'
-                ? _overallEpvatP2RoundsControllers[t]!.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',')
-                : '',
-            epvatVelRounds: _epvatOverallSubMode[t] == 'Individual Rounds'
-                ? _overallEpvatVelRoundsControllers[t]!.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',')
-                : '',
-            actionTimeRounds: _epvatOverallSubMode[t] == 'Individual Rounds'
-                ? (_overallEpvatActionTimeRoundsControllers[t] ?? []).map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',')
-                : '',
-            roomTemp: '',
-            neckSlow: 0,
-            neckFast: 0,
-            shoulderSlow: 0,
-            shoulderFast: 0,
-            bodySlow: 0,
-            bodyFast: 0,
-            headSlow: 0,
-            headFast: 0,
-            attachmentName: _attachmentName,
-            attachmentBase64: _attachmentBase64,
-          );
-          await widget.onSubmit(record);
-          await Future.delayed(const Duration(milliseconds: 100)); // offset timing
+          totalProduced += count;
+          final p1m = _overallEpvatControllers[t]!['p1_mean']!.text.trim();
+          final p1max = _overallEpvatControllers[t]!['p1_max']!.text.trim();
+          final vm = _overallEpvatControllers[t]!['vel_mean']!.text.trim();
+          tempDetails.add('$t°C ($count rds: P1=$p1m, Max=$p1max, V=$vm)');
         }
+
+        // Primary baseline temp (+21 or first)
+        final baselineTemp = tempsToSave.contains('+21') ? '+21' : tempsToSave.first;
+        final baseP1Mean = _overallEpvatControllers[baselineTemp]!['p1_mean']!.text.trim();
+        final baseP1Max = _overallEpvatControllers[baselineTemp]!['p1_max']!.text.trim();
+        final baseP1Min = _overallEpvatControllers[baselineTemp]!['p1_min']!.text.trim();
+        final baseP1Range = _overallEpvatControllers[baselineTemp]!['p1_range']!.text.trim();
+        final baseP1SD = _overallEpvatControllers[baselineTemp]!['p1_sd']!.text.trim();
+
+        final baseP2Mean = _overallEpvatControllers[baselineTemp]!['p2_mean']!.text.trim();
+        final baseP2Max = _overallEpvatControllers[baselineTemp]!['p2_max']!.text.trim();
+        final baseP2Min = _overallEpvatControllers[baselineTemp]!['p2_min']!.text.trim();
+        final baseP2Range = _overallEpvatControllers[baselineTemp]!['p2_range']!.text.trim();
+        final baseP2SD = _overallEpvatControllers[baselineTemp]!['p2_sd']!.text.trim();
+
+        final baseVelMean = _overallEpvatControllers[baselineTemp]!['vel_mean']!.text.trim();
+        final baseVelMax = _overallEpvatControllers[baselineTemp]!['vel_max']!.text.trim();
+        final baseVelMin = _overallEpvatControllers[baselineTemp]!['vel_min']!.text.trim();
+        final baseVelRange = _overallEpvatControllers[baselineTemp]!['vel_range']!.text.trim();
+        final baseVelSD = _overallEpvatControllers[baselineTemp]!['vel_sd']!.text.trim();
+
+        final baseActMean = _overallEpvatControllers[baselineTemp]!['action_time_mean']?.text.trim() ?? '';
+        final baseActMax = _overallEpvatControllers[baselineTemp]!['action_time_max']?.text.trim() ?? '';
+        final baseActMin = _overallEpvatControllers[baselineTemp]!['action_time_min']?.text.trim() ?? '';
+        final baseActRange = _overallEpvatControllers[baselineTemp]!['action_time_range']?.text.trim() ?? '';
+        final baseActSD = _overallEpvatControllers[baselineTemp]!['action_time_sd']?.text.trim() ?? '';
+
+        final customNotes = _notesController.text.trim();
+        final combinedNotes = tempDetails.isNotEmpty
+            ? (customNotes.isNotEmpty ? '$customNotes | ' : '') + 'Temps: ${tempDetails.join('; ')}'
+            : customNotes;
+
+        final record = BallisticRecord(
+          module: widget.currentModule,
+          timestamp: formattedDate,
+          operators: _operatorsController.text.trim(),
+          shift: _shift,
+          caliber: _caliber,
+          lotNo: finalLotNo,
+          produced: totalProduced, // SUM OF ALL TEMPERATURE ROUNDS
+          defects: 0,
+          notes: combinedNotes,
+          status: finalStatus,
+          testName: _testName,
+          pressureBar: '',
+          viscosity: '',
+          testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
+          gp6Serial: _gp6SerialController.text.trim(),
+          userRole: widget.userRole,
+          samplingLocation: _locationController.text.trim(),
+          mouthSlow: 0,
+          mouthFast: 0,
+          primerSlow: 0,
+          primerFast: 0,
+          hopperNo: '',
+          boxNo: '',
+          requirement: _requirementController.text.trim(),
+          barrelSN: _barrelSNController.text.trim(),
+          barrelType: '',
+          velocityDistance: _distanceController.text.trim(),
+          velMean: baseVelMean,
+          velMax: baseVelMax,
+          velMin: baseVelMin,
+          velRange: baseVelRange,
+          velSD: baseVelSD,
+          actionTimeMean: baseActMean,
+          actionTimeMax: baseActMax,
+          actionTimeMin: baseActMin,
+          actionTimeRange: baseActRange,
+          actionTimeSD: baseActSD,
+          cartridgeTemp: tempsToSave.map((t) => '$t°C').join(', '),
+          epvatPressureType: 'Overall',
+          epvatPressureUnit: _epvatPressureUnit,
+          epvatMeanPressure: baseP1Mean,
+          epvatMaxPressure: baseP1Max,
+          epvatMinPressure: baseP1Min,
+          epvatRangePressure: baseP1Range,
+          epvatSDPressure: baseP1SD,
+          epvatP2MeanPressure: baseP2Mean,
+          epvatP2MaxPressure: baseP2Max,
+          epvatP2MinPressure: baseP2Min,
+          epvatP2RangePressure: baseP2Range,
+          epvatP2SDPressure: baseP2SD,
+          epvatPressureRounds: tempsToSave.map((t) => (_overallEpvatP1RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
+          epvatP2PressureRounds: tempsToSave.map((t) => (_overallEpvatP2RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
+          epvatVelRounds: tempsToSave.map((t) => (_overallEpvatVelRoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
+          actionTimeRounds: tempsToSave.map((t) => (_overallEpvatActionTimeRoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
+          roomTemp: '',
+          neckSlow: 0,
+          neckFast: 0,
+          shoulderSlow: 0,
+          shoulderFast: 0,
+          bodySlow: 0,
+          bodyFast: 0,
+          headSlow: 0,
+          headFast: 0,
+          attachmentName: _attachmentName,
+          attachmentBase64: _attachmentBase64,
+        );
+        await widget.onSubmit(record);
       } else if (_testName == 'Function Test' && _functionTempMode == 'All') {
         final temps = _functionTempList;
         final validTemps = temps.where((t) {
@@ -1552,53 +1577,72 @@ class _EntryTabState extends State<EntryTab> {
 
         final tempsToSave = validTemps.isNotEmpty ? validTemps : [temps[_activeFunctionTempTabIndex]];
 
+        // SUM ALL TEMPERATURE SAMPLE SIZES AND DEFECTS INTO ONE TEST RECORD
+        int totalProduced = 0;
+        int sumL1 = 0;
+        int sumL2 = 0;
+        int sumL3 = 0;
+        int sumL4 = 0;
+        final List<String> tempSummaries = [];
+
         for (var t in tempsToSave) {
           final count = int.tryParse(_funcAllProducedControllers[t]?.text.trim() ?? '') ?? 20;
           final l1 = int.tryParse(_funcAllL1Controllers[t]?.text.trim() ?? '') ?? 0;
           final l2 = int.tryParse(_funcAllL2Controllers[t]?.text.trim() ?? '') ?? 0;
           final l3 = int.tryParse(_funcAllL3Controllers[t]?.text.trim() ?? '') ?? 0;
           final l4 = int.tryParse(_funcAllL4Controllers[t]?.text.trim() ?? '') ?? 0;
-          final totalD = l1 + l2 + l3 + l4;
-          final tStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
-
-          final record = BallisticRecord(
-            module: widget.currentModule,
-            timestamp: formattedDate,
-            operators: _operatorsController.text.trim(),
-            shift: _shift,
-            caliber: _caliber,
-            lotNo: finalLotNo,
-            produced: count,
-            defects: totalD,
-            notes: _notesController.text.trim(),
-            status: tStatus,
-            testName: _testName,
-            pressureBar: '',
-            viscosity: '',
-            testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
-            gp6Serial: '',
-            userRole: widget.userRole,
-            samplingLocation: _locationController.text.trim(),
-            mouthSlow: 0,
-            mouthFast: 0,
-            primerSlow: 0,
-            primerFast: 0,
-            hopperNo: '',
-            boxNo: '',
-            requirement: _requirementController.text.trim(),
-            cartridgeTemp: '$t °C',
-            cyclicRateWeaponType: _functionWeapon,
-            functionLevel1: l1,
-            functionLevel2: l2,
-            functionLevel3: l3,
-            functionLevel4: l4,
-            attachmentName: _attachmentName,
-            attachmentBase64: _attachmentBase64,
-            functionDefectDetails: _functionDefectDetails,
-          );
-          await widget.onSubmit(record);
-          await Future.delayed(const Duration(milliseconds: 100));
+          totalProduced += count;
+          sumL1 += l1;
+          sumL2 += l2;
+          sumL3 += l3;
+          sumL4 += l4;
+          tempSummaries.add('$t°C ($count rds, ${l1 + l2 + l3 + l4} def)');
         }
+
+        final totalDefects = sumL1 + sumL2 + sumL3 + sumL4;
+        final overallStatus = _calculateFunctionTestStatus(l1: sumL1, l2: sumL2, l3: sumL3, l4: sumL4);
+
+        final customNotes = _notesController.text.trim();
+        final combinedNotes = tempSummaries.isNotEmpty
+            ? (customNotes.isNotEmpty ? '$customNotes | ' : '') + 'Temps: ${tempSummaries.join('; ')}'
+            : customNotes;
+
+        final record = BallisticRecord(
+          module: widget.currentModule,
+          timestamp: formattedDate,
+          operators: _operatorsController.text.trim(),
+          shift: _shift,
+          caliber: _caliber,
+          lotNo: finalLotNo,
+          produced: totalProduced, // SUM OF ALL TEMPERATURE ROUNDS
+          defects: totalDefects,
+          notes: combinedNotes,
+          status: overallStatus,
+          testName: _testName,
+          pressureBar: '',
+          viscosity: '',
+          testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
+          gp6Serial: '',
+          userRole: widget.userRole,
+          samplingLocation: _locationController.text.trim(),
+          mouthSlow: 0,
+          mouthFast: 0,
+          primerSlow: 0,
+          primerFast: 0,
+          hopperNo: '',
+          boxNo: '',
+          requirement: _requirementController.text.trim(),
+          cartridgeTemp: tempsToSave.map((t) => '$t °C').join(', '),
+          cyclicRateWeaponType: _functionWeapon,
+          functionLevel1: sumL1,
+          functionLevel2: sumL2,
+          functionLevel3: sumL3,
+          functionLevel4: sumL4,
+          attachmentName: _attachmentName,
+          attachmentBase64: _attachmentBase64,
+          functionDefectDetails: _functionDefectDetails,
+        );
+        await widget.onSubmit(record);
       } else {
         // Individual or other test name
         final record = BallisticRecord(
