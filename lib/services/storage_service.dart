@@ -172,11 +172,17 @@ class StorageService {
     }
   }
 
-  // Delete record from Supabase if an id exists
+  // Delete record from Supabase by id or attributes
   Future<void> deleteRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
-    if (record.id != null && record.id!.isNotEmpty && SupabaseService.isInitialized) {
+    if (SupabaseService.isInitialized) {
       try {
-        await SupabaseService.deleteRecord(record.id!, module: module, testName: record.testName);
+        await SupabaseService.deleteRecord(
+          record.id ?? '',
+          module: module,
+          testName: record.testName,
+          timestamp: record.timestamp,
+          lotNo: record.lotNumber,
+        );
       } catch (e) {
         print("Supabase delete error: $e");
       }
@@ -198,8 +204,15 @@ class StorageService {
     await file.writeAsString(buffer.toString(), mode: FileMode.write, flush: true);
   }
 
-  // Clear all records for a specific module (e.g. Daily Test)
+  // Clear all records for a specific module (e.g. Daily Test) locally and on Supabase
   Future<void> clearRecords({String module = 'Daily Test'}) async {
+    if (SupabaseService.isInitialized) {
+      try {
+        await SupabaseService.clearAllRecords(module: module);
+      } catch (e) {
+        print("Supabase clear records error: $e");
+      }
+    }
     if (kIsWeb) {
       clearWebRecords(module);
       return;

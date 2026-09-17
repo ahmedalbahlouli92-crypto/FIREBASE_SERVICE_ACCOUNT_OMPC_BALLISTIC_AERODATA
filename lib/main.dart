@@ -1648,24 +1648,24 @@ class _MainShellState extends State<MainShell> {
     setState(() {
       if (_currentModule == 'Lot Acceptance Test') {
         _records.removeWhere((r) => 
-          r.timestamp == record.timestamp && 
+          (record.id != null && record.id!.isNotEmpty && r.id == record.id) ||
+          (r.timestamp == record.timestamp && 
           r.lotNumber == record.lotNumber && 
           r.produced == record.produced &&
-          r.defects == record.defects
+          r.defects == record.defects)
         );
       } else {
         _dailyTestRecords.removeWhere((r) => 
-          r.timestamp == record.timestamp && 
+          (record.id != null && record.id!.isNotEmpty && r.id == record.id) ||
+          (r.timestamp == record.timestamp && 
           r.lotNumber == record.lotNumber && 
           r.produced == record.produced &&
-          r.defects == record.defects
+          r.defects == record.defects)
         );
       }
     });
     try {
-      if (record.id != null && record.id!.isNotEmpty) {
-        await _storageService.deleteRecord(record, module: _currentModule);
-      }
+      await _storageService.deleteRecord(record, module: _currentModule);
       final recordsToSave = _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords;
       await _storageService.overwriteRecords(recordsToSave, module: _currentModule);
       ScaffoldMessenger.of(context).showSnackBar(

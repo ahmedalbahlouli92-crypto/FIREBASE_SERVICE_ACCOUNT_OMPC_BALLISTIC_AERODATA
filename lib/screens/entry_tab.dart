@@ -695,6 +695,18 @@ class _EntryTabState extends State<EntryTab> {
       _funcDefectItemCounts.clear();
       _attachmentName = '';
       _attachmentBase64 = '';
+      for (var ctrl in _primerDropHeightControllers) {
+        ctrl.dispose();
+      }
+      _primerDropHeightControllers.clear();
+      _primerDropHeightControllers.add(TextEditingController());
+      _primerFireResults.clear();
+      _primerFireResults.add('Fire');
+      _primerHbarController.clear();
+      _primerSDController.clear();
+      _primerHbarPlus5SController.clear();
+      _primerHbarMinus2SController.clear();
+      _primerMisfiresCountController.text = '0';
       _autoGenerateTime(force: true);
     });
     _autoSaveDebounce?.cancel();

@@ -201,27 +201,99 @@ class SupabaseService {
     }
   }
 
-  /// Delete a record from Supabase by its id
-  static Future<bool> deleteRecord(String id, {String? module, String? testName}) async {
-    if (!_initialized || id.isEmpty) return false;
+  /// Delete a record from Supabase by its id or attributes
+  static Future<bool> deleteRecord(String id, {String? module, String? testName, String? timestamp, String? lotNo}) async {
+    if (!_initialized) return false;
     try {
       if (module != null && testName != null) {
         final dedicatedTable = getTableName(module: module, testName: testName);
         if (dedicatedTable != tableName) {
           try {
-            await client.from(dedicatedTable).delete().eq('id', id);
+            if (id.isNotEmpty) {
+              await client.from(dedicatedTable).delete().eq('id', id);
+            }
+            if (timestamp != null && lotNo != null && timestamp.isNotEmpty && lotNo.isNotEmpty) {
+              await client.from(dedicatedTable).delete().match({'timestamp': timestamp, 'lot_no': lotNo});
+            }
           } catch (_) {}
         }
       }
 
-      await client
-          .from(tableName)
-          .delete()
-          .eq('id', id);
+      if (id.isNotEmpty) {
+        await client
+            .from(tableName)
+            .delete()
+            .eq('id', id);
+      }
+      if (timestamp != null && lotNo != null && timestamp.isNotEmpty && lotNo.isNotEmpty) {
+        await client
+            .from(tableName)
+            .delete()
+            .match({'timestamp': timestamp, 'lot_no': lotNo});
+      }
       return true;
     } catch (e) {
       debugPrint('Error deleting record from Supabase: $e');
       return false;
+    }
+  }
+
+  static const List<String> dedicatedTestSuffixes = [
+    'waterproof_test',
+    'extraction_force_test',
+    'accuracy_test',
+    'epvat_test',
+    'function_test',
+    'residual_stress_test',
+    'terminal_effect_test',
+    'firing_rate_cycle_test',
+    'primer_sensitivity_test',
+  ];
+
+  /// Clear records from Supabase for a specific module or all
+  static Future<void> clearAllRecords({String? module}) async {
+    if (!_initialized) return;
+    try {
+      final isDaily = module == 'Daily Test' || module == 'Daily Test Report';
+      final isLot = module == 'Lot Acceptance Test';
+
+      // 1. Delete from dedicated tables
+      final prefixes = <String>[];
+      if (module == null || module == 'all') {
+        prefixes.addAll(['daily', 'lot_acceptance']);
+      } else if (isDaily) {
+        prefixes.add('daily');
+      } else if (isLot) {
+        prefixes.add('lot_acceptance');
+      }
+
+      for (var prefix in prefixes) {
+        for (var suffix in dedicatedTestSuffixes) {
+          final tName = '${prefix}_$suffix';
+          try {
+            await client.from(tName).delete().neq('created_at', '1970-01-01T00:00:00Z');
+          } catch (_) {}
+        }
+      }
+
+      // 2. Delete from master ballistic_records table
+      try {
+        if (module == null || module == 'all') {
+          await client.from(tableName).delete().neq('created_at', '1970-01-01T00:00:00Z');
+        } else if (isDaily) {
+          await client.from(tableName).delete().eq('module', 'Daily Test');
+        } else if (isLot) {
+          try {
+            await client.from(tableName).delete().eq('module', 'Lot Acceptance Test');
+          } catch (_) {
+            await client.from(tableName).delete().neq('created_at', '1970-01-01T00:00:00Z');
+          }
+        }
+      } catch (e) {
+        debugPrint('Notice deleting from master table: $e');
+      }
+    } catch (e) {
+      debugPrint('Error clearing Supabase records: $e');
     }
   }
 
