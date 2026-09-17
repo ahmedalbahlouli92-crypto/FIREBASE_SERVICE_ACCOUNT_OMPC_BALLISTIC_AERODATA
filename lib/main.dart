@@ -1524,6 +1524,20 @@ class _MainShellState extends State<MainShell> {
       return;
     }
 
+    // Direct Administrator Login Check
+    if ((usernameInput == 'admin' || usernameInput == 'administrator') && password == 'admin123') {
+      print("ADMIN LOGIN SUCCESS via User Login");
+      setState(() {
+        _currentUserRole = UserRole.admin;
+        _currentUserEmail = 'System Administrator';
+        _activeTabIndex = 0;
+        _loginErrorMessage = '';
+      });
+      _opEmailController.clear();
+      _opPasswordController.clear();
+      return;
+    }
+
     final matchIndex = _operators.indexWhere((op) {
       final opName = (op['email'] ?? op['username'] ?? '').toLowerCase();
       return opName == usernameInput && op['password'] == password;
@@ -1540,7 +1554,7 @@ class _MainShellState extends State<MainShell> {
       setState(() {
         _currentUserRole = role;
         _currentUserEmail = displayName;
-        _activeTabIndex = 1; // Log Entry
+        _activeTabIndex = (role == UserRole.admin) ? 0 : 1;
         _loginErrorMessage = '';
       });
       _opEmailController.clear();
@@ -1978,7 +1992,7 @@ class _MainShellState extends State<MainShell> {
                 ),
                 const SizedBox(height: 32.0),
                 
-                // Personnel Portal Option (All 4 roles)
+                // Unified Personnel & Admin Login Portal
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
@@ -2003,7 +2017,7 @@ class _MainShellState extends State<MainShell> {
                       ),
                       const SizedBox(height: 8.0),
                       const Text(
-                        'Authorized login for Manager, Supervisor, Technician, and Operator levels. Enter your assigned username & password to access quality trials, log entries, and analytics.',
+                        'Enter your username and password to access the quality trials, log entries, and laboratory analytics.',
                         style: TextStyle(fontSize: 12.0, color: Color(0xFF8E96A3), height: 1.4),
                       ),
                       const SizedBox(height: 16.0),
@@ -2012,8 +2026,6 @@ class _MainShellState extends State<MainShell> {
                         controller: _opEmailController,
                         style: const TextStyle(color: Colors.white, fontSize: 13.0),
                         decoration: InputDecoration(
-                          hintText: 'Username (e.g., manager, supervisor, technician, operator)',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                           prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF8E96A3), size: 16.0),
                           filled: true,
                           fillColor: Colors.black.withOpacity(0.2),
@@ -2040,6 +2052,13 @@ class _MainShellState extends State<MainShell> {
                           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
                         ),
                       ),
+                      if (_loginErrorMessage.isNotEmpty) ...[
+                        const SizedBox(height: 8.0),
+                        Text(
+                          _loginErrorMessage,
+                          style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11.5),
+                        ),
+                      ],
                       const SizedBox(height: 12.0),
                       SizedBox(
                         width: double.infinity,
@@ -2056,97 +2075,6 @@ class _MainShellState extends State<MainShell> {
                       ),
                     ],
                   ),
-                ),
-                
-                const SizedBox(height: 20.0),
-                
-                // Admin Portal Option
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.02),
-                    borderRadius: BorderRadius.circular(10.0),
-                    border: Border.all(color: Colors.white.withOpacity(0.04)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.admin_panel_settings_outlined, color: Color(0xFF6366F1), size: 20.0),
-                          SizedBox(width: 8.0),
-                          Expanded(
-                            child: Text(
-                              'Admin Login',
-                              style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8.0),
-                      const Text(
-                        'Access metrics, yield evaluation, system logs, and manage record entries.',
-                        style: TextStyle(fontSize: 12.0, color: Color(0xFF8E96A3), height: 1.4),
-                      ),
-                      const SizedBox(height: 16.0),
-                      
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                        decoration: InputDecoration(
-                          hintText: 'Admin Password',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
-                          prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF8E96A3), size: 16.0),
-                          filled: true,
-                          fillColor: Colors.black.withOpacity(0.2),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6.0),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6.0),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6.0),
-                            borderSide: const BorderSide(color: Color(0xFF6366F1)),
-                          ),
-                        ),
-                      ),
-                      
-                      if (_loginErrorMessage.isNotEmpty) ...[
-                        const SizedBox(height: 8.0),
-                        Text(
-                          _loginErrorMessage,
-                          style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11.5),
-                        ),
-                      ],
-                      
-                      const SizedBox(height: 12.0),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 38.0,
-                        child: ElevatedButton(
-                          onPressed: _authenticateAdmin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                          ),
-                          child: const Text('Authenticate Admin', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 24.0),
-                const Text(
-                  'Default credentials: admin123',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF4A5264), fontSize: 11.0, fontStyle: FontStyle.italic),
                 ),
               ],
             ),

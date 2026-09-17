@@ -35,15 +35,22 @@ void main() {
       await tester.pump();
     });
 
-    // Authenticate as Admin
-    final adminPasswordField = find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.decoration?.hintText == 'Admin Password',
+    // Authenticate as Admin via Unified Login
+    final usernameField = find.byWidgetPredicate(
+      (widget) => widget is TextField && widget.obscureText == false,
     );
-    expect(adminPasswordField, findsOneWidget);
-    await tester.ensureVisible(adminPasswordField);
-    await tester.enterText(adminPasswordField, 'admin123');
+    expect(usernameField, findsOneWidget);
+    await tester.ensureVisible(usernameField);
+    await tester.enterText(usernameField, 'admin');
 
-    final authButton = find.text('Authenticate Admin');
+    final passwordField = find.byWidgetPredicate(
+      (widget) => widget is TextField && widget.obscureText == true,
+    );
+    expect(passwordField, findsOneWidget);
+    await tester.ensureVisible(passwordField);
+    await tester.enterText(passwordField, 'admin123');
+
+    final authButton = find.text('Enter Laboratory Workspace');
     expect(authButton, findsOneWidget);
     await tester.ensureVisible(authButton);
     await tester.tap(authButton);

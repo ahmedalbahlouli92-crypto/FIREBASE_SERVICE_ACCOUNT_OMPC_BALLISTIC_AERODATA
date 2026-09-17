@@ -237,6 +237,7 @@ class StorageService {
       final list = getWebOperators();
       if (list.isEmpty) {
         final defaultOperators = [
+          {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
           {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
           {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
           {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
@@ -254,6 +255,7 @@ class StorageService {
       final file = File('$dirPath/operators.json');
       if (!await file.exists()) {
         final defaultOperators = [
+          {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
           {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
           {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
           {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
@@ -273,6 +275,7 @@ class StorageService {
     } catch (e) {
       print("Error loading operators: $e");
       return [
+        {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
         {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
         {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
         {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},

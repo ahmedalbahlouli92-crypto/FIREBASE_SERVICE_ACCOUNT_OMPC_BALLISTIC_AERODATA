@@ -192,6 +192,7 @@ class _EntryTabState extends State<EntryTab> {
   // Local storage auto-save state
   final StorageService _storageService = StorageService();
   Timer? _autoSaveDebounce;
+  Timer? _liveClockTimer;
   String _autoSaveStatus = '';
   DateTime? _lastAutoSaveTime;
 
@@ -1027,8 +1028,16 @@ class _EntryTabState extends State<EntryTab> {
       _epvatSensor2Controller.text = _gp2Transducers.first;
     }
     
-    // Auto-generate test time for every test
-    _autoGenerateTime();
+    // Auto-generate test date and time for every test and update automatically
+    _autoGenerateTime(force: true);
+    _liveClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        final nowStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+        if (_testTimeController.text != nowStr) {
+          _testTimeController.text = nowStr;
+        }
+      }
+    });
     
     // Initialize one round controller for Extraction Force Test
     _extractionRoundsControllers.add(TextEditingController());
@@ -1183,6 +1192,7 @@ class _EntryTabState extends State<EntryTab> {
 
   @override
   void dispose() {
+    _liveClockTimer?.cancel();
     _operatorsController.dispose();
     _lotController.dispose();
     _lotThreeDigitsController.dispose();
@@ -1993,7 +2003,7 @@ class _EntryTabState extends State<EntryTab> {
                     ),
                   ],
 
-                  // Row 1: Inspectors, Shift & Auto-generated Test Time
+                  // Row 1: Inspectors, Shift & Date & Time of Test
                   _buildFormRow([
                     _buildFlexibleField(
                       key: _operatorFieldKey,
@@ -2021,7 +2031,7 @@ class _EntryTabState extends State<EntryTab> {
                     _buildFlexibleField(
                       key: _testTimeFieldKey,
                       flex: 2,
-                      label: 'Time of Test (Auto-generated)',
+                      label: 'Date & Time of Test',
                       isRequired: true,
                       child: Row(
                         children: [
@@ -2029,7 +2039,6 @@ class _EntryTabState extends State<EntryTab> {
                             child: _buildTextField(
                               controller: _testTimeController,
                               focusNode: _testTimeFocusNode,
-                              hint: 'Auto-generated timestamp',
                               readOnly: true,
                             ),
                           ),
@@ -2042,7 +2051,7 @@ class _EntryTabState extends State<EntryTab> {
                             ),
                             child: IconButton(
                               icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF818CF8)),
-                              tooltip: 'Refresh timestamp to now',
+                              tooltip: 'Refresh date & time to now',
                               padding: const EdgeInsets.all(8),
                               constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
                               onPressed: () => setState(() => _autoGenerateTime(force: true)),
@@ -5274,7 +5283,7 @@ class _EntryTabState extends State<EntryTab> {
 
   Widget _buildTextField({
     required TextEditingController controller,
-    required String hint,
+    String hint = '',
     FocusNode? focusNode,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
