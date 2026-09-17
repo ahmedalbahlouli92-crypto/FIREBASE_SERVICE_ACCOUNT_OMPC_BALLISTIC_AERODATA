@@ -5,6 +5,10 @@ $cscPath = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $webBundleZip = 'scripts\web_bundle.zip'
 
 try {
+    Write-Host "Stopping any running OMPC instances..."
+    Get-Process OMPC_Ballistic_AeroData -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+
     Write-Host "1. Bundling web application assets..."
     if (Test-Path $webBundleZip) {
         Remove-Item -Force $webBundleZip -ErrorAction SilentlyContinue
@@ -33,11 +37,12 @@ try {
     Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
     Get-Item $zipPath | Select-Object Name, Length, LastWriteTime
 
-    # Also update the extracted desktop folder if possible
+    # Also update the extracted desktop folder and Desktop shortcut
     try {
         New-Item -ItemType Directory -Path "$destDesktopFolder\build\web" -Force -ErrorAction SilentlyContinue | Out-Null
         Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "$destDesktopFolder\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
         Copy-Item -Recurse "build\web\*" -Destination "$destDesktopFolder\build\web" -Force -ErrorAction SilentlyContinue
+        Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "C:\Users\user\Desktop\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
     } catch {
         Write-Host "Note: Extracted desktop folder partially locked by active session; zip created cleanly."
     }

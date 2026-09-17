@@ -49,6 +49,20 @@ namespace OmpcBallisticAeroData
                 }
             }
 
+            // Terminate any old lingering instances
+            try
+            {
+                int currentId = Process.GetCurrentProcess().Id;
+                foreach (var proc in Process.GetProcessesByName("OMPC_Ballistic_AeroData"))
+                {
+                    if (proc.Id != currentId)
+                    {
+                        try { proc.Kill(); proc.WaitForExit(1000); } catch { }
+                    }
+                }
+            }
+            catch { }
+
             // Find an open port starting from 8080
             for (int p = 8080; p < 8180; p++)
             {
@@ -56,7 +70,7 @@ namespace OmpcBallisticAeroData
                 {
                     _listener = new HttpListener();
                     _listener.Prefixes.Add("http://127.0.0.1:" + p + "/");
-                    _listener.Prefixes.Add("http://localhost:" + p + "/");
+                    try { _listener.Prefixes.Add("http://localhost:" + p + "/"); } catch { }
                     _listener.Start();
                     _port = p;
                     break;
@@ -66,6 +80,7 @@ namespace OmpcBallisticAeroData
                     if (_listener != null)
                     {
                         try { _listener.Close(); } catch { }
+                        _listener = null;
                     }
                 }
             }
@@ -85,8 +100,11 @@ namespace OmpcBallisticAeroData
             serverThread.IsBackground = true;
             serverThread.Start();
 
-            // Launch browser in dedicated app mode
-            string appUrl = "http://localhost:" + _port + "/";
+            // Launch browser in dedicated app mode with isolated profile
+            string appUrl = "http://127.0.0.1:" + _port + "/";
+            string userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OMPC_Ballistic_AeroData", "browser_profile");
+            try { Directory.CreateDirectory(userDataDir); } catch { }
+
             string edgePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                 @"Microsoft\Edge\Application\msedge.exe");
@@ -98,40 +116,56 @@ namespace OmpcBallisticAeroData
                     @"Microsoft\Edge\Application\msedge.exe");
             }
 
-            try
+            string chromePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                @"Google\Chrome\Application\chrome.exe");
+            if (!File.Exists(chromePath))
             {
-                if (File.Exists(edgePath))
+                chromePath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    @"Google\Chrome\Application\chrome.exe");
+            }
+
+            string browserExe = File.Exists(edgePath) ? edgePath : (File.Exists(chromePath) ? chromePath : null);
+
+            if (browserExe != null)
+            {
+                try
                 {
                     ProcessStartInfo psi = new ProcessStartInfo
                     {
-                        FileName = edgePath,
-                        Arguments = "--app=" + appUrl + " --window-size=1520,950",
-                        UseShellExecute = true
+                        FileName = browserExe,
+                        Arguments = "--app=" + appUrl + " --user-data-dir=\"" + userDataDir + "\" --window-size=1520,950",
+                        UseShellExecute = false
                     };
                     _browserProcess = Process.Start(psi);
                 }
-                else
+                catch
                 {
                     Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
                 }
             }
-            catch (Exception ex)
+            else
             {
                 Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
             }
 
-            // Wait until process or application is closed
+            // Keep server alive while app window is open
+            // If the launcher process exits in under 4 seconds (e.g. delegated to existing instance), DO NOT exit! Keep server running indefinitely.
             if (_browserProcess != null)
             {
-                try
+                bool quickExit = _browserProcess.WaitForExit(4000);
+                if (!quickExit)
                 {
                     _browserProcess.WaitForExit();
                 }
-                catch { }
+                else
+                {
+                    Thread.Sleep(Timeout.Infinite);
+                }
             }
             else
             {
-                // Fallback: stay alive in background
                 Thread.Sleep(Timeout.Infinite);
             }
 
