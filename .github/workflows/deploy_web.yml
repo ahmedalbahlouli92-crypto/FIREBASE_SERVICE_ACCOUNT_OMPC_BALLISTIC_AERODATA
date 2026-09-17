@@ -1,18 +1,29 @@
-name: Deploy Web to Firebase Hosting
+name: Deploy Web to GitHub Pages
 
 on:
   push:
     branches:
       - main
-      - master
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build_and_deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
@@ -24,12 +35,16 @@ jobs:
         run: flutter pub get
 
       - name: Build Web App
-        run: flutter build web --release
+        run: flutter build web --release --base-href /${{ github.event.repository.name }}/
 
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA }}'
-          channelId: live
-          projectId: ompc-ballistic-aerodata
+          path: 'build/web'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
