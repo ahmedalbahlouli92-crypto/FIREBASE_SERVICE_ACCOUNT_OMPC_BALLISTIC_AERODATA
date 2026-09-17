@@ -79,7 +79,7 @@ class StorageService {
     // 1. Save to Supabase Cloud Database
     if (SupabaseService.isInitialized) {
       try {
-        final inserted = await SupabaseService.insertRecord(record);
+        final inserted = await SupabaseService.insertRecord(record, module: module);
         if (inserted != null) {
           recordToSave = inserted;
         }
@@ -102,7 +102,7 @@ class StorageService {
     // 1. Attempt to fetch from Supabase Cloud Database
     if (SupabaseService.isInitialized) {
       try {
-        final cloudRecords = await SupabaseService.fetchRecords();
+        final cloudRecords = await SupabaseService.fetchRecords(module: module);
         if (cloudRecords.isNotEmpty) {
           if (kIsWeb) {
             overwriteWebRecords(cloudRecords, module);
@@ -124,17 +124,22 @@ class StorageService {
     try {
       final file = await ensureDailyFileExists(module: module) as File;
       final lines = await file.readAsLines();
+      if (lines.length <= 1) return [];
+
       final List<BallisticRecord> records = [];
-      
-      // Skip header line
       for (int i = 1; i < lines.length; i++) {
-        final line = lines[i];
-        if (line.trim().isEmpty) continue;
-        records.add(BallisticRecord.fromCsvRow(line));
+        final line = lines[i].trim();
+        if (line.isNotEmpty) {
+          try {
+            records.add(BallisticRecord.fromCsvRow(line));
+          } catch (e) {
+            print("Error parsing CSV row: $e");
+          }
+        }
       }
       return records;
     } catch (e) {
-      print("Error loading records: $e");
+      print("Error loading local records: $e");
       return [];
     }
   }
@@ -143,7 +148,7 @@ class StorageService {
   Future<void> deleteRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
     if (record.id != null && record.id!.isNotEmpty && SupabaseService.isInitialized) {
       try {
-        await SupabaseService.deleteRecord(record.id!);
+        await SupabaseService.deleteRecord(record.id!, module: module, testName: record.testName);
       } catch (e) {
         print("Supabase delete error: $e");
       }

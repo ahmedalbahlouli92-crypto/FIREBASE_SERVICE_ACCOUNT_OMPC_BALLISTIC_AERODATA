@@ -50,16 +50,58 @@ class SupabaseService {
     }
   }
 
-  /// Insert a single BallisticRecord to Supabase
-  static Future<BallisticRecord?> insertRecord(BallisticRecord record) async {
+  /// Map Module + Test Name to its dedicated Supabase table name
+  static String getTableName({String module = 'Lot Acceptance Test', String testName = ''}) {
+    final bool isLot = module == 'Lot Acceptance Test';
+    final String prefix = isLot ? 'lot_acceptance' : 'daily';
+
+    switch (testName) {
+      case 'Waterproof Test':
+        return '${prefix}_waterproof_test';
+      case 'Extraction Force Test':
+        return '${prefix}_extraction_force_test';
+      case 'Accuracy Test':
+        return '${prefix}_accuracy_test';
+      case 'EPVAT test':
+        return '${prefix}_epvat_test';
+      case 'Function Test':
+        return '${prefix}_function_test';
+      case 'Residual Stress Test':
+        return '${prefix}_residual_stress_test';
+      case 'Terminal Effect Test':
+        return '${prefix}_terminal_effect_test';
+      case 'Firing Rate Cycle Test':
+        return '${prefix}_firing_rate_cycle_test';
+      case 'Primer Sensitivity Test':
+        return '${prefix}_primer_sensitivity_test';
+      default:
+        return tableName;
+    }
+  }
+
+  /// Insert a single BallisticRecord to Supabase (saves to dedicated test table AND master table)
+  static Future<BallisticRecord?> insertRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
     if (!_initialized) return null;
     try {
       final map = record.toSupabaseMap();
+      map['module'] = module;
       // Remove null or empty id so database generates standard UUID
       if (map['id'] == null || map['id'] == '') {
         map.remove('id');
       }
 
+      final dedicatedTable = getTableName(module: module, testName: record.testName);
+
+      // 1. Attempt insert into dedicated test table
+      if (dedicatedTable != tableName) {
+        try {
+          await client.from(dedicatedTable).insert(map);
+        } catch (e) {
+          debugPrint('Note: dedicated table $dedicatedTable insert skipped (may not be created yet): $e');
+        }
+      }
+
+      // 2. Insert into consolidated master table
       final response = await client
           .from(tableName)
           .insert(map)
@@ -75,19 +117,24 @@ class SupabaseService {
 
   /// Fetch all ballistic records from Supabase
   static Future<List<BallisticRecord>> fetchRecords({
-    String? lotNo,
+    String? module,
     String? testName,
+    String? lotNo,
     String? caliber,
     int limit = 3000,
   }) async {
     if (!_initialized) return [];
     try {
-      var query = client.from(tableName).select();
+      final targetTable = (module != null && testName != null && testName != 'All')
+          ? getTableName(module: module, testName: testName)
+          : tableName;
+
+      var query = client.from(targetTable).select();
 
       if (lotNo != null && lotNo.isNotEmpty && lotNo != 'All') {
         query = query.eq('lot_no', lotNo);
       }
-      if (testName != null && testName.isNotEmpty && testName != 'All') {
+      if (testName != null && testName.isNotEmpty && testName != 'All' && targetTable == tableName) {
         query = query.eq('test_name', testName);
       }
       if (caliber != null && caliber.isNotEmpty && caliber != 'All') {
@@ -104,16 +151,28 @@ class SupabaseService {
           .toList();
     } catch (e) {
       debugPrint('Error fetching records from Supabase: $e');
+      // If querying dedicated table failed, fallback to master table
+      if (module != null && testName != null && testName != 'All') {
+        return fetchRecords(testName: testName, lotNo: lotNo, caliber: caliber, limit: limit);
+      }
       return [];
     }
   }
 
   /// Update an existing record in Supabase
-  static Future<bool> updateRecord(String id, BallisticRecord record) async {
+  static Future<bool> updateRecord(String id, BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
     if (!_initialized || id.isEmpty) return false;
     try {
       final map = record.toSupabaseMap();
+      map['module'] = module;
       map.remove('id'); // Don't overwrite primary key
+
+      final dedicatedTable = getTableName(module: module, testName: record.testName);
+      if (dedicatedTable != tableName) {
+        try {
+          await client.from(dedicatedTable).update(map).eq('id', id);
+        } catch (_) {}
+      }
 
       await client
           .from(tableName)
@@ -127,9 +186,18 @@ class SupabaseService {
   }
 
   /// Delete a record from Supabase by its id
-  static Future<bool> deleteRecord(String id) async {
+  static Future<bool> deleteRecord(String id, {String? module, String? testName}) async {
     if (!_initialized || id.isEmpty) return false;
     try {
+      if (module != null && testName != null) {
+        final dedicatedTable = getTableName(module: module, testName: testName);
+        if (dedicatedTable != tableName) {
+          try {
+            await client.from(dedicatedTable).delete().eq('id', id);
+          } catch (_) {}
+        }
+      }
+
       await client
           .from(tableName)
           .delete()
