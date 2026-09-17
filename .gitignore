@@ -55,3 +55,4 @@ scratch/
 firebase-key.json
 *.key
 *.pem
+*.exe

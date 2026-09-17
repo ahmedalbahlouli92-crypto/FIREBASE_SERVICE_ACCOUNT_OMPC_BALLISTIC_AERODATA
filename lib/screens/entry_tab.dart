@@ -697,6 +697,7 @@ class _EntryTabState extends State<EntryTab> {
       _attachmentBase64 = '';
       _autoGenerateTime(force: true);
     });
+    _autoSaveDebounce?.cancel();
     _storageService.clearFormDraft();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -720,10 +721,10 @@ class _EntryTabState extends State<EntryTab> {
   // Caliber-specific sample sizing for EPVAT
   int _getDefaultSampleSizeForCaliber(String cal) {
     final lower = cal.toLowerCase();
-    if (lower.contains('m80') || lower.contains('ss109') || lower.contains('para')) {
-      return 30;
-    } else if (lower.contains('m193')) {
+    if (lower.contains('193') || lower.contains('55 grain')) {
       return 20;
+    } else if (lower.contains('m80') || lower.contains('ss109') || lower.contains('para')) {
+      return 30;
     } else {
       return 10;
     }
@@ -966,6 +967,24 @@ class _EntryTabState extends State<EntryTab> {
           });
         }
 
+        if (draft['epvatOverallRoundCount'] is Map) {
+          final ovCounts = draft['epvatOverallRoundCount'] as Map;
+          ovCounts.forEach((k, v) {
+            if (_epvatOverallRoundCount.containsKey(k) && v is int) {
+              _epvatOverallRoundCount[k.toString()] = v;
+            }
+          });
+        }
+
+        if (draft['epvatOverallSubMode'] is Map) {
+          final ovModes = draft['epvatOverallSubMode'] as Map;
+          ovModes.forEach((k, v) {
+            if (_epvatOverallSubMode.containsKey(k) && v is String) {
+              _epvatOverallSubMode[k.toString()] = v;
+            }
+          });
+        }
+
         _autoSaveStatus = 'Restored draft from local storage';
       });
     } catch (e) {
@@ -1066,14 +1085,14 @@ class _EntryTabState extends State<EntryTab> {
       }
     }
 
-    // Initialize round controllers for EPVAT Overall Mode
+    // Initialize round controllers for EPVAT Overall Mode (up to 50 rounds)
     for (var t in temps) {
-      _overallEpvatVelRoundsControllers[t] = List.generate(30, (_) => TextEditingController());
-      _overallEpvatActionTimeRoundsControllers[t] = List.generate(30, (_) => TextEditingController());
-      _overallEpvatP1RoundsControllers[t] = List.generate(30, (_) => TextEditingController());
-      _overallEpvatP2RoundsControllers[t] = List.generate(30, (_) => TextEditingController());
+      _overallEpvatVelRoundsControllers[t] = List.generate(50, (_) => TextEditingController());
+      _overallEpvatActionTimeRoundsControllers[t] = List.generate(50, (_) => TextEditingController());
+      _overallEpvatP1RoundsControllers[t] = List.generate(50, (_) => TextEditingController());
+      _overallEpvatP2RoundsControllers[t] = List.generate(50, (_) => TextEditingController());
       
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < 50; i++) {
         _overallEpvatVelRoundsControllers[t]![i].addListener(() {
           _calculateOverallTempStats(t);
           _scheduleAutoSave();
@@ -1415,6 +1434,7 @@ class _EntryTabState extends State<EntryTab> {
         for (var t in tempsToSave) {
           final count = _epvatOverallRoundCount[t] ?? 30;
           final record = BallisticRecord(
+            module: widget.currentModule,
             timestamp: formattedDate,
             operators: _operatorsController.text.trim(),
             shift: _shift,
@@ -1520,6 +1540,7 @@ class _EntryTabState extends State<EntryTab> {
           final tStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
 
           final record = BallisticRecord(
+            module: widget.currentModule,
             timestamp: formattedDate,
             operators: _operatorsController.text.trim(),
             shift: _shift,
@@ -1559,6 +1580,7 @@ class _EntryTabState extends State<EntryTab> {
       } else {
         // Individual or other test name
         final record = BallisticRecord(
+          module: widget.currentModule,
           timestamp: formattedDate,
           operators: _operatorsController.text.trim(),
           shift: _shift,
@@ -1826,28 +1848,21 @@ class _EntryTabState extends State<EntryTab> {
       _primerHbarMinus2SController.clear();
       _primerMisfiresCountController.text = '0';
 
+      _autoSaveDebounce?.cancel();
       await _storageService.clearFormDraft();
 
-      if (_testName == 'Waterproof Test' || _testName == 'Residual Stress Test') {
-        _testTimeController.text = DateFormat('h:mm:ss a').format(DateTime.now());
-        if (_testName == 'Waterproof Test') {
-          if (_caliber.contains('M82') || _caliber.contains('M200')) {
-            _pressureController.text = '0.14';
-          } else {
-            _pressureController.text = '0.5';
-          }
+      _autoGenerateTime(force: true);
+      if (_testName == 'Waterproof Test') {
+        if (_caliber.contains('M82') || _caliber.contains('M200')) {
+          _pressureController.text = '0.14';
         } else {
-          _pressureController.clear();
+          _pressureController.text = '0.5';
         }
       } else {
-        _testTimeController.clear();
         _pressureController.clear();
       }
       
       setState(() {
-        _shift = 'Day';
-        _caliber = '5.56x45 SS109';
-        _testName = 'Waterproof Test';
         _status = 'Approved';
         _autoSaveStatus = '';
         _lastAutoSaveTime = null;
@@ -2091,21 +2106,16 @@ class _EntryTabState extends State<EntryTab> {
                         onChanged: (v) {
                           setState(() {
                             _testName = v!;
-                            if (_testName == 'Waterproof Test' || _testName == 'Residual Stress Test') {
-                              _testTimeController.text = DateFormat('h:mm:ss a').format(DateTime.now());
-                              if (_testName == 'Waterproof Test') {
-                                if (_caliber.contains('M82') || _caliber.contains('M200')) {
-                                  _pressureController.text = '0.14';
-                                } else {
-                                  _pressureController.text = '0.5';
-                                }
+                            if (_testName == 'Waterproof Test') {
+                              if (_caliber.contains('M82') || _caliber.contains('M200')) {
+                                _pressureController.text = '0.14';
                               } else {
-                                _pressureController.clear();
+                                _pressureController.text = '0.5';
                               }
                             } else {
-                              _testTimeController.clear();
                               _pressureController.clear();
                             }
+                            _autoGenerateTime();
                             _updateDefaultDistance();
                             if (_testName == 'EPVAT test') {
                               _updateEpvatSampleSizeForCaliber(_caliber);
@@ -2336,18 +2346,7 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ),
                           ]),
-                          const SizedBox(height: 14.0),
                           _buildFormRow([
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Time of Test (Auto-generated)',
-                              child: _buildTextField(
-                                controller: _testTimeController,
-                                hint: 'Auto-generated',
-                                readOnly: true,
-                                validator: (v) => _testName == 'Waterproof Test' && (v == null || v.trim().isEmpty) ? 'Required' : null,
-                              ),
-                            ),
                             _buildFlexibleField(
                               flex: 1,
                               label: 'Sampling Location (Optional)',
@@ -2791,19 +2790,6 @@ class _EntryTabState extends State<EntryTab> {
                                 validator: (v) => _testName == 'Residual Stress Test' && (v == null || v.trim().isEmpty) ? 'Required' : null,
                               ),
                             ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Time of Test (Auto-generated)',
-                              child: _buildTextField(
-                                controller: _testTimeController,
-                                hint: 'Auto-generated',
-                                readOnly: true,
-                                validator: (v) => _testName == 'Residual Stress Test' && (v == null || v.trim().isEmpty) ? 'Required' : null,
-                              ),
-                            ),
-                          ]),
-                          const SizedBox(height: 14.0),
-                          _buildFormRow([
                             _buildFlexibleField(
                               flex: 1,
                               label: 'Sampling Location (Optional)',
@@ -3905,7 +3891,7 @@ class _EntryTabState extends State<EntryTab> {
                                                     _calculateOverallTempStats(t);
                                                   }
                                                 },
-                                                items: [10, 20, 30].map((int count) {
+                                                items: ({10, 20, 30, 40, 50, _epvatOverallRoundCount[t] ?? 30}.toList()..sort()).map((int count) {
                                                   return DropdownMenuItem<int>(
                                                     value: count,
                                                     child: Text('$count Rounds'),

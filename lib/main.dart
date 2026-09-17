@@ -1995,7 +1995,7 @@ class _MainShellState extends State<MainShell> {
                           SizedBox(width: 8.0),
                           Expanded(
                             child: Text(
-                              'Laboratory Personnel Portal',
+                              'User Login',
                               style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ),
@@ -2077,7 +2077,7 @@ class _MainShellState extends State<MainShell> {
                           SizedBox(width: 8.0),
                           Expanded(
                             child: Text(
-                              'Lab Administrator Portal',
+                              'Admin Login',
                               style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ),

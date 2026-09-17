@@ -83,14 +83,15 @@ class SupabaseService {
   static Future<BallisticRecord?> insertRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
     if (!_initialized) return null;
     try {
+      final effectiveModule = record.module.isNotEmpty ? record.module : module;
       final map = record.toSupabaseMap();
-      map['module'] = module;
+      map['module'] = effectiveModule;
       // Remove null or empty id so database generates standard UUID
       if (map['id'] == null || map['id'] == '') {
         map.remove('id');
       }
 
-      final dedicatedTable = getTableName(module: module, testName: record.testName);
+      final dedicatedTable = getTableName(module: effectiveModule, testName: record.testName);
 
       // 1. Attempt insert into dedicated test table
       if (dedicatedTable != tableName) {
@@ -122,10 +123,11 @@ class SupabaseService {
     String? lotNo,
     String? caliber,
     int limit = 3000,
+    bool useDedicatedTable = true,
   }) async {
     if (!_initialized) return [];
     try {
-      final targetTable = (module != null && testName != null && testName != 'All')
+      final targetTable = (useDedicatedTable && module != null && testName != null && testName != 'All')
           ? getTableName(module: module, testName: testName)
           : tableName;
 
@@ -140,6 +142,13 @@ class SupabaseService {
       if (caliber != null && caliber.isNotEmpty && caliber != 'All') {
         query = query.eq('caliber', caliber);
       }
+      if (module != null && module.isNotEmpty && targetTable == tableName) {
+        if (module == 'Daily Test' || module == 'Daily Test Report') {
+          query = query.eq('module', 'Daily Test');
+        } else {
+          query = query.or('module.eq.Lot Acceptance Test,module.is.null');
+        }
+      }
 
       final response = await query
           .order('created_at', ascending: false)
@@ -151,9 +160,16 @@ class SupabaseService {
           .toList();
     } catch (e) {
       debugPrint('Error fetching records from Supabase: $e');
-      // If querying dedicated table failed, fallback to master table
-      if (module != null && testName != null && testName != 'All') {
-        return fetchRecords(testName: testName, lotNo: lotNo, caliber: caliber, limit: limit);
+      // If querying dedicated table failed, fallback to master table once
+      if (useDedicatedTable && module != null && testName != null && testName != 'All') {
+        return fetchRecords(
+          module: module,
+          testName: testName,
+          lotNo: lotNo,
+          caliber: caliber,
+          limit: limit,
+          useDedicatedTable: false,
+        );
       }
       return [];
     }

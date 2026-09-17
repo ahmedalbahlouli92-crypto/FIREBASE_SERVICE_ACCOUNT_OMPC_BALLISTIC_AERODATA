@@ -74,12 +74,15 @@ class StorageService {
 
   // Append new ballistic test log entry to Supabase and local cache
   Future<void> saveRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
-    BallisticRecord recordToSave = record;
+    final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
+        ? 'Daily Test'
+        : 'Lot Acceptance Test';
+    BallisticRecord recordToSave = record.copyWith(module: cleanModule);
 
     // 1. Save to Supabase Cloud Database
     if (SupabaseService.isInitialized) {
       try {
-        final inserted = await SupabaseService.insertRecord(record, module: module);
+        final inserted = await SupabaseService.insertRecord(recordToSave, module: cleanModule);
         if (inserted != null) {
           recordToSave = inserted;
         }
@@ -90,24 +93,37 @@ class StorageService {
 
     // 2. Local persistence (web storage or local CSV)
     if (kIsWeb) {
-      saveWebRecord(recordToSave, module);
+      saveWebRecord(recordToSave, cleanModule);
       return;
     }
-    final file = await ensureDailyFileExists(module: module) as File;
+    final file = await ensureDailyFileExists(module: cleanModule) as File;
     await file.writeAsString(recordToSave.toCsvRow(), mode: FileMode.append, flush: true);
   }
 
   // Load and parse all ballistic logs (from Supabase if connected, else local cache)
   Future<List<BallisticRecord>> loadRecords({String module = 'Lot Acceptance Test'}) async {
+    final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
+        ? 'Daily Test'
+        : 'Lot Acceptance Test';
+    final bool isDaily = cleanModule == 'Daily Test';
+
     // 1. Attempt to fetch from Supabase Cloud Database
     if (SupabaseService.isInitialized) {
       try {
-        final cloudRecords = await SupabaseService.fetchRecords(module: module);
+        final cloudRecords = await SupabaseService.fetchRecords(module: cleanModule);
         if (cloudRecords.isNotEmpty) {
+          final filtered = cloudRecords.where((r) {
+            if (isDaily) {
+              return r.module == 'Daily Test';
+            } else {
+              return r.module.isEmpty || r.module == 'Lot Acceptance Test';
+            }
+          }).toList();
+
           if (kIsWeb) {
-            overwriteWebRecords(cloudRecords, module);
+            overwriteWebRecords(filtered, cleanModule);
           }
-          return cloudRecords;
+          return filtered;
         }
       } catch (e) {
         print("Supabase load error: $e");
@@ -116,13 +132,20 @@ class StorageService {
 
     // 2. Fallback to local storage (web localStorage or desktop CSV)
     if (kIsWeb) {
-      if (!hasWebRecordsKey(module)) {
+      if (!hasWebRecordsKey(cleanModule)) {
         return [];
       }
-      return getWebRecords(module);
+      final webList = getWebRecords(cleanModule);
+      return webList.where((r) {
+        if (isDaily) {
+          return r.module == 'Daily Test';
+        } else {
+          return r.module.isEmpty || r.module == 'Lot Acceptance Test';
+        }
+      }).toList();
     }
     try {
-      final file = await ensureDailyFileExists(module: module) as File;
+      final file = await ensureDailyFileExists(module: cleanModule) as File;
       final lines = await file.readAsLines();
       if (lines.length <= 1) return [];
 
@@ -131,7 +154,12 @@ class StorageService {
         final line = lines[i].trim();
         if (line.isNotEmpty) {
           try {
-            records.add(BallisticRecord.fromCsvRow(line));
+            final r = BallisticRecord.fromCsvRow(line);
+            if (isDaily) {
+              if (r.module == 'Daily Test') records.add(r);
+            } else {
+              if (r.module.isEmpty || r.module == 'Lot Acceptance Test') records.add(r);
+            }
           } catch (e) {
             print("Error parsing CSV row: $e");
           }

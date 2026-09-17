@@ -189,5 +189,33 @@ void main() {
       expect(restored.gp6Serial, equals('GP6-TRANS-900'));
       expect(restored.userRole, equals('Technician'));
     });
+
+    test('module field defaults to Lot Acceptance Test and persists correctly across Supabase and CSV', () {
+      final defaultRecord = createTestRecord(
+        timestamp: '2026-09-17 14:30:00',
+        operators: 'Inspector Jane',
+        shift: 'Day',
+        caliber: '5.56x45 SS109',
+        lotNo: 'LOT-SS109-01',
+        produced: 20,
+        status: 'Approved',
+        testName: 'Waterproof Test',
+      );
+      expect(defaultRecord.module, equals('Lot Acceptance Test'));
+
+      final dailyRecord = defaultRecord.copyWith(module: 'Daily Test');
+      expect(dailyRecord.module, equals('Daily Test'));
+
+      // CSV roundtrip
+      final csv = dailyRecord.toCsvRow();
+      final fromCsv = BallisticRecord.fromCsvRow(csv);
+      expect(fromCsv.module, equals('Daily Test'));
+
+      // Supabase roundtrip
+      final map = dailyRecord.toSupabaseMap();
+      expect(map['module'], equals('Daily Test'));
+      final fromMap = BallisticRecord.fromSupabaseMap(map);
+      expect(fromMap.module, equals('Daily Test'));
+    });
   });
 }

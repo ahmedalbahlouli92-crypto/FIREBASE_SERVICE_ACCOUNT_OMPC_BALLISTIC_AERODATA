@@ -125,6 +125,7 @@ class BallisticRecord {
   // Equipment Asset & User Role Tracking
   final String gp6Serial;
   final String userRole;
+  final String module;
  
   BallisticRecord({
     this.id,
@@ -227,6 +228,7 @@ class BallisticRecord {
     this.primerNoFireH = '',
     this.gp6Serial = '',
     this.userRole = 'Operator',
+    this.module = 'Lot Acceptance Test',
   });
 
   // Backward compatibility getter
@@ -320,8 +322,9 @@ class BallisticRecord {
     final cleanPrimerNoFire = primerNoFireH.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanGp6Serial = gp6Serial.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanUserRole = userRole.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanModule = module.replaceAll('"', '""').replaceAll(',', ' ');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -476,6 +479,7 @@ class BallisticRecord {
     final String primerNoFireH = fields.length > 96 ? fields[96].replaceAll('"', '').trim() : '';
     final String gp6Serial = fields.length > 97 ? fields[97].replaceAll('"', '').trim() : '';
     final String userRole = fields.length > 98 ? fields[98].replaceAll('"', '').trim() : 'Operator';
+    final String module = fields.length > 99 ? fields[99].replaceAll('"', '').trim() : 'Lot Acceptance Test';
  
     return BallisticRecord(
       timestamp: timestamp,
@@ -577,6 +581,7 @@ class BallisticRecord {
       primerNoFireH: primerNoFireH,
       gp6Serial: gp6Serial,
       userRole: userRole,
+      module: module.isNotEmpty ? module : 'Lot Acceptance Test',
     );
   }
 
@@ -682,6 +687,7 @@ class BallisticRecord {
       'primer_no_fire_h': primerNoFireH,
       'gp6_serial': gp6Serial,
       'user_role': userRole,
+      'module': module,
     };
     if (id != null && id!.isNotEmpty) {
       map['id'] = id;
@@ -804,6 +810,7 @@ class BallisticRecord {
       primerNoFireH: toStr(map['primer_no_fire_h']),
       gp6Serial: toStr(map['gp6_serial']),
       userRole: toStr(map['user_role']).isEmpty ? 'Operator' : toStr(map['user_role']),
+      module: toStr(map['module']).isEmpty ? 'Lot Acceptance Test' : toStr(map['module']),
     );
   }
 
@@ -907,6 +914,9 @@ class BallisticRecord {
     String? primerSD,
     String? primerAllFireH,
     String? primerNoFireH,
+    String? gp6Serial,
+    String? userRole,
+    String? module,
   }) {
     return BallisticRecord(
       id: id ?? this.id,
@@ -1009,6 +1019,7 @@ class BallisticRecord {
       primerNoFireH: primerNoFireH ?? this.primerNoFireH,
       gp6Serial: gp6Serial ?? this.gp6Serial,
       userRole: userRole ?? this.userRole,
+      module: module ?? this.module,
     );
   }
 }
