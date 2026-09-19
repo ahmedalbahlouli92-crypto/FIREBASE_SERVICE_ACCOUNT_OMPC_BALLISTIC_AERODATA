@@ -83,6 +83,7 @@ class _EntryTabState extends State<EntryTab> {
   final GlobalKey _gp6FieldKey = GlobalKey();
   final GlobalKey _weaponFieldKey = GlobalKey();
   final GlobalKey _distanceFieldKey = GlobalKey();
+  final GlobalKey _roomTempFieldKey = GlobalKey();
 
   final FocusNode _operatorFocusNode = FocusNode();
   final FocusNode _testTimeFocusNode = FocusNode();
@@ -92,11 +93,14 @@ class _EntryTabState extends State<EntryTab> {
   final FocusNode _barrelFocusNode = FocusNode();
   final FocusNode _gp6FocusNode = FocusNode();
   final FocusNode _weaponFocusNode = FocusNode();
+  final FocusNode _roomTempFocusNode = FocusNode();
   
   final _operatorsController = TextEditingController();
   final _lotController = TextEditingController();
   final _lotThreeDigitsController = TextEditingController();
   late final TextEditingController _lotYearController;
+  final _hopperThreeDigitsController = TextEditingController();
+  late final TextEditingController _hopperYearController;
   final _producedController = TextEditingController();
   final _defectsController = TextEditingController(text: '0');
   final _notesController = TextEditingController();
@@ -124,11 +128,64 @@ class _EntryTabState extends State<EntryTab> {
   final _rangeYController = TextEditingController();
   final _sdYController = TextEditingController();
   final _meanRadiusController = TextEditingController();
+  final _accLargestDistanceController = TextEditingController();
   final _meanVelController = TextEditingController();
   final _minVelController = TextEditingController();
   final _maxVelController = TextEditingController();
   final _rangeVelController = TextEditingController();
   final _sdVelController = TextEditingController();
+
+  // Sample Location state
+  final List<String> _defaultSampleLocations = [
+    'PC530',
+    'After priming machine',
+    'PD26',
+    'after packing machine',
+    'after visual inspection',
+    'after link machine',
+  ];
+  final List<String> _customSampleLocations = [];
+  List<String> get _allSampleLocations => [
+    ..._defaultSampleLocations,
+    ..._customSampleLocations,
+  ];
+
+  // Weapon cascading selection state
+  bool get _isCaliber9mm => _caliber.toLowerCase().contains('9mm') || _caliber.toLowerCase().contains('9x19');
+
+  List<String> get _availableWeaponTypes {
+    if (_isCaliber9mm) {
+      return ['Pistol', 'Submachine Gun', 'Other'];
+    }
+    return [
+      'Rifle',
+      'Carbine',
+      'Machine Gun',
+      'Pistol',
+      'Submachine Gun',
+      'Other',
+    ];
+  }
+
+  List<String> _getWeaponSerialsForType(String type) {
+    if (type == 'Pistol') {
+      return ['P-001', 'P-002', 'P-003', 'P-004', 'P-005', 'Other'];
+    } else if (type == 'Submachine Gun') {
+      return ['SMG-01', 'SMG-02', 'SMG-03', 'Other'];
+    } else if (type == 'Rifle') {
+      return ['R-101', 'R-102', 'R-103', 'R-104', 'Other'];
+    } else if (type == 'Carbine') {
+      return ['C-201', 'C-202', 'C-203', 'Other'];
+    } else if (type == 'Machine Gun') {
+      return ['MG-301', 'MG-302', 'MG-303', 'Other'];
+    }
+    return ['Other'];
+  }
+
+  String _selectedWeaponType = 'Pistol';
+  String _selectedWeaponSN = 'P-001';
+  final _customWeaponTypeController = TextEditingController();
+  final _customWeaponSNController = TextEditingController();
 
   String _shift = 'Day';
   late String _caliber;
@@ -464,6 +521,133 @@ class _EntryTabState extends State<EntryTab> {
     }
   }
 
+  Future<void> _pickDateTime() async {
+    final now = DateTime.now();
+    DateTime initial = now;
+    try {
+      if (_testTimeController.text.trim().isNotEmpty) {
+        initial = DateFormat('yyyy-MM-dd HH:mm:ss').parse(_testTimeController.text.trim());
+      }
+    } catch (_) {}
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF0284C7),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF0F172A),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate == null) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF0284C7),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF0F172A),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime == null) return;
+
+    final dt = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+      now.second,
+    );
+    setState(() {
+      _testTimeController.text = DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
+    });
+    _scheduleAutoSave();
+  }
+
+  void _showAddLocationDialog() {
+    final addCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFBAE6FD)),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7)),
+            SizedBox(width: 8),
+            Text('Add Sampling Location', style: TextStyle(color: Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: addCtrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: 'New Location Name',
+            hintText: 'e.g., Station Alpha',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0284C7),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              final val = addCtrl.text.trim();
+              if (val.isNotEmpty) {
+                setState(() {
+                  if (!_customSampleLocations.contains(val)) {
+                    _customSampleLocations.add(val);
+                  }
+                  _locationController.text = val;
+                });
+                // Persist to admin rules
+                final existing = List<dynamic>.from(widget.adminRules['sample_locations'] ?? []);
+                if (!existing.contains(val)) {
+                  existing.add(val);
+                  widget.adminRules['sample_locations'] = existing;
+                  _storageService.saveRules(widget.adminRules);
+                }
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Add Location'),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool _validateAndAutoJump() {
     void jumpTo(GlobalKey key, FocusNode? focusNode, String fieldName) {
       if (key.currentContext != null) {
@@ -501,15 +685,15 @@ class _EntryTabState extends State<EntryTab> {
       _autoGenerateTime(force: true);
     }
 
-    // 3. Lot No
+    // 3. Lot / Hopper No
     if (widget.currentModule == 'Lot Acceptance Test') {
       if (_lotThreeDigitsController.text.trim().isEmpty) {
         jumpTo(_lotFieldKey, _lotFocusNode, 'Lot Number (3 Digits)');
         return false;
       }
     } else {
-      if (_lotController.text.trim().isEmpty) {
-        jumpTo(_lotFieldKey, _lotFocusNode, 'Lot Number');
+      if (_hopperThreeDigitsController.text.trim().isEmpty && _lotController.text.trim().isEmpty) {
+        jumpTo(_lotFieldKey, _lotFocusNode, 'Hopper Number (3 Digits)');
         return false;
       }
     }
@@ -520,7 +704,15 @@ class _EntryTabState extends State<EntryTab> {
       return false;
     }
 
-    // 5. Equipment selection based on test type
+    // 5. Residual Stress Required Room Temp
+    if (_testName == 'Residual Stress Test') {
+      if (_roomTempController.text.trim().isEmpty) {
+        jumpTo(_roomTempFieldKey, _roomTempFocusNode, 'Room Temperature (°C)');
+        return false;
+      }
+    }
+
+    // 6. Equipment selection based on test type
     if (_testName == 'Accuracy Test') {
       if (_barrelSNController.text.trim().isEmpty) {
         jumpTo(_barrelFieldKey, _barrelFocusNode, 'Accuracy Barrel Test Serial');
@@ -540,10 +732,18 @@ class _EntryTabState extends State<EntryTab> {
         return false;
       }
     } else if (_testName == 'Function Test') {
-      if (_functionWeapon.trim().isEmpty) {
+      final effectiveWeapon = _selectedWeaponType.isNotEmpty
+          ? (_selectedWeaponType == 'Other'
+              ? _customWeaponTypeController.text.trim()
+              : (_selectedWeaponSN.isNotEmpty
+                  ? '$_selectedWeaponType (SN: ${_selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN})'
+                  : _selectedWeaponType))
+          : _functionWeapon;
+      if (effectiveWeapon.trim().isEmpty) {
         jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type & Serial');
         return false;
       }
+      _functionWeapon = effectiveWeapon;
     } else if (_testName == 'Firing Rate Cycle Test') {
       if (_cyclicRateWeaponType.trim().isEmpty) {
         jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type & Serial');
@@ -2089,12 +2289,27 @@ class _EntryTabState extends State<EntryTab> {
                           const SizedBox(width: 6),
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF6366F1).withOpacity(0.15),
+                              color: const Color(0xFF0284C7).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+                              border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF818CF8)),
+                              icon: const Icon(Icons.calendar_month_rounded, size: 18, color: Color(0xFF0284C7)),
+                              tooltip: 'Pick date & time from calendar',
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                              onPressed: _pickDateTime,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0284C7).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF0284C7)),
                               tooltip: 'Refresh date & time to now',
                               padding: const EdgeInsets.all(8),
                               constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
@@ -2394,19 +2609,21 @@ class _EntryTabState extends State<EntryTab> {
                            _buildFormRow([
                             _buildFlexibleField(
                               flex: 1,
-                              label: 'Pressure (Bar)',
-                              child: _buildDropdownField(
-                                value: _pressureController.text.isEmpty ? '0.5' : _pressureController.text,
-                                items: const ['0.5', '0.14'],
-                                onChanged: (v) => setState(() => _pressureController.text = v!),
+                              label: 'Pressure (Bar) - Fixed by Caliber',
+                              child: _buildTextField(
+                                controller: _pressureController,
+                                readOnly: true,
+                                hint: (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5',
                               ),
                             ),
-                             _buildFlexibleField(
+                            _buildFlexibleField(
                               flex: 1,
-                              label: 'Viscosity (Optional)',
+                              label: 'Viscosity (seconds)',
                               child: _buildTextField(
                                 controller: _viscosityController,
-                                hint: 'e.g., 40 seconds',
+                                hint: 'e.g., 40',
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                                 validator: null,
                               ),
                             ),
@@ -2414,11 +2631,38 @@ class _EntryTabState extends State<EntryTab> {
                           _buildFormRow([
                             _buildFlexibleField(
                               flex: 1,
-                              label: 'Sampling Location (Optional)',
-                              child: _buildTextField(
-                                controller: _locationController,
-                                hint: 'e.g., Chamber A',
-                                validator: null,
+                              label: 'Sampling Location',
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildDropdownField(
+                                      value: _locationController.text.isNotEmpty && _allSampleLocations.contains(_locationController.text)
+                                          ? _locationController.text
+                                          : _allSampleLocations.first,
+                                      items: _allSampleLocations,
+                                      onChanged: (v) {
+                                        if (v != null) {
+                                          setState(() => _locationController.text = v);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6.0),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0284C7).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6.0),
+                                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                                    ),
+                                    child: IconButton(
+                                      icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
+                                      tooltip: 'Admin: Add new sample location',
+                                      padding: const EdgeInsets.all(8),
+                                      constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                                      onPressed: _showAddLocationDialog,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ]),
@@ -2846,21 +3090,53 @@ class _EntryTabState extends State<EntryTab> {
                           const SizedBox(height: 16.0),
                           _buildFormRow([
                             _buildFlexibleField(
+                              key: _roomTempFieldKey,
                               flex: 1,
                               label: 'Room Temperature (°C)',
+                              isRequired: true,
                               child: _buildTextField(
                                 controller: _roomTempController,
+                                focusNode: _roomTempFocusNode,
                                 hint: 'e.g., 22.5',
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                                 validator: (v) => _testName == 'Residual Stress Test' && (v == null || v.trim().isEmpty) ? 'Required' : null,
                               ),
                             ),
                             _buildFlexibleField(
                               flex: 1,
-                              label: 'Sampling Location (Optional)',
-                              child: _buildTextField(
-                                controller: _locationController,
-                                hint: 'e.g., Lab Desk B',
+                              label: 'Sampling Location',
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildDropdownField(
+                                      value: _locationController.text.isNotEmpty && _allSampleLocations.contains(_locationController.text)
+                                          ? _locationController.text
+                                          : _allSampleLocations.first,
+                                      items: _allSampleLocations,
+                                      onChanged: (v) {
+                                        if (v != null) {
+                                          setState(() => _locationController.text = v);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6.0),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0284C7).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6.0),
+                                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                                    ),
+                                    child: IconButton(
+                                      icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
+                                      tooltip: 'Admin: Add new sample location',
+                                      padding: const EdgeInsets.all(8),
+                                      constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                                      onPressed: _showAddLocationDialog,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ]),
@@ -3654,6 +3930,26 @@ class _EntryTabState extends State<EntryTab> {
                                 controller: _sdVelController,
                                 hint: '0.0',
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                              ),
+                            ),
+                          ]),
+                          const SizedBox(height: 16.0),
+                          const Text(
+                            'Dispersion & Largest Distance (mm)',
+                            style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.0, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8.0),
+                          _buildFormRow([
+                            _buildFlexibleField(
+                              flex: 1,
+                              label: 'Largest Distance (mm)',
+                              child: _buildTextField(
+                                controller: _accLargestDistanceController,
+                                hint: '0.0',
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                                onChanged: (val) => setState(() {}),
                               ),
                             ),
                           ]),
@@ -4549,20 +4845,27 @@ class _EntryTabState extends State<EntryTab> {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.15),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.25)),
+        border: Border.all(color: const Color(0xFFBAE6FD)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0284C7).withValues(alpha: 0.05),
+            blurRadius: 8.0,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: const [
-              Icon(Icons.military_tech_outlined, color: Color(0xFF6366F1), size: 18.0),
+              Icon(Icons.military_tech_outlined, color: Color(0xFF0284C7), size: 18.0),
               SizedBox(width: 8.0),
               Text(
                 'Function Test Specifications & Setup',
-                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
               ),
             ],
           ),
@@ -4571,29 +4874,87 @@ class _EntryTabState extends State<EntryTab> {
             _buildFlexibleField(
               key: _weaponFieldKey,
               flex: 1,
-              label: 'Weapon Type & Serial Number',
+              label: _isCaliber9mm ? 'Weapon (Pistol)' : 'Weapon Type',
               isRequired: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDropdownField(
                     focusNode: _weaponFocusNode,
-                    value: weapons.contains(_functionWeapon) ? _functionWeapon : (weapons.isNotEmpty ? weapons.first : ''),
-                    items: weapons,
+                    value: _availableWeaponTypes.contains(_selectedWeaponType)
+                        ? _selectedWeaponType
+                        : (_availableWeaponTypes.isNotEmpty ? _availableWeaponTypes.first : 'Other'),
+                    items: _availableWeaponTypes,
                     onChanged: (v) {
                       if (v != null) {
-                        setState(() => _functionWeapon = v);
+                        setState(() {
+                          _selectedWeaponType = v;
+                          final serials = _getWeaponSerialsForType(v);
+                          _selectedWeaponSN = serials.isNotEmpty ? serials.first : 'Other';
+                          _functionWeapon = '$_selectedWeaponType (SN: $_selectedWeaponSN)';
+                        });
                       }
                     },
                   ),
-                  const SizedBox(height: 4.0),
-                  Text(
-                    '${_getAssetRounds(_functionWeapon)} cumulative rounds fired',
-                    style: const TextStyle(color: Color(0xFF6366F1), fontSize: 11.5, fontWeight: FontWeight.w600),
-                  ),
+                  if (_selectedWeaponType == 'Other') ...[
+                    const SizedBox(height: 6.0),
+                    _buildTextField(
+                      controller: _customWeaponTypeController,
+                      hint: 'Enter custom weapon name',
+                      onChanged: (val) {
+                        setState(() {
+                          _functionWeapon = '$val (SN: ${_selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN})';
+                        });
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Weapon Serial Number',
+              isRequired: true,
+              child: Builder(
+                builder: (context) {
+                  final serials = _getWeaponSerialsForType(_selectedWeaponType);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDropdownField(
+                        value: serials.contains(_selectedWeaponSN) ? _selectedWeaponSN : (serials.isNotEmpty ? serials.first : 'Other'),
+                        items: serials,
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() {
+                              _selectedWeaponSN = v;
+                              final wName = _selectedWeaponType == 'Other' ? _customWeaponTypeController.text.trim() : _selectedWeaponType;
+                              _functionWeapon = '$wName (SN: $v)';
+                            });
+                          }
+                        },
+                      ),
+                      if (_selectedWeaponSN == 'Other') ...[
+                        const SizedBox(height: 6.0),
+                        _buildTextField(
+                          controller: _customWeaponSNController,
+                          hint: 'Enter custom serial number',
+                          onChanged: (val) {
+                            setState(() {
+                              final wName = _selectedWeaponType == 'Other' ? _customWeaponTypeController.text.trim() : _selectedWeaponType;
+                              _functionWeapon = '$wName (SN: $val)';
+                            });
+                          },
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12.0),
+          _buildFormRow([
             _buildFlexibleField(
               flex: 1,
               label: 'Temperature Evaluation Mode',
@@ -4632,17 +4993,17 @@ class _EntryTabState extends State<EntryTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF06B6D4).withOpacity(0.08),
+                color: const Color(0xFFE0F2FE),
                 borderRadius: BorderRadius.circular(6.0),
-                border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.2)),
+                border: Border.all(color: const Color(0xFFBAE6FD)),
               ),
               child: Row(
                 children: const [
-                  Icon(Icons.info_outline, color: Color(0xFF06B6D4), size: 14.0),
+                  Icon(Icons.info_outline, color: Color(0xFF0284C7), size: 14.0),
                   SizedBox(width: 8.0),
                   Text(
                     'Blank Ammunition detected: Cold temperature standard is -32 °C (standard live ammo is -54 °C).',
-                    style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontStyle: FontStyle.italic),
+                    style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontStyle: FontStyle.italic),
                   ),
                 ],
               ),
@@ -5264,12 +5625,18 @@ class _EntryTabState extends State<EntryTab> {
       _rangeXController.text = rangeVal.toStringAsFixed(2);
       _sdXController.text = sdVal.toStringAsFixed(2);
       _meanXController.text = meanVal.toStringAsFixed(2);
+      if (_extractionForceType == 'Individual') {
+        _producedController.text = '${values.length}';
+      }
     } else {
       _minXController.clear();
       _maxXController.clear();
       _rangeXController.clear();
       _sdXController.clear();
       _meanXController.clear();
+      if (_extractionForceType == 'Individual') {
+        _producedController.text = '1';
+      }
     }
   }
 
@@ -5330,6 +5697,7 @@ class _EntryTabState extends State<EntryTab> {
     String hint = '',
     FocusNode? focusNode,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
     bool readOnly = false,
     void Function(String)? onChanged,
@@ -5338,30 +5706,38 @@ class _EntryTabState extends State<EntryTab> {
       controller: controller,
       focusNode: focusNode,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters ?? (
+        keyboardType == TextInputType.number
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : (keyboardType == const TextInputType.numberWithOptions(decimal: true) || keyboardType.decimal == true)
+                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
+                : null
+      ),
       readOnly: readOnly,
       onChanged: onChanged,
       style: TextStyle(
-        color: readOnly ? Colors.white.withOpacity(0.5) : Colors.white,
+        color: readOnly ? const Color(0xFF64748B) : const Color(0xFF0F172A),
         fontSize: 13.5,
+        fontWeight: FontWeight.w500,
       ),
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.02),
+        fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFF6366F1)),
+          borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
         ),
       ),
     );
@@ -5374,33 +5750,34 @@ class _EntryTabState extends State<EntryTab> {
     FocusNode? focusNode,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      value: items.contains(value) ? value : (items.isNotEmpty ? items.first : null),
       focusNode: focusNode,
       isExpanded: true,
       onChanged: onChanged,
-      style: const TextStyle(color: Colors.white, fontSize: 13.5),
-      dropdownColor: const Color(0xFF111524),
+      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w500),
+      dropdownColor: Colors.white,
+      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0284C7)),
       decoration: InputDecoration(
         filled: true,
-        fillColor: Colors.white.withOpacity(0.02),
+        fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFF6366F1)),
+          borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
         ),
       ),
       items: items.map((String item) {
         return DropdownMenuItem<String>(
           value: item,
-          child: Text(item),
+          child: Text(item, style: const TextStyle(color: Color(0xFF0F172A))),
         );
       }).toList(),
     );
@@ -5417,21 +5794,21 @@ class _EntryTabState extends State<EntryTab> {
               focusNode: focusNode,
               keyboardType: TextInputType.number,
               maxLength: 3,
-              style: const TextStyle(color: Colors.white, fontSize: 13.5),
+              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: '###',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.02),
+                fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF06B6D4)),
+                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
                 ),
               ),
               inputFormatters: [
@@ -5443,7 +5820,7 @@ class _EntryTabState extends State<EntryTab> {
           const Text(
             ' OMPC/',
             style: TextStyle(
-              color: Color(0xFF06B6D4),
+              color: Color(0xFF0284C7),
               fontSize: 14.0,
               fontWeight: FontWeight.bold,
             ),
@@ -5455,21 +5832,21 @@ class _EntryTabState extends State<EntryTab> {
               controller: _lotYearController,
               keyboardType: TextInputType.number,
               maxLength: 2,
-              style: const TextStyle(color: Colors.white, fontSize: 13.5),
+              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: 'YY',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.02),
+                fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF06B6D4)),
+                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
                 ),
               ),
               inputFormatters: [
@@ -5485,11 +5862,89 @@ class _EntryTabState extends State<EntryTab> {
         ],
       );
     } else {
-      return _buildTextField(
-        controller: _lotController,
-        focusNode: focusNode,
-        hint: 'e.g. Hopper A / 2026-06-25',
-        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+      return Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: TextFormField(
+              controller: _hopperThreeDigitsController,
+              focusNode: focusNode,
+              keyboardType: TextInputType.number,
+              maxLength: 3,
+              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                counterText: '',
+                hintText: '###',
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                ),
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              onChanged: (val) {
+                final y = _hopperYearController.text.trim();
+                _lotController.text = val.isNotEmpty ? '${val.padLeft(3, '0')}-$y' : '';
+              },
+            ),
+          ),
+          const SizedBox(width: 8.0),
+          const Text(
+            '-',
+            style: TextStyle(
+              color: Color(0xFF0284C7),
+              fontSize: 18.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 8.0),
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: _hopperYearController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                counterText: '',
+                hintText: 'YYYY',
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                ),
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              onChanged: (val) {
+                final d = _hopperThreeDigitsController.text.trim();
+                _lotController.text = d.isNotEmpty ? '${d.padLeft(3, '0')}-$val' : '';
+              },
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Required';
+                if (v.length != 4) return '4 digits';
+                return null;
+              },
+            ),
+          ),
+        ],
       );
     }
   }
@@ -5666,6 +6121,13 @@ class _EntryTabState extends State<EntryTab> {
       _actionTimeRangeController,
       _actionTimeSDController,
     );
+
+    if (_epvatPressureType == 'Individual') {
+      final maxRounds = math.max(p1Values.length, math.max(p2Values.length, velValues.length));
+      if (maxRounds > 0) {
+        _producedController.text = '$maxRounds';
+      }
+    }
   }
 
   void _calculateStatsForValues(
@@ -6056,6 +6518,7 @@ class _EntryTabState extends State<EntryTab> {
     _primerSDController.text = sd.toStringAsFixed(1);
     _primerHbarPlus5SController.text = hbarPlus5S.toStringAsFixed(1);
     _primerHbarMinus2SController.text = hbarMinus2S.toStringAsFixed(1);
+    _producedController.text = '${heights.length}';
   }
 
   String _getCalculatedStatus() {

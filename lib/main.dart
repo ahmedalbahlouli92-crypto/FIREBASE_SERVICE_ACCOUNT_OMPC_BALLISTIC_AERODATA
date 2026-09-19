@@ -29,15 +29,14 @@ class OmpcBallisticAeroDataApp extends StatelessWidget {
       title: 'OMPC Ballistic AeroData',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFFE2F1F8),
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF0F8FF),
         primaryColor: const Color(0xFF0284C7),
         fontFamily: 'Outfit',
-        colorScheme: const ColorScheme.dark(
+        colorScheme: const ColorScheme.light(
           primary: Color(0xFF0284C7),
           secondary: Color(0xFF38BDF8),
-          background: Color(0xFFE2F1F8),
-          surface: Color(0xFF0C243C),
+          surface: Colors.white,
         ),
       ),
       home: const MainShell(),
@@ -770,6 +769,15 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   final StorageService _storageService = StorageService();
   Timer? _autoSyncTimer;
+  Timer? _clockTimer;
+  DateTime _currentTime = DateTime.now();
+
+  String _formatLiveClock(DateTime d) {
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    final s = d.second.toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
   
   Map<String, dynamic> _adminRules = {};
   String _selectedRuleTest = 'Waterproof Test';
@@ -937,6 +945,7 @@ class _MainShellState extends State<MainShell> {
   @override
   void dispose() {
     _autoSyncTimer?.cancel();
+    _clockTimer?.cancel();
     _passwordController.dispose();
     _opEmailController.dispose();
     _opPasswordController.dispose();
@@ -1206,6 +1215,14 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _loadInitialData();
+    // Live ticking digital clock timer (Instruction 19)
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _currentTime = DateTime.now();
+        });
+      }
+    });
     // Live background data sync across all users without stopping or refreshing the app
     _autoSyncTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) _syncRecordsSilently();
@@ -2153,7 +2170,7 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildAccessPortal() {
     return Scaffold(
-      backgroundColor: const Color(0xFFE2F1F8),
+      backgroundColor: const Color(0xFFF0F8FF),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -2162,9 +2179,9 @@ class _MainShellState extends State<MainShell> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFE6F4FA),
-              Color(0xFFD4EDF8),
-              Color(0xFFC0E2F4),
+              Color(0xFFFFFFFF),
+              Color(0xFFF0F8FF),
+              Color(0xFFE0F2FE),
             ],
           ),
         ),
@@ -2175,12 +2192,12 @@ class _MainShellState extends State<MainShell> {
               padding: const EdgeInsets.all(32.0),
               margin: const EdgeInsets.symmetric(horizontal: 20.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF0C243C),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(20.0),
-                border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.35), width: 1.5),
+                border: Border.all(color: const Color(0xFFBAE6FD), width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0284C7).withOpacity(0.22),
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
                     blurRadius: 36.0,
                     offset: const Offset(0, 14),
                   ),
@@ -2194,9 +2211,9 @@ class _MainShellState extends State<MainShell> {
                     child: Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
+                        color: const Color(0xFFF0F9FF),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+                        border: Border.all(color: const Color(0xFFBAE6FD)),
                       ),
                       child: Image.asset(
                         'assets/logo.png',
@@ -2213,114 +2230,116 @@ class _MainShellState extends State<MainShell> {
                     style: TextStyle(
                       fontSize: 22.0,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Color(0xFF0F172A),
                       letterSpacing: 1.0,
                     ),
                   ),
                   const Text(
                     'AERODATA PORTAL',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11.0,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF8E96A3),
-                    letterSpacing: 1.5,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0284C7),
+                      letterSpacing: 1.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32.0),
-                
-                // Unified Personnel & Admin Login Portal
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.02),
-                    borderRadius: BorderRadius.circular(10.0),
-                    border: Border.all(color: Colors.white.withOpacity(0.04)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.badge_outlined, color: Color(0xFF06B6D4), size: 20.0),
-                          SizedBox(width: 8.0),
-                          Expanded(
-                            child: Text(
-                              'User Login',
-                              style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white),
+                  const SizedBox(height: 32.0),
+                  
+                  // Unified Personnel & Admin Login Portal
+                  Container(
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.badge_outlined, color: Color(0xFF0284C7), size: 20.0),
+                            SizedBox(width: 8.0),
+                            Expanded(
+                              child: Text(
+                                'User Login',
+                                style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 8.0),
+                        const Text(
+                          'Enter your username and password to access the quality trials, log entries, and laboratory analytics.',
+                          style: TextStyle(fontSize: 12.0, color: Color(0xFF64748B), height: 1.4),
+                        ),
+                        const SizedBox(height: 16.0),
+                        
+                        TextField(
+                          controller: _opEmailController,
+                          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.w500),
+                          decoration: InputDecoration(
+                            hintText: 'Username or Email',
+                            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                            prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF0284C7), size: 16.0),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFBAE6FD))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFBAE6FD))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5)),
+                          ),
+                        ),
+                        const SizedBox(height: 8.0),
+                        TextField(
+                          controller: _opPasswordController,
+                          obscureText: true,
+                          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.w500),
+                          decoration: InputDecoration(
+                            hintText: 'Password',
+                            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                            prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF0284C7), size: 16.0),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFBAE6FD))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFBAE6FD))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5)),
+                          ),
+                        ),
+                        if (_loginErrorMessage.isNotEmpty) ...[
+                          const SizedBox(height: 8.0),
+                          Text(
+                            _loginErrorMessage,
+                            style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11.5),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 8.0),
-                      const Text(
-                        'Enter your username and password to access the quality trials, log entries, and laboratory analytics.',
-                        style: TextStyle(fontSize: 12.0, color: Color(0xFF8E96A3), height: 1.4),
-                      ),
-                      const SizedBox(height: 16.0),
-                      
-                      TextField(
-                        controller: _opEmailController,
-                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF8E96A3), size: 16.0),
-                          filled: true,
-                          fillColor: Colors.black.withOpacity(0.2),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-                      TextField(
-                        controller: _opPasswordController,
-                        obscureText: true,
-                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
-                          prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF8E96A3), size: 16.0),
-                          filled: true,
-                          fillColor: Colors.black.withOpacity(0.2),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
-                        ),
-                      ),
-                      if (_loginErrorMessage.isNotEmpty) ...[
-                        const SizedBox(height: 8.0),
-                        Text(
-                          _loginErrorMessage,
-                          style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11.5),
+                        const SizedBox(height: 12.0),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38.0,
+                          child: ElevatedButton(
+                            onPressed: _authenticateOperator,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0284C7),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                            ),
+                            child: const Text('Enter Laboratory Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
                         ),
                       ],
-                      const SizedBox(height: 12.0),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 38.0,
-                        child: ElevatedButton(
-                          onPressed: _authenticateOperator,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF06B6D4),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                          ),
-                          child: const Text('Enter Laboratory Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // 4. CONTROL PANEL TAB WIDGET
   Widget _buildControlPanelTab() {
@@ -5364,9 +5383,9 @@ class _MainShellState extends State<MainShell> {
                 // SIDEBAR
                 Container(
                   width: 250.0,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0A2239),
-                    border: Border(right: BorderSide(color: const Color(0xFF0284C7).withOpacity(0.25))),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(right: BorderSide(color: Color(0xFFBAE6FD))),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
                   child: Column(
@@ -5381,9 +5400,9 @@ class _MainShellState extends State<MainShell> {
                             Container(
                               padding: const EdgeInsets.all(10.0),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.06),
+                                color: const Color(0xFFF0F9FF),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+                                border: Border.all(color: const Color(0xFFBAE6FD)),
                               ),
                               child: Image.asset(
                                 'assets/logo.png',
@@ -5399,7 +5418,7 @@ class _MainShellState extends State<MainShell> {
                               style: TextStyle(
                                 fontSize: 14.0,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: Color(0xFF0F172A),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -5409,7 +5428,7 @@ class _MainShellState extends State<MainShell> {
                               style: TextStyle(
                                 fontSize: 9.0,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF8E96A3),
+                                color: Color(0xFF0284C7),
                                 letterSpacing: 1.0,
                               ),
                             ),
@@ -5420,19 +5439,19 @@ class _MainShellState extends State<MainShell> {
                       Container(
                         padding: const EdgeInsets.all(10.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF111524),
+                          color: const Color(0xFFF0F9FF),
                           borderRadius: BorderRadius.circular(8.0),
-                          border: Border.all(color: (_currentUserRole?.color ?? const Color(0xFF06B6D4)).withOpacity(0.3)),
+                          border: Border.all(color: const Color(0xFFBAE6FD)),
                         ),
                         child: Row(
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: (_currentUserRole?.color ?? const Color(0xFF06B6D4)).withOpacity(0.15),
+                              backgroundColor: (_currentUserRole?.color ?? const Color(0xFF0284C7)).withOpacity(0.15),
                               child: Icon(
                                 _currentUserRole?.icon ?? Icons.person_rounded,
                                 size: 18,
-                                color: _currentUserRole?.color ?? const Color(0xFF06B6D4),
+                                color: _currentUserRole?.color ?? const Color(0xFF0284C7),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -5442,20 +5461,20 @@ class _MainShellState extends State<MainShell> {
                                 children: [
                                   Text(
                                     _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Active User',
-                                    style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 2),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                     decoration: BoxDecoration(
-                                      color: (_currentUserRole?.color ?? const Color(0xFF06B6D4)).withOpacity(0.15),
+                                      color: (_currentUserRole?.color ?? const Color(0xFF0284C7)).withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       _currentUserRole?.label.toUpperCase() ?? 'OPERATOR',
                                       style: TextStyle(
-                                        color: _currentUserRole?.color ?? const Color(0xFF06B6D4),
+                                        color: _currentUserRole?.color ?? const Color(0xFF0284C7),
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 0.5,
@@ -5475,7 +5494,7 @@ class _MainShellState extends State<MainShell> {
                         style: TextStyle(
                           fontSize: 10.0,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF4A5264),
+                          color: Color(0xFF64748B),
                           letterSpacing: 1.0,
                         ),
                       ),
@@ -5486,11 +5505,11 @@ class _MainShellState extends State<MainShell> {
                         child: SingleChildScrollView(
                           child: Column(
                             children: [
-                              _buildModuleButton(label: 'Lot Acceptance Test', icon: Icons.verified_outlined, activeColor: const Color(0xFF06B6D4)),
+                              _buildModuleButton(label: 'Lot Acceptance Test', icon: Icons.verified_outlined, activeColor: const Color(0xFF0284C7)),
                               const SizedBox(height: 8.0),
                               _buildModuleButton(label: 'Daily Test', icon: Icons.today_outlined, activeColor: const Color(0xFF10B981)),
                               const SizedBox(height: 8.0),
-                              _buildModuleButton(label: 'Component Test', icon: Icons.extension_outlined, activeColor: const Color(0xFF3B82F6)),
+                              _buildModuleButton(label: 'Component Test', icon: Icons.extension_outlined, activeColor: const Color(0xFF0284C7)),
                               const SizedBox(height: 8.0),
                               _buildModuleButton(label: 'Equipment Report', icon: Icons.construction_outlined, activeColor: const Color(0xFFF59E0B)),
                               const SizedBox(height: 8.0),
@@ -5507,7 +5526,7 @@ class _MainShellState extends State<MainShell> {
                           const Expanded(
                             child: Text(
                               'v1.2.0 Standalone',
-                              style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0),
+                              style: TextStyle(color: Color(0xFF64748B), fontSize: 11.0),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -5536,9 +5555,9 @@ class _MainShellState extends State<MainShell> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Color(0xFFE2F1F8),
-                          Color(0xFFD4EDF8),
-                          Color(0xFFC7E7F6),
+                          Color(0xFFFFFFFF),
+                          Color(0xFFF0F8FF),
+                          Color(0xFFE0F2FE),
                         ],
                       ),
                     ),
@@ -5555,14 +5574,15 @@ class _MainShellState extends State<MainShell> {
           // MOBILE LAYOUT WITH APP BAR DROPDOWN
           return Scaffold(
             appBar: AppBar(
-              backgroundColor: const Color(0xFF06080E),
+              backgroundColor: Colors.white,
               elevation: 0,
+              iconTheme: const IconThemeData(color: Color(0xFF0284C7)),
               title: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _currentModule,
-                  dropdownColor: const Color(0xFF06080E),
-                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF06B6D4)),
-                  style: const TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold),
+                  dropdownColor: Colors.white,
+                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0284C7)),
+                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15.0, fontWeight: FontWeight.bold),
                   onChanged: (String? val) {
                     if (val != null) {
                       setState(() {
@@ -5586,6 +5606,34 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
               actions: [
+                // Live ticking digital clock (Mobile AppBar)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    margin: const EdgeInsets.only(right: 6.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F9FF),
+                      borderRadius: BorderRadius.circular(6.0),
+                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.schedule, size: 12.0, color: Color(0xFF0284C7)),
+                        const SizedBox(width: 4.0),
+                        Text(
+                          _formatLiveClock(_currentTime),
+                          style: const TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            color: Color(0xFF0F172A),
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 if (_currentUserRole != null)
                   Center(
                     child: Container(
@@ -5612,7 +5660,7 @@ class _MainShellState extends State<MainShell> {
                 IconButton(
                   icon: Icon(
                     _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
-                    color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF8E96A3),
+                    color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF64748B),
                     size: 18.0,
                   ),
                   tooltip: _submissionAlertsEnabled ? 'Submission Alerts (ON) - Tap to turn off' : 'Submission Alerts (OFF) - Tap to turn on',
@@ -5647,9 +5695,9 @@ class _MainShellState extends State<MainShell> {
                     currentIndex: _activeTabIndex,
                     onTap: (index) => setState(() => _activeTabIndex = index),
                     type: BottomNavigationBarType.fixed,
-                    backgroundColor: const Color(0xFF061527),
-                    selectedItemColor: const Color(0xFF38BDF8),
-                    unselectedItemColor: const Color(0xFF90CDF4),
+                    backgroundColor: Colors.white,
+                    selectedItemColor: const Color(0xFF0284C7),
+                    unselectedItemColor: const Color(0xFF64748B),
                     selectedFontSize: 11.5,
                     unselectedFontSize: 11.5,
                     items: const [
@@ -5676,11 +5724,11 @@ class _MainShellState extends State<MainShell> {
           _currentModule = label;
           _activeTabIndex = 0; // Reset sub-tab
         }),
-        icon: Icon(icon, color: isActive ? activeColor : const Color(0xFF90CDF4), size: 18.0),
+        icon: Icon(icon, color: isActive ? activeColor : const Color(0xFF0284C7), size: 18.0),
         label: Text(
           label,
           style: TextStyle(
-            color: isActive ? Colors.white : const Color(0xFF90CDF4),
+            color: isActive ? activeColor : const Color(0xFF334155),
             fontSize: 13.0,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
           ),
@@ -5688,11 +5736,11 @@ class _MainShellState extends State<MainShell> {
         style: TextButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          backgroundColor: isActive ? activeColor.withOpacity(0.12) : Colors.transparent,
+          backgroundColor: isActive ? const Color(0xFFE0F2FE) : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8.0),
             side: BorderSide(
-              color: isActive ? activeColor.withOpacity(0.25) : Colors.transparent,
+              color: isActive ? const Color(0xFFBAE6FD) : Colors.transparent,
             ),
           ),
         ),
@@ -5712,103 +5760,176 @@ class _MainShellState extends State<MainShell> {
     return Container(
       margin: const EdgeInsets.only(bottom: 24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C2138),
-        borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.25)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFFBAE6FD)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0284C7).withOpacity(0.04),
+            blurRadius: 10.0,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(4.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(subTabs.length, (index) {
-                final bool isActive = _activeTabIndex == index;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                  child: TextButton.icon(
-                    onPressed: () => setState(() => _activeTabIndex = index),
-                    icon: Icon(subTabs[index]['icon'], size: 15.0, color: isActive ? const Color(0xFF38BDF8) : const Color(0xFF90CDF4)),
-                    label: Text(
-                      subTabs[index]['label'],
-                      style: TextStyle(
-                        color: isActive ? Colors.white : const Color(0xFF90CDF4),
-                        fontSize: 12.5,
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Subtabs Navigation
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(subTabs.length, (index) {
+                  final bool isActive = _activeTabIndex == index;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _activeTabIndex = index),
+                      icon: Icon(
+                        subTabs[index]['icon'],
+                        size: 15.0,
+                        color: isActive ? const Color(0xFF0284C7) : const Color(0xFF64748B),
                       ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                      backgroundColor: isActive ? const Color(0xFF0284C7).withOpacity(0.2) : Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6.0),
-                        side: BorderSide(
-                          color: isActive ? const Color(0xFF0284C7).withOpacity(0.4) : Colors.transparent,
+                      label: Text(
+                        subTabs[index]['label'],
+                        style: TextStyle(
+                          color: isActive ? const Color(0xFF0284C7) : const Color(0xFF475569),
+                          fontSize: 12.5,
+                          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                        backgroundColor: isActive ? const Color(0xFFE0F2FE) : Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6.0),
+                          side: BorderSide(
+                            color: isActive ? const Color(0xFFBAE6FD) : Colors.transparent,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
-            const SizedBox(width: 16.0),
-            // Alert Notification Switch Pill for All Users
-            InkWell(
-              onTap: () {
-                setState(() {
-                  _submissionAlertsEnabled = !_submissionAlertsEnabled;
-                  _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
-                });
-                _storageService.saveRules(_adminRules);
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    duration: const Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: const Color(0xFF0C2138),
-                    content: Text(
-                      _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
-                      style: const TextStyle(color: Colors.white, fontSize: 12.0),
-                    ),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(6.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+          ),
+          const SizedBox(width: 12.0),
+
+          // Header Badges: Welcome Greeting (Instruction 18), Live Ticking Digital Clock (Instruction 19), Alerts Toggle
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Instruction 18: Welcome greeting with user's name
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
                 decoration: BoxDecoration(
-                  color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.12) : Colors.white.withOpacity(0.04),
+                  color: const Color(0xFFE0F2FE),
                   borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(
-                    color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.35) : Colors.white.withOpacity(0.08),
-                  ),
+                  border: Border.all(color: const Color(0xFFBAE6FD)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
-                      size: 15.0,
-                      color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF90CDF4),
-                    ),
+                    const Text('👋', style: TextStyle(fontSize: 12.0)),
                     const SizedBox(width: 6.0),
                     Text(
-                      _submissionAlertsEnabled ? 'Alerts: ON' : 'Alerts: OFF',
-                      style: TextStyle(
-                        color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF90CDF4),
+                      'Welcome, ${_currentUserEmail.isNotEmpty ? _currentUserEmail : 'User'}!',
+                      style: const TextStyle(
+                        color: Color(0xFF0369A1),
                         fontSize: 12.0,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(width: 4.0),
-          ],
-        ),
+              const SizedBox(width: 8.0),
+
+              // Instruction 19: Live ticking digital clock
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F9FF),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFFBAE6FD)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.schedule, size: 14.0, color: Color(0xFF0284C7)),
+                    const SizedBox(width: 6.0),
+                    Text(
+                      _formatLiveClock(_currentTime),
+                      style: const TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        color: Color(0xFF0F172A),
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8.0),
+
+              // Alerts toggle button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _submissionAlertsEnabled = !_submissionAlertsEnabled;
+                    _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
+                  });
+                  _storageService.saveRules(_adminRules);
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.white,
+                      content: Text(
+                        _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
+                        style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(6.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+                  decoration: BoxDecoration(
+                    color: _submissionAlertsEnabled ? const Color(0xFFECFDF5) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(
+                      color: _submissionAlertsEnabled ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
+                        size: 15.0,
+                        color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 6.0),
+                      Text(
+                        _submissionAlertsEnabled ? 'Alerts: ON' : 'Alerts: OFF',
+                        style: TextStyle(
+                          color: _submissionAlertsEnabled ? const Color(0xFF059669) : const Color(0xFF64748B),
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -5819,12 +5940,12 @@ class _MainShellState extends State<MainShell> {
         constraints: const BoxConstraints(maxWidth: 550.0),
         padding: const EdgeInsets.all(32.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF111524),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: Colors.white.withOpacity(0.06)),
+          border: Border.all(color: const Color(0xFFBAE6FD)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: const Color(0xFF0284C7).withValues(alpha: 0.08),
               blurRadius: 20.0,
               offset: const Offset(0, 8),
             ),
@@ -5836,33 +5957,33 @@ class _MainShellState extends State<MainShell> {
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
-                border: Border.all(color: color.withOpacity(0.2)),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
               ),
               child: Icon(icon, color: color, size: 48.0),
             ),
             const SizedBox(height: 24.0),
             Text(
               name.toUpperCase(),
-              style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5),
+              style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A), letterSpacing: 0.5),
             ),
             const SizedBox(height: 8.0),
             const Text(
               'Module Initialized',
-              style: TextStyle(fontSize: 12.5, color: Color(0xFF06B6D4), fontWeight: FontWeight.bold, letterSpacing: 1.0),
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF0284C7), fontWeight: FontWeight.bold, letterSpacing: 1.0),
             ),
             const SizedBox(height: 16.0),
             const Text(
               'This laboratory workspace has been initialized successfully. The underlying database schemas and platform hooks are ready.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13.5, color: Color(0xFF8E96A3), height: 1.5),
+              style: TextStyle(fontSize: 13.5, color: Color(0xFF475569), height: 1.5),
             ),
             const SizedBox(height: 24.0),
             const Text(
               'Pending development details for active trials and workflow spec sheets.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.0, color: Color(0xFF4A5264), fontStyle: FontStyle.italic),
+              style: TextStyle(fontSize: 12.0, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
             ),
           ],
         ),

@@ -42,6 +42,7 @@ class BallisticRecord {
   final String velRange;
   final String velSD;
   final String accMeanRadius;
+  final String accLargestDistance;
 
   // New fields for EPVAT & Extraction Force details
   final String extractionForceType;
@@ -169,6 +170,7 @@ class BallisticRecord {
     this.velRange = '',
     this.velSD = '',
     this.accMeanRadius = '',
+    this.accLargestDistance = '',
     this.extractionForceType = '',
     this.extractionForceRounds = '',
     this.cartridgeTemp = '',
@@ -273,6 +275,7 @@ class BallisticRecord {
     final cleanVelRange = velRange.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanVelSD = velSD.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanMeanRadius = accMeanRadius.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanAccLargestDist = accLargestDistance.replaceAll('"', '""').replaceAll(',', ' ');
     
     final cleanExtType = extractionForceType.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanExtRounds = extractionForceRounds.replaceAll('"', '""');
@@ -324,7 +327,7 @@ class BallisticRecord {
     final cleanUserRole = userRole.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanModule = module.replaceAll('"', '""').replaceAll(',', ' ');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -480,6 +483,7 @@ class BallisticRecord {
     final String gp6Serial = fields.length > 97 ? fields[97].replaceAll('"', '').trim() : '';
     final String userRole = fields.length > 98 ? fields[98].replaceAll('"', '').trim() : 'Operator';
     final String module = fields.length > 99 ? fields[99].replaceAll('"', '').trim() : 'Lot Acceptance Test';
+    final String accLargestDistance = fields.length > 100 ? fields[100].replaceAll('"', '').trim() : '';
  
     return BallisticRecord(
       timestamp: timestamp,
@@ -522,6 +526,7 @@ class BallisticRecord {
       velRange: velRange,
       velSD: velSD,
       accMeanRadius: accMeanRadius,
+      accLargestDistance: accLargestDistance,
       extractionForceType: extractionForceType,
       extractionForceRounds: extractionForceRounds,
       cartridgeTemp: cartridgeTemp,
@@ -628,6 +633,7 @@ class BallisticRecord {
       'vel_range': velRange,
       'vel_sd': velSD,
       'acc_mean_radius': accMeanRadius,
+      'acc_largest_distance': accLargestDistance,
       'extraction_force_type': extractionForceType,
       'extraction_force_rounds': extractionForceRounds,
       'cartridge_temp': cartridgeTemp,
@@ -751,6 +757,7 @@ class BallisticRecord {
       velRange: toStr(map['vel_range']),
       velSD: toStr(map['vel_sd']),
       accMeanRadius: toStr(map['acc_mean_radius']),
+      accLargestDistance: toStr(map['acc_largest_distance']),
       extractionForceType: toStr(map['extraction_force_type']),
       extractionForceRounds: toStr(map['extraction_force_rounds']),
       cartridgeTemp: toStr(map['cartridge_temp']),
@@ -857,6 +864,7 @@ class BallisticRecord {
     String? velRange,
     String? velSD,
     String? accMeanRadius,
+    String? accLargestDistance,
     String? extractionForceType,
     String? extractionForceRounds,
     String? cartridgeTemp,
@@ -960,6 +968,7 @@ class BallisticRecord {
       velRange: velRange ?? this.velRange,
       velSD: velSD ?? this.velSD,
       accMeanRadius: accMeanRadius ?? this.accMeanRadius,
+      accLargestDistance: accLargestDistance ?? this.accLargestDistance,
       extractionForceType: extractionForceType ?? this.extractionForceType,
       extractionForceRounds: extractionForceRounds ?? this.extractionForceRounds,
       cartridgeTemp: cartridgeTemp ?? this.cartridgeTemp,

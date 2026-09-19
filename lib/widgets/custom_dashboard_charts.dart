@@ -477,7 +477,12 @@ class _TestMetricPainter extends CustomPainter {
 
   void _paintAccuracyChart(Canvas canvas, Size size) {
     final accRecords = filteredRecords
-        .where((r) => r.testName == 'Accuracy Test' && (r.accSDX.isNotEmpty || r.accSDY.isNotEmpty))
+        .where((r) =>
+            r.testName == 'Accuracy Test' &&
+            (r.accMeanX.isNotEmpty ||
+                r.accMeanY.isNotEmpty ||
+                r.accSDX.isNotEmpty ||
+                r.accSDY.isNotEmpty))
         .toList();
 
     if (accRecords.isEmpty) {
@@ -485,118 +490,160 @@ class _TestMetricPainter extends CustomPainter {
       return;
     }
 
-    // Limit to last 6 records to fit
-    final displayRecords = accRecords.length > 6 ? accRecords.sublist(accRecords.length - 6) : accRecords;
+    // Limit to last 8 records to fit cleanly
+    final displayRecords =
+        accRecords.length > 8 ? accRecords.sublist(accRecords.length - 8) : accRecords;
 
-    final double paddingLeft = 40.0;
-    final double paddingRight = 10.0;
-    final double paddingTop = 35.0;
-    final double paddingBottom = 30.0;
+    final double paddingLeft = 48.0;
+    final double paddingRight = 20.0;
+    final double paddingTop = 36.0;
+    final double paddingBottom = 32.0;
 
     final double chartWidth = size.width - paddingLeft - paddingRight;
     final double chartHeight = size.height - paddingTop - paddingBottom;
 
-    // Find max SD value
-    double maxVal = 0.0;
+    // Calculate (Mean X + Mean Y) / 2 for each record
+    final List<double> avgMeans = [];
     for (var r in displayRecords) {
-      final sdx = double.tryParse(r.accSDX) ?? 0.0;
-      final sdy = double.tryParse(r.accSDY) ?? 0.0;
-      if (sdx > maxVal) maxVal = sdx;
-      if (sdy > maxVal) maxVal = sdy;
+      final mx = double.tryParse(r.accMeanX) ?? 0.0;
+      final my = double.tryParse(r.accMeanY) ?? 0.0;
+      double avg = 0.0;
+      if (mx > 0 && my > 0) {
+        avg = (mx + my) / 2.0;
+      } else if (mx > 0) {
+        avg = mx;
+      } else if (my > 0) {
+        avg = my;
+      } else {
+        final sx = double.tryParse(r.accSDX) ?? 0.0;
+        final sy = double.tryParse(r.accSDY) ?? 0.0;
+        avg = (sx + sy) / 2.0;
+      }
+      avgMeans.add(avg);
     }
-    if (maxVal == 0.0) maxVal = 10.0;
-    final double maxAxisValue = ((maxVal + 4.9) ~/ 5) * 5.0;
+
+    // Find max value for Y-axis
+    double maxVal = avgMeans.fold(0.0, (max, v) => v > max ? v : max);
+    if (maxVal <= 0.0) maxVal = 10.0;
+    final double maxAxisValue = ((maxVal * 1.25 + 4.9) ~/ 5) * 5.0;
 
     // Draw Y-axis grid and labels
     final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = const Color(0xFFE2E8F0)
       ..strokeWidth = 1.0;
-    final textStyle = const TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0, fontFamily: 'Outfit');
+    final textStyle = const TextStyle(
+        color: Color(0xFF64748B), fontSize: 10.0, fontFamily: 'Outfit');
 
     final int divisions = 4;
     for (int i = 0; i <= divisions; i++) {
-      final double y = paddingTop + chartHeight - (i * chartHeight / divisions);
-      canvas.drawLine(Offset(paddingLeft, y), Offset(size.width - paddingRight, y), gridPaint);
+      final double y =
+          paddingTop + chartHeight - (i * chartHeight / divisions);
+      canvas.drawLine(
+          Offset(paddingLeft, y), Offset(size.width - paddingRight, y), gridPaint);
 
       final double val = (i * maxAxisValue / divisions);
       final textPainter = TextPainter(
-        text: TextSpan(text: val.toStringAsFixed(1), style: textStyle),
+        text: TextSpan(text: '${val.toStringAsFixed(1)} mm', style: textStyle),
         textDirection: TextDirection.ltr,
       )..layout();
-      textPainter.paint(canvas, Offset(paddingLeft - textPainter.width - 8, y - textPainter.height / 2));
+      textPainter.paint(
+          canvas, Offset(paddingLeft - textPainter.width - 6, y - textPainter.height / 2));
     }
 
     // Draw Legend at top
     _drawLegend(canvas, size, [
-      _LegendItem('SD X', const Color(0xFF3B82F6)),
-      _LegendItem('SD Y', const Color(0xFFEC4899)),
+      _LegendItem('Avg Mean ((X+Y)/2) mm', const Color(0xFF0284C7)),
     ]);
 
-    // Draw Grouped Bars
-    final double groupWidth = chartWidth / displayRecords.length;
-    final double barWidth = groupWidth * 0.25;
-    final double barSpacing = 4.0;
+    // Build trend line points
+    final List<Offset> points = [];
+    final int count = displayRecords.length;
+    for (int i = 0; i < count; i++) {
+      final double x = count == 1
+          ? paddingLeft + chartWidth / 2
+          : paddingLeft + (i / (count - 1)) * chartWidth;
+      final double y = paddingTop +
+          chartHeight -
+          ((avgMeans[i] / maxAxisValue) * chartHeight).clamp(0.0, chartHeight);
+      points.add(Offset(x, y));
+    }
 
-    for (int i = 0; i < displayRecords.length; i++) {
+    // Draw Area gradient under trend line
+    if (points.length > 1) {
+      final fillPath = Path();
+      fillPath.moveTo(points.first.dx, paddingTop + chartHeight);
+      fillPath.lineTo(points.first.dx, points.first.dy);
+      for (int i = 1; i < points.length; i++) {
+        fillPath.lineTo(points[i].dx, points[i].dy);
+      }
+      fillPath.lineTo(points.last.dx, paddingTop + chartHeight);
+      fillPath.close();
+
+      final fillPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF0284C7).withOpacity(0.22),
+            const Color(0xFF0284C7).withOpacity(0.01),
+          ],
+        ).createShader(Rect.fromLTWH(paddingLeft, paddingTop, chartWidth, chartHeight))
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(fillPath, fillPaint);
+
+      // Draw Trend Line
+      final linePath = Path();
+      linePath.moveTo(points.first.dx, points.first.dy);
+      for (int i = 1; i < points.length; i++) {
+        linePath.lineTo(points[i].dx, points[i].dy);
+      }
+      final linePaint = Paint()
+        ..color = const Color(0xFF0284C7)
+        ..strokeWidth = 3.0
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+      canvas.drawPath(linePath, linePaint);
+    }
+
+    // Draw Nodes, Values, and Lot labels
+    for (int i = 0; i < points.length; i++) {
+      final pt = points[i];
       final r = displayRecords[i];
-      final sdx = double.tryParse(r.accSDX) ?? 0.0;
-      final sdy = double.tryParse(r.accSDY) ?? 0.0;
+      final val = avgMeans[i];
 
-      final double groupCenterX = paddingLeft + (i * groupWidth) + (groupWidth / 2);
+      // Outer circle (white)
+      canvas.drawCircle(pt, 5.5, Paint()..color = Colors.white);
+      // Inner circle (Sea-Blue)
+      canvas.drawCircle(
+          pt, 4.0, Paint()..color = const Color(0xFF0284C7));
 
-      // Bar 1 (SD X)
-      final double bar1Height = chartHeight * (sdx / maxAxisValue);
-      final double bar1X = groupCenterX - barWidth - (barSpacing / 2);
-      final double bar1Y = paddingTop + chartHeight - bar1Height;
-      if (bar1Height > 0) {
-        final rect1 = Rect.fromLTWH(bar1X, bar1Y, barWidth, bar1Height);
-        final paint1 = Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [const Color(0xFF3B82F6).withOpacity(0.4), const Color(0xFF60A5FA)],
-          ).createShader(rect1);
-        canvas.drawRRect(RRect.fromRectAndCorners(rect1, topLeft: const Radius.circular(3.0), topRight: const Radius.circular(3.0)), paint1);
-      }
-
-      // Bar 2 (SD Y)
-      final double bar2Height = chartHeight * (sdy / maxAxisValue);
-      final double bar2X = groupCenterX + (barSpacing / 2);
-      final double bar2Y = paddingTop + chartHeight - bar2Height;
-      if (bar2Height > 0) {
-        final rect2 = Rect.fromLTWH(bar2X, bar2Y, barWidth, bar2Height);
-        final paint2 = Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [const Color(0xFFEC4899).withOpacity(0.4), const Color(0xFFF472B6)],
-          ).createShader(rect2);
-        canvas.drawRRect(RRect.fromRectAndCorners(rect2, topLeft: const Radius.circular(3.0), topRight: const Radius.circular(3.0)), paint2);
-      }
-
-      // Draw values on top
-      if (sdx > 0) {
-        final vPainter = TextPainter(
-          text: TextSpan(text: sdx.toStringAsFixed(1), style: textStyle.copyWith(color: Colors.white, fontSize: 8.5)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        vPainter.paint(canvas, Offset(bar1X + (barWidth - vPainter.width) / 2, bar1Y - vPainter.height - 2));
-      }
-      if (sdy > 0) {
-        final vPainter = TextPainter(
-          text: TextSpan(text: sdy.toStringAsFixed(1), style: textStyle.copyWith(color: Colors.white, fontSize: 8.5)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        vPainter.paint(canvas, Offset(bar2X + (barWidth - vPainter.width) / 2, bar2Y - vPainter.height - 2));
-      }
-
-      // Draw X Axis label (Lot No)
-      final String lotLabel = r.lotNo.length > 5 ? r.lotNo.substring(r.lotNo.length - 5) : r.lotNo;
-      final labelPainter = TextPainter(
-        text: TextSpan(text: "Lot $lotLabel", style: textStyle.copyWith(fontSize: 8.5)),
+      // Value badge above point
+      final vPainter = TextPainter(
+        text: TextSpan(
+          text: '${val.toStringAsFixed(2)} mm',
+          style: const TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Outfit',
+          ),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
-      labelPainter.paint(canvas, Offset(groupCenterX - labelPainter.width / 2, paddingTop + chartHeight + 6));
+      vPainter.paint(canvas, Offset(pt.dx - vPainter.width / 2, pt.dy - vPainter.height - 5));
+
+      // Draw X Axis label (Lot No)
+      final String lotLabel = r.lotNo.length > 6 ? r.lotNo.substring(r.lotNo.length - 6) : r.lotNo;
+      final labelPainter = TextPainter(
+        text: TextSpan(
+          text: 'Lot $lotLabel',
+          style: textStyle.copyWith(fontSize: 9.0, fontWeight: FontWeight.bold),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      labelPainter.paint(
+          canvas, Offset(pt.dx - labelPainter.width / 2, paddingTop + chartHeight + 6));
     }
   }
 
@@ -1253,5 +1300,382 @@ class CaliberIndividualChart extends StatelessWidget {
       child: Text(text, style: TextStyle(color: color, fontSize: 9.5, fontWeight: FontWeight.bold)),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOX AND WHISKER CHART (Instruction 14)
+// Displays Min, Q1, Median, Q3, Max distributions across Lots/Calibers
+// ─────────────────────────────────────────────────────────────────────────────
+class BoxPlotStats {
+  final String label;
+  final double min;
+  final double q1;
+  final double median;
+  final double q3;
+  final double max;
+  final int sampleCount;
+
+  BoxPlotStats({
+    required this.label,
+    required this.min,
+    required this.q1,
+    required this.median,
+    required this.q3,
+    required this.max,
+    required this.sampleCount,
+  });
+}
+
+class BoxPlotChart extends StatefulWidget {
+  final List<BallisticRecord> records;
+
+  const BoxPlotChart({Key? key, required this.records}) : super(key: key);
+
+  @override
+  State<BoxPlotChart> createState() => _BoxPlotChartState();
+}
+
+class _BoxPlotChartState extends State<BoxPlotChart> {
+  String _selectedMetric = 'Velocity (m/s)';
+
+  static const List<String> _metricOptions = [
+    'Velocity (m/s)',
+    'EPVAT Chamber Pressure',
+    'Action Time (ms)',
+    'Bullet Pull / Extraction Force (N)',
+    'Accuracy (mm)',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final statsList = _computeStats();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.candlestick_chart_outlined, color: Color(0xFF0284C7), size: 20.0),
+                const SizedBox(width: 8.0),
+                const Text(
+                  'Box & Whisker Distribution Analysis',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F9FF),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFFBAE6FD)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedMetric,
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
+                  items: _metricOptions.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _selectedMetric = v);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6.0),
+        const Text(
+          'Displays Min, 1st Quartile (Q1), Median, 3rd Quartile (Q3), and Max distribution variance across production lots.',
+          style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
+        ),
+        const SizedBox(height: 16.0),
+        Expanded(
+          child: statsList.isEmpty
+              ? Center(
+                  child: Text(
+                    'No data available for $_selectedMetric across evaluated lots.',
+                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5),
+                  ),
+                )
+              : CustomPaint(
+                  size: Size.infinite,
+                  painter: _BoxPlotPainter(statsList: statsList, metricName: _selectedMetric),
+                ),
+        ),
+      ],
+    );
+  }
+
+  List<BoxPlotStats> _computeStats() {
+    final Map<String, List<double>> lotValues = {};
+
+    for (var r in widget.records) {
+      final lot = r.lotNo.trim().isEmpty ? 'General' : r.lotNo.trim();
+      final List<double> vals = [];
+
+      switch (_selectedMetric) {
+        case 'Velocity (m/s)':
+          if (r.epvatVelRounds.isNotEmpty) {
+            final parts = r.epvatVelRounds.split(RegExp(r'[,;\s]+'));
+            for (var p in parts) {
+              final d = double.tryParse(p.trim());
+              if (d != null && d > 0) vals.add(d);
+            }
+          }
+          if (vals.isEmpty) {
+            final min = double.tryParse(r.velMin);
+            final mean = double.tryParse(r.velMean);
+            final max = double.tryParse(r.velMax);
+            if (mean != null && mean > 0) {
+              vals.addAll([min ?? mean, mean, max ?? mean]);
+            }
+          }
+          break;
+
+        case 'EPVAT Chamber Pressure':
+          if (r.epvatPressureRounds.isNotEmpty) {
+            final parts = r.epvatPressureRounds.split(RegExp(r'[,;\s]+'));
+            for (var p in parts) {
+              final d = double.tryParse(p.trim());
+              if (d != null && d > 0) vals.add(d);
+            }
+          }
+          if (vals.isEmpty) {
+            final min = double.tryParse(r.epvatMinPressure);
+            final mean = double.tryParse(r.epvatMeanPressure);
+            final max = double.tryParse(r.epvatMaxPressure);
+            if (mean != null && mean > 0) {
+              vals.addAll([min ?? mean, mean, max ?? mean]);
+            }
+          }
+          break;
+
+        case 'Action Time (ms)':
+          final min = double.tryParse(r.actionTimeMin);
+          final mean = double.tryParse(r.actionTimeMean);
+          final max = double.tryParse(r.actionTimeMax);
+          if (mean != null && mean > 0) {
+            vals.addAll([min ?? mean, mean, max ?? mean]);
+          }
+          break;
+
+        case 'Bullet Pull / Extraction Force (N)':
+          if (r.extractionForceRounds.isNotEmpty) {
+            final parts = r.extractionForceRounds.split(RegExp(r'[,;\s]+'));
+            for (var p in parts) {
+              final d = double.tryParse(p.trim());
+              if (d != null && d > 0) vals.add(d);
+            }
+          }
+          break;
+
+        case 'Accuracy (mm)':
+          final minX = double.tryParse(r.accMinX);
+          final meanX = double.tryParse(r.accMeanX);
+          final maxX = double.tryParse(r.accMaxX);
+          if (meanX != null && meanX > 0) {
+            vals.addAll([minX ?? meanX, meanX, maxX ?? meanX]);
+          }
+          final minY = double.tryParse(r.accMinY);
+          final meanY = double.tryParse(r.accMeanY);
+          final maxY = double.tryParse(r.accMaxY);
+          if (meanY != null && meanY > 0) {
+            vals.addAll([minY ?? meanY, meanY, maxY ?? meanY]);
+          }
+          break;
+      }
+
+      if (vals.isNotEmpty) {
+        lotValues.putIfAbsent(lot, () => []).addAll(vals);
+      }
+    }
+
+    final List<BoxPlotStats> result = [];
+    final lots = lotValues.keys.toList();
+    final displayLots = lots.length > 7 ? lots.sublist(lots.length - 7) : lots;
+
+    for (var lot in displayLots) {
+      final values = lotValues[lot]!;
+      values.sort();
+      final n = values.length;
+      final min = values.first;
+      final max = values.last;
+
+      double getMedian(List<double> list) {
+        if (list.isEmpty) return 0.0;
+        final int mid = list.length ~/ 2;
+        return (list.length % 2 == 1) ? list[mid] : ((list[mid - 1] + list[mid]) / 2.0);
+      }
+
+      final double median = getMedian(values);
+      final List<double> lowerHalf = values.sublist(0, n ~/ 2);
+      final List<double> upperHalf = (n % 2 == 0) ? values.sublist(n ~/ 2) : values.sublist(n ~/ 2 + 1);
+      final double q1 = lowerHalf.isNotEmpty ? getMedian(lowerHalf) : min;
+      final double q3 = upperHalf.isNotEmpty ? getMedian(upperHalf) : max;
+
+      result.add(BoxPlotStats(
+        label: lot,
+        min: min,
+        q1: q1,
+        median: median,
+        q3: q3,
+        max: max,
+        sampleCount: n,
+      ));
+    }
+
+    return result;
+  }
+}
+
+class _BoxPlotPainter extends CustomPainter {
+  final List<BoxPlotStats> statsList;
+  final String metricName;
+
+  _BoxPlotPainter({required this.statsList, required this.metricName});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (statsList.isEmpty) return;
+
+    final double paddingLeft = 55.0;
+    final double paddingRight = 20.0;
+    final double paddingTop = 30.0;
+    final double paddingBottom = 40.0;
+
+    final double chartWidth = size.width - paddingLeft - paddingRight;
+    final double chartHeight = size.height - paddingTop - paddingBottom;
+
+    double globalMin = statsList.first.min;
+    double globalMax = statsList.first.max;
+    for (var s in statsList) {
+      if (s.min < globalMin) globalMin = s.min;
+      if (s.max > globalMax) globalMax = s.max;
+    }
+
+    if ((globalMax - globalMin).abs() < 1e-6) {
+      globalMin -= 10.0;
+      globalMax += 10.0;
+    }
+
+    final double margin = (globalMax - globalMin) * 0.15;
+    final double axisMin = (globalMin - margin).floorToDouble();
+    final double axisMax = (globalMax + margin).ceilToDouble();
+    final double axisRange = axisMax - axisMin;
+
+    final gridPaint = Paint()
+      ..color = const Color(0xFFE2E8F0)
+      ..strokeWidth = 1.0;
+    final textStyle = const TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontFamily: 'Outfit');
+
+    final int divisions = 5;
+    for (int i = 0; i <= divisions; i++) {
+      final double y = paddingTop + chartHeight - (i * chartHeight / divisions);
+      canvas.drawLine(Offset(paddingLeft, y), Offset(size.width - paddingRight, y), gridPaint);
+
+      final double val = axisMin + (i * axisRange / divisions);
+      final textPainter = TextPainter(
+        text: TextSpan(text: val.toStringAsFixed(1), style: textStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      textPainter.paint(canvas, Offset(paddingLeft - textPainter.width - 6, y - textPainter.height / 2));
+    }
+
+    final double slotWidth = chartWidth / statsList.length;
+    final double boxWidth = (slotWidth * 0.45).clamp(16.0, 50.0);
+
+    double toY(double val) {
+      return paddingTop + chartHeight - (((val - axisMin) / axisRange) * chartHeight).clamp(0.0, chartHeight);
+    }
+
+    for (int i = 0; i < statsList.length; i++) {
+      final s = statsList[i];
+      final double centerX = paddingLeft + (i * slotWidth) + (slotWidth / 2);
+
+      final double yMin = toY(s.min);
+      final double yQ1 = toY(s.q1);
+      final double yMedian = toY(s.median);
+      final double yQ3 = toY(s.q3);
+      final double yMax = toY(s.max);
+
+      final whiskerPaint = Paint()
+        ..color = const Color(0xFF0284C7)
+        ..strokeWidth = 2.0;
+
+      // Whiskers
+      canvas.drawLine(Offset(centerX, yMin), Offset(centerX, yQ1), whiskerPaint);
+      canvas.drawLine(Offset(centerX, yQ3), Offset(centerX, yMax), whiskerPaint);
+
+      // Whisker caps
+      final double capWidth = boxWidth * 0.5;
+      canvas.drawLine(Offset(centerX - capWidth / 2, yMin), Offset(centerX + capWidth / 2, yMin), whiskerPaint);
+      canvas.drawLine(Offset(centerX - capWidth / 2, yMax), Offset(centerX + capWidth / 2, yMax), whiskerPaint);
+
+      // Box
+      final boxRect = Rect.fromLTRB(centerX - boxWidth / 2, yQ3, centerX + boxWidth / 2, yQ1);
+      final boxFill = Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFE0F2FE), Color(0xFFBAE6FD)],
+        ).createShader(boxRect)
+        ..style = PaintingStyle.fill;
+      canvas.drawRRect(RRect.fromRectAndRadius(boxRect, const Radius.circular(4.0)), boxFill);
+
+      final boxBorder = Paint()
+        ..color = const Color(0xFF0284C7)
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+      canvas.drawRRect(RRect.fromRectAndRadius(boxRect, const Radius.circular(4.0)), boxBorder);
+
+      // Median Line
+      final medianPaint = Paint()
+        ..color = const Color(0xFF0369A1)
+        ..strokeWidth = 3.0;
+      canvas.drawLine(Offset(centerX - boxWidth / 2, yMedian), Offset(centerX + boxWidth / 2, yMedian), medianPaint);
+
+      // Median label
+      final medPainter = TextPainter(
+        text: TextSpan(
+          text: s.median.toStringAsFixed(1),
+          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 9.0, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      medPainter.paint(canvas, Offset(centerX - medPainter.width / 2, yMedian - medPainter.height / 2));
+
+      // X Axis Lot Label
+      final String lotStr = s.label.length > 7 ? s.label.substring(s.label.length - 7) : s.label;
+      final labelPainter = TextPainter(
+        text: TextSpan(
+          text: 'Lot $lotStr',
+          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 9.5, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      labelPainter.paint(canvas, Offset(centerX - labelPainter.width / 2, paddingTop + chartHeight + 6));
+
+      // Sample count badge
+      final nPainter = TextPainter(
+        text: TextSpan(
+          text: 'n=${s.sampleCount}',
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 8.5, fontFamily: 'Outfit'),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      nPainter.paint(canvas, Offset(centerX - nPainter.width / 2, paddingTop + chartHeight + 20));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BoxPlotPainter oldDelegate) => true;
 }
 

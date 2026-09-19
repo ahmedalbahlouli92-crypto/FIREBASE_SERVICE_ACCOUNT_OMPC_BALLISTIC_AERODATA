@@ -45,6 +45,34 @@ class ReportGenerator {
     return 0.0;
   }
 
+  static String _getRecordMetricsSummary(BallisticRecord r) {
+    if (r.testName == 'Waterproof Test') {
+      final leaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
+      return '$leaks leaks (P: ${r.pressureBar} bar, Visc: ${r.viscosity} s)';
+    } else if (r.testName == 'Residual Stress Test') {
+      final total = r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast;
+      final temp = r.roomTemp.isNotEmpty ? '${r.roomTemp} °C' : '-';
+      return '$total splits, Room Temp: $temp';
+    } else if (r.testName == 'Accuracy Test') {
+      String s = 'Mean Radius: ${r.accMeanRadius} mm, X: ${r.accMeanX}, Y: ${r.accMeanY}';
+      if ((double.tryParse(r.accLargestDistance) ?? 0) > 0) {
+        s += ', Largest Dist: ${r.accLargestDistance} mm';
+      }
+      return s;
+    } else if (r.testName == 'EPVAT test') {
+      return 'P1: ${r.epvatMeanPressure} ${r.epvatPressureUnit}, Vel: ${r.velMean} m/s, Temp: ${r.cartridgeTemp} °C';
+    } else if (r.testName == 'Extraction Force Test') {
+      return 'Mean: ${r.accMeanX} N, Min: ${r.accMinX} N';
+    } else if (r.testName == 'Function Test') {
+      return '${r.defects} defects (L1:${r.functionLevel1}, L2:${r.functionLevel2}, L3:${r.functionLevel3}, L4:${r.functionLevel4})';
+    } else if (r.testName == 'Firing Rate Cycle Test') {
+      return '${r.cyclicRateValue} RPM (${r.cyclicRateWeaponType})';
+    } else if (r.testName == 'Terminal Effect Test') {
+      return 'Dist: ${r.velocityDistance}m, Hole: ${r.terminalHoleDiameter}';
+    }
+    return r.notes;
+  }
+
   static String generateCsv(List<BallisticRecord> records, String testName, String moduleName) {
     final buffer = StringBuffer();
     final lotHeader = moduleName == 'Daily Test' ? 'Hopper No. / Production Date' : 'Lot No';
@@ -132,10 +160,11 @@ class ReportGenerator {
         buffer.writeln(row);
       }
     } else {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Test Name,Result,Qty,Key Metrics,Remarks');
       for (var r in records) {
+        final metrics = _getRecordMetricsSummary(r);
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced, r.notes
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.testName, r.status, r.produced, metrics, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -744,6 +773,12 @@ class ReportGenerator {
       ''');
     } else {
       buffer.writeln('''
+        <th>Test Name</th>
+        <th>Time</th>
+        <th>Inspector</th>
+        <th>Sample Size</th>
+        <th>Key Results / Metrics</th>
+        <th>Status</th>
         <th>Remarks</th>
       ''');
     }
@@ -835,6 +870,11 @@ class ReportGenerator {
               <td>${r.velRange}</td>
               <td>${r.velSD}</td>
             </tr>
+            ${(double.tryParse(r.accLargestDistance) ?? 0) > 0 ? '''
+            <tr>
+              <td style="font-weight: bold;">Largest Distance (mm)</td>
+              <td colspan="5" style="font-weight: bold; color: #0284c7;">${r.accLargestDistance} mm</td>
+            </tr>''' : ''}
           ''');
         }
       } else if (testName == 'Extraction Force Test') {
@@ -1019,9 +1059,19 @@ class ReportGenerator {
           ''');
         }
       } else {
-        buffer.writeln('<tr>');
-        buffer.writeln('<td>${r.notes}</td>');
-        buffer.writeln('</tr>');
+        final metrics = _getRecordMetricsSummary(r);
+        final badgeClass = 'badge-${r.status.toLowerCase().replaceAll(' ', '-')}';
+        buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold; color: #0284c7;">${r.testName}</td>
+            <td>${r.timestamp}</td>
+            <td>${r.operators}</td>
+            <td>${r.produced} rounds</td>
+            <td>$metrics</td>
+            <td><span class="badge $badgeClass">${r.status}</span></td>
+            <td>${r.notes}</td>
+          </tr>
+        ''');
       }
     }
 
@@ -1440,7 +1490,7 @@ class ReportGenerator {
   <table class="data-table">
     <thead>
       <tr>
-        ${testName == 'Waterproof Test' ? '<th>Mouth Leaks (S/F)</th><th>Primer Leaks (S/F)</th>' : (testName == 'Residual Stress Test' ? '<th>Neck Splits (Min/Maj)</th><th>Shoulder Splits (Min/Maj)</th><th>Body Splits (Min/Maj)</th><th>Head Splits (Min/Maj)</th><th>Total Splits</th>' : (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test' ? '<th>Coordinate / Parameter</th><th>Mean</th><th>Max</th><th>Min</th><th>Range</th><th>SD</th>' : (testName == 'Firing Rate Cycle Test' ? '<th>Weapon Model</th><th>Category</th><th>Min RPM</th><th>Max RPM</th><th>Measured RPM</th>' : (testName == 'Terminal Effect Test' ? '<th colspan="6">Terminal Effect Test Metrics</th>' : (testName == 'Function Test' ? '<th>Tested Qty</th><th>Level 1 (Critical)</th><th>Level 2 (Major)</th><th>Level 3 (Minor)</th><th>Level 4</th><th>Total Defects</th>' : '<th>Remarks</th>')))))}
+        ${testName == 'Waterproof Test' ? '<th>Mouth Leaks (S/F)</th><th>Primer Leaks (S/F)</th>' : (testName == 'Residual Stress Test' ? '<th>Neck Splits (Min/Maj)</th><th>Shoulder Splits (Min/Maj)</th><th>Body Splits (Min/Maj)</th><th>Head Splits (Min/Maj)</th><th>Total Splits</th>' : (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test' ? '<th>Coordinate / Parameter</th><th>Mean</th><th>Max</th><th>Min</th><th>Range</th><th>SD</th>' : (testName == 'Firing Rate Cycle Test' ? '<th>Weapon Model</th><th>Category</th><th>Min RPM</th><th>Max RPM</th><th>Measured RPM</th>' : (testName == 'Terminal Effect Test' ? '<th colspan="6">Terminal Effect Test Metrics</th>' : (testName == 'Function Test' ? '<th>Tested Qty</th><th>Level 1 (Critical)</th><th>Level 2 (Major)</th><th>Level 3 (Minor)</th><th>Level 4</th><th>Total Defects</th>' : '<th>Test Name</th><th>Time</th><th>Inspector</th><th>Sample Size</th><th>Key Results / Metrics</th><th>Status</th><th>Remarks</th>')))))}
       </tr>
     </thead>
     <tbody>
@@ -1526,6 +1576,11 @@ class ReportGenerator {
               <td>${r.velRange}</td>
               <td>${r.velSD}</td>
             </tr>
+            ${(double.tryParse(r.accLargestDistance) ?? 0) > 0 ? '''
+            <tr>
+              <td style="font-weight: bold;">Largest Distance (mm)</td>
+              <td colspan="5" style="font-weight: bold; color: #0284c7;">${r.accLargestDistance} mm</td>
+            </tr>''' : ''}
           ''');
         }
       } else if (testName == 'Extraction Force Test') {
@@ -1710,9 +1765,19 @@ class ReportGenerator {
           ''');
         }
       } else {
-        buffer.writeln('<tr>');
-        buffer.writeln('<td>${r.notes}</td>');
-        buffer.writeln('</tr>');
+        final metrics = _getRecordMetricsSummary(r);
+        final badgeClass = 'badge-${r.status.toLowerCase().replaceAll(' ', '-')}';
+        buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold; color: #0284c7;">${r.testName}</td>
+            <td>${r.timestamp}</td>
+            <td>${r.operators}</td>
+            <td>${r.produced} rounds</td>
+            <td>$metrics</td>
+            <td><span class="badge $badgeClass">${r.status}</span></td>
+            <td>${r.notes}</td>
+          </tr>
+        ''');
       }
     }
 
