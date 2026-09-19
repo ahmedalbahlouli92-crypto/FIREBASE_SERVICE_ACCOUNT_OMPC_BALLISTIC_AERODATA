@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build:web": "puro flutter build web --release",
-    "deploy:web": "firebase deploy --only hosting"
+    "deploy:web": "node scripts/deploy_firebase.js"
   },
   "dependencies": {
     "localtunnel": "^2.0.2"
