@@ -29,14 +29,14 @@ class OmpcBallisticAeroDataApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF081B30),
+        scaffoldBackgroundColor: const Color(0xFFE2F1F8),
         primaryColor: const Color(0xFF0284C7),
         fontFamily: 'Outfit',
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF0284C7),
           secondary: Color(0xFF38BDF8),
-          background: Color(0xFF081B30),
-          surface: Color(0xFF0F253E),
+          background: Color(0xFFE2F1F8),
+          surface: Color(0xFF0C243C),
         ),
       ),
       home: const MainShell(),
@@ -2131,48 +2131,72 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildAccessPortal() {
     return Scaffold(
-      backgroundColor: const Color(0xFF090C15),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 450.0),
-            padding: const EdgeInsets.all(32.0),
-            margin: const EdgeInsets.symmetric(horizontal: 20.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF111524),
-              borderRadius: BorderRadius.circular(16.0),
-              border: Border.all(color: Colors.white.withOpacity(0.06)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 30.0,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Image.asset(
-                  'assets/logo.png',
-                  height: 165.0,
-                  width: 285.0,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 48.0),
-                const Text(
-                  'OMPC BALLISTIC',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22.0,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 1.0,
+      backgroundColor: const Color(0xFFE2F1F8),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFE6F4FA),
+              Color(0xFFD4EDF8),
+              Color(0xFFC0E2F4),
+            ],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 450.0),
+              padding: const EdgeInsets.all(32.0),
+              margin: const EdgeInsets.symmetric(horizontal: 20.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C243C),
+                borderRadius: BorderRadius.circular(20.0),
+                border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.35), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0284C7).withOpacity(0.22),
+                    blurRadius: 36.0,
+                    offset: const Offset(0, 14),
                   ),
-                ),
-                const Text(
-                  'AERODATA PORTAL',
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+                      ),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        height: 95.0,
+                        width: 95.0,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24.0),
+                  const Text(
+                    'OMPC BALLISTIC',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22.0,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const Text(
+                    'AERODATA PORTAL',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 11.0,
@@ -2272,8 +2296,9 @@ class _MainShellState extends State<MainShell> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // 4. CONTROL PANEL TAB WIDGET
   Widget _buildControlPanelTab() {
@@ -5318,8 +5343,8 @@ class _MainShellState extends State<MainShell> {
                 Container(
                   width: 250.0,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF061527),
-                    border: Border(right: BorderSide(color: const Color(0xFF0284C7).withOpacity(0.2))),
+                    color: const Color(0xFF0A2239),
+                    border: Border(right: BorderSide(color: const Color(0xFF0284C7).withOpacity(0.25))),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
                   child: Column(
@@ -5331,13 +5356,21 @@ class _MainShellState extends State<MainShell> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Image.asset(
-                              'assets/logo.png',
-                              height: 99.0,
-                              width: 171.0,
-                              fit: BoxFit.contain,
+                            Container(
+                              padding: const EdgeInsets.all(10.0),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+                              ),
+                              child: Image.asset(
+                                'assets/logo.png',
+                                height: 52.0,
+                                width: 52.0,
+                                fit: BoxFit.contain,
+                              ),
                             ),
-                            const SizedBox(height: 24.0),
+                            const SizedBox(height: 14.0),
                             const Text(
                               'OMPC BALLISTIC',
                               textAlign: TextAlign.center,
@@ -5475,9 +5508,22 @@ class _MainShellState extends State<MainShell> {
 
                 // ACTIVE SCREEN PANEL
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: mainContent,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFFE2F1F8),
+                          Color(0xFFD4EDF8),
+                          Color(0xFFC7E7F6),
+                        ],
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: mainContent,
+                    ),
                   ),
                 ),
               ],

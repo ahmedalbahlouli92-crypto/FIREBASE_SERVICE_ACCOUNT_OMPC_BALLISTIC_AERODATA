@@ -1,8 +1,11 @@
 $stagingDir = Join-Path $env:TEMP "OMPC_Portable_Build_$(Get-Random)"
 $destDesktopFolder = 'C:\Users\user\Desktop\OMPC_Ballistic_AeroData_Portable'
 $zipPath = 'C:\Users\user\Desktop\OMPC_Ballistic_AeroData_Portable.zip'
+$setupExePath = 'C:\Users\user\Desktop\OMPC_Ballistic_AeroData_Setup.exe'
 $cscPath = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $webBundleZip = 'scripts\web_bundle.zip'
+$setupPayloadZip = 'scripts\setup_payload.zip'
+$appIconPath = 'windows\runner\resources\app_icon.ico'
 
 try {
     Write-Host "Stopping any running OMPC instances..."
@@ -15,8 +18,18 @@ try {
     }
     Compress-Archive -Path "build\web\*" -DestinationPath $webBundleZip -CompressionLevel Optimal -Force
 
-    Write-Host "2. Compiling self-contained executable with embedded web resource..."
-    & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
+    Write-Host "2. Compiling self-contained executable with embedded web resource and icon..."
+    $iconArg = ""
+    if (Test-Path $appIconPath) {
+        $iconArg = "/win32icon:$appIconPath"
+    }
+
+    if ($iconArg -ne "") {
+        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
+    } else {
+        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
+    }
+
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to compile OMPC_Ballistic_AeroData.exe"
     }
@@ -28,6 +41,9 @@ try {
     New-Item -ItemType Directory -Path "$stagingDir\build\web" -Force | Out-Null
     Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "$stagingDir\OMPC_Ballistic_AeroData.exe" -Force
     Copy-Item -Recurse "build\web\*" -Destination "$stagingDir\build\web" -Force
+    if (Test-Path $appIconPath) {
+        Copy-Item $appIconPath -Destination "$stagingDir\app_icon.ico" -Force
+    }
 
     if (Test-Path $zipPath) {
         Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
@@ -37,16 +53,41 @@ try {
     Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
     Get-Item $zipPath | Select-Object Name, Length, LastWriteTime
 
-    # Also update the extracted desktop folder and Desktop shortcut
+    # Update extracted desktop folder and standalone executable on Desktop
     try {
         New-Item -ItemType Directory -Path "$destDesktopFolder\build\web" -Force -ErrorAction SilentlyContinue | Out-Null
         Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "$destDesktopFolder\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
         Copy-Item -Recurse "build\web\*" -Destination "$destDesktopFolder\build\web" -Force -ErrorAction SilentlyContinue
         Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "C:\Users\user\Desktop\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
     } catch {
-        Write-Host "Note: Extracted desktop folder partially locked by active session; zip created cleanly."
+        Write-Host "Note: Desktop folder partially locked by active session; files updated where possible."
     }
-    Write-Host "Successfully packaged self-contained portable distribution!"
+
+    Write-Host "5. Compiling 1-Click Setup Installer: $setupExePath..."
+    if (Test-Path $setupPayloadZip) {
+        Remove-Item -Force $setupPayloadZip -ErrorAction SilentlyContinue
+    }
+    Compress-Archive -Path "$stagingDir\*" -DestinationPath $setupPayloadZip -CompressionLevel Optimal -Force
+
+    $localInstaller = 'OMPC_Ballistic_AeroData_Setup.exe'
+    if ($iconArg -ne "") {
+        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$setupPayloadZip" /out:$localInstaller scripts\installer.cs
+    } else {
+        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$setupPayloadZip" /out:$localInstaller scripts\installer.cs
+    }
+
+    if ($LASTEXITCODE -eq 0 -and (Test-Path $localInstaller)) {
+        Copy-Item $localInstaller -Destination $setupExePath -Force -ErrorAction SilentlyContinue
+        Get-Item $setupExePath | Select-Object Name, Length, LastWriteTime
+        Write-Host "Successfully compiled 1-Click Setup Installer!"
+    } else {
+        Write-Warning "Setup installer compilation failed or exited with errors."
+    }
+
+    Write-Host "`nSUCCESS! Build Outputs Available on your Desktop:"
+    Write-Host "  1. Setup Installer:  C:\Users\user\Desktop\OMPC_Ballistic_AeroData_Setup.exe"
+    Write-Host "  2. Portable App:     C:\Users\user\Desktop\OMPC_Ballistic_AeroData.exe"
+    Write-Host "  3. Portable Zip:     C:\Users\user\Desktop\OMPC_Ballistic_AeroData_Portable.zip"
 } finally {
     if (Test-Path $stagingDir) {
         Remove-Item -Recurse -Force $stagingDir -ErrorAction SilentlyContinue
@@ -54,5 +95,7 @@ try {
     if (Test-Path $webBundleZip) {
         Remove-Item -Force $webBundleZip -ErrorAction SilentlyContinue
     }
+    if (Test-Path $setupPayloadZip) {
+        Remove-Item -Force $setupPayloadZip -ErrorAction SilentlyContinue
+    }
 }
-

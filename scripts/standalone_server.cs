@@ -99,11 +99,28 @@ namespace OmpcBallisticAeroData
             Thread serverThread = new Thread(ListenLoop);
             serverThread.IsBackground = true;
             serverThread.Start();
+            Thread.Sleep(150); // Ensure listener is ready to serve first request
 
             // Launch browser in dedicated app mode with isolated profile
             string appUrl = "http://127.0.0.1:" + _port + "/";
             string userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OMPC_Ballistic_AeroData", "browser_profile");
-            try { Directory.CreateDirectory(userDataDir); } catch { }
+            try 
+            { 
+                Directory.CreateDirectory(userDataDir); 
+                string firstRunFile = Path.Combine(userDataDir, "First Run");
+                if (!File.Exists(firstRunFile))
+                {
+                    File.WriteAllText(firstRunFile, "");
+                }
+                string defaultDir = Path.Combine(userDataDir, "Default");
+                Directory.CreateDirectory(defaultDir);
+                string prefFile = Path.Combine(defaultDir, "Preferences");
+                if (!File.Exists(prefFile))
+                {
+                    File.WriteAllText(prefFile, "{\"browser\":{\"has_seen_welcome_page\":true,\"check_default_browser\":false},\"profile\":{\"exit_type\":\"Normal\",\"exited_cleanly\":true}}");
+                }
+            } 
+            catch { }
 
             string edgePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
@@ -132,10 +149,27 @@ namespace OmpcBallisticAeroData
             {
                 try
                 {
+                    string browserArgs = string.Format(
+                        "--app={0} " +
+                        "--user-data-dir=\"{1}\" " +
+                        "--window-size=1520,950 " +
+                        "--new-window " +
+                        "--no-first-run " +
+                        "--no-default-browser-check " +
+                        "--disable-first-run-ui " +
+                        "--disable-features=msEdgeSidebarV2,msHub,msHubEdgeShopping,Translate,OptimizationHints,MediaRouter " +
+                        "--disable-extensions " +
+                        "--disable-background-networking " +
+                        "--disable-sync " +
+                        "--disable-default-apps " +
+                        "--app-id=OMPC_Ballistic_AeroData " +
+                        "--class=OMPC_Ballistic_AeroData",
+                        appUrl, userDataDir);
+
                     ProcessStartInfo psi = new ProcessStartInfo
                     {
                         FileName = browserExe,
-                        Arguments = "--app=" + appUrl + " --user-data-dir=\"" + userDataDir + "\" --window-size=1520,950",
+                        Arguments = browserArgs,
                         UseShellExecute = false
                     };
                     _browserProcess = Process.Start(psi);

@@ -242,7 +242,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       style: const TextStyle(
                         fontSize: 26.0,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Color(0xFF0F172A),
                         letterSpacing: -0.5,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -253,7 +253,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       'Real-time statistics for ballistic quality evaluations',
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: Color(0xFF8E96A3),
+                        color: Color(0xFF475569),
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,

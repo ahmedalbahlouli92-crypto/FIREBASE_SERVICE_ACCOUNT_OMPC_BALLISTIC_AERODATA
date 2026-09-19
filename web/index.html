@@ -29,8 +29,89 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>ompc_ballistic_aerodata</title>
+  <title>OMPC Ballistic AeroData</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #E2F1F8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    #ompc-app-splash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #E2F1F8;
+      z-index: 99999;
+      transition: opacity 0.35s ease-out;
+    }
+    .splash-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 44px;
+      background: rgba(14, 34, 61, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+    .splash-logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5));
+    }
+    .splash-title {
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: #eaf2fc;
+      margin-bottom: 6px;
+    }
+    .splash-subtitle {
+      font-size: 13px;
+      font-weight: 400;
+      color: #7aa5d2;
+      letter-spacing: 0.5px;
+      margin-bottom: 24px;
+    }
+    .splash-progress-track {
+      width: 190px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .splash-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #00b4d8, #0077b6);
+      border-radius: 4px;
+      animation: splashSlide 1.2s infinite ease-in-out;
+    }
+    @keyframes splashSlide {
+      0% { left: -40%; width: 40%; }
+      50% { width: 60%; }
+      100% { left: 100%; width: 30%; }
+    }
+  </style>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -43,14 +124,27 @@
   </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="ompc-app-splash">
+    <div class="splash-card">
+      <img class="splash-logo" src="icons/Icon-192.png" alt="Flutter Logo">
+      <div class="splash-title">OMPC Ballistic AeroData</div>
+      <div class="splash-subtitle">Initializing Application...</div>
+      <div class="splash-progress-track">
+        <div class="splash-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function() {
+      var splash = document.getElementById('ompc-app-splash');
+      if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(function() {
+          if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+        }, 350);
+      }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -1978,7 +1978,7 @@ class _EntryTabState extends State<EntryTab> {
                         style: TextStyle(
                           fontSize: 26.0,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Color(0xFF0F172A),
                           letterSpacing: -0.5,
                         ),
                       ),
@@ -1987,7 +1987,7 @@ class _EntryTabState extends State<EntryTab> {
                         'Log fresh ballistic trial, lot tolerances, and mechanical parameters',
                         style: TextStyle(
                           fontSize: 13.5,
-                          color: Color(0xFF8E96A3),
+                          color: Color(0xFF475569),
                         ),
                       ),
                     ],
