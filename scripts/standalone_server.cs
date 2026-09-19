@@ -101,8 +101,24 @@ namespace OmpcBallisticAeroData
             serverThread.Start();
             Thread.Sleep(150); // Ensure listener is ready to serve first request
 
-            // Launch browser in dedicated app mode with isolated profile
+            // Auto-update support: If connected to the internet, launch the live production web app directly
+            // so every user automatically receives updates the instant they are published without stopping or reinstalling.
+            // If offline, seamlessly fall back to the built-in embedded server.
             string appUrl = "http://127.0.0.1:" + _port + "/";
+            try
+            {
+                HttpWebRequest onlineCheck = (HttpWebRequest)WebRequest.Create("https://ompc-ballistic-aerodata.web.app/");
+                onlineCheck.Timeout = 1200;
+                onlineCheck.Method = "HEAD";
+                using (HttpWebResponse res = (HttpWebResponse)onlineCheck.GetResponse())
+                {
+                    if (res.StatusCode == HttpStatusCode.OK)
+                    {
+                        appUrl = "https://ompc-ballistic-aerodata.web.app/";
+                    }
+                }
+            }
+            catch { }
             string userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OMPC_Ballistic_AeroData", "browser_profile");
             try 
             { 

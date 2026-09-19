@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
@@ -768,6 +769,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   final StorageService _storageService = StorageService();
+  Timer? _autoSyncTimer;
   
   Map<String, dynamic> _adminRules = {};
   String _selectedRuleTest = 'Waterproof Test';
@@ -934,6 +936,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    _autoSyncTimer?.cancel();
     _passwordController.dispose();
     _opEmailController.dispose();
     _opPasswordController.dispose();
@@ -1203,6 +1206,25 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _loadInitialData();
+    // Live background data sync across all users without stopping or refreshing the app
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) _syncRecordsSilently();
+    });
+  }
+
+  Future<void> _syncRecordsSilently() async {
+    try {
+      final recordsList = await _storageService.loadRecords(module: 'Lot Acceptance Test');
+      final dailyList = await _storageService.loadRecords(module: 'Daily Test');
+      if (mounted) {
+        if (_records.length != recordsList.length || _dailyTestRecords.length != dailyList.length) {
+          setState(() {
+            _records = recordsList;
+            _dailyTestRecords = dailyList;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadInitialData() async {
