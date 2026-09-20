@@ -253,7 +253,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       style: const TextStyle(
                         fontSize: 26.0,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                        color: Colors.white,
                         letterSpacing: -0.5,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -264,7 +264,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       'Real-time statistics for ballistic quality evaluations',
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: Color(0xFF475569),
+                        color: Color(0xFF94A3B8),
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -310,14 +310,14 @@ class _DashboardTabState extends State<DashboardTab> {
           Container(
             padding: const EdgeInsets.all(4.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF132B45),
               borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
-              boxShadow: [
+              border: Border.all(color: const Color(0xFF1E3A8A)),
+              boxShadow: const [
                 BoxShadow(
-                  color: const Color(0xFF0284C7).withOpacity(0.04),
+                  color: Color(0x20000000),
                   blurRadius: 10.0,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
@@ -338,14 +338,14 @@ class _DashboardTabState extends State<DashboardTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF132B45),
                 borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: const Color(0xFFBAE6FD)),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Select Test Type to Inspect:', style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                  const Text('Select Test Type to Inspect:', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8.0),
                   Wrap(
                     spacing: 8.0,
@@ -365,9 +365,9 @@ class _DashboardTabState extends State<DashboardTab> {
                         selected: isSelected,
                         onSelected: (_) => setState(() => _selectedTestName = t),
                         selectedColor: const Color(0xFF0284C7),
-                        backgroundColor: const Color(0xFFF0F9FF),
+                        backgroundColor: const Color(0xFF0D1E33),
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF334155),
+                          color: isSelected ? Colors.white : const Color(0xFF94A3B8),
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           fontSize: 12.0,
                         ),
@@ -385,14 +385,14 @@ class _DashboardTabState extends State<DashboardTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF132B45),
                 borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: const Color(0xFFBAE6FD)),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Select Caliber Specification to Inspect:', style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                  const Text('Select Caliber Specification to Inspect:', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8.0),
                   Wrap(
                     spacing: 8.0,
@@ -404,9 +404,9 @@ class _DashboardTabState extends State<DashboardTab> {
                         selected: isSelected,
                         onSelected: (_) => setState(() => _selectedCaliber = c),
                         selectedColor: const Color(0xFF0284C7),
-                        backgroundColor: const Color(0xFFF0F9FF),
+                        backgroundColor: const Color(0xFF0D1E33),
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF334155),
+                          color: isSelected ? Colors.white : const Color(0xFF94A3B8),
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           fontSize: 12.0,
                         ),
@@ -423,14 +423,14 @@ class _DashboardTabState extends State<DashboardTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF132B45),
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
-              boxShadow: [
+              border: Border.all(color: const Color(0xFF1E3A8A)),
+              boxShadow: const [
                 BoxShadow(
-                  color: const Color(0xFF0284C7).withOpacity(0.04),
+                  color: Color(0x20000000),
                   blurRadius: 10.0,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
@@ -466,7 +466,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       const Text(
                         'DATE RANGE',
                         style: TextStyle(
-                          color: Color(0xFF0284C7),
+                          color: Color(0xFF38BDF8),
                           fontSize: 11.0,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
@@ -486,14 +486,14 @@ class _DashboardTabState extends State<DashboardTab> {
                             lastDate: DateTime(2035),
                             initialDateRange: initialRange,
                             builder: (context, child) => Theme(
-                              data: ThemeData.light().copyWith(
-                                colorScheme: const ColorScheme.light(
+                              data: ThemeData.dark().copyWith(
+                                colorScheme: const ColorScheme.dark(
                                   primary: Color(0xFF0284C7),
                                   onPrimary: Colors.white,
-                                  surface: Colors.white,
-                                  onSurface: Color(0xFF0F172A),
+                                  surface: Color(0xFF132B45),
+                                  onSurface: Colors.white,
                                 ),
-                                dialogBackgroundColor: Colors.white,
+                                dialogBackgroundColor: const Color(0xFF132B45),
                               ),
                               child: child!,
                             ),
@@ -506,20 +506,20 @@ class _DashboardTabState extends State<DashboardTab> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 9.5),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0F9FF),
+                            color: const Color(0xFF0D1E33),
                             borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: const Color(0xFFBAE6FD)),
+                            border: Border.all(color: const Color(0xFF1E3A8A)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.date_range, size: 16.0, color: Color(0xFF0284C7)),
+                              const Icon(Icons.date_range, size: 16.0, color: Color(0xFF38BDF8)),
                               const SizedBox(width: 8.0),
                               Text(
                                 _customDateRange != null
                                     ? '${_formatDate(_customDateRange!.start)} to ${_formatDate(_customDateRange!.end)}'
                                     : 'Select Dates',
-                                style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.w500),
+                                style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
@@ -685,14 +685,14 @@ class _DashboardTabState extends State<DashboardTab> {
             height: 460.0,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF132B45),
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
-              boxShadow: [
+              border: Border.all(color: const Color(0xFF1E3A8A)),
+              boxShadow: const [
                 BoxShadow(
-                  color: const Color(0xFF0284C7).withOpacity(0.04),
+                  color: Color(0x20000000),
                   blurRadius: 16.0,
-                  offset: const Offset(0, 4),
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -706,14 +706,14 @@ class _DashboardTabState extends State<DashboardTab> {
             height: 380.0,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF132B45),
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
-              boxShadow: [
+              border: Border.all(color: const Color(0xFF1E3A8A)),
+              boxShadow: const [
                 BoxShadow(
-                  color: const Color(0xFF0284C7).withOpacity(0.04),
+                  color: Color(0x20000000),
                   blurRadius: 16.0,
-                  offset: const Offset(0, 4),
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -724,14 +724,14 @@ class _DashboardTabState extends State<DashboardTab> {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF132B45),
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
-              boxShadow: [
+              border: Border.all(color: const Color(0xFF1E3A8A)),
+              boxShadow: const [
                 BoxShadow(
-                  color: const Color(0xFF0284C7).withOpacity(0.04),
+                  color: Color(0x20000000),
                   blurRadius: 16.0,
-                  offset: const Offset(0, 4),
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -751,7 +751,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           style: const TextStyle(
                             fontSize: 16.0,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
+                            color: Colors.white,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -763,7 +763,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         child: const Text(
                           'View All Logs →',
                           style: TextStyle(
-                            color: Color(0xFF0284C7),
+                            color: Color(0xFF38BDF8),
                             fontWeight: FontWeight.bold,
                             fontSize: 13.0,
                           ),
@@ -772,14 +772,14 @@ class _DashboardTabState extends State<DashboardTab> {
                     ],
                   ),
                 ),
-                const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
+                const Divider(height: 1.0, color: Color(0xFF1E3A8A)),
                 if (recentRecords.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 32.0),
                     child: Center(
                       child: Text(
                         'No test entries matched the current filters.',
-                        style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5),
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
                       ),
                     ),
                   )
@@ -787,49 +787,49 @@ class _DashboardTabState extends State<DashboardTab> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                      headingRowColor: WidgetStateProperty.all(const Color(0xFF0D1E33)),
                       columns: [
-                        const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('INSPECTORS', style: TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('INSPECTORS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                         DataColumn(
                           label: Text(
                             widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PRODUCTION DATE' : 'LOT',
-                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
                           ),
                         ),
-                        const DataColumn(label: Text('TESTED', style: TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('DEFECTS', style: TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('TESTED', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('DEFECTS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                       ],
                       rows: recentRecords.map((r) {
                         return DataRow(
                           cells: [
-                            DataCell(Text(r.timestamp.split(' ').length > 1 ? r.timestamp.split(' ')[1] : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF64748B)))),
-                            DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0F172A)))),
-                            DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF334155)))),
+                            DataCell(Text(r.timestamp.split(' ').length > 1 ? r.timestamp.split(' ')[1] : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF94A3B8)))),
+                            DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.white))),
+                            DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8)))),
                             DataCell(
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE0F2FE),
+                                  color: const Color(0xFF0D1E33),
                                   borderRadius: BorderRadius.circular(4.0),
-                                  border: Border.all(color: const Color(0xFFBAE6FD)),
+                                  border: Border.all(color: const Color(0xFF1E3A8A)),
                                 ),
                                 child: Text(
                                   r.caliber.replaceAll(' NATO', '').replaceAll(' Parabellum', ''),
-                                  style: const TextStyle(color: Color(0xFF0369A1), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(color: Color(0xFF38BDF8), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ),
-                            DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A)))),
-                            DataCell(Text(r.produced.toString(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)))),
+                            DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Colors.white))),
+                            DataCell(Text(r.produced.toString(), style: const TextStyle(fontSize: 12.5, color: Colors.white))),
                             DataCell(
                               Text(
                                 r.defects.toString(),
                                 style: TextStyle(
-                                  color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
+                                  color: r.defects > 0 ? const Color(0xFFEF4444) : Colors.white,
                                   fontWeight: r.defects > 0 ? FontWeight.bold : FontWeight.normal,
                                   fontSize: 12.5,
                                 ),
@@ -896,23 +896,23 @@ class _DashboardTabState extends State<DashboardTab> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.0, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6.0),
         Container(
           width: 200.0,
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: const Color(0xFF0D1E33),
             borderRadius: BorderRadius.circular(8.0),
-            border: Border.all(color: const Color(0xFFBAE6FD)),
+            border: Border.all(color: const Color(0xFF1E3A8A)),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: safeValue,
               isExpanded: true,
-              dropdownColor: Colors.white,
-              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w500),
+              dropdownColor: const Color(0xFF132B45),
+              style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
               items: items.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -940,14 +940,14 @@ class _DashboardTabState extends State<DashboardTab> {
       width: width,
       height: 96.0,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF132B45),
         borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: const Color(0xFFBAE6FD)),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFF1E3A8A)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF0284C7).withOpacity(0.04),
+            color: Color(0x20000000),
             blurRadius: 10.0,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -979,7 +979,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           style: const TextStyle(
                             fontSize: 10.0,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF64748B),
+                            color: Color(0xFF94A3B8),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -991,7 +991,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           style: TextStyle(
                             fontSize: 20.0,
                             fontWeight: FontWeight.bold,
-                            color: valueColor ?? const Color(0xFF0F172A),
+                            color: valueColor ?? Colors.white,
                             letterSpacing: -0.5,
                           ),
                         ),
@@ -1002,7 +1002,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 9.5,
-                            color: Color(0xFF64748B),
+                            color: Color(0xFF94A3B8),
                           ),
                         ),
                       ],
@@ -1028,14 +1028,14 @@ class _DashboardTabState extends State<DashboardTab> {
       height: 310.0,
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF132B45),
         borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFFBAE6FD)),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFF1E3A8A)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF0284C7).withOpacity(0.04),
+            color: Color(0x20000000),
             blurRadius: 12.0,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -1047,7 +1047,7 @@ class _DashboardTabState extends State<DashboardTab> {
             style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 20.0),
@@ -1579,10 +1579,10 @@ class _DashboardTabState extends State<DashboardTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF111524),
+          backgroundColor: const Color(0xFF132B45),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14.0),
-            side: BorderSide(color: const Color(0xFFEF4444).withOpacity(0.3)),
+            side: const BorderSide(color: Color(0xFF1E3A8A)),
           ),
           title: Row(
             children: const [
@@ -1701,10 +1701,10 @@ class _DashboardTabState extends State<DashboardTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF111524),
+          backgroundColor: const Color(0xFF132B45),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14.0),
-            side: BorderSide(color: Colors.white.withOpacity(0.1)),
+            side: const BorderSide(color: Color(0xFF1E3A8A)),
           ),
           title: Row(
             children: const [
@@ -1907,10 +1907,10 @@ class _DashboardTabState extends State<DashboardTab> {
                                     colorScheme: const ColorScheme.dark(
                                       primary: Color(0xFF10B981),
                                       onPrimary: Colors.white,
-                                      surface: Color(0xFF111524),
+                                      surface: Color(0xFF132B45),
                                       onSurface: Colors.white,
                                     ),
-                                    dialogBackgroundColor: const Color(0xFF111524),
+                                    dialogBackgroundColor: const Color(0xFF132B45),
                                   ),
                                   child: child!,
                                 ),
@@ -1922,9 +1922,9 @@ class _DashboardTabState extends State<DashboardTab> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0F172A),
+                                color: const Color(0xFF0D1E33),
                                 borderRadius: BorderRadius.circular(6.0),
-                                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.5)),
+                                border: Border.all(color: const Color(0xFF1E3A8A)),
                               ),
                               child: Row(
                                 children: [

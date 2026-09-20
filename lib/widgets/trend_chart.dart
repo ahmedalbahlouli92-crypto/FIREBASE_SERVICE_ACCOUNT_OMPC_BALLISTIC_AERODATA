@@ -424,7 +424,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: safeValue,
-              dropdownColor: const Color(0xFF111524),
+              dropdownColor: const Color(0xFF132B45),
               style: const TextStyle(color: Colors.white, fontSize: 12.5),
               isDense: true,
               items: items

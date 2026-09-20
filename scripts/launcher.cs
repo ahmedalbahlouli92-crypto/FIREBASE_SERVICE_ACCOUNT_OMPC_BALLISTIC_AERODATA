@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -56,7 +56,7 @@ namespace OmpcBallisticAeroData
                 ProcessStartInfo appInfo = new ProcessStartInfo
                 {
                     FileName = edgePath,
-                    Arguments = "--app=" + url + " --window-size=1520,950",
+                    Arguments = "--app=" + url + " --start-maximized",
                     UseShellExecute = true
                 };
                 Process.Start(appInfo);

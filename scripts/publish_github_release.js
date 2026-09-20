@@ -19,33 +19,21 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.2.0';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.2.0 (Pure White & Sea Blue Theme, Box Plot & Full Lab Overhaul)';
-const BODY = `## OMPC Ballistic AeroData v1.2.0
+const TAG_NAME = 'v1.3.0';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.0 (65% Dark Sea Blue Modern Theme, Full Screen Launch & Quality Diagnostics)';
+const BODY = `## OMPC Ballistic AeroData v1.3.0
 
 ### Key Updates & Laboratory Enhancements:
-1. **Pure Modern White & Sea Blue Theme**: Zero dark colors anywhere; pristine white surfaces, sea-blue accents (#0284C7), and crisp crystal-clear typography.
-2. **Official OMPC Crest Header**: Restored official OMPC crest in sidebar header, login portal, and reports, while maintaining Flutter origami bird icon for Windows desktop, taskbar, installer, and mobile.
-3. **Live Digital Clock & Welcome Greeting**: Added real-time ticking digital clock and personalized welcome greeting badge in top navigation bar.
-4. **Lot Acceptance KPI & Reporting**: Dedicated KPI counter for unique lots and tests; Lot Acceptance filter selection now shows all associated tests and exports complete lot test batches in CSV, Word, and Print formats.
-5. **Dashboard Box & Whisker Chart**: Added comprehensive Box-Plot analysis (Min, Q1, Median, Q3, Max) across ballistic metrics.
-6. **Accuracy Mean Trend Line**: Calculated (Mean X + Mean Y) / 2 to show a clean single average trend line with smooth area gradient.
-7. **Strict Numeric Inputs**: All numeric and ballistic measurement fields strictly enforce valid numeric values.
-8. **Auto-Generated Waterproof Pressure**: Caliber-aware fixed default pressure (0.14 bar for M82/M200, 0.5 bar for all others).
-9. **Dynamic Sample Size Calculation**: Auto-computes tested rounds based on individual results entered.
-10. **Inspection Log Reorganization**: Split Sample Size into its own dedicated column separate from Key Results.
-11. **Inspection Filters**: Instant filtering by Lot Number and Hopper Number.
-12. **Hopper Number Formatting**: Enforced XXX-YYYY format (3-digit user input with fixed hyphen and editable year).
-13. **Accuracy Largest Distance Metric**: Added Largest distance (mm) tracking and export.
-14. **Cascading Weapon Selection**: Weapon dropdown cascades to Serial Number dropdown with custom 'Other' option, defaulting to Pistol for 9mm.
-15. **Residual Stress Room Temp Validation**: Room Temperature (°C) field with auto-jump validation.
-16. **Sample Location Management**: Dropdown selection with custom location addition capability.
+1. **Modern 65% Dark Sea Blue Theme**: Transformed application surfaces into an executive Oceanic Deep Sea Navy palette (#0A192F page background, #0E223D sidebar/appbar, #132B45 cards and containers, #0D1E33 input fields, and #1E3A8A borders with #38BDF8 sky blue accents and white typography). Pitch black (#111524) completely removed.
+2. **Daily Test Crash Fix**: Resolved uninitialized Hopper Year controller issue in the Daily Test entry tab, ensuring smooth logging without black/broken screens.
+3. **Full Size Screen Launch**: Windows desktop application and standalone browser runtime automatically launch in maximized full-screen mode on startup.
+4. **Welcome Notification on Password Entry**: Instant welcome phrase banner displays directly after entering the password, with Enter key submission enabled on the Access Portal.
+5. **Quality Diagnostics & AI Advisory Overhaul**: Comprehensive styling update across Inspection Logs, Executive Summaries, Date Range Pickers, and Root-Cause Advisories.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
 - **OMPC_Ballistic_AeroData.exe**: Standalone Direct Executable
 - **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package
-- **OMPC_Ballistic_AeroData.apk**: Android Mobile Release
 - **Web App**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
 `;
 

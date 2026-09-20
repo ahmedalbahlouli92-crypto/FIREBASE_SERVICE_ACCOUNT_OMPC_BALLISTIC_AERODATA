@@ -253,21 +253,21 @@ class _HistoryTabState extends State<HistoryTab> {
       context: context,
       builder: (BuildContext ctx) {
         return AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFF132B45),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.0),
-            side: const BorderSide(color: Color(0xFFBAE6FD)),
+            side: const BorderSide(color: Color(0xFF1E3A8A)),
           ),
           title: Row(
             children: const [
               Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
               SizedBox(width: 8.0),
-              Text('Confirm Deletion', style: TextStyle(color: Color(0xFF0F172A), fontSize: 18.0, fontWeight: FontWeight.bold)),
+              Text('Confirm Deletion', style: TextStyle(color: Colors.white, fontSize: 18.0, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Text(
             'Are you sure you want to permanently delete the inspection entry for lot "${record.lotNumber}"?',
-            style: const TextStyle(color: Color(0xFF475569), fontSize: 14.0),
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14.0),
           ),
           actions: [
             TextButton(
@@ -320,20 +320,20 @@ class _HistoryTabState extends State<HistoryTab> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: Colors.white,
+              backgroundColor: const Color(0xFF132B45),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
-                side: const BorderSide(color: Color(0xFFBAE6FD), width: 1.5),
+                side: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
               ),
               title: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0F2FE),
+                      color: const Color(0xFF0D1E33),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    child: const Icon(Icons.edit_note_rounded, color: Color(0xFF0284C7), size: 22.0),
+                    child: const Icon(Icons.edit_note_rounded, color: Color(0xFF38BDF8), size: 22.0),
                   ),
                   const SizedBox(width: 12.0),
                   Expanded(
@@ -342,11 +342,11 @@ class _HistoryTabState extends State<HistoryTab> {
                       children: [
                         const Text(
                           'Edit Inspection Log Entry',
-                          style: TextStyle(fontSize: 17.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                          style: TextStyle(fontSize: 17.0, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         Text(
                           '${r.testName} • ${r.timestamp}',
-                          style: const TextStyle(fontSize: 12.0, color: Color(0xFF0284C7), fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 12.0, color: Color(0xFF38BDF8), fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -570,7 +570,7 @@ class _HistoryTabState extends State<HistoryTab> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF0369A1), fontSize: 11.5, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6.0),
         child,
@@ -587,7 +587,7 @@ class _HistoryTabState extends State<HistoryTab> {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
+      style: const TextStyle(color: Colors.white, fontSize: 13.0),
       decoration: _dialogInputDecoration(),
     );
   }
@@ -595,19 +595,19 @@ class _HistoryTabState extends State<HistoryTab> {
   InputDecoration _dialogInputDecoration() {
     return InputDecoration(
       filled: true,
-      fillColor: const Color(0xFFF8FAFC),
+      fillColor: const Color(0xFF0D1E33),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: const BorderSide(color: Color(0xFFBAE6FD)),
+        borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: const BorderSide(color: Color(0xFFBAE6FD)),
+        borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
       ),
     );
   }
@@ -651,12 +651,12 @@ class _HistoryTabState extends State<HistoryTab> {
             style: TextStyle(
               fontSize: 12.0,
               fontWeight: FontWeight.w600,
-              color: totalLeaks > 0 ? const Color(0xFFDC2626) : const Color(0xFF059669),
+              color: totalLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
             ),
           ),
           Text(
             'Pressure: ${r.pressureBar.isNotEmpty ? r.pressureBar : "0.5"} bar',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
           ),
         ],
       );
@@ -670,13 +670,13 @@ class _HistoryTabState extends State<HistoryTab> {
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
-              color: r.defects > 0 ? const Color(0xFFDC2626) : const Color(0xFF059669),
+              color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
             ),
           ),
           if (r.cyclicRateWeaponType.isNotEmpty)
             Text(
               r.cyclicRateWeaponType,
-              style: const TextStyle(fontSize: 10.5, color: Color(0xFF0284C7)),
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF38BDF8)),
             ),
         ],
       );
@@ -687,12 +687,12 @@ class _HistoryTabState extends State<HistoryTab> {
         children: [
           Text(
             'MR: ${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm | X: ${r.accMeanX} | Y: ${r.accMeanY}',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
           ),
           if ((double.tryParse(r.accLargestDistance) ?? 0) > 0)
             Text(
               'Largest Dist: ${r.accLargestDistance} mm',
-              style: const TextStyle(fontSize: 10.5, color: Color(0xFF0284C7), fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
             ),
         ],
       );
@@ -703,18 +703,18 @@ class _HistoryTabState extends State<HistoryTab> {
         children: [
           Text(
             'P1: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} ${r.epvatPressureUnit}',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
           ),
           Text(
             'Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s | Temp: ${r.cartridgeTemp} °C',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
           ),
         ],
       );
     } else if (r.testName == 'Extraction Force Test') {
       return Text(
         'Mean: ${r.accMeanX.isNotEmpty ? r.accMeanX : "-"} N | Min: ${r.accMinX.isNotEmpty ? r.accMinX : "-"} N',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
       );
     } else if (r.testName == 'Residual Stress Test') {
       final total = r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast;
@@ -723,23 +723,23 @@ class _HistoryTabState extends State<HistoryTab> {
         style: TextStyle(
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
-          color: total > 0 ? const Color(0xFFDC2626) : const Color(0xFF059669),
+          color: total > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
         ),
       );
     } else if (r.testName == 'Firing Rate Cycle Test') {
       return Text(
         'Rate: ${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
       );
     } else if (r.testName == 'Terminal Effect Test') {
       return Text(
         'Dist: ${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"}m | Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
       );
     }
     return Text(
       r.notes.isNotEmpty ? r.notes : '-',
-      style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
+      style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
     );
   }
 
@@ -788,7 +788,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     style: TextStyle(
                       fontSize: 26.0,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
+                      color: Colors.white,
                       letterSpacing: -0.5,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -799,7 +799,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     'Complete catalog of ballistic trials logged today',
                     style: TextStyle(
                       fontSize: 13.5,
-                      color: Color(0xFF475569),
+                      color: Color(0xFF94A3B8),
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -820,9 +820,9 @@ class _HistoryTabState extends State<HistoryTab> {
                     icon: const Icon(Icons.folder_open, size: 16.0),
                     label: const Text('Open Logs Folder'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF0F172A),
-                      side: const BorderSide(color: Color(0xFFBAE6FD)),
+                      backgroundColor: const Color(0xFF132B45),
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xFF1E3A8A)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                     ),
                   ),
@@ -867,11 +867,11 @@ class _HistoryTabState extends State<HistoryTab> {
         Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFF132B45),
             borderRadius: BorderRadius.circular(12.0),
-            border: Border.all(color: const Color(0xFFBAE6FD)),
+            border: Border.all(color: const Color(0xFF1E3A8A)),
             boxShadow: const [
-              BoxShadow(color: Color(0x0A0284C7), blurRadius: 10, offset: Offset(0, 2)),
+              BoxShadow(color: Color(0x20000000), blurRadius: 10, offset: Offset(0, 2)),
             ],
           ),
           child: Column(
@@ -883,21 +883,21 @@ class _HistoryTabState extends State<HistoryTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('SEARCH LOT / HOPPER / INSPECTOR', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                        const Text('SEARCH LOT / HOPPER / INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6.0),
                         TextField(
                           controller: _searchController,
-                          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
+                          style: const TextStyle(color: Colors.white, fontSize: 13.0),
                           decoration: InputDecoration(
                             hintText: 'Type to filter logs...',
-                            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13.0),
-                            prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF0284C7)),
+                            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.0),
+                            prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF38BDF8)),
                             isDense: true,
                             filled: true,
-                            fillColor: const Color(0xFFF8FAFC),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFBAE6FD))),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFBAE6FD))),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5)),
+                            fillColor: const Color(0xFF0D1E33),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
                           ),
                           onChanged: (val) => setState(() {}),
@@ -911,7 +911,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('CALIBER', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                        const Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6.0),
                         _buildDropdown(
                           value: _caliberFilter,
@@ -927,7 +927,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('TEST NAME', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                        const Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6.0),
                         _buildDropdown(
                           value: _testNameFilter,
@@ -946,7 +946,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('LOT NUMBER', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                        const Text('LOT NUMBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6.0),
                         _buildDropdown(
                           value: _lotFilter,
@@ -961,7 +961,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('HOPPER NO.', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                        const Text('HOPPER NO.', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6.0),
                         _buildDropdown(
                           value: _hopperFilter,
@@ -976,7 +976,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('STATUS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                        const Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6.0),
                         _buildDropdown(
                           value: _statusFilter,
@@ -998,18 +998,18 @@ class _HistoryTabState extends State<HistoryTab> {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF132B45),
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
+              border: Border.all(color: const Color(0xFF1E3A8A)),
               boxShadow: const [
-                BoxShadow(color: Color(0x0A0284C7), blurRadius: 10, offset: Offset(0, 2)),
+                BoxShadow(color: Color(0x20000000), blurRadius: 10, offset: Offset(0, 2)),
               ],
             ),
             child: displayRecords.isEmpty
                 ? const Center(
                     child: Text(
                       'No inspection logs match the active filters.',
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5),
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
                     ),
                   )
                 : LayoutBuilder(
@@ -1037,41 +1037,41 @@ class _HistoryTabState extends State<HistoryTab> {
                                 child: DataTable(
                                   columnSpacing: dynamicSpacing,
                                   horizontalMargin: 20.0,
-                                  headingRowColor: MaterialStateProperty.all(const Color(0xFFF0F9FF)),
+                                  headingRowColor: MaterialStateProperty.all(const Color(0xFF0D1E33)),
                                   columns: [
-                                    const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('SHIFT TIME', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('SHIFT TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     DataColumn(
                                       label: Text(
                                         widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PROD DATE' : 'LOT NO. (H/B)',
-                                        style: const TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
                                       ),
                                     ),
-                                    const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('SAMPLE SIZE', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('RESULTS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('SAMPLE SIZE', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('RESULTS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                   ],
                                   rows: displayRecords.map((r) {
                                     return DataRow(
                                       cells: [
-                                        DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF64748B)))),
-                                        DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0F172A)))),
-                                        DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF334155)))),
+                                        DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF94A3B8)))),
+                                        DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.white))),
+                                        DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8)))),
                                         DataCell(
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F5F9),
+                                              color: const Color(0xFF0D1E33),
                                               borderRadius: BorderRadius.circular(4.0),
-                                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                                              border: Border.all(color: const Color(0xFF1E3A8A)),
                                             ),
                                             child: Text(
                                               r.caliber,
-                                              style: const TextStyle(color: Color(0xFF0F172A), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
+                                              style: const TextStyle(color: Colors.white, fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
                                             ),
                                           ),
                                         ),
@@ -1079,13 +1079,13 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFE0F2FE),
+                                              color: const Color(0xFF0E223D),
                                               borderRadius: BorderRadius.circular(4.0),
-                                              border: Border.all(color: const Color(0xFFBAE6FD)),
+                                              border: Border.all(color: const Color(0xFF1E3A8A)),
                                             ),
                                             child: Text(
                                               r.testName,
-                                              style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
                                             ),
                                           ),
                                         ),
@@ -1094,7 +1094,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                             r.hopperNo.isEmpty && r.boxNo.isEmpty
                                                 ? r.lotNo
                                                 : '${r.lotNo} (H:${r.hopperNo}, B:${r.boxNo})',
-                                            style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
+                                            style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w600),
                                           ),
                                         ),
                                         DataCell(_buildStatusBadge(r.status)),
@@ -1102,9 +1102,9 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F5F9),
+                                              color: const Color(0xFF0D1E33),
                                               borderRadius: BorderRadius.circular(6.0),
-                                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                                              border: Border.all(color: const Color(0xFF1E3A8A)),
                                             ),
                                             child: Text(
                                               '${r.produced} rounds',
@@ -1112,7 +1112,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                                 fontFamily: 'JetBrainsMono',
                                                 fontSize: 11.5,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF0F172A),
+                                                color: Colors.white,
                                               ),
                                             ),
                                           ),
@@ -1123,7 +1123,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               IconButton(
-                                                icon: const Icon(Icons.auto_awesome, color: Color(0xFF0284C7), size: 18.0),
+                                                icon: const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 18.0),
                                                 onPressed: () => _showAiAnalysisDialog(r),
                                                 tooltip: 'AI Analysis & Recommendations',
                                                 padding: EdgeInsets.zero,
@@ -1132,7 +1132,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                               const SizedBox(width: 8.0),
                                               if (r.attachmentBase64.isNotEmpty) ...[
                                                 IconButton(
-                                                  icon: const Icon(Icons.attach_file, color: Color(0xFF0EA5E9), size: 18.0),
+                                                  icon: const Icon(Icons.attach_file, color: Color(0xFF38BDF8), size: 18.0),
                                                   onPressed: () => _showAttachmentDialog(r),
                                                   tooltip: 'View Attachment (${r.attachmentName})',
                                                   padding: EdgeInsets.zero,
@@ -1141,7 +1141,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                                 const SizedBox(width: 8.0),
                                               ],
                                               IconButton(
-                                                icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF0284C7), size: 18.0),
+                                                icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF38BDF8), size: 18.0),
                                                 onPressed: () => _showReportGenerationDialog([r], singleRecord: r),
                                                 tooltip: 'Generate Individual Report',
                                                 padding: EdgeInsets.zero,
@@ -1150,7 +1150,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                               if (widget.isAdmin || widget.canEditRecords) ...[
                                                 const SizedBox(width: 8.0),
                                                 IconButton(
-                                                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF0EA5E9), size: 18.0),
+                                                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 18.0),
                                                   onPressed: () => _showEditRecordDialog(r),
                                                   tooltip: 'Edit Entry',
                                                   padding: EdgeInsets.zero,
@@ -1196,23 +1196,23 @@ class _HistoryTabState extends State<HistoryTab> {
       value: value,
       isExpanded: true,
       onChanged: onChanged,
-      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.w500),
-      dropdownColor: Colors.white,
+      style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.w500),
+      dropdownColor: const Color(0xFF132B45),
       decoration: InputDecoration(
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: const Color(0xFF0D1E33),
         contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: const BorderSide(color: Color(0xFFBAE6FD)),
+          borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: const BorderSide(color: Color(0xFFBAE6FD)),
+          borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
         ),
       ),
       items: items.map((String item) {
@@ -1375,10 +1375,10 @@ class _HistoryTabState extends State<HistoryTab> {
             final yieldRate = totalQty > 0 ? (((totalQty - totalDefects) / totalQty) * 100.0) : 100.0;
 
             return Dialog(
-              backgroundColor: Colors.white,
+              backgroundColor: const Color(0xFF132B45),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
-                side: const BorderSide(color: Color(0xFFBAE6FD)),
+                side: const BorderSide(color: Color(0xFF1E3A8A)),
               ),
               insetPadding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
               child: Container(
@@ -1396,24 +1396,24 @@ class _HistoryTabState extends State<HistoryTab> {
                           children: [
                             Text(
                               singleRecord != null ? 'Individual Report Generator' : 'Quality Report Generator',
-                              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 20.0, fontWeight: FontWeight.bold),
+                              style: const TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 4.0),
                             Text(
                               singleRecord != null
                                   ? 'Generate and download quality log sheets for this specific test entry'
                                   : 'Review and download quality log sheets for tests',
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0),
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
                             ),
                           ],
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Color(0xFF64748B)),
+                          icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ],
                     ),
-                    const Divider(color: Color(0xFFBAE6FD), height: 24.0),
+                    const Divider(color: Color(0xFF1E3A8A), height: 24.0),
 
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1426,20 +1426,20 @@ class _HistoryTabState extends State<HistoryTab> {
                                   children: [
                                     const Text(
                                       'INDIVIDUAL TEST RECORD',
-                                      style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 6.0),
                                     Container(
                                       width: double.infinity,
                                       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFE0F2FE),
+                                        color: const Color(0xFF0D1E33),
                                         borderRadius: BorderRadius.circular(8.0),
-                                        border: Border.all(color: const Color(0xFFBAE6FD)),
+                                        border: Border.all(color: const Color(0xFF1E3A8A)),
                                       ),
                                       child: Text(
                                         '${singleRecord.testName} (Lot: ${singleRecord.lotNo})',
-                                        style: const TextStyle(color: Color(0xFF0284C7), fontSize: 13.5, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13.5, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ],
@@ -1449,22 +1449,22 @@ class _HistoryTabState extends State<HistoryTab> {
                                   children: [
                                     const Text(
                                       'SELECT TEST TYPE',
-                                      style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 6.0),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF8FAFC),
+                                        color: const Color(0xFF0D1E33),
                                         borderRadius: BorderRadius.circular(8.0),
-                                        border: Border.all(color: const Color(0xFFBAE6FD)),
+                                        border: Border.all(color: const Color(0xFF1E3A8A)),
                                       ),
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<String>(
                                           value: selectedReportTest,
                                           isExpanded: true,
-                                          dropdownColor: Colors.white,
-                                          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w500),
+                                          dropdownColor: const Color(0xFF132B45),
+                                          style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
                                           items: ['All', ...testNames].map((String value) {
                                             return DropdownMenuItem<String>(
                                               value: value,
@@ -1488,9 +1488,9 @@ class _HistoryTabState extends State<HistoryTab> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF0F9FF),
+                              color: const Color(0xFF0D1E33),
                               borderRadius: BorderRadius.circular(8.0),
-                              border: Border.all(color: const Color(0xFFBAE6FD)),
+                              border: Border.all(color: const Color(0xFF1E3A8A)),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1508,7 +1508,7 @@ class _HistoryTabState extends State<HistoryTab> {
 
                     const Text(
                       'REPORT PREVIEW',
-                      style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.5, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8.0),
 
@@ -1516,9 +1516,9 @@ class _HistoryTabState extends State<HistoryTab> {
                       child: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
+                          color: const Color(0xFF0D1E33),
                           borderRadius: BorderRadius.circular(8.0),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: const Color(0xFF1E3A8A)),
                         ),
                         child: reportRecords.isEmpty
                             ? const Center(
@@ -1533,127 +1533,127 @@ class _HistoryTabState extends State<HistoryTab> {
                                   scrollDirection: Axis.horizontal,
                                   child: Theme(
                                     data: Theme.of(context).copyWith(
-                                      dividerColor: const Color(0xFFE2E8F0),
+                                      dividerColor: const Color(0xFF1E3A8A),
                                     ),
                                     child: DataTable(
-                                      headingRowColor: MaterialStateProperty.all(const Color(0xFFF0F9FF)),
+                                      headingRowColor: MaterialStateProperty.all(const Color(0xFF0A192F)),
                                       columns: [
-                                        const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                        const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                        const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                        const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         DataColumn(
                                           label: Text(
                                             widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PROD DATE' : 'LOT NUMBER',
-                                            style: const TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
                                           ),
                                         ),
-                                        const DataColumn(label: Text('RESULT', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                        const DataColumn(label: Text('QTY', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        const DataColumn(label: Text('RESULT', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        const DataColumn(label: Text('QTY', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         if (selectedReportTest == 'All') ...[
-                                          const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('DETAILS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('DETAILS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'Waterproof Test') ...[
-                                          const DataColumn(label: Text('PRESSURE', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('VISCOSITY', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('TEST TIME', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('LOCATION', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('MOUTH LEAKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('PRIMER LEAKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('PRESSURE', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('VISCOSITY', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('TEST TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('LOCATION', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('MOUTH LEAKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('PRIMER LEAKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'Residual Stress Test') ...[
-                                          const DataColumn(label: Text('ROOM TEMP', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('NECK (I)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('SHOULDER (S)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('BODY (J/K)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('HEAD (L/M)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('TOTAL SPLITS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('ROOM TEMP', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('NECK (I)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('SHOULDER (S)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('BODY (J/K)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('HEAD (L/M)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('TOTAL SPLITS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'Accuracy Test') ...[
-                                          const DataColumn(label: Text('BARREL S.N.', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('VEL MEAN', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('ACC SD X', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('ACC SD Y', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('BARREL S.N.', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('VEL MEAN', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('ACC SD X', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('ACC SD Y', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'EPVAT test') ...[
-                                          const DataColumn(label: Text('BARREL S.N.', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('TEMP (°C)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('MEAN PRESS (P1/P2)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('VEL MEAN', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('BARREL S.N.', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('TEMP (°C)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('MEAN PRESS (P1/P2)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('VEL MEAN', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'Extraction Force Test') ...[
-                                          const DataColumn(label: Text('MODE', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('MIN FORCE (N)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('MEAN FORCE (N)', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('MODE', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('MIN FORCE (N)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('MEAN FORCE (N)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'Function Test') ...[
-                                          const DataColumn(label: Text('WEAPON', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('TEMP', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('WEAPON', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('TEMP', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('L1 CRITICAL', style: TextStyle(color: Color(0xFFEF4444), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('L2 MAJOR', style: TextStyle(color: Color(0xFFF97316), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('L3 MINOR', style: TextStyle(color: Color(0xFFFBBF24), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('LEVEL 4', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('TOTAL DEFECTS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('LEVEL 4', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('TOTAL DEFECTS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else ...[
-                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ],
                                       ],
                                       rows: reportRecords.map((r) {
                                         return DataRow(
                                           cells: [
-                                            DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF64748B)))),
-                                            DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)))),
-                                            DataCell(Text(r.shift, style: const TextStyle(fontSize: 11.0, color: Color(0xFF334155)))),
-                                            DataCell(Text(r.caliber, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF0F172A)))),
-                                            DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF0F172A)))),
+                                            DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                            DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Colors.white))),
+                                            DataCell(Text(r.shift, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                            DataCell(Text(r.caliber, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Colors.white))),
+                                            DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Colors.white))),
                                             DataCell(_buildStatusBadge(r.status)),
-                                            DataCell(Text('${r.produced}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF0F172A)))),
+                                            DataCell(Text('${r.produced}', style: const TextStyle(fontSize: 11.5, color: Colors.white))),
                                             if (selectedReportTest == 'All') ...[
-                                              DataCell(Text(r.testName, style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)))),
+                                              DataCell(Text(r.testName, style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)))),
                                               DataCell(_buildResultCell(r)),
                                             ] else if (selectedReportTest == 'Waterproof Test') ...[
-                                              DataCell(Text(r.pressureBar.isEmpty ? '-' : '${r.pressureBar} bar', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.viscosity.isEmpty ? '-' : r.viscosity, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.testTime.isEmpty ? '-' : r.testTime, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.samplingLocation.isEmpty ? '-' : r.samplingLocation, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text('S: ${r.mouthSlow} | F: ${r.mouthFast}', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text('S: ${r.primerSlow} | F: ${r.primerFast}', style: const TextStyle(color: Color(0xFF0F172A)))),
+                                              DataCell(Text(r.pressureBar.isEmpty ? '-' : '${r.pressureBar} bar', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.viscosity.isEmpty ? '-' : r.viscosity, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.testTime.isEmpty ? '-' : r.testTime, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.samplingLocation.isEmpty ? '-' : r.samplingLocation, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text('S: ${r.mouthSlow} | F: ${r.mouthFast}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text('S: ${r.primerSlow} | F: ${r.primerFast}', style: const TextStyle(color: Colors.white))),
                                             ] else if (selectedReportTest == 'Residual Stress Test') ...[
-                                              DataCell(Text(r.roomTemp.isEmpty ? '-' : '${r.roomTemp} °C', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text('Min: ${r.neckSlow} | Maj: ${r.neckFast}', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text('Min: ${r.shoulderSlow} | Maj: ${r.shoulderFast}', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text('Min: ${r.bodySlow} | Maj: ${r.bodyFast}', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text('Min: ${r.headSlow} | Maj: ${r.headFast}', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text('${r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast}', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF64748B)))),
+                                              DataCell(Text(r.roomTemp.isEmpty ? '-' : '${r.roomTemp} °C', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text('Min: ${r.neckSlow} | Maj: ${r.neckFast}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text('Min: ${r.shoulderSlow} | Maj: ${r.shoulderFast}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text('Min: ${r.bodySlow} | Maj: ${r.bodyFast}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text('Min: ${r.headSlow} | Maj: ${r.headFast}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text('${r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else if (selectedReportTest == 'Accuracy Test') ...[
-                                              DataCell(Text(r.barrelSN.isEmpty ? '-' : r.barrelSN, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.accSDX.isEmpty ? '-' : r.accSDX, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.accSDY.isEmpty ? '-' : r.accSDY, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF64748B)))),
+                                              DataCell(Text(r.barrelSN.isEmpty ? '-' : r.barrelSN, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.accSDX.isEmpty ? '-' : r.accSDX, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.accSDY.isEmpty ? '-' : r.accSDY, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else if (selectedReportTest == 'EPVAT test') ...[
-                                              DataCell(Text(r.barrelSN.isEmpty ? '-' : r.barrelSN, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.cartridgeTemp.isEmpty ? '-' : '${r.cartridgeTemp} °C', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.epvatMeanPressure.isEmpty ? '-' : 'P1: ${r.epvatMeanPressure} / P2: ${r.epvatP2MeanPressure.isEmpty ? "-" : r.epvatP2MeanPressure} ${r.epvatPressureUnit}', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF64748B)))),
+                                              DataCell(Text(r.barrelSN.isEmpty ? '-' : r.barrelSN, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.cartridgeTemp.isEmpty ? '-' : '${r.cartridgeTemp} °C', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.epvatMeanPressure.isEmpty ? '-' : 'P1: ${r.epvatMeanPressure} / P2: ${r.epvatP2MeanPressure.isEmpty ? "-" : r.epvatP2MeanPressure} ${r.epvatPressureUnit}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else if (selectedReportTest == 'Extraction Force Test') ...[
-                                              DataCell(Text(r.extractionForceType.isEmpty ? '-' : r.extractionForceType, style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.accMinX.isEmpty ? '-' : '${r.accMinX} N', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.accMeanX.isEmpty ? '-' : '${r.accMeanX} N', style: const TextStyle(color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF64748B)))),
+                                              DataCell(Text(r.extractionForceType.isEmpty ? '-' : r.extractionForceType, style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.accMinX.isEmpty ? '-' : '${r.accMinX} N', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.accMeanX.isEmpty ? '-' : '${r.accMeanX} N', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else if (selectedReportTest == 'Function Test') ...[
-                                              DataCell(Text(r.cyclicRateWeaponType.isEmpty ? '-' : r.cyclicRateWeaponType, style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
-                                              DataCell(Text(r.cartridgeTemp.isEmpty ? '-' : r.cartridgeTemp, style: const TextStyle(fontSize: 11.0, fontFamily: 'JetBrainsMono', color: Color(0xFF0F172A)))),
-                                              DataCell(Text('${r.functionLevel1}', style: TextStyle(fontWeight: r.functionLevel1 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel1 > 0 ? const Color(0xFFEF4444) : Color(0xFF0F172A)))),
-                                              DataCell(Text('${r.functionLevel2}', style: TextStyle(fontWeight: r.functionLevel2 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel2 > 0 ? const Color(0xFFF97316) : Color(0xFF0F172A)))),
-                                              DataCell(Text('${r.functionLevel3}', style: TextStyle(fontWeight: r.functionLevel3 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel3 > 0 ? const Color(0xFFFBBF24) : Color(0xFF0F172A)))),
-                                              DataCell(Text('${r.functionLevel4}', style: TextStyle(fontWeight: r.functionLevel4 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel4 > 0 ? const Color(0xFF0284C7) : Color(0xFF0F172A)))),
-                                              DataCell(Text('${r.defects}', style: TextStyle(fontWeight: FontWeight.bold, color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF059669)))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF64748B)))),
+                                              DataCell(Text(r.cyclicRateWeaponType.isEmpty ? '-' : r.cyclicRateWeaponType, style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Colors.white))),
+                                              DataCell(Text(r.cartridgeTemp.isEmpty ? '-' : r.cartridgeTemp, style: const TextStyle(fontSize: 11.0, fontFamily: 'JetBrainsMono', color: Colors.white))),
+                                              DataCell(Text('${r.functionLevel1}', style: TextStyle(fontWeight: r.functionLevel1 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel1 > 0 ? const Color(0xFFEF4444) : Colors.white))),
+                                              DataCell(Text('${r.functionLevel2}', style: TextStyle(fontWeight: r.functionLevel2 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel2 > 0 ? const Color(0xFFF97316) : Colors.white))),
+                                              DataCell(Text('${r.functionLevel3}', style: TextStyle(fontWeight: r.functionLevel3 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel3 > 0 ? const Color(0xFFFBBF24) : Colors.white))),
+                                              DataCell(Text('${r.functionLevel4}', style: TextStyle(fontWeight: r.functionLevel4 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel4 > 0 ? const Color(0xFF38BDF8) : Colors.white))),
+                                              DataCell(Text('${r.defects}', style: TextStyle(fontWeight: FontWeight.bold, color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else ...[
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF64748B)))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ],
                                           ],
                                         );
@@ -1672,8 +1672,8 @@ class _HistoryTabState extends State<HistoryTab> {
                         OutlinedButton(
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF475569),
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Color(0xFF1E3A8A)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
@@ -1779,12 +1779,12 @@ class _HistoryTabState extends State<HistoryTab> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF0369A1), fontSize: 9.5, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 9.5, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 2.0),
         Text(
           val,
-          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
         ),
       ],
     );

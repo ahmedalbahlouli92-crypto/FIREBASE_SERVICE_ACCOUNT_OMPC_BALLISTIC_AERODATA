@@ -168,7 +168,7 @@ namespace OmpcBallisticAeroData
                     string browserArgs = string.Format(
                         "--app={0} " +
                         "--user-data-dir=\"{1}\" " +
-                        "--window-size=1520,950 " +
+                        "--start-maximized " +
                         "--new-window " +
                         "--no-first-run " +
                         "--no-default-browser-check " +
