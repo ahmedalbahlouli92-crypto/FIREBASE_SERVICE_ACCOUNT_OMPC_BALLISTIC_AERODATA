@@ -334,8 +334,23 @@ namespace OmpcInstaller
                         s.CopyTo(fs);
                     }
 
-                    // Extract to targetDir
-                    ZipFile.ExtractToDirectory(tempZip, targetDir);
+                    // Extract to targetDir with safe overwrite
+                    using (ZipArchive archive = ZipFile.OpenRead(tempZip))
+                    {
+                        foreach (ZipArchiveEntry entry in archive.Entries)
+                        {
+                            string fullDestPath = Path.Combine(targetDir, entry.FullName);
+                            if (string.IsNullOrEmpty(entry.Name))
+                            {
+                                Directory.CreateDirectory(fullDestPath);
+                            }
+                            else
+                            {
+                                Directory.CreateDirectory(Path.GetDirectoryName(fullDestPath));
+                                entry.ExtractToFile(fullDestPath, true);
+                            }
+                        }
+                    }
                     try { File.Delete(tempZip); } catch { }
 
                     string targetExe = Path.Combine(targetDir, "OMPC_Ballistic_AeroData.exe");

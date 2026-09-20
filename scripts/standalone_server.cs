@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -20,6 +21,11 @@ namespace OmpcBallisticAeroData
         private static int _port = 8080;
         private static Process _browserProcess;
         private static IntPtr _browserHwnd = IntPtr.Zero;
+        private static string _userProfileDir;
+
+        private static DateTime _lastHeartbeat = DateTime.MinValue;
+        private static bool _receivedHeartbeat = false;
+        private static readonly object _heartbeatLock = new object();
 
         private const string AppId = "OMPC.Ballistic.AeroData";
 
@@ -197,6 +203,20 @@ namespace OmpcBallisticAeroData
                 try { SetCurrentProcessExplicitAppUserModelID(AppId); } catch { }
                 string currentExe = Process.GetCurrentProcess().MainModule.FileName;
 
+                // Clean up any stale or orphaned instances from earlier crashes or sessions
+                try
+                {
+                    int myPid = Process.GetCurrentProcess().Id;
+                    foreach (var proc in Process.GetProcessesByName("OMPC_Ballistic_AeroData"))
+                    {
+                        if (proc.Id != myPid)
+                        {
+                            try { proc.Kill(); proc.WaitForExit(1500); } catch { }
+                        }
+                    }
+                }
+                catch { }
+
                 Log("Starting OMPC Ballistic AeroData at " + DateTime.Now);
 
                 // Resolve web directory relative to executable
@@ -301,8 +321,8 @@ namespace OmpcBallisticAeroData
 
                 // Multi-User Isolated Session: Assign dedicated profile folder per port
                 string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string userProfileDir = Path.Combine(localAppData, "OMPC_Ballistic_AeroData", "profiles", "session_" + _port);
-                try { Directory.CreateDirectory(userProfileDir); } catch { }
+                _userProfileDir = Path.Combine(localAppData, "OMPC_Ballistic_AeroData", "profiles", "session_" + _port);
+                try { Directory.CreateDirectory(_userProfileDir); } catch { }
 
                 // Launch local application URL
                 string appUrl = "http://127.0.0.1:" + _port + "/";
@@ -317,7 +337,7 @@ namespace OmpcBallisticAeroData
                     {
                         string browserArgs = string.Format(
                             "--app=\"{0}\" --start-fullscreen --kiosk --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
-                            appUrl, userProfileDir);
+                            appUrl, _userProfileDir);
 
                         ProcessStartInfo psi = new ProcessStartInfo
                         {
@@ -357,42 +377,86 @@ namespace OmpcBallisticAeroData
                     Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
                 }
 
-                // Keep server running while the single app window is open, exit immediately when window is closed
-                Log("Entering wait loop...");
-                Thread.Sleep(2000);
+                // Heartbeat & window monitor wait loop
+                Log("Entering heartbeat & window monitor wait loop...");
+                DateTime serverStart = DateTime.UtcNow;
                 while (true)
                 {
-                    if (_browserHwnd != IntPtr.Zero)
+                    Thread.Sleep(1000);
+
+                    // 1. If heartbeats were received and have stopped for > 5 seconds, window was closed
+                    bool hadHb = false;
+                    DateTime lastHb;
+                    lock (_heartbeatLock)
                     {
-                        if (!IsWindow(_browserHwnd))
+                        hadHb = _receivedHeartbeat;
+                        lastHb = _lastHeartbeat;
+                    }
+
+                    if (hadHb)
+                    {
+                        if ((DateTime.UtcNow - lastHb).TotalSeconds > 5)
                         {
-                            Log("Browser window closed. Exiting server.");
+                            Log("Heartbeat lost (> 5s). User closed the app window. Exiting server.");
                             break;
                         }
                     }
-                    else if (_browserProcess != null && _browserProcess.HasExited)
+                    else
                     {
-                        Log("Browser process exited. Exiting server.");
-                        break;
+                        // During initial startup, allow up to 30 seconds for the browser to launch and connect
+                        if ((DateTime.UtcNow - serverStart).TotalSeconds > 30)
+                        {
+                            if (_browserProcess != null && _browserProcess.HasExited && _browserHwnd == IntPtr.Zero)
+                            {
+                                Log("No heartbeat and browser process exited. Exiting server.");
+                                break;
+                            }
+                        }
                     }
-                    Thread.Sleep(500);
+
+                    // 2. If browser HWND is captured, verify it is still visible
+                    if (_browserHwnd != IntPtr.Zero)
+                    {
+                        if (!IsWindow(_browserHwnd) || !IsWindowVisible(_browserHwnd))
+                        {
+                            Log("Browser window is no longer visible. Exiting server.");
+                            break;
+                        }
+                    }
                 }
 
-                try
-                {
-                    if (Directory.Exists(userProfileDir))
-                        Directory.Delete(userProfileDir, true);
-                }
-                catch { }
+                ShutdownServerAndExit();
             }
             catch (Exception topEx)
             {
                 Log("FATAL TOP-LEVEL EXCEPTION: " + topEx);
                 System.Windows.Forms.MessageBox.Show("Fatal error: " + topEx.Message, "OMPC Error", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                ShutdownServerAndExit();
             }
+        }
 
+        private static void ShutdownServerAndExit()
+        {
+            Log("Shutting down OMPC Ballistic AeroData server...");
+            try
+            {
+                if (_browserProcess != null && !_browserProcess.HasExited)
+                {
+                    _browserProcess.Kill();
+                }
+            }
+            catch { }
             try { if (_httpListener != null) _httpListener.Stop(); } catch { }
             try { if (_tcpListener != null) _tcpListener.Stop(); } catch { }
+            try
+            {
+                if (!string.IsNullOrEmpty(_userProfileDir) && Directory.Exists(_userProfileDir))
+                {
+                    Directory.Delete(_userProfileDir, true);
+                }
+            }
+            catch { }
+            Environment.Exit(0);
         }
 
         private static void Log(string msg)
@@ -439,20 +503,38 @@ namespace OmpcBallisticAeroData
             try
             {
                 string rawUrl = ctx.Request.Url.AbsolutePath;
+                if (rawUrl == "/api/heartbeat")
+                {
+                    lock (_heartbeatLock)
+                    {
+                        _lastHeartbeat = DateTime.UtcNow;
+                        _receivedHeartbeat = true;
+                    }
+                    ctx.Response.StatusCode = 200;
+                    ctx.Response.ContentType = "application/json";
+                    byte[] hbBytes = Encoding.UTF8.GetBytes("{\"ok\":true}");
+                    ctx.Response.ContentLength64 = hbBytes.Length;
+                    ctx.Response.OutputStream.Write(hbBytes, 0, hbBytes.Length);
+                    try { ctx.Response.OutputStream.Close(); } catch { }
+                    return;
+                }
                 if (rawUrl == "/api/exit" || rawUrl == "/exit")
                 {
                     Log("Exit request received from client API.");
-                    ctx.Response.StatusCode = 200;
-                    ctx.Response.ContentType = "application/json";
-                    byte[] exitBytes = Encoding.UTF8.GetBytes("{\"ok\":true}");
-                    ctx.Response.ContentLength64 = exitBytes.Length;
-                    ctx.Response.OutputStream.Write(exitBytes, 0, exitBytes.Length);
-                    try { ctx.Response.OutputStream.Close(); } catch { }
+                    try
+                    {
+                        ctx.Response.StatusCode = 200;
+                        ctx.Response.ContentType = "application/json";
+                        byte[] exitBytes = Encoding.UTF8.GetBytes("{\"ok\":true}");
+                        ctx.Response.ContentLength64 = exitBytes.Length;
+                        ctx.Response.OutputStream.Write(exitBytes, 0, exitBytes.Length);
+                        ctx.Response.OutputStream.Close();
+                    }
+                    catch { }
                     ThreadPool.QueueUserWorkItem((s) =>
                     {
-                        Thread.Sleep(300);
-                        try { if (_browserProcess != null && !_browserProcess.HasExited) _browserProcess.Kill(); } catch { }
-                        Environment.Exit(0);
+                        Thread.Sleep(200);
+                        ShutdownServerAndExit();
                     });
                     return;
                 }
@@ -507,18 +589,38 @@ namespace OmpcBallisticAeroData
                     string rawUrl = parts[1];
                     int qIdx = rawUrl.IndexOf('?');
                     if (qIdx >= 0) rawUrl = rawUrl.Substring(0, qIdx);
+                    if (rawUrl == "/api/heartbeat")
+                    {
+                        lock (_heartbeatLock)
+                        {
+                            _lastHeartbeat = DateTime.UtcNow;
+                            _receivedHeartbeat = true;
+                        }
+                        string okResp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"ok\":true}";
+                        byte[] respBytes = Encoding.ASCII.GetBytes(okResp);
+                        try
+                        {
+                            stream.Write(respBytes, 0, respBytes.Length);
+                            stream.Flush();
+                        }
+                        catch { }
+                        return;
+                    }
                     if (rawUrl == "/api/exit" || rawUrl == "/exit")
                     {
                         Log("Exit request received via TCP client.");
                         string okResp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"ok\":true}";
                         byte[] respBytes = Encoding.ASCII.GetBytes(okResp);
-                        stream.Write(respBytes, 0, respBytes.Length);
-                        stream.Flush();
+                        try
+                        {
+                            stream.Write(respBytes, 0, respBytes.Length);
+                            stream.Flush();
+                        }
+                        catch { }
                         ThreadPool.QueueUserWorkItem((s) =>
                         {
-                            Thread.Sleep(300);
-                            try { if (_browserProcess != null && !_browserProcess.HasExited) _browserProcess.Kill(); } catch { }
-                            Environment.Exit(0);
+                            Thread.Sleep(200);
+                            ShutdownServerAndExit();
                         });
                         return;
                     }
@@ -643,7 +745,22 @@ namespace OmpcBallisticAeroData
                         resStream.CopyTo(fs);
                     }
 
-                    System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, targetDir);
+                    using (ZipArchive archive = ZipFile.OpenRead(tempZip))
+                    {
+                        foreach (ZipArchiveEntry entry in archive.Entries)
+                        {
+                            string fullDestPath = Path.Combine(targetDir, entry.FullName);
+                            if (string.IsNullOrEmpty(entry.Name))
+                            {
+                                Directory.CreateDirectory(fullDestPath);
+                            }
+                            else
+                            {
+                                Directory.CreateDirectory(Path.GetDirectoryName(fullDestPath));
+                                entry.ExtractToFile(fullDestPath, true);
+                            }
+                        }
+                    }
                     try { File.Delete(tempZip); } catch { }
                     try { File.WriteAllText(markerFile, resourceLength.ToString()); } catch { }
 

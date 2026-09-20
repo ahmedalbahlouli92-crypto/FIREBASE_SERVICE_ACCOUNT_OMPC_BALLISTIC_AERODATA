@@ -25,9 +25,9 @@ try {
     }
 
     if ($iconArg -ne "") {
-        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
+        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
     } else {
-        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
+        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
     }
 
     if ($LASTEXITCODE -ne 0) {
@@ -43,6 +43,10 @@ try {
     Copy-Item -Recurse "build\web\*" -Destination "$stagingDir\build\web" -Force
     if (Test-Path $appIconPath) {
         Copy-Item $appIconPath -Destination "$stagingDir\app_icon.ico" -Force
+    }
+    if (Test-Path "scripts\Stop_OMPC.bat") {
+        Copy-Item "scripts\Stop_OMPC.bat" -Destination "$stagingDir\Stop_OMPC.bat" -Force
+        Copy-Item "scripts\Stop_OMPC.bat" -Destination "C:\Users\user\Desktop\Stop_OMPC.bat" -Force -ErrorAction SilentlyContinue
     }
 
     if (Test-Path $zipPath) {
@@ -71,9 +75,9 @@ try {
 
     $localInstaller = 'OMPC_Ballistic_AeroData_Setup.exe'
     if ($iconArg -ne "") {
-        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$setupPayloadZip" /out:$localInstaller scripts\installer.cs
+        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/resource:$setupPayloadZip" /out:$localInstaller scripts\installer.cs
     } else {
-        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$setupPayloadZip" /out:$localInstaller scripts\installer.cs
+        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/resource:$setupPayloadZip" /out:$localInstaller scripts\installer.cs
     }
 
     if ($LASTEXITCODE -eq 0 -and (Test-Path $localInstaller)) {

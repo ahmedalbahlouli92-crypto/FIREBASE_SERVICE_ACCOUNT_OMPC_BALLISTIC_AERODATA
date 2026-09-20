@@ -19,29 +19,27 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.6';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.6 (White-Blue Input Fields & Flutter Blue Theme Degree)';
-const BODY = `## OMPC Ballistic AeroData v1.3.6
+const TAG_NAME = 'v1.3.7';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.7 (Process Lifecycle Fix, Auto-Kill Zombies & Safe Overwrite)';
+const BODY = `## OMPC Ballistic AeroData v1.3.7
 
-### Key Fixes & Enhancements:
-1. **White-Blue Input Fields (Zero Plain White)**:
-   - Completely replaced plain white (\`#FFFFFF\`) and neutral grays with a clean **white-blue** (ice blue, \`#E0F2FE\`) fill across all input fields, text fields, dropdown selectors, and numeric inputs.
-   - Read-only fields styled with a soft deeper white-blue (\`#C8E3F5\`).
-   - Deep contrast navy text (\`#0C2A4D\`) provides maximum clarity, sharpness, and comfort without glare.
-2. **Flutter Degree of Blue Color Palette**:
-   - Accents, focused borders, badges, and primary themes aligned with the exact Flutter logo blue palette sampled directly from the application icon:
-     - Top Wing / Sky Cyan: \`#5FC9F8\`
-     - Primary Vibrant Flutter Blue: \`#31B9F6\`
-     - Base / Deep Navy Blue: \`#04599C\`
-     - White-Blue Tint: \`#E0F2FE\`
-3. **Full-Screen Borderless Kiosk Mode**:
-   - Single borderless kiosk window with Windows title bar minimize, resize, and close buttons removed for uninterrupted operational workflow.
-   - In-app Exit confirmation buttons on sidebar and navigation bar with clean graceful shutdown.
+### Critical Fixes & Enhancements:
+1. **Resolved "File is open in another program" & Stale Process Locking**:
+   - Added automatic startup termination of any orphaned or hung \`OMPC_Ballistic_AeroData.exe\` processes left behind by earlier sessions or abnormal browser closes.
+   - Bundled **\`Stop_OMPC.bat\`** on Desktop and inside the Portable package to immediately terminate all running instances and release all file locks with a single double-click.
+2. **Fixed "Still Not Working in Another PC" (Premature Server Termination)**:
+   - On Windows systems where Edge has Startup Boost enabled, launching \`msedge.exe\` causes the bootstrap process to exit in < 1 second. Previously, the C# server mistook this for the user closing the app and killed itself, causing *"This site can't be reached / 127.0.0.1 refused to connect"*.
+   - Implemented a resilient **heartbeat & window visibility monitor**: \`index.html\` pings \`/api/heartbeat\` every 1.5s and sends \`sendBeacon('/api/exit')\` on unload. The server now stays reliably active while the user is using the app and terminates cleanly within 5 seconds of the user closing Edge or pressing Alt+F4.
+3. **Safe File Overwriting During Extraction & Installation**:
+   - Replaced \`.NET ZipFile.ExtractToDirectory\` (which threw an unhandled \`IOException\` if files existed) with entry-by-entry stream extraction with \`overwrite: true\` in both the Standalone executable and the 1-Click Setup Installer.
+4. **White-Blue Input Fields & Flutter Degree of Blue Theme**:
+   - All inputs, text boxes, and dropdowns use comfortable **white-blue** (\`#E0F2FE\`), read-only fields use \`#C8E3F5\`, and borders/highlights use the sampled Flutter logo blue (\`#31B9F6\` and \`#5FC9F8\`). Plain white (\`#FFFFFF\`) has been completely eliminated.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
 - **OMPC_Ballistic_AeroData.exe**: Standalone Direct Executable
-- **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package
+- **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package (includes \`Stop_OMPC.bat\`)
+- **Stop_OMPC.bat**: Emergency Process Stopper & File Unlocker
 - **Live Web Application**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
 `;
 

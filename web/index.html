@@ -149,9 +149,33 @@
     // Dismisses loading splash after 3 seconds so the login form is never blocked
     setTimeout(dismissOmpcSplash, 3000);
     window.exitOmpcApp = function() {
-      fetch('/api/exit').catch(function(){});
-      setTimeout(function() { window.close(); }, 300);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/exit');
+      } else {
+        fetch('/api/exit', { keepalive: true }).catch(function(){});
+      }
+      setTimeout(function() { window.close(); }, 200);
     };
+
+    // Heartbeat mechanism to keep local standalone server alive while window is open
+    (function() {
+      function sendHeartbeat() {
+        fetch('/api/heartbeat', { cache: 'no-store' }).catch(function() {});
+      }
+      setInterval(sendHeartbeat, 1500);
+      sendHeartbeat();
+
+      function notifyExit() {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/exit');
+        } else {
+          fetch('/api/exit', { keepalive: true }).catch(function() {});
+        }
+      }
+      window.addEventListener('pagehide', notifyExit);
+      window.addEventListener('beforeunload', notifyExit);
+      window.addEventListener('unload', notifyExit);
+    })();
   </script>
   <script>
     // Seamless live auto-update check without stopping the app
