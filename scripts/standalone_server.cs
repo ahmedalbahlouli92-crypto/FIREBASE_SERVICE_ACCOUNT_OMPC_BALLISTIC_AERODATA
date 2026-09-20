@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Diagnostics;
 using System.Threading;
 using Microsoft.Win32;
@@ -9,9 +11,9 @@ namespace OmpcBallisticAeroData
 {
     class Program
     {
-        private static HttpListener _listener;
+        private static TcpListener _tcpListener;
         private static string _webRoot;
-        private static int _port = 8080;
+        private static int _port = 0;
         private static Process _browserProcess;
 
         [STAThread]
@@ -50,43 +52,28 @@ namespace OmpcBallisticAeroData
                 }
             }
 
-            // Find an open port starting from 8080
-            for (int p = 8080; p < 8180; p++)
+            // Bind loopback socket server on an automatically allocated free port (Zero Admin Privileges required)
+            try
             {
-                try
-                {
-                    _listener = new HttpListener();
-                    _listener.Prefixes.Add("http://127.0.0.1:" + p + "/");
-                    try { _listener.Prefixes.Add("http://localhost:" + p + "/"); } catch { }
-                    _listener.Start();
-                    _port = p;
-                    break;
-                }
-                catch
-                {
-                    if (_listener != null)
-                    {
-                        try { _listener.Close(); } catch { }
-                        _listener = null;
-                    }
-                }
+                _tcpListener = new TcpListener(IPAddress.Loopback, 0);
+                _tcpListener.Start();
+                _port = ((IPEndPoint)_tcpListener.LocalEndpoint).Port;
             }
-
-            if (_listener == null || !_listener.IsListening)
+            catch (Exception ex)
             {
                 System.Windows.Forms.MessageBox.Show(
-                    "Could not bind local HTTP server port. Please check firewall or administrator privileges.",
-                    "OMPC Ballistic AeroData - Server Error",
+                    "Could not initialize local loopback socket: " + ex.Message,
+                    "OMPC Ballistic AeroData - Error",
                     System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Error);
                 return;
             }
 
-            // Start listener thread
+            // Start background listener thread
             Thread serverThread = new Thread(ListenLoop);
             serverThread.IsBackground = true;
             serverThread.Start();
-            Thread.Sleep(150); // Ensure listener is ready to serve first request
+            Thread.Sleep(100);
 
             // Launch purely offline local instance with instant zero-latency loading
             string appUrl = "http://127.0.0.1:" + _port + "/";
@@ -99,6 +86,9 @@ namespace OmpcBallisticAeroData
             {
                 try
                 {
+                    // Critical flags for Windows 7 / older GPUs (Intel HD 4600):
+                    // --disable-gpu and --disable-gpu-compositing prevent the black screen crash on older drivers
+                    // --no-sandbox ensures it runs smoothly even if elevated or under UAC
                     string browserArgs = string.Format(
                         "--app=\"{0}\" " +
                         "--user-data-dir=\"{1}\" " +
@@ -108,8 +98,10 @@ namespace OmpcBallisticAeroData
                         "--no-default-browser-check " +
                         "--disable-first-run-ui " +
                         "--disable-notifications " +
-                        "--ignore-gpu-blocklist " +
-                        "--enable-gpu-rasterization " +
+                        "--disable-gpu " +
+                        "--disable-gpu-compositing " +
+                        "--disable-software-rasterizer " +
+                        "--no-sandbox " +
                         "--disable-features=msEdgeSidebarV2,msHub,msHubEdgeShopping,Translate,OptimizationHints,MediaRouter " +
                         "--disable-extensions " +
                         "--disable-background-networking " +
@@ -133,7 +125,7 @@ namespace OmpcBallisticAeroData
                         ProcessStartInfo simplePsi = new ProcessStartInfo
                         {
                             FileName = browserExe,
-                            Arguments = string.Format("--app=\"{0}\" --start-maximized", appUrl),
+                            Arguments = string.Format("--app=\"{0}\" --start-maximized --disable-gpu", appUrl),
                             UseShellExecute = true
                         };
                         _browserProcess = Process.Start(simplePsi);
@@ -150,7 +142,6 @@ namespace OmpcBallisticAeroData
             }
 
             // Keep server alive while app window is open
-            // If the launcher process exits in under 4 seconds (e.g. delegated to existing instance), DO NOT exit! Keep server running indefinitely.
             if (_browserProcess != null)
             {
                 bool quickExit = _browserProcess.WaitForExit(4000);
@@ -168,17 +159,17 @@ namespace OmpcBallisticAeroData
                 Thread.Sleep(Timeout.Infinite);
             }
 
-            try { _listener.Stop(); } catch { }
+            try { _tcpListener.Stop(); } catch { }
         }
 
         private static void ListenLoop()
         {
-            while (_listener.IsListening)
+            while (true)
             {
                 try
                 {
-                    var ctx = _listener.GetContext();
-                    ThreadPool.QueueUserWorkItem(ProcessRequest, ctx);
+                    TcpClient client = _tcpListener.AcceptTcpClient();
+                    ThreadPool.QueueUserWorkItem(ProcessClient, client);
                 }
                 catch
                 {
@@ -187,50 +178,73 @@ namespace OmpcBallisticAeroData
             }
         }
 
-        private static void ProcessRequest(object state)
+        private static void ProcessClient(object state)
         {
-            var ctx = (HttpListenerContext)state;
+            TcpClient client = (TcpClient)state;
             try
             {
-                string rawUrl = ctx.Request.Url.AbsolutePath;
-                if (rawUrl == "/" || string.IsNullOrEmpty(rawUrl))
+                client.ReceiveTimeout = 4000;
+                client.SendTimeout = 4000;
+                using (NetworkStream stream = client.GetStream())
                 {
-                    rawUrl = "/index.html";
-                }
+                    byte[] buffer = new byte[4096];
+                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                    if (bytesRead <= 0) return;
 
-                // Remove query strings / decodes
-                string cleanPath = Uri.UnescapeDataString(rawUrl).TrimStart('/');
-                cleanPath = cleanPath.Replace('/', Path.DirectorySeparatorChar);
+                    string request = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    int firstLineEnd = request.IndexOf("\r\n");
+                    if (firstLineEnd < 0) return;
+                    string requestLine = request.Substring(0, firstLineEnd);
 
-                string fullPath = Path.Combine(_webRoot, cleanPath);
+                    string[] parts = requestLine.Split(' ');
+                    if (parts.Length < 2) return;
 
-                // Default fallback to index.html for Single Page Applications (SPA)
-                if (!File.Exists(fullPath))
-                {
-                    fullPath = Path.Combine(_webRoot, "index.html");
-                }
+                    string rawUrl = parts[1];
+                    int qIdx = rawUrl.IndexOf('?');
+                    if (qIdx >= 0) rawUrl = rawUrl.Substring(0, qIdx);
+                    if (rawUrl == "/" || string.IsNullOrEmpty(rawUrl))
+                    {
+                        rawUrl = "/index.html";
+                    }
 
-                if (File.Exists(fullPath))
-                {
-                    byte[] bytes = File.ReadAllBytes(fullPath);
-                    ctx.Response.StatusCode = 200;
-                    ctx.Response.ContentType = GetMimeType(Path.GetExtension(fullPath));
-                    ctx.Response.ContentLength64 = bytes.Length;
-                    ctx.Response.Headers.Add("Cache-Control", "no-cache");
-                    ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
-                }
-                else
-                {
-                    ctx.Response.StatusCode = 404;
+                    string cleanPath = Uri.UnescapeDataString(rawUrl).TrimStart('/');
+                    cleanPath = cleanPath.Replace('/', Path.DirectorySeparatorChar);
+                    string fullPath = Path.Combine(_webRoot, cleanPath);
+                    if (!File.Exists(fullPath))
+                    {
+                        fullPath = Path.Combine(_webRoot, "index.html");
+                    }
+
+                    if (File.Exists(fullPath))
+                    {
+                        byte[] bytes = File.ReadAllBytes(fullPath);
+                        string mime = GetMimeType(Path.GetExtension(fullPath));
+                        string header = string.Format(
+                            "HTTP/1.1 200 OK\r\n" +
+                            "Content-Type: {0}\r\n" +
+                            "Content-Length: {1}\r\n" +
+                            "Cache-Control: no-cache\r\n" +
+                            "Access-Control-Allow-Origin: *\r\n" +
+                            "Connection: close\r\n\r\n",
+                            mime, bytes.Length);
+                        byte[] headerBytes = Encoding.ASCII.GetBytes(header);
+                        stream.Write(headerBytes, 0, headerBytes.Length);
+                        stream.Write(bytes, 0, bytes.Length);
+                        stream.Flush();
+                    }
+                    else
+                    {
+                        string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                        byte[] nfBytes = Encoding.ASCII.GetBytes(notFound);
+                        stream.Write(nfBytes, 0, nfBytes.Length);
+                        stream.Flush();
+                    }
                 }
             }
-            catch
-            {
-                ctx.Response.StatusCode = 500;
-            }
+            catch { }
             finally
             {
-                try { ctx.Response.OutputStream.Close(); } catch { }
+                try { client.Close(); } catch { }
             }
         }
 
