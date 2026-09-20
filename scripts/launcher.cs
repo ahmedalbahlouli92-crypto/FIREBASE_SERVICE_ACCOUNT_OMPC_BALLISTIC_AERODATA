@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace OmpcBallisticAeroData
 {
@@ -50,13 +51,13 @@ namespace OmpcBallisticAeroData
             }
 
             // Launch in dedicated standalone app window
-            string edgePath = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
-            if (File.Exists(edgePath))
+            string browserExe = FindChromiumBrowser();
+            if (browserExe != null)
             {
                 ProcessStartInfo appInfo = new ProcessStartInfo
                 {
-                    FileName = edgePath,
-                    Arguments = "--app=" + url + " --start-maximized",
+                    FileName = browserExe,
+                    Arguments = string.Format("--app=\"{0}\" --start-maximized", url),
                     UseShellExecute = true
                 };
                 Process.Start(appInfo);
@@ -84,6 +85,96 @@ namespace OmpcBallisticAeroData
             {
                 return false;
             }
+        }
+
+        private static string FindChromiumBrowser()
+        {
+            // 1. Check Windows Registry App Paths (covers 32-bit, 64-bit, and user-level installations)
+            string[] registryKeys = new string[]
+            {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\brave.exe"
+            };
+
+            foreach (string regKey in registryKeys)
+            {
+                try
+                {
+                    using (var key = Registry.LocalMachine.OpenSubKey(regKey))
+                    {
+                        if (key != null)
+                        {
+                            object val = key.GetValue(null) ?? key.GetValue("");
+                            if (val != null && File.Exists(val.ToString()))
+                                return val.ToString();
+                        }
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    using (var key = Registry.CurrentUser.OpenSubKey(regKey))
+                    {
+                        if (key != null)
+                        {
+                            object val = key.GetValue(null) ?? key.GetValue("");
+                            if (val != null && File.Exists(val.ToString()))
+                                return val.ToString();
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            // 2. Check Standard Directory Paths
+            string[] candidates = new string[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"BraveSoftware\Brave-Browser\Application\brave.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"BraveSoftware\Brave-Browser\Application\brave.exe")
+            };
+
+            foreach (string candidate in candidates)
+            {
+                if (!string.IsNullOrEmpty(candidate) && File.Exists(candidate))
+                    return candidate;
+            }
+
+            // 3. Check system PATH via where command
+            string[] exes = new string[] { "msedge.exe", "chrome.exe", "brave.exe" };
+            foreach (string exe in exes)
+            {
+                try
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo
+                    {
+                        FileName = "where",
+                        Arguments = exe,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    };
+                    using (var p = Process.Start(psi))
+                    {
+                        string output = p.StandardOutput.ReadLine();
+                        p.WaitForExit(1000);
+                        if (!string.IsNullOrEmpty(output) && File.Exists(output.Trim()))
+                            return output.Trim();
+                    }
+                }
+                catch { }
+            }
+
+            return null;
         }
     }
 }

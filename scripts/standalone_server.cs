@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Diagnostics;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace OmpcBallisticAeroData
 {
@@ -138,48 +139,26 @@ namespace OmpcBallisticAeroData
             } 
             catch { }
 
-            string edgePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                @"Microsoft\Edge\Application\msedge.exe");
-
-            if (!File.Exists(edgePath))
-            {
-                edgePath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                    @"Microsoft\Edge\Application\msedge.exe");
-            }
-
-            string chromePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                @"Google\Chrome\Application\chrome.exe");
-            if (!File.Exists(chromePath))
-            {
-                chromePath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                    @"Google\Chrome\Application\chrome.exe");
-            }
-
-            string browserExe = File.Exists(edgePath) ? edgePath : (File.Exists(chromePath) ? chromePath : null);
+            string browserExe = FindChromiumBrowser();
 
             if (browserExe != null)
             {
                 try
                 {
                     string browserArgs = string.Format(
-                        "--app={0} " +
+                        "--app=\"{0}\" " +
                         "--user-data-dir=\"{1}\" " +
                         "--start-maximized " +
                         "--new-window " +
                         "--no-first-run " +
                         "--no-default-browser-check " +
                         "--disable-first-run-ui " +
+                        "--disable-notifications " +
                         "--disable-features=msEdgeSidebarV2,msHub,msHubEdgeShopping,Translate,OptimizationHints,MediaRouter " +
                         "--disable-extensions " +
                         "--disable-background-networking " +
                         "--disable-sync " +
-                        "--disable-default-apps " +
-                        "--app-id=OMPC_Ballistic_AeroData " +
-                        "--class=OMPC_Ballistic_AeroData",
+                        "--disable-default-apps",
                         appUrl, userDataDir);
 
                     ProcessStartInfo psi = new ProcessStartInfo
@@ -192,7 +171,21 @@ namespace OmpcBallisticAeroData
                 }
                 catch
                 {
-                    Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
+                    try
+                    {
+                        // Fallback to launching browserExe directly in app mode with shell execute
+                        ProcessStartInfo simplePsi = new ProcessStartInfo
+                        {
+                            FileName = browserExe,
+                            Arguments = string.Format("--app=\"{0}\" --start-maximized", appUrl),
+                            UseShellExecute = true
+                        };
+                        _browserProcess = Process.Start(simplePsi);
+                    }
+                    catch
+                    {
+                        Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
+                    }
                 }
             }
             else
@@ -370,6 +363,96 @@ namespace OmpcBallisticAeroData
                 targetDir = null;
                 return false;
             }
+        }
+
+        private static string FindChromiumBrowser()
+        {
+            // 1. Check Windows Registry App Paths (covers 32-bit, 64-bit, and user-level installations)
+            string[] registryKeys = new string[]
+            {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\brave.exe"
+            };
+
+            foreach (string regKey in registryKeys)
+            {
+                try
+                {
+                    using (var key = Registry.LocalMachine.OpenSubKey(regKey))
+                    {
+                        if (key != null)
+                        {
+                            object val = key.GetValue(null) ?? key.GetValue("");
+                            if (val != null && File.Exists(val.ToString()))
+                                return val.ToString();
+                        }
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    using (var key = Registry.CurrentUser.OpenSubKey(regKey))
+                    {
+                        if (key != null)
+                        {
+                            object val = key.GetValue(null) ?? key.GetValue("");
+                            if (val != null && File.Exists(val.ToString()))
+                                return val.ToString();
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            // 2. Check Standard Directory Paths
+            string[] candidates = new string[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"BraveSoftware\Brave-Browser\Application\brave.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"BraveSoftware\Brave-Browser\Application\brave.exe")
+            };
+
+            foreach (string candidate in candidates)
+            {
+                if (!string.IsNullOrEmpty(candidate) && File.Exists(candidate))
+                    return candidate;
+            }
+
+            // 3. Check system PATH via where command
+            string[] exes = new string[] { "msedge.exe", "chrome.exe", "brave.exe" };
+            foreach (string exe in exes)
+            {
+                try
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo
+                    {
+                        FileName = "where",
+                        Arguments = exe,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    };
+                    using (var p = Process.Start(psi))
+                    {
+                        string output = p.StandardOutput.ReadLine();
+                        p.WaitForExit(1000);
+                        if (!string.IsNullOrEmpty(output) && File.Exists(output.Trim()))
+                            return output.Trim();
+                    }
+                }
+                catch { }
+            }
+
+            return null;
         }
     }
 }
