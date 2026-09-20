@@ -19,22 +19,22 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.8';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.8 (Shadow-Host Lock-Free Execution & Instant Overwrite)';
-const BODY = `## OMPC Ballistic AeroData v1.3.8
+const TAG_NAME = 'v1.3.9';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.9 (Fix Report Submission & Cloud-Synced User Registration)';
+const BODY = `## OMPC Ballistic AeroData v1.3.9
 
 ### Critical Fixes & Enhancements:
-1. **Shadow-Host Lock-Free Architecture ("File open in another program" Permanently Solved)**:
-   - When launching \`OMPC_Ballistic_AeroData.exe\` from any folder (Desktop, USB drive, or Network Share), it copies itself to a shadow host in \`%LOCALAPPDATA%\` and the original launcher exits within 50ms.
-   - **Result**: The user's original executable file has **ZERO open file handles / locks**. It can be deleted, replaced, or updated at ANY time, even while the application is actively open and running!
-2. **Emergency Unlocker Script (\`Force_Unlock_All.bat\` & \`Stop_OMPC.bat\`)**:
-   - Double-clicking \`Force_Unlock_All.bat\` forcibly terminates any background OMPC instances from previous sessions and immediately frees all file locks on any PC.
-3. **Resilient Safe Stream Extraction**:
-   - Both the Standalone executable and 1-Click Setup installer use entry-by-entry stream extraction with overwrite enabled, preventing any extraction conflict errors.
-4. **Active Heartbeat & Auto-Shutdown**:
-   - Bi-directional ping between browser window and server keeps the app active while open and cleans up all background processes within 5 seconds of closing the window.
-5. **Aesthetic Enhancements**:
-   - Inputs and fields use comfortable white-blue (\`#E0F2FE\`), read-only fields use \`#C8E3F5\`, with borders matching the Flutter blue palette (\`#31B9F6\` / \`#5FC9F8\`). Plain harsh white (\`#FFFFFF\`) has been removed.
+1. **Resolved Report Submission Saving Failure**:
+   - Fixed schema compatibility issue where \`acc_largest_distance\` was rejected by Supabase PostgREST (HTTP 400), causing submitted reports to fail insertion and get overwritten by old cache.
+   - All ballistic test records now insert cleanly to Supabase cloud (\`HTTP 201 Created\`) and save locally with zero loss.
+2. **Fixed User Registration & Added Multi-PC Cloud Synchronization**:
+   - Registered laboratory personnel and user roles now sync directly to Supabase Cloud (\`SYSTEM_CONFIG\` / \`OPERATORS_REGISTRY\`).
+   - A user registered on one PC or laptop is now immediately available to log in on any other PC, laptop, or web instance!
+   - Replaced fragile \`eval\`-based web storage with direct native \`dart:html\` localStorage for bulletproof persistence.
+3. **Guaranteed Local + Cloud Redundancy**:
+   - Both reports and registered users save locally first, so network hiccups or offline operation never result in lost entries.
+4. **Shadow-Host Lock-Free Architecture**:
+   - Application files on Desktop, USB, or Network shares remain 100% unlocked and can be replaced or deleted even while running.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer

@@ -1,13 +1,22 @@
 import 'dart:convert';
-import 'dart:js' as js;
+import 'dart:html' as html;
 import '../models/ballistic_record.dart';
 
 String? _getItem(String key) {
-  return js.context.callMethod('eval', ["localStorage.getItem('$key')"]) as String?;
+  try {
+    return html.window.localStorage[key];
+  } catch (e) {
+    print("Error reading localStorage key '$key': $e");
+    return null;
+  }
 }
 
 void _setItem(String key, String value) {
-  js.context.callMethod('eval', ["localStorage.setItem('$key', ${jsonEncode(value)})"]);
+  try {
+    html.window.localStorage[key] = value;
+  } catch (e) {
+    print("Error writing localStorage key '$key': $e");
+  }
 }
 
 bool hasWebRecordsKey(String module) {

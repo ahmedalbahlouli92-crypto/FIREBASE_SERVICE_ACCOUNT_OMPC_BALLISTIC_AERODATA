@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ballistic_record.dart';
@@ -90,6 +91,7 @@ class SupabaseService {
       if (map['id'] == null || map['id'] == '') {
         map.remove('id');
       }
+      map.remove('acc_largest_distance');
 
       final dedicatedTable = getTableName(module: effectiveModule, testName: record.testName);
 
@@ -182,6 +184,7 @@ class SupabaseService {
       final map = record.toSupabaseMap();
       map['module'] = module;
       map.remove('id'); // Don't overwrite primary key
+      map.remove('acc_largest_distance');
 
       final dedicatedTable = getTableName(module: module, testName: record.testName);
       if (dedicatedTable != tableName) {
@@ -308,5 +311,131 @@ class SupabaseService {
         .order('created_at', ascending: false)
         .limit(limit)
         .map((maps) => maps.map((m) => BallisticRecord.fromSupabaseMap(m)).toList());
+  }
+
+  /// Fetch operators registry from Supabase cloud configuration
+  static Future<List<Map<String, String>>?> fetchOperatorsFromCloud() async {
+    if (!_initialized) return null;
+    try {
+      final res = await client
+          .from(tableName)
+          .select('id, notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'OPERATORS_REGISTRY')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if (res.isNotEmpty && res[0]['notes'] != null) {
+        final notesStr = res[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          final List<dynamic> decoded = jsonDecode(notesStr);
+          return decoded.map((item) => {
+            'email': ((item['email'] ?? item['username'] ?? '') as String),
+            'password': ((item['password'] ?? '') as String),
+            'role': ((item['role'] ?? 'operator') as String),
+            'name': ((item['name'] ?? item['email'] ?? '') as String),
+          }).toList();
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching operators from Supabase: $e');
+      return null;
+    }
+  }
+
+  /// Save operators registry to Supabase cloud configuration
+  static Future<bool> saveOperatorsToCloud(List<Map<String, String>> operators) async {
+    if (!_initialized) return false;
+    try {
+      final jsonString = jsonEncode(operators);
+      final existing = await client
+          .from(tableName)
+          .select('id')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'OPERATORS_REGISTRY')
+          .limit(1);
+
+      if (existing.isNotEmpty) {
+        final existingId = existing[0]['id'];
+        await client.from(tableName).update({
+          'notes': jsonString,
+          'timestamp': DateTime.now().toIso8601String(),
+        }).eq('id', existingId);
+      } else {
+        await client.from(tableName).insert({
+          'module': 'SYSTEM_CONFIG',
+          'test_name': 'OPERATORS_REGISTRY',
+          'operators': 'System',
+          'notes': jsonString,
+          'status': 'ACTIVE',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error saving operators to Supabase: $e');
+      return false;
+    }
+  }
+
+  /// Fetch admin rules from Supabase cloud configuration
+  static Future<Map<String, dynamic>?> fetchRulesFromCloud() async {
+    if (!_initialized) return null;
+    try {
+      final res = await client
+          .from(tableName)
+          .select('id, notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'ADMIN_RULES')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if (res.isNotEmpty && res[0]['notes'] != null) {
+        final notesStr = res[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          return jsonDecode(notesStr) as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching rules from Supabase: $e');
+      return null;
+    }
+  }
+
+  /// Save admin rules to Supabase cloud configuration
+  static Future<bool> saveRulesToCloud(Map<String, dynamic> rules) async {
+    if (!_initialized) return false;
+    try {
+      final jsonString = jsonEncode(rules);
+      final existing = await client
+          .from(tableName)
+          .select('id')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'ADMIN_RULES')
+          .limit(1);
+
+      if (existing.isNotEmpty) {
+        final existingId = existing[0]['id'];
+        await client.from(tableName).update({
+          'notes': jsonString,
+          'timestamp': DateTime.now().toIso8601String(),
+        }).eq('id', existingId);
+      } else {
+        await client.from(tableName).insert({
+          'module': 'SYSTEM_CONFIG',
+          'test_name': 'ADMIN_RULES',
+          'operators': 'System',
+          'notes': jsonString,
+          'status': 'ACTIVE',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error saving rules to Supabase: $e');
+      return false;
+    }
   }
 }

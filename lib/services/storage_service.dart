@@ -79,25 +79,41 @@ class StorageService {
         : 'Lot Acceptance Test';
     BallisticRecord recordToSave = record.copyWith(module: cleanModule);
 
-    // 1. Save to Supabase Cloud Database
-    if (SupabaseService.isInitialized) {
+    // 1. Immediate local persistence (guarantees record is saved even if offline)
+    if (kIsWeb) {
+      saveWebRecord(recordToSave, cleanModule);
+    } else {
       try {
-        final inserted = await SupabaseService.insertRecord(recordToSave, module: cleanModule);
-        if (inserted != null) {
-          recordToSave = inserted;
-        }
+        final file = await ensureDailyFileExists(module: cleanModule) as File;
+        await file.writeAsString(recordToSave.toCsvRow(), mode: FileMode.append, flush: true);
       } catch (e) {
-        print("Supabase save error (falling back to local): $e");
+        print("Error saving local file: $e");
       }
     }
 
-    // 2. Local persistence (web storage or local CSV)
-    if (kIsWeb) {
-      saveWebRecord(recordToSave, cleanModule);
-      return;
+    // 2. Save to Supabase Cloud Database
+    if (SupabaseService.isInitialized) {
+      try {
+        final inserted = await SupabaseService.insertRecord(recordToSave, module: cleanModule);
+        if (inserted != null && inserted.id != null && inserted.id!.isNotEmpty) {
+          recordToSave = inserted;
+          if (kIsWeb) {
+            // Update the locally cached record with its assigned Supabase UUID
+            final webRecords = getWebRecords(cleanModule);
+            if (webRecords.isNotEmpty) {
+              final lastIdx = webRecords.length - 1;
+              if (webRecords[lastIdx].timestamp == recordToSave.timestamp &&
+                  webRecords[lastIdx].lotNo == recordToSave.lotNo) {
+                webRecords[lastIdx] = recordToSave;
+                overwriteWebRecords(webRecords, cleanModule);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print("Supabase save error (saved to local cache): $e");
+      }
     }
-    final file = await ensureDailyFileExists(module: cleanModule) as File;
-    await file.writeAsString(recordToSave.toCsvRow(), mode: FileMode.append, flush: true);
   }
 
   // Load and parse all ballistic logs (from Supabase if connected, else local cache)
@@ -120,10 +136,23 @@ class StorageService {
             }
           }).toList();
 
-          if (kIsWeb) {
-            overwriteWebRecords(filtered, cleanModule);
+          // Merge with any locally cached records that might not be in cloud yet
+          final List<BallisticRecord> localRecords = kIsWeb ? getWebRecords(cleanModule) : [];
+          final combined = <BallisticRecord>[...filtered];
+          for (final local in localRecords) {
+            final exists = combined.any((c) =>
+              (c.id != null && c.id!.isNotEmpty && c.id == local.id) ||
+              (c.timestamp == local.timestamp && c.lotNo == local.lotNo && c.testName == local.testName)
+            );
+            if (!exists) {
+              combined.add(local);
+            }
           }
-          return BallisticRecord.consolidateRecords(filtered);
+
+          if (kIsWeb) {
+            overwriteWebRecords(combined, cleanModule);
+          }
+          return BallisticRecord.consolidateRecords(combined);
         }
       } catch (e) {
         print("Supabase load error: $e");
@@ -243,20 +272,49 @@ class StorageService {
     }
   }
 
-  // Load registered operators from storage
+  // Load registered operators from storage (cloud-synced + local fallback)
   Future<List<Map<String, String>>> loadOperators() async {
+    final defaultOperators = [
+      {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
+      {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
+      {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
+      {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
+      {'email': 'operator', 'password': 'operator123', 'role': 'operator', 'name': 'Ahmed Said'},
+    ];
+
+    // 1. Try to fetch registered operators from Supabase Cloud (syncs across all PCs)
+    if (SupabaseService.isInitialized) {
+      try {
+        final cloudOps = await SupabaseService.fetchOperatorsFromCloud();
+        if (cloudOps != null && cloudOps.isNotEmpty) {
+          // Cache locally
+          if (kIsWeb) {
+            for (var op in cloudOps) {
+              saveWebOperator(op['email'] ?? '', op['password'] ?? '', role: op['role'] ?? 'operator', name: op['name'] ?? '');
+            }
+          } else {
+            try {
+              final dirPath = await getDirectoryPath();
+              final file = File('$dirPath/operators.json');
+              await file.writeAsString(jsonEncode(cloudOps), mode: FileMode.write, flush: true);
+            } catch (_) {}
+          }
+          return cloudOps;
+        }
+      } catch (e) {
+        print("Supabase load operators error: $e");
+      }
+    }
+
+    // 2. Fallback to local storage (Web localStorage or Desktop JSON file)
     if (kIsWeb) {
       final list = getWebOperators();
       if (list.isEmpty) {
-        final defaultOperators = [
-          {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
-          {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
-          {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
-          {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
-          {'email': 'operator', 'password': 'operator123', 'role': 'operator', 'name': 'Ahmed Said'},
-        ];
         for (var op in defaultOperators) {
           saveWebOperator(op['email']!, op['password']!, role: op['role']!, name: op['name']!);
+        }
+        if (SupabaseService.isInitialized) {
+          SupabaseService.saveOperatorsToCloud(defaultOperators);
         }
         return defaultOperators;
       }
@@ -266,14 +324,10 @@ class StorageService {
       final dirPath = await getDirectoryPath();
       final file = File('$dirPath/operators.json');
       if (!await file.exists()) {
-        final defaultOperators = [
-          {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
-          {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
-          {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
-          {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
-          {'email': 'operator', 'password': 'operator123', 'role': 'operator', 'name': 'Ahmed Said'},
-        ];
         await file.writeAsString(jsonEncode(defaultOperators), mode: FileMode.write, flush: true);
+        if (SupabaseService.isInitialized) {
+          SupabaseService.saveOperatorsToCloud(defaultOperators);
+        }
         return defaultOperators;
       }
       final content = await file.readAsString();
@@ -286,22 +340,12 @@ class StorageService {
       }).toList();
     } catch (e) {
       print("Error loading operators: $e");
-      return [
-        {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
-        {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
-        {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
-        {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
-        {'email': 'operator', 'password': 'operator123', 'role': 'operator', 'name': 'Ahmed Said'},
-      ];
+      return defaultOperators;
     }
   }
 
-  // Save new user credentials with role
+  // Save new user credentials with role (syncs to both local and Supabase cloud)
   Future<void> saveOperator(String email, String password, {String role = 'operator', String name = ''}) async {
-    if (kIsWeb) {
-      saveWebOperator(email, password, role: role, name: name);
-      return;
-    }
     final operators = await loadOperators();
     operators.removeWhere((op) => (op['email'] ?? '').toLowerCase() == email.toLowerCase());
     operators.add({
@@ -310,22 +354,50 @@ class StorageService {
       'role': role,
       'name': name.isNotEmpty ? name : email,
     });
-    final dirPath = await getDirectoryPath();
-    final file = File('$dirPath/operators.json');
-    await file.writeAsString(jsonEncode(operators), mode: FileMode.write, flush: true);
+
+    // 1. Immediate local save
+    if (kIsWeb) {
+      saveWebOperator(email, password, role: role, name: name);
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/operators.json');
+        await file.writeAsString(jsonEncode(operators), mode: FileMode.write, flush: true);
+      } catch (e) {
+        print("Error saving local operator file: $e");
+      }
+    }
+
+    // 2. Cloud synchronization (ensures user exists across all other PCs & web)
+    if (SupabaseService.isInitialized) {
+      try {
+        await SupabaseService.saveOperatorsToCloud(operators);
+      } catch (e) {
+        print("Error syncing operator to Supabase: $e");
+      }
+    }
   }
 
-  // Delete user credentials
+  // Delete user credentials (updates local and cloud)
   Future<void> deleteOperator(String identifier) async {
-    if (kIsWeb) {
-      deleteWebOperator(identifier);
-      return;
-    }
     final operators = await loadOperators();
     operators.removeWhere((op) => (op['email'] ?? '').toLowerCase() == identifier.toLowerCase());
-    final dirPath = await getDirectoryPath();
-    final file = File('$dirPath/operators.json');
-    await file.writeAsString(jsonEncode(operators), mode: FileMode.write, flush: true);
+
+    if (kIsWeb) {
+      deleteWebOperator(identifier);
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/operators.json');
+        await file.writeAsString(jsonEncode(operators), mode: FileMode.write, flush: true);
+      } catch (_) {}
+    }
+
+    if (SupabaseService.isInitialized) {
+      try {
+        await SupabaseService.saveOperatorsToCloud(operators);
+      } catch (_) {}
+    }
   }
 
   // Calculate cumulative rounds fired across all tests for a specific asset serial
@@ -354,8 +426,28 @@ class StorageService {
     return counts;
   }
 
-  // Load Admin Rules
+  // Load Admin Rules (cloud-synced + local fallback)
   Future<Map<String, dynamic>> loadRules() async {
+    if (SupabaseService.isInitialized) {
+      try {
+        final cloudRules = await SupabaseService.fetchRulesFromCloud();
+        if (cloudRules != null && cloudRules.isNotEmpty) {
+          if (kIsWeb) {
+            saveWebRules(cloudRules);
+          } else {
+            try {
+              final dirPath = await getDirectoryPath();
+              final file = File('$dirPath/admin_rules.json');
+              await file.writeAsString(jsonEncode(cloudRules), mode: FileMode.write, flush: true);
+            } catch (_) {}
+          }
+          return cloudRules;
+        }
+      } catch (e) {
+        print("Supabase load rules error: $e");
+      }
+    }
+
     if (kIsWeb) {
       return getWebRules();
     }
@@ -373,15 +465,25 @@ class StorageService {
     }
   }
 
-  // Save Admin Rules
+  // Save Admin Rules (syncs to local and cloud)
   Future<void> saveRules(Map<String, dynamic> rules) async {
     if (kIsWeb) {
       saveWebRules(rules);
-      return;
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/admin_rules.json');
+        await file.writeAsString(jsonEncode(rules), mode: FileMode.write, flush: true);
+      } catch (_) {}
     }
-    final dirPath = await getDirectoryPath();
-    final file = File('$dirPath/admin_rules.json');
-    await file.writeAsString(jsonEncode(rules), mode: FileMode.write, flush: true);
+
+    if (SupabaseService.isInitialized) {
+      try {
+        await SupabaseService.saveRulesToCloud(rules);
+      } catch (e) {
+        print("Error saving rules to Supabase: $e");
+      }
+    }
   }
 
   // Save form draft locally (auto-save engine)

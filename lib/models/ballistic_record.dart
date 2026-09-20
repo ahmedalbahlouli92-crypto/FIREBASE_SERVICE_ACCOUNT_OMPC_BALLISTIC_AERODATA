@@ -633,7 +633,6 @@ class BallisticRecord {
       'vel_range': velRange,
       'vel_sd': velSD,
       'acc_mean_radius': accMeanRadius,
-      'acc_largest_distance': accLargestDistance,
       'extraction_force_type': extractionForceType,
       'extraction_force_rounds': extractionForceRounds,
       'cartridge_temp': cartridgeTemp,
