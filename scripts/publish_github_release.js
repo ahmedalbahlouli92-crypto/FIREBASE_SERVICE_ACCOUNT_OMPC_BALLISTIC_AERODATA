@@ -18,6 +18,7 @@ function getGitHubToken() {
 
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
+const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
 const TAG_NAME = 'v1.4.0';
 const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.0 (Enhanced QC, EPVAT Multi-Temp, SPC Export, Minimize Support & Consumables)';
 const BODY = `## OMPC Ballistic AeroData v1.4.0
@@ -167,6 +168,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
+    { name: 'OMPC_Ballistic_AeroData_v1.4.0.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.0.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'build\\app\\outputs\\flutter-apk\\app-release.apk' }
   ];
 
