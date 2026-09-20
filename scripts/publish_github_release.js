@@ -19,22 +19,31 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.0';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.0 (65% Dark Sea Blue Modern Theme, Full Screen Launch & Quality Diagnostics)';
-const BODY = `## OMPC Ballistic AeroData v1.3.0
+const TAG_NAME = 'v1.3.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.1 (Universal Windows 7/10/11 Compatibility, Zero-Privilege Sockets & 65% Dark Sea Blue Theme)';
+const BODY = `## OMPC Ballistic AeroData v1.3.1
 
 ### Key Updates & Laboratory Enhancements:
-1. **Modern 65% Dark Sea Blue Theme**: Transformed application surfaces into an executive Oceanic Deep Sea Navy palette (#0A192F page background, #0E223D sidebar/appbar, #132B45 cards and containers, #0D1E33 input fields, and #1E3A8A borders with #38BDF8 sky blue accents and white typography). Pitch black (#111524) completely removed.
-2. **Daily Test Crash Fix**: Resolved uninitialized Hopper Year controller issue in the Daily Test entry tab, ensuring smooth logging without black/broken screens.
-3. **Full Size Screen Launch**: Windows desktop application and standalone browser runtime automatically launch in maximized full-screen mode on startup.
-4. **Welcome Notification on Password Entry**: Instant welcome phrase banner displays directly after entering the password, with Enter key submission enabled on the Access Portal.
-5. **Quality Diagnostics & AI Advisory Overhaul**: Comprehensive styling update across Inspection Logs, Executive Summaries, Date Range Pickers, and Root-Cause Advisories.
+1. **Universal Windows 7, 8, 10 & 11 Compatibility**:
+   - Replaced \`HttpListener\` with a standard loopback \`TcpListener\` on dynamically allocated ephemeral ports. Requires **zero administrator privileges**, eliminates URL ACL conflicts, and prevents "Could not bind local HTTP server port" errors.
+   - Added GPU fallback flags (\`--disable-gpu\`, \`--disable-gpu-compositing\`, \`--no-sandbox\`) to permanently resolve the black screen freeze on older Intel HD Graphics 4600 drivers.
+2. **100% Offline Bundled CanvasKit**:
+   - Built with local asset packaging (\`--no-web-resources-cdn\`). The app loads immediately from the local disk with zero reliance on Google CDN servers.
+3. **Modern 65% Dark Sea Blue Theme**:
+   - Transformed application surfaces into an executive Oceanic Deep Sea Navy palette (\`#0A192F\` background, \`#0E223D\` sidebar/appbar, \`#132B45\` cards, \`#0D1E33\` input fields, and \`#1E3A8A\` borders with \`#38BDF8\` sky blue accents). Pitch black (\`#111524\`) completely eliminated.
+4. **Daily Test Crash Fix**:
+   - Resolved uninitialized Hopper Year controller issue in the Daily Test entry tab.
+5. **Full Size Screen Launch**:
+   - Windows desktop application and standalone browser runtime automatically launch maximized in full-screen mode on startup.
+6. **Welcome Notification on Password Entry**:
+   - Instant welcome phrase banner displays directly after entering the password, with Enter key submission enabled on the Access Portal.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
 - **OMPC_Ballistic_AeroData.exe**: Standalone Direct Executable
 - **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package
-- **Web App**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
+- **OMPC_Ballistic_AeroData.apk**: Android Mobile Package
+- **Live Web Application**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
 `;
 
 function request(options, postData) {
