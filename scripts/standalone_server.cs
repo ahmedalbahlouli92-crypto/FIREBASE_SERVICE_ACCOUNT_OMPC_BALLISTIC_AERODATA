@@ -11,180 +11,247 @@ namespace OmpcBallisticAeroData
 {
     class Program
     {
+        private static HttpListener _httpListener;
         private static TcpListener _tcpListener;
         private static string _webRoot;
-        private static int _port = 0;
+        private static int _port = 8080;
         private static Process _browserProcess;
 
         [STAThread]
         static void Main(string[] args)
         {
-            // Resolve web directory relative to executable
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            _webRoot = Path.Combine(baseDir, "build", "web");
-
-            if (!Directory.Exists(_webRoot) || !File.Exists(Path.Combine(_webRoot, "index.html")))
+            try
             {
-                // Also check if running directly inside build/web or alongside web files
-                if (File.Exists(Path.Combine(baseDir, "index.html")))
+                Log("Starting OMPC Ballistic AeroData at " + DateTime.Now);
+
+                // Resolve web directory relative to executable
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                _webRoot = Path.Combine(baseDir, "build", "web");
+                Log("baseDir: " + baseDir + "\r\n_webRoot: " + _webRoot);
+
+                if (!Directory.Exists(_webRoot) || !File.Exists(Path.Combine(_webRoot, "index.html")))
                 {
-                    _webRoot = baseDir;
-                }
-                else
-                {
-                    // Attempt automatic self-extraction from embedded resource
-                    string unpackedDir;
-                    bool extracted = TryExtractEmbeddedWebBundle(out unpackedDir);
-                    if (extracted && Directory.Exists(unpackedDir) && File.Exists(Path.Combine(unpackedDir, "index.html")))
+                    if (File.Exists(Path.Combine(baseDir, "index.html")))
                     {
-                        _webRoot = unpackedDir;
+                        _webRoot = baseDir;
                     }
                     else
                     {
+                        string unpackedDir;
+                        bool extracted = TryExtractEmbeddedWebBundle(out unpackedDir);
+                        if (extracted && Directory.Exists(unpackedDir) && File.Exists(Path.Combine(unpackedDir, "index.html")))
+                        {
+                            _webRoot = unpackedDir;
+                        }
+                        else
+                        {
+                            Log("ERROR: Web assets not found!");
+                            System.Windows.Forms.MessageBox.Show(
+                                "Cannot find the web application assets in 'build/web' or current folder.\n" +
+                                "Please ensure the application folder is intact.",
+                                "OMPC Ballistic AeroData - Error",
+                                System.Windows.Forms.MessageBoxButtons.OK,
+                                System.Windows.Forms.MessageBoxIcon.Error);
+                            return;
+                        }
+                    }
+                }
+                Log("Resolved _webRoot: " + _webRoot);
+
+                // Engine 1: Try kernel HttpListener on ports 8080 - 8180 (Best for Windows 10 & 11)
+                for (int p = 8080; p < 8180; p++)
+                {
+                    try
+                    {
+                        _httpListener = new HttpListener();
+                        _httpListener.Prefixes.Add("http://127.0.0.1:" + p + "/");
+                        _httpListener.Start();
+                        _port = p;
+                        Log("HttpListener bound to port: " + _port);
+                        break;
+                    }
+                    catch
+                    {
+                        if (_httpListener != null)
+                        {
+                            try { _httpListener.Close(); } catch { }
+                            _httpListener = null;
+                        }
+                    }
+                }
+
+                // Engine 2 Fallback: If HttpListener failed (e.g. Windows 7 non-admin without URL ACL), use loopback TcpListener!
+                if (_httpListener == null || !_httpListener.IsListening)
+                {
+                    try
+                    {
+                        _tcpListener = new TcpListener(IPAddress.Loopback, 0);
+                        _tcpListener.Start();
+                        _port = ((IPEndPoint)_tcpListener.LocalEndpoint).Port;
+                        Log("TcpListener fallback bound to port: " + _port);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("TcpListener failed: " + ex);
                         System.Windows.Forms.MessageBox.Show(
-                            "Cannot find the web application assets in 'build/web' or current folder.\n" +
-                            "Please ensure the application folder is intact.",
+                            "Could not start local server: " + ex.Message,
                             "OMPC Ballistic AeroData - Error",
                             System.Windows.Forms.MessageBoxButtons.OK,
                             System.Windows.Forms.MessageBoxIcon.Error);
                         return;
                     }
                 }
-            }
 
-            // Bind loopback socket server on an automatically allocated free port (Zero Admin Privileges required)
-            try
-            {
-                _tcpListener = new TcpListener(IPAddress.Loopback, 0);
-                _tcpListener.Start();
-                _port = ((IPEndPoint)_tcpListener.LocalEndpoint).Port;
-            }
-            catch (Exception ex)
-            {
-                System.Windows.Forms.MessageBox.Show(
-                    "Could not initialize local loopback socket: " + ex.Message,
-                    "OMPC Ballistic AeroData - Error",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Error);
-                return;
-            }
+                // Start background listener thread
+                Thread serverThread = new Thread(ListenLoop);
+                serverThread.IsBackground = true;
+                serverThread.Start();
+                Thread.Sleep(100);
 
-            // Start background listener thread
-            Thread serverThread = new Thread(ListenLoop);
-            serverThread.IsBackground = true;
-            serverThread.Start();
-            Thread.Sleep(100);
+                // Launch local application URL in dedicated window mode
+                string appUrl = "http://127.0.0.1:" + _port + "/";
+                Log("App URL: " + appUrl);
 
-            // Launch purely offline local instance with instant zero-latency loading
-            string appUrl = "http://127.0.0.1:" + _port + "/";
-            string userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OMPC_Ballistic_AeroData", "browser_profile");
-            try { Directory.CreateDirectory(userDataDir); } catch { }
+                string browserExe = FindChromiumBrowser();
+                Log("Found browserExe: " + (browserExe ?? "NULL"));
 
-            string browserExe = FindChromiumBrowser();
-
-            if (browserExe != null)
-            {
-                try
-                {
-                    // Critical flags for Windows 7 / older GPUs (Intel HD 4600):
-                    // --disable-gpu and --disable-gpu-compositing prevent the black screen crash on older drivers
-                    // --no-sandbox ensures it runs smoothly even if elevated or under UAC
-                    string browserArgs = string.Format(
-                        "--app=\"{0}\" " +
-                        "--user-data-dir=\"{1}\" " +
-                        "--start-maximized " +
-                        "--new-window " +
-                        "--no-first-run " +
-                        "--no-default-browser-check " +
-                        "--disable-first-run-ui " +
-                        "--disable-notifications " +
-                        "--disable-gpu " +
-                        "--disable-gpu-compositing " +
-                        "--disable-software-rasterizer " +
-                        "--no-sandbox " +
-                        "--disable-features=msEdgeSidebarV2,msHub,msHubEdgeShopping,Translate,OptimizationHints,MediaRouter " +
-                        "--disable-extensions " +
-                        "--disable-background-networking " +
-                        "--disable-sync " +
-                        "--disable-default-apps",
-                        appUrl, userDataDir);
-
-                    ProcessStartInfo psi = new ProcessStartInfo
-                    {
-                        FileName = browserExe,
-                        Arguments = browserArgs,
-                        UseShellExecute = false
-                    };
-                    _browserProcess = Process.Start(psi);
-                }
-                catch
+                if (browserExe != null)
                 {
                     try
                     {
-                        // Fallback to launching browserExe directly in app mode with shell execute
-                        ProcessStartInfo simplePsi = new ProcessStartInfo
+                        ProcessStartInfo psi = new ProcessStartInfo
                         {
                             FileName = browserExe,
-                            Arguments = string.Format("--app=\"{0}\" --start-maximized --disable-gpu", appUrl),
+                            Arguments = string.Format("--app=\"{0}\" --start-maximized", appUrl),
                             UseShellExecute = true
                         };
-                        _browserProcess = Process.Start(simplePsi);
+                        Log("Launching browser: " + browserExe + " " + psi.Arguments);
+                        _browserProcess = Process.Start(psi);
+                        Log("Process.Start returned: " + (_browserProcess != null ? _browserProcess.Id.ToString() : "NULL (shell delegated)"));
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        Log("Process.Start exception: " + ex);
                         Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
                     }
                 }
-            }
-            else
-            {
-                Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
-            }
-
-            // Keep server alive while app window is open
-            if (_browserProcess != null)
-            {
-                bool quickExit = _browserProcess.WaitForExit(4000);
-                if (!quickExit)
+                else
                 {
-                    _browserProcess.WaitForExit();
+                    Log("No browserExe found, opening default URL");
+                    Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
+                }
+
+                // Keep server running indefinitely while app is active
+                Log("Entering wait loop...");
+                if (_browserProcess != null)
+                {
+                    bool quickExit = _browserProcess.WaitForExit(4000);
+                    Log("WaitForExit(4000) returned: " + quickExit);
+                    if (!quickExit)
+                    {
+                        _browserProcess.WaitForExit();
+                        Log("Browser process exited.");
+                    }
+                    else
+                    {
+                        Log("Browser quick exit detected (delegated to existing instance), sleeping infinite...");
+                        Thread.Sleep(Timeout.Infinite);
+                    }
                 }
                 else
                 {
+                    Log("_browserProcess is null (delegated), sleeping infinite...");
                     Thread.Sleep(Timeout.Infinite);
                 }
             }
-            else
+            catch (Exception topEx)
             {
-                Thread.Sleep(Timeout.Infinite);
+                Log("FATAL TOP-LEVEL EXCEPTION: " + topEx);
+                System.Windows.Forms.MessageBox.Show("Fatal error: " + topEx.Message, "OMPC Error", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
             }
 
-            try { _tcpListener.Stop(); } catch { }
+            try { if (_httpListener != null) _httpListener.Stop(); } catch { }
+            try { if (_tcpListener != null) _tcpListener.Stop(); } catch { }
+        }
+
+        private static void Log(string msg)
+        {
+            try
+            {
+                string debugLog = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "ompc_debug_log.txt");
+                File.AppendAllText(debugLog, msg + "\r\n");
+            }
+            catch { }
         }
 
         private static void ListenLoop()
         {
-            while (true)
+            if (_httpListener != null)
             {
-                try
+                while (_httpListener.IsListening)
                 {
-                    TcpClient client = _tcpListener.AcceptTcpClient();
-                    ThreadPool.QueueUserWorkItem(ProcessClient, client);
+                    try
+                    {
+                        var ctx = _httpListener.GetContext();
+                        ThreadPool.QueueUserWorkItem(ProcessHttpRequest, ctx);
+                    }
+                    catch { break; }
                 }
-                catch
+            }
+            else if (_tcpListener != null)
+            {
+                while (true)
                 {
-                    break;
+                    try
+                    {
+                        TcpClient client = _tcpListener.AcceptTcpClient();
+                        ThreadPool.QueueUserWorkItem(ProcessTcpClient, client);
+                    }
+                    catch { break; }
                 }
             }
         }
 
-        private static void ProcessClient(object state)
+        private static void ProcessHttpRequest(object state)
+        {
+            var ctx = (HttpListenerContext)state;
+            try
+            {
+                string rawUrl = ctx.Request.Url.AbsolutePath;
+                if (rawUrl == "/" || string.IsNullOrEmpty(rawUrl)) rawUrl = "/index.html";
+                string cleanPath = Uri.UnescapeDataString(rawUrl).TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                string fullPath = Path.Combine(_webRoot, cleanPath);
+                if (!File.Exists(fullPath)) fullPath = Path.Combine(_webRoot, "index.html");
+
+                if (File.Exists(fullPath))
+                {
+                    byte[] bytes = File.ReadAllBytes(fullPath);
+                    ctx.Response.StatusCode = 200;
+                    ctx.Response.ContentType = GetMimeType(Path.GetExtension(fullPath));
+                    ctx.Response.ContentLength64 = bytes.Length;
+                    ctx.Response.Headers.Add("Cache-Control", "no-cache");
+                    ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+                }
+                else
+                {
+                    ctx.Response.StatusCode = 404;
+                }
+            }
+            catch { }
+            finally
+            {
+                try { ctx.Response.OutputStream.Close(); } catch { }
+            }
+        }
+
+        private static void ProcessTcpClient(object state)
         {
             TcpClient client = (TcpClient)state;
             try
             {
-                client.ReceiveTimeout = 4000;
-                client.SendTimeout = 4000;
+                client.ReceiveTimeout = 10000;
+                client.SendTimeout = 60000;
+                client.SendBufferSize = 64 * 1024;
                 using (NetworkStream stream = client.GetStream())
                 {
                     byte[] buffer = new byte[4096];
@@ -202,18 +269,11 @@ namespace OmpcBallisticAeroData
                     string rawUrl = parts[1];
                     int qIdx = rawUrl.IndexOf('?');
                     if (qIdx >= 0) rawUrl = rawUrl.Substring(0, qIdx);
-                    if (rawUrl == "/" || string.IsNullOrEmpty(rawUrl))
-                    {
-                        rawUrl = "/index.html";
-                    }
+                    if (rawUrl == "/" || string.IsNullOrEmpty(rawUrl)) rawUrl = "/index.html";
 
-                    string cleanPath = Uri.UnescapeDataString(rawUrl).TrimStart('/');
-                    cleanPath = cleanPath.Replace('/', Path.DirectorySeparatorChar);
+                    string cleanPath = Uri.UnescapeDataString(rawUrl).TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
                     string fullPath = Path.Combine(_webRoot, cleanPath);
-                    if (!File.Exists(fullPath))
-                    {
-                        fullPath = Path.Combine(_webRoot, "index.html");
-                    }
+                    if (!File.Exists(fullPath)) fullPath = Path.Combine(_webRoot, "index.html");
 
                     if (File.Exists(fullPath))
                     {
@@ -229,7 +289,16 @@ namespace OmpcBallisticAeroData
                             mime, bytes.Length);
                         byte[] headerBytes = Encoding.ASCII.GetBytes(header);
                         stream.Write(headerBytes, 0, headerBytes.Length);
-                        stream.Write(bytes, 0, bytes.Length);
+
+                        // Stream bytes in 64KB chunks to prevent socket buffer congestion
+                        int chunkSize = 64 * 1024;
+                        int offset = 0;
+                        while (offset < bytes.Length)
+                        {
+                            int count = Math.Min(chunkSize, bytes.Length - offset);
+                            stream.Write(bytes, offset, count);
+                            offset += count;
+                        }
                         stream.Flush();
                     }
                     else

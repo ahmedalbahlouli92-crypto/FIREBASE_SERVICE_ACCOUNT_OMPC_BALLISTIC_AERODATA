@@ -19,24 +19,20 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.1 (Universal Windows 7/10/11 Compatibility, Zero-Privilege Sockets & 65% Dark Sea Blue Theme)';
-const BODY = `## OMPC Ballistic AeroData v1.3.1
+const TAG_NAME = 'v1.3.2';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.2 (Universal Engine Fix for Windows 7/10/11 & Instant Offline CanvasKit Startup)';
+const BODY = `## OMPC Ballistic AeroData v1.3.2
 
-### Key Updates & Laboratory Enhancements:
-1. **Universal Windows 7, 8, 10 & 11 Compatibility**:
-   - Replaced \`HttpListener\` with a standard loopback \`TcpListener\` on dynamically allocated ephemeral ports. Requires **zero administrator privileges**, eliminates URL ACL conflicts, and prevents "Could not bind local HTTP server port" errors.
-   - Added GPU fallback flags (\`--disable-gpu\`, \`--disable-gpu-compositing\`, \`--no-sandbox\`) to permanently resolve the black screen freeze on older Intel HD Graphics 4600 drivers.
-2. **100% Offline Bundled CanvasKit**:
-   - Built with local asset packaging (\`--no-web-resources-cdn\`). The app loads immediately from the local disk with zero reliance on Google CDN servers.
-3. **Modern 65% Dark Sea Blue Theme**:
-   - Transformed application surfaces into an executive Oceanic Deep Sea Navy palette (\`#0A192F\` background, \`#0E223D\` sidebar/appbar, \`#132B45\` cards, \`#0D1E33\` input fields, and \`#1E3A8A\` borders with \`#38BDF8\` sky blue accents). Pitch black (\`#111524\`) completely eliminated.
-4. **Daily Test Crash Fix**:
-   - Resolved uninitialized Hopper Year controller issue in the Daily Test entry tab.
-5. **Full Size Screen Launch**:
-   - Windows desktop application and standalone browser runtime automatically launch maximized in full-screen mode on startup.
-6. **Welcome Notification on Password Entry**:
-   - Instant welcome phrase banner displays directly after entering the password, with Enter key submission enabled on the Access Portal.
+### Key Fixes & Enhancements:
+1. **Critical Startup Fix (Blank Screen Elimination)**:
+   - Resolved a critical JavaScript initialization conflict in Flutter web loader bootstrap where an empty object initialization prevented \`_flutter.loader.load()\` from firing. The app now starts instantly and reliably across all devices.
+2. **Universal Dual-Engine Local Server**:
+   - **Engine 1 (Windows 10/11)**: High-speed asynchronous kernel \`HttpListener\` across ports 8080-8179.
+   - **Engine 2 (Windows 7 / Legacy PC Fallback)**: Standard loopback \`TcpListener\` on dynamic port 0 for non-administrator accounts, completely eliminating "Could not bind local HTTP server port" errors without needing UAC elevation.
+3. **Optimized Chromium Runtime Launch**:
+   - Standardized Chromium/Edge dedicated app-mode launch parameters without conflicting graphics switches, eliminating graphics driver freezes and black screens on older Intel HD Graphics 4600 machines.
+4. **Resilient Server Lifecycle**:
+   - Server process maintains an active heartbeat and properly serves all local assets even when browser process delegation occurs.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
