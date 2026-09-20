@@ -840,7 +840,7 @@ class _EntryTabState extends State<EntryTab> {
       _headSlowController.text = '0';
       _headFastController.text = '0';
       _roomTempController.clear();
-      _distanceController.clear();
+      _updateDefaultDistance();
       _meanXController.clear();
       _maxXController.clear();
       _minXController.clear();
@@ -1294,6 +1294,9 @@ class _EntryTabState extends State<EntryTab> {
     // Initialize Primer Sensitivity Test round
     _primerDropHeightControllers.add(TextEditingController());
     _primerFireResults.add('Fire');
+    _primerHbarController.addListener(_onManualPrimerHbarOrSDChanged);
+    _primerSDController.addListener(_onManualPrimerHbarOrSDChanged);
+
 
     // Initialize overall EPVAT controllers map for three temperatures (+21, +52, -54)
     final temps = ['+21', '+52', '-54'];
@@ -1380,6 +1383,20 @@ class _EntryTabState extends State<EntryTab> {
       rangeCtrl.clear();
     }
   }
+
+  void _onManualPrimerHbarOrSDChanged() {
+    if (_testName != 'Primer Sensitivity Test') return;
+    final hm = double.tryParse(_primerHbarController.text.trim());
+    final sd = double.tryParse(_primerSDController.text.trim());
+    if (hm != null && sd != null) {
+      final allFire = hm + (5 * sd);
+      final noFire = hm - (2 * sd);
+      _primerHbarPlus5SController.text = allFire.toStringAsFixed(1);
+      _primerHbarMinus2SController.text = noFire.toStringAsFixed(1);
+      if (mounted) setState(() {});
+    }
+  }
+
 
   void _updateDefaultDistance() {
     if (_testName != 'Accuracy Test' && _testName != 'EPVAT test') return;
@@ -1529,6 +1546,8 @@ class _EntryTabState extends State<EntryTab> {
     for (var ctrl in _primerDropHeightControllers) {
       ctrl.dispose();
     }
+    _primerHbarController.removeListener(_onManualPrimerHbarOrSDChanged);
+    _primerSDController.removeListener(_onManualPrimerHbarOrSDChanged);
     _primerHbarController.dispose();
     _primerSDController.dispose();
     _primerHbarPlus5SController.dispose();
@@ -2022,7 +2041,7 @@ class _EntryTabState extends State<EntryTab> {
       _primerSlowController.clear();
       _primerFastController.clear();
       _barrelSNController.text = _barrelSerialNumbers.isNotEmpty ? _barrelSerialNumbers.first : '';
-      _distanceController.clear();
+      _updateDefaultDistance();
       _meanXController.clear();
       _maxXController.clear();
       _minXController.clear();
@@ -2356,11 +2375,16 @@ class _EntryTabState extends State<EntryTab> {
                         onChanged: (v) {
                           setState(() {
                             _caliber = v!;
+                            if (_isWaterproofExcluded(_caliber) && _testName == 'Waterproof Test') {
+                              _testName = 'Extraction Force Test';
+                              widget.onTestNameChanged('Extraction Force Test');
+                            }
                             if (!(_caliber.contains('M82') || _caliber.contains('M200')) && _testName == 'Firing Rate Cycle Test') {
-                              _testName = 'Waterproof Test';
-                              widget.onTestNameChanged('Waterproof Test');
+                              _testName = _isWaterproofExcluded(_caliber) ? 'Extraction Force Test' : 'Waterproof Test';
+                              widget.onTestNameChanged(_testName);
                             }
                             if (_testName == 'Waterproof Test') {
+                              _producedController.text = '20';
                               if (_caliber.contains('M82') || _caliber.contains('M200')) {
                                 _pressureController.text = '0.14';
                               } else {
@@ -2402,12 +2426,16 @@ class _EntryTabState extends State<EntryTab> {
                           if (t == 'Firing Rate Cycle Test') {
                             return _caliber.contains('M82') || _caliber.contains('M200');
                           }
+                          if (t == 'Waterproof Test') {
+                            return !_isWaterproofExcluded(_caliber);
+                          }
                           return true;
                         }).toList(),
                         onChanged: (v) {
                           setState(() {
                             _testName = v!;
                             if (_testName == 'Waterproof Test') {
+                              _producedController.text = '20';
                               if (_caliber.contains('M82') || _caliber.contains('M200')) {
                                 _pressureController.text = '0.14';
                               } else {
@@ -2447,15 +2475,45 @@ class _EntryTabState extends State<EntryTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (_testName == 'EPVAT test') ...[
-                            Row(
-                              children: [
-                                const Text('EPVAT Test Mode: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5)),
-                                const SizedBox(width: 12.0),
-                                _buildEpvatModeRadioButton('Overall', 'Overall Results (3 Temps)'),
-                                const SizedBox(width: 16.0),
-                                _buildEpvatModeRadioButton('Individual', 'Individual Rounds'),
-                              ],
-                            ),
+                            _buildFormRow([
+                              _buildFlexibleField(
+                                flex: 1,
+                                label: 'Temperature Evaluation Mode',
+                                child: _buildDropdownField(
+                                  value: _epvatPressureType == 'Overall' ? 'All 3 Temperatures (+21, +52, -54)' : 'Single Temperature',
+                                  items: const ['Single Temperature', 'All 3 Temperatures (+21, +52, -54)'],
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() {
+                                        _epvatPressureType = v.startsWith('All') ? 'Overall' : 'Individual';
+                                        _producedController.text = _epvatPressureType == 'Overall' ? '90' : '30';
+                                        if (_epvatPressureType == 'Individual' && _cartridgeTempController.text.trim().isEmpty) {
+                                          _cartridgeTempController.text = '+21';
+                                        }
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              if (_epvatPressureType == 'Individual')
+                                _buildFlexibleField(
+                                  flex: 1,
+                                  label: 'Selected Temperature',
+                                  child: _buildDropdownField(
+                                    value: ['+21 °C', '+52 °C', '-54 °C'].contains('${_cartridgeTempController.text.trim().startsWith('+') || _cartridgeTempController.text.trim().startsWith('-') ? _cartridgeTempController.text.trim() : '+${_cartridgeTempController.text.trim()}'} °C')
+                                        ? '${_cartridgeTempController.text.trim().startsWith('+') || _cartridgeTempController.text.trim().startsWith('-') ? _cartridgeTempController.text.trim() : '+${_cartridgeTempController.text.trim()}'} °C'
+                                        : '+21 °C',
+                                    items: const ['+21 °C', '+52 °C', '-54 °C'],
+                                    onChanged: (v) {
+                                      if (v != null) {
+                                        setState(() {
+                                          _cartridgeTempController.text = v.replaceAll(' °C', '');
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                            ]),
                             const SizedBox(height: 16.0),
                           ],
                           Row(
@@ -2509,17 +2567,6 @@ class _EntryTabState extends State<EntryTab> {
                                 hint: 'e.g., 25',
                               ),
                             ),
-                            if (_testName == 'EPVAT test' && _epvatPressureType == 'Individual')
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Cartridge Temp (°C)',
-                                child: _buildTextField(
-                                  controller: _cartridgeTempController,
-                                  hint: 'e.g., 21',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  validator: (v) => _testName == 'EPVAT test' && _epvatPressureType == 'Individual' && (v == null || v.trim().isEmpty) ? 'Required' : null,
-                                ),
-                              ),
                           ]),
                           // Sensor inputs (EPVAT only)
                           if (_testName == 'EPVAT test') ...[
@@ -6315,6 +6362,14 @@ class _EntryTabState extends State<EntryTab> {
     return variables;
   }
 
+  bool _isWaterproofExcluded(String cal) {
+    final c = cal.toLowerCase();
+    if (c.contains('69 grain') || c.contains('55 grain') || c.contains('77 grain')) return true;
+    if (c.contains('.308')) return true;
+    if (c.contains('match') || c.contains('luger')) return true;
+    return false;
+  }
+
   Map<String, dynamic> _getWaterproofRulesForCaliber() {
     final wp = widget.adminRules['waterproof'] ?? {};
     final calibersMap = wp['calibers'] as Map<String, dynamic>? ?? {};
@@ -7152,13 +7207,23 @@ class _EntryTabState extends State<EntryTab> {
           _buildFormRow([
             _buildFlexibleField(
               flex: 1,
-              label: 'Mean Height H̄ (mm)',
-              child: _buildTextField(controller: _primerHbarController, hint: '0.0', readOnly: true),
+              label: 'Mean Height H̄ / HM (mm)',
+              child: _buildTextField(
+                controller: _primerHbarController,
+                hint: '0.0',
+                readOnly: false,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
             ),
             _buildFlexibleField(
               flex: 1,
-              label: 'Std Deviation S (mm)',
-              child: _buildTextField(controller: _primerSDController, hint: '0.0', readOnly: true),
+              label: 'Std Deviation S / SD (mm)',
+              child: _buildTextField(
+                controller: _primerSDController,
+                hint: '0.0',
+                readOnly: false,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
             ),
             _buildFlexibleField(
               flex: 1,

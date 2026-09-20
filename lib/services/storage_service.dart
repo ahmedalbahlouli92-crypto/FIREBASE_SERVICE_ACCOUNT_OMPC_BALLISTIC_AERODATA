@@ -535,4 +535,39 @@ class StorageService {
       print("Error clearing form draft: $e");
     }
   }
+
+  // Load consumable inventory
+  Future<List<Map<String, dynamic>>> loadConsumables() async {
+    if (kIsWeb) {
+      return getWebConsumables();
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/consumables_inventory.json');
+      if (!await file.exists()) return [];
+      final content = await file.readAsString();
+      if (content.isEmpty) return [];
+      final List<dynamic> decoded = jsonDecode(content);
+      return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      print("Error loading consumables: $e");
+      return [];
+    }
+  }
+
+  // Save consumable inventory
+  Future<void> saveConsumables(List<Map<String, dynamic>> items) async {
+    if (kIsWeb) {
+      saveWebConsumables(items);
+      return;
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/consumables_inventory.json');
+      await file.writeAsString(jsonEncode(items), mode: FileMode.write, flush: true);
+    } catch (e) {
+      print("Error saving consumables: $e");
+    }
+  }
 }
+

@@ -1353,10 +1353,13 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          runSpacing: 8.0,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.candlestick_chart_outlined, color: Color(0xFF0284C7), size: 20.0),
                 const SizedBox(width: 8.0),

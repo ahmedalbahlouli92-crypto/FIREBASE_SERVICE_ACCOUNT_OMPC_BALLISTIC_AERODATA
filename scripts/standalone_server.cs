@@ -80,6 +80,11 @@ namespace OmpcBallisticAeroData
         [DllImport("user32.dll")]
         public static extern bool IsWindowVisible(IntPtr hWnd);
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsIconic(IntPtr hWnd);
+
+
         public static readonly PROPERTYKEY PKEY_AppUserModel_ID = new PROPERTYKEY
         {
             fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 5
@@ -404,7 +409,7 @@ namespace OmpcBallisticAeroData
                     try
                     {
                         string browserArgs = string.Format(
-                            "--app=\"{0}\" --start-fullscreen --kiosk --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
+                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
                             appUrl, _userProfileDir);
 
                         ProcessStartInfo psi = new ProcessStartInfo
@@ -452,7 +457,6 @@ namespace OmpcBallisticAeroData
                 {
                     Thread.Sleep(1000);
 
-                    // 1. If heartbeats were received and have stopped for > 5 seconds, window was closed
                     bool hadHb = false;
                     DateTime lastHb;
                     lock (_heartbeatLock)
@@ -461,11 +465,15 @@ namespace OmpcBallisticAeroData
                         lastHb = _lastHeartbeat;
                     }
 
+                    bool isMinimized = _browserHwnd != IntPtr.Zero && IsIconic(_browserHwnd);
+
                     if (hadHb)
                     {
-                        if ((DateTime.UtcNow - lastHb).TotalSeconds > 5)
+                        // Allow longer tolerance when minimized due to browser background power throttling
+                        double maxHbSeconds = isMinimized ? 60.0 : 6.0;
+                        if ((DateTime.UtcNow - lastHb).TotalSeconds > maxHbSeconds)
                         {
-                            Log("Heartbeat lost (> 5s). User closed the app window. Exiting server.");
+                            Log("Heartbeat lost (> " + maxHbSeconds + "s). User closed the app window. Exiting server.");
                             break;
                         }
                     }
@@ -482,10 +490,17 @@ namespace OmpcBallisticAeroData
                         }
                     }
 
-                    // 2. If browser HWND is captured, verify it is still visible
+                    // 2. If browser HWND is captured, verify it still exists
                     if (_browserHwnd != IntPtr.Zero)
                     {
-                        if (!IsWindow(_browserHwnd) || !IsWindowVisible(_browserHwnd))
+                        if (!IsWindow(_browserHwnd))
+                        {
+                            Log("Browser window handle is no longer valid. Exiting server.");
+                            break;
+                        }
+
+                        // Only check visibility if not minimized
+                        if (!isMinimized && !IsWindowVisible(_browserHwnd))
                         {
                             Log("Browser window is no longer visible. Exiting server.");
                             break;

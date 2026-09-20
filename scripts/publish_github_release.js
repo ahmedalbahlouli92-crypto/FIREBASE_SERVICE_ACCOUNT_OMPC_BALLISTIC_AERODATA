@@ -18,30 +18,46 @@ function getGitHubToken() {
 
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
-const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.9';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.9 (Fix Report Submission & Cloud-Synced User Registration)';
-const BODY = `## OMPC Ballistic AeroData v1.3.9
+const TAG_NAME = 'v1.4.0';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.0 (Enhanced QC, EPVAT Multi-Temp, SPC Export, Minimize Support & Consumables)';
+const BODY = `## OMPC Ballistic AeroData v1.4.0
 
-### Critical Fixes & Enhancements:
-1. **Resolved Report Submission Saving Failure**:
-   - Fixed schema compatibility issue where \`acc_largest_distance\` was rejected by Supabase PostgREST (HTTP 400), causing submitted reports to fail insertion and get overwritten by old cache.
-   - All ballistic test records now insert cleanly to Supabase cloud (\`HTTP 201 Created\`) and save locally with zero loss.
-2. **Fixed User Registration & Added Multi-PC Cloud Synchronization**:
-   - Registered laboratory personnel and user roles now sync directly to Supabase Cloud (\`SYSTEM_CONFIG\` / \`OPERATORS_REGISTRY\`).
-   - A user registered on one PC or laptop is now immediately available to log in on any other PC, laptop, or web instance!
-   - Replaced fragile \`eval\`-based web storage with direct native \`dart:html\` localStorage for bulletproof persistence.
-3. **Guaranteed Local + Cloud Redundancy**:
-   - Both reports and registered users save locally first, so network hiccups or offline operation never result in lost entries.
-4. **Shadow-Host Lock-Free Architecture**:
-   - Application files on Desktop, USB, or Network shares remain 100% unlocked and can be replaced or deleted even while running.
+### Key Updates & New Features:
+1. **Waterproof Caliber Exclusion**:
+   - Excluded Waterproof Test option for \`.223 69 grains\`, \`.223 55 grains\`, \`.223 77 grains\`, \`7.62x51 .308\`, \`9mm Match\`, and \`9mm Luger\`.
+2. **Editable Primer Sensitivity HM & SD**:
+   - Operators can now directly enter Bruceton \`HM\` and \`SD\` parameters. The system automatically computes All Fire ($\\bar{H} + 5S$), No Fire ($\\bar{H} - 2S$), and evaluates sentencing against specifications.
+3. **Streamlined Evaluation Rules**:
+   - Removed GP Transducers, Barrels, and Weapons from the Evaluation Rules dropdown to focus strictly on ballistic and mechanical inspection requirements.
+4. **Formula & Input Focus Stability**:
+   - Fixed formula editor text loss / unfocus bug by using permanent keys on dynamic input fields.
+5. **Enlarged High-Visibility Branding**:
+   - Enlarged OMPC logos across the splash screen (120px), login modal (150px), and navigation sidebar (68px).
+6. **Centered Welcome Access Modal**:
+   - Implemented an access-granted modal dialog in the center of the screen upon authentication.
+7. **Default Waterproof Sample Size**:
+   - Defaulted Waterproof Test sample size to 20 rounds (editable by operators).
+8. **EPVAT Multi-Temperature Testing Workflow**:
+   - Integrated \`Single Temperature\` vs \`All 3 Temperatures (+21°C, +52°C, -54°C)\` segmented workflow identical to Function Test.
+9. **Statistical Process Control (SPC) Trend Export**:
+   - Added Test Type dropdown filter with dynamic parameter population and an **Export Trend Report** button generating print-ready reports with Grand Mean, Grand SD, Control Limits (UCL/LCL), and group breakdown tables.
+10. **M193 Velocity Distance Persistence**:
+    - Defaulted velocity distance for M193 to 21m and preserved it across test submission and field reset.
+11. **Window Minimize Support**:
+    - Windows standalone executable now allows minimizing the application to the taskbar without shutting down or terminating the background server.
+12. **Blank Caliber Cyclic Rate Testing**:
+    - Enabled cyclic rate testing and admin evaluation limits for blank calibers (5.56 M200 Blank and 7.62 M82 Blank).
+13. **Full Consumable Items Management Module**:
+    - Complete stock management with item registration, restock (auto count-up), user consumption (auto count-down), transaction history logs, and two-way Supabase Cloud synchronization.
+14. **Android APK Release**:
+    - Compiled standalone Android APK (\`OMPC_Ballistic_AeroData_v1.4.0.apk\`).
 
-### Download Binaries:
-- **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
-- **OMPC_Ballistic_AeroData.exe**: Standalone Direct Executable (Shadow-Host Enabled)
-- **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package (includes \`Force_Unlock_All.bat\`)
-- **Force_Unlock_All.bat**: 1-Click Process Stopper & File Unlocker
-- **Live Web Application**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
+### Binaries & Deployments:
+- **Web Portal**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
+- **Android APK**: \`OMPC_Ballistic_AeroData.apk\`
+- **Windows Setup**: \`OMPC_Ballistic_AeroData_Setup.exe\`
+- **Windows Portable**: \`OMPC_Ballistic_AeroData_Portable.zip\`
+- **Standalone EXE**: \`OMPC_Ballistic_AeroData.exe\`
 `;
 
 function request(options, postData) {

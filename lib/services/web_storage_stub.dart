@@ -13,3 +13,7 @@ void saveWebRules(Map<String, dynamic> rules) {}
 void saveWebFormDraft(Map<String, dynamic> draft) {}
 Map<String, dynamic>? getWebFormDraft() => null;
 void clearWebFormDraft() {}
+List<Map<String, dynamic>> getWebConsumables() => [];
+void saveWebConsumables(List<Map<String, dynamic>> items) {}
+
+

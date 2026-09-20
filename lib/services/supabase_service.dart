@@ -438,4 +438,66 @@ class SupabaseService {
       return false;
     }
   }
+
+  /// Fetch consumables inventory from Supabase cloud configuration
+  static Future<List<Map<String, dynamic>>?> fetchConsumablesFromCloud() async {
+    if (!_initialized) return null;
+    try {
+      final res = await client
+          .from(tableName)
+          .select('id, notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'CONSUMABLES_INVENTORY')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if (res.isNotEmpty && res[0]['notes'] != null) {
+        final notesStr = res[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          final List<dynamic> decoded = jsonDecode(notesStr);
+          return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching consumables from Supabase: $e');
+      return null;
+    }
+  }
+
+  /// Save consumables inventory to Supabase cloud configuration
+  static Future<bool> saveConsumablesToCloud(List<Map<String, dynamic>> items) async {
+    if (!_initialized) return false;
+    try {
+      final jsonString = jsonEncode(items);
+      final existing = await client
+          .from(tableName)
+          .select('id')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'CONSUMABLES_INVENTORY')
+          .limit(1);
+
+      if (existing.isNotEmpty) {
+        final existingId = existing[0]['id'];
+        await client.from(tableName).update({
+          'notes': jsonString,
+          'timestamp': DateTime.now().toIso8601String(),
+        }).eq('id', existingId);
+      } else {
+        await client.from(tableName).insert({
+          'module': 'SYSTEM_CONFIG',
+          'test_name': 'CONSUMABLES_INVENTORY',
+          'operators': 'System',
+          'notes': jsonString,
+          'status': 'ACTIVE',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error saving consumables to Supabase: $e');
+      return false;
+    }
+  }
 }
+

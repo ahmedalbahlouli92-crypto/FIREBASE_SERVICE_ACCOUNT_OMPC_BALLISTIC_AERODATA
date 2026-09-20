@@ -11,6 +11,7 @@ import 'screens/dashboard_tab.dart';
 import 'screens/entry_tab.dart';
 import 'screens/history_tab.dart';
 import 'screens/analysis_recommendation_tab.dart';
+import 'screens/consumables_tab.dart';
 import 'services/epvat_formula_helper.dart';
 import 'services/supabase_service.dart';
 import 'services/app_exit_helper.dart';
@@ -437,7 +438,8 @@ final Map<String, dynamic> _defaultRules = {
   },
   'cyclic_rate': {
     'weapons': [
-      {'name': 'M82', 'type': 'Rifle', 'min': 600, 'max': null},
+      {'name': 'M82', 'type': 'Rifle', 'min': 600, 'max': 850},
+      {'name': 'M200', 'type': 'Rifle', 'min': 650, 'max': 900},
       {'name': 'M60', 'type': 'Machine Gun', 'min': 450, 'max': null},
       {'name': 'M240', 'type': 'Machine Gun', 'min': 550, 'max': 650},
       {'name': 'Default Rifle', 'type': 'Rifle', 'min': 550, 'max': 920},
@@ -780,6 +782,7 @@ class _MainShellState extends State<MainShell> {
   final StorageService _storageService = StorageService();
   Timer? _autoSyncTimer;
   Timer? _clockTimer;
+  Timer? _welcomeDismissTimer;
   DateTime _currentTime = DateTime.now();
 
   String _formatLiveClock(DateTime d) {
@@ -956,6 +959,7 @@ class _MainShellState extends State<MainShell> {
   void dispose() {
     _autoSyncTimer?.cancel();
     _clockTimer?.cancel();
+    _welcomeDismissTimer?.cancel();
     _passwordController.dispose();
     _opEmailController.dispose();
     _opPasswordController.dispose();
@@ -1694,50 +1698,120 @@ class _MainShellState extends State<MainShell> {
 
   void _showWelcomeNotification(String name, String roleName) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0284C7).withValues(alpha: 0.25),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF38BDF8)),
-              ),
-              child: const Icon(Icons.verified_user_outlined, color: Color(0xFF38BDF8), size: 22.0),
+    _welcomeDismissTimer?.cancel();
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        _welcomeDismissTimer = Timer(const Duration(milliseconds: 3200), () {
+          if (Navigator.of(ctx).canPop()) {
+            Navigator.of(ctx).pop();
+          }
+        });
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+          child: Container(
+            width: 490.0,
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 36.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFF162B46),
+              borderRadius: BorderRadius.circular(20.0),
+              border: Border.all(color: const Color(0xFF06B6D4), width: 2.0),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF06B6D4).withOpacity(0.35),
+                  blurRadius: 32.0,
+                  spreadRadius: 2.0,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.6),
+                  blurRadius: 40.0,
+                  offset: const Offset(0, 16),
+                ),
+              ],
             ),
-            const SizedBox(width: 14.0),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '👋 Welcome, $name!',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0, color: Colors.white),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF06B6D4).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF06B6D4), width: 2.0),
                   ),
-                  const SizedBox(height: 3.0),
-                  Text(
-                    'Access Granted • Active Session: $roleName',
-                    style: const TextStyle(fontSize: 12.0, color: Color(0xFFBAE6FD)),
+                  child: const Icon(Icons.verified_user_outlined, color: Color(0xFF38BDF8), size: 48.0),
+                ),
+                const SizedBox(height: 22.0),
+                Text(
+                  'WELCOME, ${name.toUpperCase()}!',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 1.0,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 10.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20.0),
+                    border: Border.all(color: const Color(0xFF0284C7)),
+                  ),
+                  child: Text(
+                    'ACCESS GRANTED • ROLE: ${roleName.toUpperCase()}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF38BDF8),
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16.0),
+                const Text(
+                  'OMPC BALLISTIC AERODATA PORTAL',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.0,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF94A3B8),
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 24.0),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (Navigator.of(ctx).canPop()) {
+                      Navigator.of(ctx).pop();
+                    }
+                  },
+                  icon: const Icon(Icons.arrow_forward, size: 18.0),
+                  label: const Text(
+                    'ENTER PORTAL',
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 14.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                    elevation: 4.0,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF30496B),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-        margin: const EdgeInsets.all(20.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          side: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
-        ),
-      ),
-    );
+          ),
+        );
+      },
+    ).then((_) {
+      _welcomeDismissTimer?.cancel();
+      _welcomeDismissTimer = null;
+    });
   }
 
   void _authenticateOperator() {
@@ -2272,16 +2346,16 @@ class _MainShellState extends State<MainShell> {
                 children: [
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(20.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFF2C415E),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.4)),
+                        border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.5), width: 2.0),
                       ),
                       child: Image.asset(
                         'assets/logo.png',
-                        height: 95.0,
-                        width: 95.0,
+                        height: 150.0,
+                        width: 150.0,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -3687,9 +3761,6 @@ class _MainShellState extends State<MainShell> {
                 'Primer Sensitivity Test',
                 'Function Test',
                 'Firing Rate Cycle Test',
-                'GP Transducers (GP1 & GP2)',
-                'Barrels',
-                'Weapons',
               ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
             ),
           ),
@@ -4110,7 +4181,7 @@ class _MainShellState extends State<MainShell> {
                               flex: 3,
                               child: TextFormField(
                                 initialValue: item['name'] ?? '',
-                                key: ValueKey('name_${_ruleSelectedCaliber}_${i}_${item['name']}'),
+                                key: ValueKey('name_${_ruleSelectedCaliber}_$i'),
                                 style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                 decoration: _getFormulaFieldDecoration(),
                                 onChanged: (val) {
@@ -4129,7 +4200,7 @@ class _MainShellState extends State<MainShell> {
                               flex: 4,
                               child: TextFormField(
                                 initialValue: item['formula'] ?? '',
-                                key: ValueKey('formula_${_ruleSelectedCaliber}_${i}_${item['formula']}'),
+                                key: ValueKey('formula_${_ruleSelectedCaliber}_$i'),
                                 style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
                                 decoration: _getFormulaFieldDecoration(),
                                 onChanged: (val) {
@@ -4180,7 +4251,7 @@ class _MainShellState extends State<MainShell> {
                               flex: 2,
                               child: TextFormField(
                                 initialValue: item['limit'] ?? '',
-                                key: ValueKey('limit_${_ruleSelectedCaliber}_${i}_${item['limit']}'),
+                                key: ValueKey('limit_${_ruleSelectedCaliber}_$i'),
                                 style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
                                 decoration: _getFormulaFieldDecoration(),
                                 onChanged: (val) {
@@ -4199,7 +4270,7 @@ class _MainShellState extends State<MainShell> {
                               flex: 1,
                               child: TextFormField(
                                 initialValue: item['unit'] ?? (item['formula'].toString().toLowerCase().contains('vel') ? 'm/s' : 'bar'),
-                                key: ValueKey('unit_${_ruleSelectedCaliber}_${i}_${item['unit']}'),
+                                key: ValueKey('unit_${_ruleSelectedCaliber}_$i'),
                                 style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0, fontFamily: 'JetBrainsMono'),
                                 decoration: _getFormulaFieldDecoration(),
                                 onChanged: (val) {
@@ -5409,7 +5480,7 @@ class _MainShellState extends State<MainShell> {
     final String initial = value == null ? '' : value.toString();
     return TextFormField(
       initialValue: initial,
-      key: ValueKey('cyclic_${index}_${key}_${initial}'), // Force rebuild on save / load
+      key: ValueKey('cyclic_${index}_$key'),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
       decoration: InputDecoration(
@@ -5536,7 +5607,10 @@ class _MainShellState extends State<MainShell> {
     } else if (_currentModule == 'Equipment Report') {
       mainContent = _buildModulePlaceholder('Equipment Report', Icons.construction_outlined, const Color(0xFFF59E0B));
     } else {
-      mainContent = _buildModulePlaceholder('Consumable Items', Icons.inventory_2_outlined, const Color(0xFFEC4899));
+      mainContent = ConsumablesTab(
+        loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
+        userRole: _currentUserRole == UserRole.admin ? 'admin' : 'operator',
+      );
     }
 
     return LayoutBuilder(
@@ -5566,7 +5640,7 @@ class _MainShellState extends State<MainShell> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(10.0),
+                              padding: const EdgeInsets.all(12.0),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF263852),
                                 shape: BoxShape.circle,
@@ -5574,8 +5648,8 @@ class _MainShellState extends State<MainShell> {
                               ),
                               child: Image.asset(
                                 'assets/logo.png',
-                                height: 52.0,
-                                width: 52.0,
+                                height: 68.0,
+                                width: 68.0,
                                 fit: BoxFit.contain,
                               ),
                             ),

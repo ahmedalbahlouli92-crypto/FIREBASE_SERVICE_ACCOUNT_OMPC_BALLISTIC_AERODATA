@@ -123,3 +123,20 @@ Map<String, dynamic>? getWebFormDraft() {
 void clearWebFormDraft() {
   _setItem('ompc_form_draft', '');
 }
+
+List<Map<String, dynamic>> getWebConsumables() {
+  final data = _getItem('ompc_consumables_inventory');
+  if (data == null || data.isEmpty) return [];
+  try {
+    final List<dynamic> decoded = jsonDecode(data);
+    return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  } catch (e) {
+    print("Error decoding web consumables: $e");
+    return [];
+  }
+}
+
+void saveWebConsumables(List<Map<String, dynamic>> items) {
+  _setItem('ompc_consumables_inventory', jsonEncode(items));
+}
+

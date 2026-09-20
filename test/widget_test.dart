@@ -14,7 +14,7 @@ void main() {
 
   testWidgets('Sidebar navigation to Log Test Entry', (WidgetTester tester) async {
     // Set screen size to desktop
-    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.physicalSize = const Size(1600, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
       tester.view.resetPhysicalSize();
@@ -56,12 +56,20 @@ void main() {
     await tester.tap(authButton);
     await tester.pumpAndSettle();
 
+    // Dismiss welcome modal dialog if present
+    final enterPortalButton = find.text('ENTER PORTAL');
+    if (enterPortalButton.evaluate().isNotEmpty) {
+      await tester.tap(enterPortalButton);
+      await tester.pumpAndSettle();
+    }
+
     // Verify Dashboard tab is initially shown
     expect(find.byType(DashboardTab), findsOneWidget);
 
     // Tap on the 'Log Entry' text button in sub tab bar
     final logEntryButton = find.text('Log Entry');
     expect(logEntryButton, findsOneWidget);
+    await tester.ensureVisible(logEntryButton);
     await tester.tap(logEntryButton);
     await tester.pumpAndSettle();
 

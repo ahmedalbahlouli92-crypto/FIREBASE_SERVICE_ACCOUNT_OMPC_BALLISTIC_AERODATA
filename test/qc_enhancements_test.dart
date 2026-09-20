@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ompc_ballistic_aerodata/models/ballistic_record.dart';
-import 'package:ompc_ballistic_aerodata/screens/entry_tab.dart';
 
 void main() {
   group('1. BallisticRecord Action Time and Primer Sensitivity Serialization', () {
