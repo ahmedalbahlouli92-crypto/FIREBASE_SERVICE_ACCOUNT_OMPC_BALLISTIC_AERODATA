@@ -424,7 +424,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: safeValue,
-              dropdownColor: const Color(0xFF132B45),
+              dropdownColor: const Color(0xFF243B58),
               style: const TextStyle(color: Colors.white, fontSize: 12.5),
               isDense: true,
               items: items
@@ -641,7 +641,7 @@ class _MultiMetricTrendPainter extends CustomPainter {
 
       // Dots & Badges
       final dotPaint = Paint()..color = color;
-      final dotBgPaint = Paint()..color = const Color(0xFF090C15);
+      final dotBgPaint = Paint()..color = const Color(0xFF171B26);
 
       for (int i = 0; i < pts.length; i++) {
         final pt = pts[i];
@@ -671,7 +671,7 @@ class _MultiMetricTrendPainter extends CustomPainter {
             ),
             const Radius.circular(3.0),
           );
-          canvas.drawRRect(pillRect, Paint()..color = const Color(0xFF0D1527));
+          canvas.drawRRect(pillRect, Paint()..color = const Color(0xFF1D263B));
           canvas.drawRRect(
             pillRect,
             Paint()

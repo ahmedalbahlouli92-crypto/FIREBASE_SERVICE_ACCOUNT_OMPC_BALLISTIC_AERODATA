@@ -188,161 +188,6 @@ namespace OmpcBallisticAeroData
         }
         #endregion
 
-        #region App Host Form (Prevents Duplicate Taskbar Icon)
-        public class AppHostForm : Form
-        {
-            [DllImport("user32.dll")] public static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
-            [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-            [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-            [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-            [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-            private const int GWL_STYLE = -16;
-            private const int WS_VISIBLE = 0x10000000;
-            private const int WS_CHILD = 0x40000000;
-            private const int WS_POPUP = unchecked((int)0x80000000);
-            private const int WS_CAPTION = 0x00C00000;
-            private const int WS_THICKFRAME = 0x00040000;
-
-            private Process _childProc;
-            private IntPtr _childHwnd = IntPtr.Zero;
-            private string _profileDir;
-            private Label _loadingLabel;
-            private bool _embedded = false;
-
-            public AppHostForm(string appUrl, string profileDir, string browserExe, string currentExe)
-            {
-                this.Text = "OMPC Ballistic AeroData";
-                this.Size = new Size(1280, 800);
-                this.StartPosition = FormStartPosition.CenterScreen;
-                this.WindowState = FormWindowState.Maximized;
-                this.BackColor = Color.FromArgb(11, 15, 25); // OMPC dark theme background
-
-                _profileDir = profileDir;
-
-                // Load custom application icon
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string iconPath = Path.Combine(baseDir, "app_icon.ico");
-                if (!File.Exists(iconPath))
-                    iconPath = Path.Combine(baseDir, "windows", "runner", "resources", "app_icon.ico");
-                if (File.Exists(iconPath))
-                {
-                    try { this.Icon = new Icon(iconPath); } catch { }
-                }
-                else
-                {
-                    try { this.Icon = Icon.ExtractAssociatedIcon(currentExe); } catch { }
-                }
-
-                _loadingLabel = new Label
-                {
-                    Text = "Starting OMPC Ballistic AeroData...",
-                    ForeColor = Color.FromArgb(16, 149, 193),
-                    Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                    AutoSize = false,
-                    TextAlign = ContentAlignment.MiddleCenter,
-                    Dock = DockStyle.Fill
-                };
-                this.Controls.Add(_loadingLabel);
-
-                // Launch browser process
-                try
-                {
-                    string browserArgs = string.Format(
-                        "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
-                        appUrl, profileDir);
-
-                    ProcessStartInfo psi = new ProcessStartInfo
-                    {
-                        FileName = browserExe,
-                        Arguments = browserArgs,
-                        UseShellExecute = true
-                    };
-                    Program.Log("Launching browser from host form: " + browserExe + " " + browserArgs);
-                    _childProc = Process.Start(psi);
-                    _browserProcess = _childProc;
-                }
-                catch (Exception ex)
-                {
-                    Program.Log("Error starting browser process: " + ex);
-                }
-
-                // Background Thread: Locate browser window and embed into this Form
-                Thread embedThread = new Thread(() =>
-                {
-                    for (int i = 0; i < 60; i++)
-                    {
-                        Thread.Sleep(100);
-                        if (_childProc != null && !_childProc.HasExited)
-                        {
-                            IntPtr found = FindBrowserWindow(_childProc.Id);
-                            if (found != IntPtr.Zero)
-                            {
-                                _childHwnd = found;
-                                _browserHwnd = found;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (_childHwnd != IntPtr.Zero)
-                    {
-                        try
-                        {
-                            this.BeginInvoke(new MethodInvoker(() =>
-                            {
-                                try
-                                {
-                                    SetParent(_childHwnd, this.Handle);
-                                    int style = GetWindowLong(_childHwnd, GWL_STYLE);
-                                    style = (style & ~WS_POPUP & ~WS_CAPTION & ~WS_THICKFRAME) | WS_CHILD | WS_VISIBLE;
-                                    SetWindowLong(_childHwnd, GWL_STYLE, style);
-                                    ResizeChild();
-                                    SetForegroundWindow(_childHwnd);
-                                    _loadingLabel.Visible = false;
-                                    _embedded = true;
-                                    Program.Log("Browser window embedded into host Form successfully.");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Program.Log("Exception embedding browser: " + ex);
-                                }
-                            }));
-                        }
-                        catch { }
-                    }
-                    else
-                    {
-                        Program.Log("Browser window embedding timed out; continuing in dual mode.");
-                    }
-                });
-                embedThread.IsBackground = true;
-                embedThread.Start();
-
-                this.Resize += (s, e) => ResizeChild();
-
-                this.FormClosed += (s, e) =>
-                {
-                    Program.Log("AppHostForm closed. Exiting application.");
-                    try { if (_childProc != null && !_childProc.HasExited) _childProc.Kill(); } catch { }
-                    try
-                    {
-                        if (Directory.Exists(_profileDir))
-                            Directory.Delete(_profileDir, true);
-                    }
-                    catch { }
-                };
-            }
-
-            private void ResizeChild()
-            {
-                if (_childHwnd != IntPtr.Zero && _embedded)
-                {
-                    MoveWindow(_childHwnd, 0, 0, this.ClientSize.Width, this.ClientSize.Height, true);
-                }
-            }
-        }
-        #endregion
 
         [STAThread]
         static void Main(string[] args)
@@ -468,16 +313,77 @@ namespace OmpcBallisticAeroData
 
                 if (browserExe != null)
                 {
-                    Application.EnableVisualStyles();
-                    Application.SetCompatibleTextRenderingDefault(false);
-                    Application.Run(new AppHostForm(appUrl, userProfileDir, browserExe, currentExe));
+                    try
+                    {
+                        string browserArgs = string.Format(
+                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
+                            appUrl, userProfileDir);
+
+                        ProcessStartInfo psi = new ProcessStartInfo
+                        {
+                            FileName = browserExe,
+                            Arguments = browserArgs,
+                            UseShellExecute = true
+                        };
+                        Log("Launching single app window: " + browserExe + " " + browserArgs);
+                        _browserProcess = Process.Start(psi);
+
+                        Thread aumidThread = new Thread(() =>
+                        {
+                            for (int i = 0; i < 40; i++)
+                            {
+                                Thread.Sleep(150);
+                                IntPtr hwnd = FindBrowserWindow(_browserProcess != null ? _browserProcess.Id : 0);
+                                if (hwnd != IntPtr.Zero)
+                                {
+                                    _browserHwnd = hwnd;
+                                    ApplyAumidToWindow(hwnd, AppId, currentExe, "OMPC Ballistic AeroData");
+                                    break;
+                                }
+                            }
+                        });
+                        aumidThread.IsBackground = true;
+                        aumidThread.Start();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("Error launching browser: " + ex);
+                        Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
+                    }
                 }
                 else
                 {
                     Log("No browserExe found, opening default system browser");
                     Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
-                    Thread.Sleep(Timeout.Infinite);
                 }
+
+                // Keep server running while the single app window is open, exit immediately when window is closed
+                Log("Entering wait loop...");
+                Thread.Sleep(2000);
+                while (true)
+                {
+                    if (_browserHwnd != IntPtr.Zero)
+                    {
+                        if (!IsWindow(_browserHwnd))
+                        {
+                            Log("Browser window closed. Exiting server.");
+                            break;
+                        }
+                    }
+                    else if (_browserProcess != null && _browserProcess.HasExited)
+                    {
+                        Log("Browser process exited. Exiting server.");
+                        break;
+                    }
+                    Thread.Sleep(500);
+                }
+
+                try
+                {
+                    if (Directory.Exists(userProfileDir))
+                        Directory.Delete(userProfileDir, true);
+                }
+                catch { }
             }
             catch (Exception topEx)
             {

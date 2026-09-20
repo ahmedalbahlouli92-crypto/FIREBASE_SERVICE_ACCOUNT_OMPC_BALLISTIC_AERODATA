@@ -19,24 +19,29 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.3';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.3 (Native Taskbar Grouping & Multi-User Port Isolation)';
-const BODY = `## OMPC Ballistic AeroData v1.3.3
+const TAG_NAME = 'v1.3.4';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.4 (Single Window & 20% Lightened Dark Theme)';
+const BODY = `## OMPC Ballistic AeroData v1.3.4
 
 ### Key Fixes & Enhancements:
-1. **Native Taskbar Window Grouping (Zero Duplicate Icons)**:
-   - Fixed the taskbar duplication issue where pinning the app resulted in separate unlinked browser windows. \`OMPC_Ballistic_AeroData.exe\` now hosts the application window natively with official icon and matching AppUserModelID, grouping seamlessly under the pinned taskbar icon.
-2. **Multi-User & Simultaneous Session Support**:
-   - Implemented strict TCP socket probing (\`ExclusiveAddressUse = true\`) across ports 8080-8200.
-   - Each user session automatically binds to an isolated available port (e.g. 8080, 8081) with dedicated session profile directories, allowing multiple users and concurrent instances without collisions or browser delegation crashes.
-3. **Installer Shortcut Property Integration**:
-   - Enhanced shortcut creation in \`OMPC_Ballistic_AeroData_Setup.exe\` with write-mode COM property store (\`STGM_READWRITE\`) and full relaunch metadata.
+1. **Single Native Full-Scale Window (Fixed Input Shrinking & Dual Window)**:
+   - Removed the nested WinForms host container and \`SetParent\` wrapping that caused Chromium viewport shrinkage, miniature input fields, and dual window artifacts.
+   - Restored direct native Chromium application mode (\`--app\` with \`--start-maximized\`) providing a clean, single, full-scale window with razor-sharp DPI and smooth native rendering.
+   - Attached explicit AppUserModelID and relaunch metadata directly to the Chromium window for consistent taskbar grouping.
+2. **20% Darkness Reduction (Refined Slate-Navy Theme)**:
+   - Reduced dark background intensity by 20% across the entire application:
+     - Scaffold / Deep Backgrounds: \`#0A192F\` $\\to$ \`#18283E\`
+     - Canvas / Data Tables / Inputs: \`#0D1E33\` $\\to$ \`#1D304A\`
+     - Surface Cards / Dialogs: \`#132B45\` $\\to$ \`#243B58\`
+     - Gradients & Search Headers: \`#0F1E36\` $\\to$ \`#1F324E\`, \`#071322\` $\\to$ \`#142234\`
+   - Improved readability, field clarity, and long-session comfort while maintaining the professional ballistic military-tech design language.
+3. **Multi-User Port Isolation Preserved**:
+   - Simultaneous instances on ports 8080-8200 with dedicated profile directories (\`session_<port>\`) remain fully supported.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
 - **OMPC_Ballistic_AeroData.exe**: Standalone Direct Executable
 - **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package
-- **OMPC_Ballistic_AeroData.apk**: Android Mobile Package
 - **Live Web Application**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
 `;
 

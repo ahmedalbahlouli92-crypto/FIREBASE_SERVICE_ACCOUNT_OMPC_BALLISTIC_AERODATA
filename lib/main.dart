@@ -34,16 +34,16 @@ class OmpcBallisticAeroDataApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0A192F),
+        scaffoldBackgroundColor: const Color(0xFF18283E),
         primaryColor: const Color(0xFF0284C7),
-        cardColor: const Color(0xFF132B45),
-        canvasColor: const Color(0xFF0D1E33),
-        dialogBackgroundColor: const Color(0xFF132B45),
+        cardColor: const Color(0xFF243B58),
+        canvasColor: const Color(0xFF1D304A),
+        dialogBackgroundColor: const Color(0xFF243B58),
         fontFamily: 'Outfit',
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF0284C7),
           secondary: Color(0xFF38BDF8),
-          surface: Color(0xFF132B45),
+          surface: Color(0xFF243B58),
           onPrimary: Colors.white,
           onSurface: Colors.white,
         ),
@@ -1727,7 +1727,7 @@ class _MainShellState extends State<MainShell> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF0F2642),
+        backgroundColor: const Color(0xFF203756),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
         margin: const EdgeInsets.all(20.0),
@@ -2001,7 +2001,7 @@ class _MainShellState extends State<MainShell> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF132B45),
+        backgroundColor: const Color(0xFF243B58),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10.0),
           side: const BorderSide(color: Color(0xFF1E3A8A)),
@@ -2230,7 +2230,7 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildAccessPortal() {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A192F),
+      backgroundColor: const Color(0xFF18283E),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -2239,9 +2239,9 @@ class _MainShellState extends State<MainShell> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF0F1E36),
-              Color(0xFF0A192F),
-              Color(0xFF071322),
+              Color(0xFF1F324E),
+              Color(0xFF18283E),
+              Color(0xFF142234),
             ],
           ),
         ),
@@ -2252,7 +2252,7 @@ class _MainShellState extends State<MainShell> {
               padding: const EdgeInsets.all(32.0),
               margin: const EdgeInsets.symmetric(horizontal: 20.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF132B45),
+                color: const Color(0xFF243B58),
                 borderRadius: BorderRadius.circular(20.0),
                 border: Border.all(color: const Color(0xFF1E3A8A), width: 1.5),
                 boxShadow: [
@@ -2271,7 +2271,7 @@ class _MainShellState extends State<MainShell> {
                     child: Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0D1E33),
+                        color: const Color(0xFF1D304A),
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.4)),
                       ),
@@ -2310,7 +2310,7 @@ class _MainShellState extends State<MainShell> {
                   Container(
                     padding: const EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D1E33),
+                      color: const Color(0xFF1D304A),
                       borderRadius: BorderRadius.circular(10.0),
                       border: Border.all(color: const Color(0xFF1E3A8A)),
                     ),
@@ -2345,7 +2345,7 @@ class _MainShellState extends State<MainShell> {
                             hintStyle: const TextStyle(color: Color(0xFF64748B)),
                             prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF38BDF8), size: 16.0),
                             filled: true,
-                            fillColor: const Color(0xFF0A192F),
+                            fillColor: const Color(0xFF18283E),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -2363,7 +2363,7 @@ class _MainShellState extends State<MainShell> {
                             hintStyle: const TextStyle(color: Color(0xFF64748B)),
                             prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF38BDF8), size: 16.0),
                             filled: true,
-                            fillColor: const Color(0xFF0A192F),
+                            fillColor: const Color(0xFF18283E),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -2445,7 +2445,7 @@ class _MainShellState extends State<MainShell> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(24.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF132B45),
+                      color: const Color(0xFF243B58),
                       borderRadius: BorderRadius.circular(12.0),
                       border: Border.all(color: const Color(0xFF1E3A8A)),
                       boxShadow: [
@@ -2514,7 +2514,7 @@ class _MainShellState extends State<MainShell> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(24.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF132B45),
+                      color: const Color(0xFF243B58),
                       borderRadius: BorderRadius.circular(12.0),
                       border: Border.all(color: const Color(0xFF1E3A8A)),
                       boxShadow: [
@@ -2584,7 +2584,7 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF132B45),
+        color: const Color(0xFF243B58),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(color: const Color(0xFF1E3A8A)),
         boxShadow: [
@@ -2644,7 +2644,7 @@ class _MainShellState extends State<MainShell> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1E33),
+              color: const Color(0xFF1D304A),
               borderRadius: BorderRadius.circular(6.0),
               border: Border.all(color: const Color(0xFF1E3A8A)),
             ),
@@ -2652,7 +2652,7 @@ class _MainShellState extends State<MainShell> {
               child: DropdownButton<String>(
                 value: _selectedNewUserRole,
                 isExpanded: true,
-                dropdownColor: const Color(0xFF132B45),
+                dropdownColor: const Color(0xFF243B58),
                 style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedNewUserRole = val);
@@ -2697,7 +2697,7 @@ class _MainShellState extends State<MainShell> {
               hintStyle: const TextStyle(color: Color(0xFF64748B)),
               prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF38BDF8), size: 16.0),
               filled: true,
-              fillColor: const Color(0xFF0D1E33),
+              fillColor: const Color(0xFF1D304A),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -2715,7 +2715,7 @@ class _MainShellState extends State<MainShell> {
               hintStyle: const TextStyle(color: Color(0xFF64748B)),
               prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF38BDF8), size: 16.0),
               filled: true,
-              fillColor: const Color(0xFF0D1E33),
+              fillColor: const Color(0xFF1D304A),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -2734,7 +2734,7 @@ class _MainShellState extends State<MainShell> {
               hintStyle: const TextStyle(color: Color(0xFF64748B)),
               prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF38BDF8), size: 16.0),
               filled: true,
-              fillColor: const Color(0xFF0D1E33),
+              fillColor: const Color(0xFF1D304A),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -2769,7 +2769,7 @@ class _MainShellState extends State<MainShell> {
           Container(
             height: 160.0,
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1E33),
+              color: const Color(0xFF1D304A),
               borderRadius: BorderRadius.circular(6.0),
               border: Border.all(color: const Color(0xFF1E3A8A)),
             ),
@@ -2908,7 +2908,7 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF132B45),
+        color: const Color(0xFF243B58),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(color: const Color(0xFF1E3A8A)),
         boxShadow: [
@@ -2953,7 +2953,7 @@ class _MainShellState extends State<MainShell> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1E33),
+              color: const Color(0xFF1D304A),
               borderRadius: BorderRadius.circular(8.0),
               border: Border.all(
                 color: _submissionAlertsEnabled ? const Color(0xFF0284C7) : const Color(0xFF1E3A8A),
@@ -3010,7 +3010,7 @@ class _MainShellState extends State<MainShell> {
             return Container(
               margin: const EdgeInsets.only(bottom: 16.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF0D1E33),
+                color: const Color(0xFF1D304A),
                 borderRadius: BorderRadius.circular(10.0),
                 border: Border.all(color: const Color(0xFF1E3A8A)),
               ),
@@ -3108,7 +3108,7 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF132B45),
+        color: const Color(0xFF243B58),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(color: const Color(0xFF1E3A8A)),
         boxShadow: [
@@ -3163,7 +3163,7 @@ class _MainShellState extends State<MainShell> {
                     hintText: 'Weapon Type (e.g., M4A1 Carbine)',
                     hintStyle: const TextStyle(color: Color(0xFF64748B)),
                     filled: true,
-                    fillColor: const Color(0xFF0D1E33),
+                    fillColor: const Color(0xFF1D304A),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -3181,7 +3181,7 @@ class _MainShellState extends State<MainShell> {
                     hintText: 'Serial No. (e.g., W-9012)',
                     hintStyle: const TextStyle(color: Color(0xFF64748B)),
                     filled: true,
-                    fillColor: const Color(0xFF0D1E33),
+                    fillColor: const Color(0xFF1D304A),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -3273,7 +3273,7 @@ class _MainShellState extends State<MainShell> {
                     hintText: 'GP6 Serial (e.g., GP6-Kistler-8801)',
                     hintStyle: const TextStyle(color: Color(0xFF64748B)),
                     filled: true,
-                    fillColor: const Color(0xFF0D1E33),
+                    fillColor: const Color(0xFF1D304A),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -3341,7 +3341,7 @@ class _MainShellState extends State<MainShell> {
                     hintText: 'EPVAT Barrel Serial (e.g., EPVAT-B-201)',
                     hintStyle: const TextStyle(color: Color(0xFF64748B)),
                     filled: true,
-                    fillColor: const Color(0xFF0D1E33),
+                    fillColor: const Color(0xFF1D304A),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -3409,7 +3409,7 @@ class _MainShellState extends State<MainShell> {
                     hintText: 'Accuracy Barrel Serial (e.g., ACC-B-101)',
                     hintStyle: const TextStyle(color: Color(0xFF64748B)),
                     filled: true,
-                    fillColor: const Color(0xFF0D1E33),
+                    fillColor: const Color(0xFF1D304A),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
@@ -3489,7 +3489,7 @@ class _MainShellState extends State<MainShell> {
       return Container(
         padding: const EdgeInsets.all(10.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF0D1E33),
+          color: const Color(0xFF1D304A),
           borderRadius: BorderRadius.circular(6.0),
           border: Border.all(color: const Color(0xFF1E3A8A)),
         ),
@@ -3502,7 +3502,7 @@ class _MainShellState extends State<MainShell> {
     return Container(
       constraints: const BoxConstraints(maxHeight: 120.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1E33),
+        color: const Color(0xFF1D304A),
         borderRadius: BorderRadius.circular(6.0),
         border: Border.all(color: const Color(0xFF1E3A8A)),
       ),
@@ -3576,7 +3576,7 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF132B45),
+        color: const Color(0xFF243B58),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(color: const Color(0xFF1E3A8A)),
         boxShadow: [
@@ -3607,14 +3607,14 @@ class _MainShellState extends State<MainShell> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1E33),
+              color: const Color(0xFF1D304A),
               borderRadius: BorderRadius.circular(6.0),
               border: Border.all(color: const Color(0xFF1E3A8A)),
             ),
             child: DropdownButton<String>(
               value: _selectedRuleTest,
               isExpanded: true,
-              dropdownColor: const Color(0xFF132B45),
+              dropdownColor: const Color(0xFF243B58),
               underline: const SizedBox(),
               style: const TextStyle(color: Colors.white, fontSize: 13.0),
               onChanged: (val) {
@@ -3694,7 +3694,7 @@ class _MainShellState extends State<MainShell> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D1E33),
+                      color: const Color(0xFF1D304A),
                       borderRadius: BorderRadius.circular(6.0),
                       border: Border.all(color: const Color(0xFF1E3A8A)),
                     ),
@@ -3702,7 +3702,7 @@ class _MainShellState extends State<MainShell> {
                       child: DropdownButton<String>(
                         value: _ruleSelectedCaliber,
                         isExpanded: true,
-                        dropdownColor: const Color(0xFF132B45),
+                        dropdownColor: const Color(0xFF243B58),
                         style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
                         onChanged: (val) {
                           if (val != null) {
@@ -3909,7 +3909,7 @@ class _MainShellState extends State<MainShell> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D1E33),
+                      color: const Color(0xFF1D304A),
                       borderRadius: BorderRadius.circular(6.0),
                       border: Border.all(color: const Color(0xFF1E3A8A)),
                     ),
@@ -3917,7 +3917,7 @@ class _MainShellState extends State<MainShell> {
                       child: DropdownButton<String>(
                         value: _ruleSelectedCaliber,
                         isExpanded: true,
-                        dropdownColor: const Color(0xFF132B45),
+                        dropdownColor: const Color(0xFF243B58),
                         style: const TextStyle(color: Colors.white, fontSize: 13.0),
                         onChanged: (val) {
                           setState(() {
@@ -3967,7 +3967,7 @@ class _MainShellState extends State<MainShell> {
                       ActionChip(
                         avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
                         label: const Text('P1 Mean + 3SD (+21°C)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
-                        backgroundColor: const Color(0xFF0D1E33),
+                        backgroundColor: const Color(0xFF1D304A),
                         side: const BorderSide(color: Color(0xFF1E3A8A)),
                         onPressed: () {
                           setState(() {
@@ -3988,7 +3988,7 @@ class _MainShellState extends State<MainShell> {
                       ActionChip(
                         avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
                         label: const Text('P1 Delta (|21°C - 52°C|)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
-                        backgroundColor: const Color(0xFF0D1E33),
+                        backgroundColor: const Color(0xFF1D304A),
                         side: const BorderSide(color: Color(0xFF1E3A8A)),
                         onPressed: () {
                           setState(() {
@@ -4009,7 +4009,7 @@ class _MainShellState extends State<MainShell> {
                       ActionChip(
                         avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
                         label: const Text('Velocity Delta (|21°C - 52°C|)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
-                        backgroundColor: const Color(0xFF0D1E33),
+                        backgroundColor: const Color(0xFF1D304A),
                         side: const BorderSide(color: Color(0xFF1E3A8A)),
                         onPressed: () {
                           setState(() {
@@ -4096,7 +4096,7 @@ class _MainShellState extends State<MainShell> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF0D1E33),
+                                  color: const Color(0xFF1D304A),
                                   borderRadius: BorderRadius.circular(4.0),
                                   border: Border.all(color: const Color(0xFF1E3A8A)),
                                 ),
@@ -4104,7 +4104,7 @@ class _MainShellState extends State<MainShell> {
                                   child: DropdownButton<String>(
                                     value: item['operator'] ?? '<=',
                                     isExpanded: true,
-                                    dropdownColor: const Color(0xFF132B45),
+                                    dropdownColor: const Color(0xFF243B58),
                                     style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                     onChanged: (val) {
                                       setState(() {
@@ -4205,7 +4205,7 @@ class _MainShellState extends State<MainShell> {
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(
-                              backgroundColor: const Color(0xFF132B45),
+                              backgroundColor: const Color(0xFF243B58),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12.0),
                                 side: const BorderSide(color: Color(0xFF1E3A8A)),
@@ -4221,7 +4221,7 @@ class _MainShellState extends State<MainShell> {
                                     Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0D1E33),
+                                        color: const Color(0xFF1D304A),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(color: const Color(0xFF1E3A8A)),
                                       ),
@@ -4325,7 +4325,7 @@ class _MainShellState extends State<MainShell> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0D1E33),
+                                color: const Color(0xFF1D304A),
                                 borderRadius: BorderRadius.circular(4.0),
                                 border: Border.all(color: const Color(0xFF1E3A8A)),
                               ),
@@ -4333,7 +4333,7 @@ class _MainShellState extends State<MainShell> {
                                 child: DropdownButton<String>(
                                   value: (w['type'] == 'Machine Gun') ? 'Machine Gun' : 'Rifle',
                                   isExpanded: true,
-                                  dropdownColor: const Color(0xFF132B45),
+                                  dropdownColor: const Color(0xFF243B58),
                                   style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                   onChanged: (val) {
                                     setState(() {
@@ -4805,7 +4805,7 @@ class _MainShellState extends State<MainShell> {
                         width: 110,
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0D1E33),
+                          color: const Color(0xFF1D304A),
                           borderRadius: BorderRadius.circular(6.0),
                           border: Border.all(color: const Color(0xFF1E3A8A)),
                         ),
@@ -4813,7 +4813,7 @@ class _MainShellState extends State<MainShell> {
                           child: DropdownButton<String>(
                             value: _ruleNewWeaponType,
                             isExpanded: true,
-                            dropdownColor: const Color(0xFF132B45),
+                            dropdownColor: const Color(0xFF243B58),
                             style: const TextStyle(color: Colors.white, fontSize: 12.0),
                             onChanged: (v) => setState(() => _ruleNewWeaponType = v ?? 'Loose'),
                             items: const [
@@ -5016,14 +5016,14 @@ class _MainShellState extends State<MainShell> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF0D1E33),
+                color: const Color(0xFF1D304A),
                 borderRadius: BorderRadius.circular(6.0),
                 border: Border.all(color: const Color(0xFF1E3A8A)),
               ),
               child: DropdownButton<String>(
                 value: _ruleSelectedFuncCaliber,
                 isExpanded: true,
-                dropdownColor: const Color(0xFF132B45),
+                dropdownColor: const Color(0xFF243B58),
                 underline: const SizedBox(),
                 style: const TextStyle(color: Colors.white, fontSize: 13.0),
                 onChanged: (val) {
@@ -5515,7 +5515,7 @@ class _MainShellState extends State<MainShell> {
                             Container(
                               padding: const EdgeInsets.all(10.0),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0A192F),
+                                color: const Color(0xFF18283E),
                                 shape: BoxShape.circle,
                                 border: Border.all(color: const Color(0xFF1E3A8A)),
                               ),
@@ -5554,7 +5554,7 @@ class _MainShellState extends State<MainShell> {
                       Container(
                         padding: const EdgeInsets.all(10.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0A192F),
+                          color: const Color(0xFF18283E),
                           borderRadius: BorderRadius.circular(8.0),
                           border: Border.all(color: const Color(0xFF1E3A8A)),
                         ),
@@ -5665,7 +5665,7 @@ class _MainShellState extends State<MainShell> {
                 // ACTIVE SCREEN PANEL
                 Expanded(
                   child: Container(
-                    color: const Color(0xFF0A192F),
+                    color: const Color(0xFF18283E),
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),
                       child: mainContent,
@@ -5685,7 +5685,7 @@ class _MainShellState extends State<MainShell> {
               title: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _currentModule,
-                  dropdownColor: const Color(0xFF132B45),
+                  dropdownColor: const Color(0xFF243B58),
                   icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
                   style: const TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold),
                   onChanged: (String? val) {
@@ -5717,7 +5717,7 @@ class _MainShellState extends State<MainShell> {
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                     margin: const EdgeInsets.only(right: 6.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D1E33),
+                      color: const Color(0xFF1D304A),
                       borderRadius: BorderRadius.circular(6.0),
                       border: Border.all(color: const Color(0xFF1E3A8A)),
                     ),
@@ -5841,7 +5841,7 @@ class _MainShellState extends State<MainShell> {
         style: TextButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          backgroundColor: isActive ? const Color(0xFF132B45) : Colors.transparent,
+          backgroundColor: isActive ? const Color(0xFF243B58) : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8.0),
             side: BorderSide(
@@ -5865,7 +5865,7 @@ class _MainShellState extends State<MainShell> {
     return Container(
       margin: const EdgeInsets.only(bottom: 24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF132B45),
+        color: const Color(0xFF243B58),
         borderRadius: BorderRadius.circular(10.0),
         border: Border.all(color: const Color(0xFF1E3A8A)),
         boxShadow: [
@@ -5931,7 +5931,7 @@ class _MainShellState extends State<MainShell> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D1E33),
+                  color: const Color(0xFF1D304A),
                   borderRadius: BorderRadius.circular(6.0),
                   border: Border.all(color: const Color(0xFF1E3A8A)),
                 ),
@@ -5957,7 +5957,7 @@ class _MainShellState extends State<MainShell> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D1E33),
+                  color: const Color(0xFF1D304A),
                   borderRadius: BorderRadius.circular(6.0),
                   border: Border.all(color: const Color(0xFF1E3A8A)),
                 ),
@@ -5993,7 +5993,7 @@ class _MainShellState extends State<MainShell> {
                     SnackBar(
                       duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
-                      backgroundColor: const Color(0xFF132B45),
+                      backgroundColor: const Color(0xFF243B58),
                       content: Text(
                         _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
                         style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.w600),
@@ -6005,7 +6005,7 @@ class _MainShellState extends State<MainShell> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
                   decoration: BoxDecoration(
-                    color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.15) : const Color(0xFF0D1E33),
+                    color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.15) : const Color(0xFF1D304A),
                     borderRadius: BorderRadius.circular(6.0),
                     border: Border.all(
                       color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF1E3A8A),
@@ -6045,7 +6045,7 @@ class _MainShellState extends State<MainShell> {
         constraints: const BoxConstraints(maxWidth: 550.0),
         padding: const EdgeInsets.all(32.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF132B45),
+          color: const Color(0xFF243B58),
           borderRadius: BorderRadius.circular(16.0),
           border: Border.all(color: const Color(0xFF1E3A8A)),
           boxShadow: [

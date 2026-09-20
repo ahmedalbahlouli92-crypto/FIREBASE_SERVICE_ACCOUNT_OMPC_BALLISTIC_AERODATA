@@ -2217,7 +2217,7 @@ class _EntryTabState extends State<EntryTab> {
               constraints: const BoxConstraints(maxWidth: 800.0),
               padding: const EdgeInsets.all(24.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF132B45),
+                color: const Color(0xFF243B58),
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(color: const Color(0xFF1E3A8A)),
                 boxShadow: [
@@ -3429,14 +3429,14 @@ class _EntryTabState extends State<EntryTab> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF0D1E33),
+                                      color: const Color(0xFF1D304A),
                                       borderRadius: BorderRadius.circular(6.0),
                                       border: Border.all(color: const Color(0xFF1E3A8A)),
                                     ),
                                     child: DropdownButton<String>(
                                       value: weapons.any((w) => w['name'] == _cyclicRateWeaponType) ? _cyclicRateWeaponType : (weapons.isNotEmpty ? weapons.first['name'] as String : ''),
                                       isExpanded: true,
-                                      dropdownColor: const Color(0xFF132B45),
+                                      dropdownColor: const Color(0xFF243B58),
                                       underline: const SizedBox(),
                                       style: const TextStyle(color: Colors.white, fontSize: 13.0),
                                       onChanged: (val) => setState(() => _cyclicRateWeaponType = val ?? ''),
@@ -3624,14 +3624,14 @@ class _EntryTabState extends State<EntryTab> {
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF0D1E33),
+                                            color: const Color(0xFF1D304A),
                                             borderRadius: BorderRadius.circular(6.0),
                                             border: Border.all(color: const Color(0xFF1E3A8A)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalHoleDiameterRounds[idx],
-                                              dropdownColor: const Color(0xFF132B45),
+                                              dropdownColor: const Color(0xFF243B58),
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalHoleDiameterRounds[idx] = v!),
                                               items: const [
@@ -3647,14 +3647,14 @@ class _EntryTabState extends State<EntryTab> {
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF0D1E33),
+                                            color: const Color(0xFF1D304A),
                                             borderRadius: BorderRadius.circular(6.0),
                                             border: Border.all(color: const Color(0xFF1E3A8A)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalSteelPenetrationRounds[idx],
-                                              dropdownColor: const Color(0xFF132B45),
+                                              dropdownColor: const Color(0xFF243B58),
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalSteelPenetrationRounds[idx] = v!),
                                               items: const [
@@ -3670,14 +3670,14 @@ class _EntryTabState extends State<EntryTab> {
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF0D1E33),
+                                            color: const Color(0xFF1D304A),
                                             borderRadius: BorderRadius.circular(6.0),
                                             border: Border.all(color: const Color(0xFF1E3A8A)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalAluminumPenetrationRounds[idx],
-                                              dropdownColor: const Color(0xFF132B45),
+                                              dropdownColor: const Color(0xFF243B58),
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalAluminumPenetrationRounds[idx] = v!),
                                               items: const [
@@ -4249,7 +4249,7 @@ class _EntryTabState extends State<EntryTab> {
                                               const SizedBox(width: 8.0),
                                               DropdownButton<int>(
                                                 value: _epvatOverallRoundCount[t] ?? 30,
-                                                dropdownColor: const Color(0xFF132B45),
+                                                dropdownColor: const Color(0xFF243B58),
                                                 style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                                 underline: const SizedBox(),
                                                 onChanged: (val) {
