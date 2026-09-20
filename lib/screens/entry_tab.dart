@@ -539,10 +539,10 @@ class _EntryTabState extends State<EntryTab> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF0284C7),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Color(0xFF0F172A),
+              primary: Color(0xFF31B9F6),
+              onPrimary: Color(0xFF04599C),
+              surface: Color(0xFFE0F2FE),
+              onSurface: Color(0xFF0C2A4D),
             ),
           ),
           child: child!,
@@ -559,10 +559,10 @@ class _EntryTabState extends State<EntryTab> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF0284C7),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Color(0xFF0F172A),
+              primary: Color(0xFF31B9F6),
+              onPrimary: Color(0xFF04599C),
+              surface: Color(0xFFE0F2FE),
+              onSurface: Color(0xFF0C2A4D),
             ),
           ),
           child: child!,
@@ -591,24 +591,37 @@ class _EntryTabState extends State<EntryTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFE0F2FE),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0xFFBAE6FD)),
+          side: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         title: Row(
           children: const [
-            Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7)),
+            Icon(Icons.add_location_alt_outlined, color: Color(0xFF31B9F6)),
             SizedBox(width: 8),
-            Text('Add Sampling Location', style: TextStyle(color: Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Add Sampling Location', style: TextStyle(color: Color(0xFF0C2A4D), fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
         content: TextField(
           controller: addCtrl,
           autofocus: true,
+          style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 14),
           decoration: InputDecoration(
             labelText: 'New Location Name',
+            labelStyle: const TextStyle(color: Color(0xFF6495BF)),
             hintText: 'e.g., Station Alpha',
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+            filled: true,
+            fillColor: const Color(0xFFD6EEFD),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
@@ -619,8 +632,8 @@ class _EntryTabState extends State<EntryTab> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0284C7),
-              foregroundColor: Colors.white,
+              backgroundColor: const Color(0xFF31B9F6),
+              foregroundColor: const Color(0xFF04599C),
             ),
             onPressed: () {
               final val = addCtrl.text.trim();
@@ -4631,24 +4644,24 @@ class _EntryTabState extends State<EntryTab> {
                       TextFormField(
                         controller: _notesController,
                         maxLines: 4,
-                        style: const TextStyle(color: Colors.white, fontSize: 13.5),
+                        style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5),
                         decoration: InputDecoration(
                           hintText: 'Enter any remarks, observations, or quality anomalies...',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                          hintStyle: const TextStyle(color: Color(0xFF6495BF)),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.02),
+                          fillColor: const Color(0xFFE0F2FE),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF6366F1)),
+                            borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
                           ),
                         ),
                       ),
@@ -4672,24 +4685,24 @@ class _EntryTabState extends State<EntryTab> {
                       TextFormField(
                         controller: _requirementController,
                         maxLines: 2,
-                        style: const TextStyle(color: Colors.white, fontSize: 13.5),
+                        style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5),
                         decoration: InputDecoration(
                           hintText: 'Enter any manual requirement text...',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                          hintStyle: const TextStyle(color: Color(0xFF6495BF)),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.02),
+                          fillColor: const Color(0xFFE0F2FE),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF06B6D4)),
+                            borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
                           ),
                         ),
                       ),
@@ -5561,7 +5574,7 @@ class _EntryTabState extends State<EntryTab> {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.number,
-      style: const TextStyle(color: Colors.white, fontSize: 13.0, fontFamily: 'JetBrainsMono'),
+      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontFamily: 'JetBrainsMono', fontWeight: FontWeight.bold),
       onChanged: (_) => setState(() {}),
       validator: (v) {
         if (v == null || v.trim().isEmpty) return 'Required';
@@ -5572,18 +5585,18 @@ class _EntryTabState extends State<EntryTab> {
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.01),
+        fillColor: const Color(0xFFE0F2FE),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+          borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
+          borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.0),
+          borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 1.5),
         ),
       ),
     );
@@ -5724,28 +5737,28 @@ class _EntryTabState extends State<EntryTab> {
       readOnly: readOnly,
       onChanged: onChanged,
       style: TextStyle(
-        color: readOnly ? const Color(0xFF64748B) : const Color(0xFF0F172A),
+        color: readOnly ? const Color(0xFF475569) : const Color(0xFF0C2A4D),
         fontSize: 13.5,
         fontWeight: FontWeight.w500,
       ),
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+        hintStyle: const TextStyle(color: Color(0xFF6495BF)),
         filled: true,
-        fillColor: readOnly ? const Color(0xFFC7D0DC) : const Color(0xFFDAE0E9),
+        fillColor: readOnly ? const Color(0xFFC8E3F5) : const Color(0xFFE0F2FE),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+          borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+          borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
         ),
       ),
     );
@@ -5762,30 +5775,30 @@ class _EntryTabState extends State<EntryTab> {
       focusNode: focusNode,
       isExpanded: true,
       onChanged: onChanged,
-      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w500),
-      dropdownColor: const Color(0xFFDAE0E9),
-      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0284C7)),
+      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.w500),
+      dropdownColor: const Color(0xFFE0F2FE),
+      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF31B9F6)),
       decoration: InputDecoration(
         filled: true,
-        fillColor: const Color(0xFFDAE0E9),
+        fillColor: const Color(0xFFE0F2FE),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+          borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+          borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
         ),
       ),
       items: items.map((String item) {
         return DropdownMenuItem<String>(
           value: item,
-          child: Text(item, style: const TextStyle(color: Color(0xFF0F172A))),
+          child: Text(item, style: const TextStyle(color: Color(0xFF0C2A4D))),
         );
       }).toList(),
     );
@@ -5802,21 +5815,21 @@ class _EntryTabState extends State<EntryTab> {
               focusNode: focusNode,
               keyboardType: TextInputType.number,
               maxLength: 3,
-              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: '###',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
                 filled: true,
-                fillColor: const Color(0xFFDAE0E9),
+                fillColor: const Color(0xFFE0F2FE),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
                 ),
               ),
               inputFormatters: [
@@ -5828,7 +5841,7 @@ class _EntryTabState extends State<EntryTab> {
           const Text(
             ' OMPC/',
             style: TextStyle(
-              color: Color(0xFF0284C7),
+              color: Color(0xFF31B9F6),
               fontSize: 14.0,
               fontWeight: FontWeight.bold,
             ),
@@ -5840,21 +5853,21 @@ class _EntryTabState extends State<EntryTab> {
               controller: _lotYearController,
               keyboardType: TextInputType.number,
               maxLength: 2,
-              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: 'YY',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
                 filled: true,
-                fillColor: const Color(0xFFDAE0E9),
+                fillColor: const Color(0xFFE0F2FE),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
                 ),
               ),
               inputFormatters: [
@@ -5879,21 +5892,21 @@ class _EntryTabState extends State<EntryTab> {
               focusNode: focusNode,
               keyboardType: TextInputType.number,
               maxLength: 3,
-              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: '###',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
                 filled: true,
-                fillColor: const Color(0xFFDAE0E9),
+                fillColor: const Color(0xFFE0F2FE),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
                 ),
               ),
               inputFormatters: [
@@ -5909,7 +5922,7 @@ class _EntryTabState extends State<EntryTab> {
           const Text(
             '-',
             style: TextStyle(
-              color: Color(0xFF0284C7),
+              color: Color(0xFF31B9F6),
               fontSize: 18.0,
               fontWeight: FontWeight.bold,
             ),
@@ -5921,21 +5934,21 @@ class _EntryTabState extends State<EntryTab> {
               controller: _hopperYearController,
               keyboardType: TextInputType.number,
               maxLength: 4,
-              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: 'YYYY',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
                 filled: true,
-                fillColor: const Color(0xFFDAE0E9),
+                fillColor: const Color(0xFFE0F2FE),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
+                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
                 ),
               ),
               inputFormatters: [

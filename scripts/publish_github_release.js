@@ -19,24 +19,24 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.5';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.5 (Full-Screen Kiosk, 15% Darker Inputs & 15% Lightened Dark Theme)';
-const BODY = `## OMPC Ballistic AeroData v1.3.5
+const TAG_NAME = 'v1.3.6';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.6 (White-Blue Input Fields & Flutter Blue Theme Degree)';
+const BODY = `## OMPC Ballistic AeroData v1.3.6
 
 ### Key Fixes & Enhancements:
-1. **Full-Screen Borderless Kiosk (Removed Title Bar Minimize, Resize & Exit Icons)**:
-   - Launched Chromium in true borderless full-screen kiosk mode (\`--start-fullscreen --kiosk\`), completely removing the Windows title bar, minimize icon, resize/restore icon, and title bar exit button.
-   - Added in-app Exit confirmation buttons in the sidebar, mobile navigation bar, and login portal with graceful \`/api/exit\` shutdown hook and \`Alt+F4\` support.
-2. **15% Darker Input Value Backgrounds (Eliminated Glare)**:
-   - Replaced pure white input fields (\`#FFFFFF\`) with a 15% darker soft slate-tinted background (\`#DAE0E9\`) and \`#C7D0DC\` for read-only fields with refined borders (\`#B0BDCF\`).
-   - High-contrast slate-900 typography ensures optimal legibility without glaring white boxes.
-3. **15% Theme Darkness Reduction (Enhanced Visual Balance)**:
-   - Softened and lightened overall theme darkness by an additional 15%:
-     - Main Background / Scaffold: \`#18283E\` $\\to$ \`#263852\`
-     - Canvas / Data Tables / Inner Panels: \`#1D304A\` $\\to$ \`#2C415E\`
-     - Surface Cards / Dialogs: \`#243B58\` $\\to$ \`#344D6E\`
-     - Top Gradients & Headers: \`#1F324E\` $\\to$ \`#2F4464\`, \`#142234\` $\\to$ \`#213146\`
-     - Sidebar Navigation: \`#0E223D\` $\\to$ \`#1C3351\`
+1. **White-Blue Input Fields (Zero Plain White)**:
+   - Completely replaced plain white (\`#FFFFFF\`) and neutral grays with a clean **white-blue** (ice blue, \`#E0F2FE\`) fill across all input fields, text fields, dropdown selectors, and numeric inputs.
+   - Read-only fields styled with a soft deeper white-blue (\`#C8E3F5\`).
+   - Deep contrast navy text (\`#0C2A4D\`) provides maximum clarity, sharpness, and comfort without glare.
+2. **Flutter Degree of Blue Color Palette**:
+   - Accents, focused borders, badges, and primary themes aligned with the exact Flutter logo blue palette sampled directly from the application icon:
+     - Top Wing / Sky Cyan: \`#5FC9F8\`
+     - Primary Vibrant Flutter Blue: \`#31B9F6\`
+     - Base / Deep Navy Blue: \`#04599C\`
+     - White-Blue Tint: \`#E0F2FE\`
+3. **Full-Screen Borderless Kiosk Mode**:
+   - Single borderless kiosk window with Windows title bar minimize, resize, and close buttons removed for uninterrupted operational workflow.
+   - In-app Exit confirmation buttons on sidebar and navigation bar with clean graceful shutdown.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer

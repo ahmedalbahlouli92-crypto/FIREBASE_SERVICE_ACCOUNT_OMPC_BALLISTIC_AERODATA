@@ -1373,16 +1373,16 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F9FF),
+                color: const Color(0xFFE0F2FE),
                 borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: const Color(0xFFBAE6FD)),
+                border: Border.all(color: const Color(0xFF7DD3FC)),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedMetric,
-                  dropdownColor: Colors.white,
-                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
-                  items: _metricOptions.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                  dropdownColor: const Color(0xFFE0F2FE),
+                  style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0, fontWeight: FontWeight.bold),
+                  items: _metricOptions.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Color(0xFF0C2A4D))))).toList(),
                   onChanged: (v) {
                     if (v != null) setState(() => _selectedMetric = v);
                   },

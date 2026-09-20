@@ -36,14 +36,14 @@ class OmpcBallisticAeroDataApp extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF263852),
-        primaryColor: const Color(0xFF0284C7),
+        primaryColor: const Color(0xFF31B9F6),
         cardColor: const Color(0xFF344D6E),
         canvasColor: const Color(0xFF2C415E),
         dialogBackgroundColor: const Color(0xFF344D6E),
         fontFamily: 'Outfit',
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF0284C7),
-          secondary: Color(0xFF38BDF8),
+          primary: Color(0xFF31B9F6),
+          secondary: Color(0xFF5FC9F8),
           surface: Color(0xFF344D6E),
           onPrimary: Colors.white,
           onSurface: Colors.white,
