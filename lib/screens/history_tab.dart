@@ -253,7 +253,7 @@ class _HistoryTabState extends State<HistoryTab> {
       context: context,
       builder: (BuildContext ctx) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF243B58),
+          backgroundColor: const Color(0xFF344D6E),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.0),
             side: const BorderSide(color: Color(0xFF1E3A8A)),
@@ -320,7 +320,7 @@ class _HistoryTabState extends State<HistoryTab> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF243B58),
+              backgroundColor: const Color(0xFF344D6E),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
                 side: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
@@ -330,7 +330,7 @@ class _HistoryTabState extends State<HistoryTab> {
                   Container(
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1D304A),
+                      color: const Color(0xFF2C415E),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: const Icon(Icons.edit_note_rounded, color: Color(0xFF38BDF8), size: 22.0),
@@ -595,7 +595,7 @@ class _HistoryTabState extends State<HistoryTab> {
   InputDecoration _dialogInputDecoration() {
     return InputDecoration(
       filled: true,
-      fillColor: const Color(0xFF1D304A),
+      fillColor: const Color(0xFF2C415E),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
@@ -820,7 +820,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     icon: const Icon(Icons.folder_open, size: 16.0),
                     label: const Text('Open Logs Folder'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF243B58),
+                      backgroundColor: const Color(0xFF344D6E),
                       foregroundColor: Colors.white,
                       side: const BorderSide(color: Color(0xFF1E3A8A)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
@@ -867,7 +867,7 @@ class _HistoryTabState extends State<HistoryTab> {
         Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: const Color(0xFF243B58),
+            color: const Color(0xFF344D6E),
             borderRadius: BorderRadius.circular(12.0),
             border: Border.all(color: const Color(0xFF1E3A8A)),
             boxShadow: const [
@@ -894,7 +894,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF38BDF8)),
                             isDense: true,
                             filled: true,
-                            fillColor: const Color(0xFF1D304A),
+                            fillColor: const Color(0xFF2C415E),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
                             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
@@ -998,7 +998,7 @@ class _HistoryTabState extends State<HistoryTab> {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF243B58),
+              color: const Color(0xFF344D6E),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(color: const Color(0xFF1E3A8A)),
               boxShadow: const [
@@ -1037,7 +1037,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                 child: DataTable(
                                   columnSpacing: dynamicSpacing,
                                   horizontalMargin: 20.0,
-                                  headingRowColor: MaterialStateProperty.all(const Color(0xFF1D304A)),
+                                  headingRowColor: MaterialStateProperty.all(const Color(0xFF2C415E)),
                                   columns: [
                                     const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
@@ -1065,7 +1065,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF1D304A),
+                                              color: const Color(0xFF2C415E),
                                               borderRadius: BorderRadius.circular(4.0),
                                               border: Border.all(color: const Color(0xFF1E3A8A)),
                                             ),
@@ -1079,7 +1079,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF0E223D),
+                                              color: const Color(0xFF1C3351),
                                               borderRadius: BorderRadius.circular(4.0),
                                               border: Border.all(color: const Color(0xFF1E3A8A)),
                                             ),
@@ -1102,7 +1102,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF1D304A),
+                                              color: const Color(0xFF2C415E),
                                               borderRadius: BorderRadius.circular(6.0),
                                               border: Border.all(color: const Color(0xFF1E3A8A)),
                                             ),
@@ -1197,10 +1197,10 @@ class _HistoryTabState extends State<HistoryTab> {
       isExpanded: true,
       onChanged: onChanged,
       style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.w500),
-      dropdownColor: const Color(0xFF243B58),
+      dropdownColor: const Color(0xFF344D6E),
       decoration: InputDecoration(
         filled: true,
-        fillColor: const Color(0xFF1D304A),
+        fillColor: const Color(0xFF2C415E),
         contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
@@ -1375,7 +1375,7 @@ class _HistoryTabState extends State<HistoryTab> {
             final yieldRate = totalQty > 0 ? (((totalQty - totalDefects) / totalQty) * 100.0) : 100.0;
 
             return Dialog(
-              backgroundColor: const Color(0xFF243B58),
+              backgroundColor: const Color(0xFF344D6E),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
                 side: const BorderSide(color: Color(0xFF1E3A8A)),
@@ -1433,7 +1433,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                       width: double.infinity,
                                       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF1D304A),
+                                        color: const Color(0xFF2C415E),
                                         borderRadius: BorderRadius.circular(8.0),
                                         border: Border.all(color: const Color(0xFF1E3A8A)),
                                       ),
@@ -1455,7 +1455,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF1D304A),
+                                        color: const Color(0xFF2C415E),
                                         borderRadius: BorderRadius.circular(8.0),
                                         border: Border.all(color: const Color(0xFF1E3A8A)),
                                       ),
@@ -1463,7 +1463,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                         child: DropdownButton<String>(
                                           value: selectedReportTest,
                                           isExpanded: true,
-                                          dropdownColor: const Color(0xFF243B58),
+                                          dropdownColor: const Color(0xFF344D6E),
                                           style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
                                           items: ['All', ...testNames].map((String value) {
                                             return DropdownMenuItem<String>(
@@ -1488,7 +1488,7 @@ class _HistoryTabState extends State<HistoryTab> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1D304A),
+                              color: const Color(0xFF2C415E),
                               borderRadius: BorderRadius.circular(8.0),
                               border: Border.all(color: const Color(0xFF1E3A8A)),
                             ),
@@ -1516,7 +1516,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       child: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1D304A),
+                          color: const Color(0xFF2C415E),
                           borderRadius: BorderRadius.circular(8.0),
                           border: Border.all(color: const Color(0xFF1E3A8A)),
                         ),
@@ -1536,7 +1536,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                       dividerColor: const Color(0xFF1E3A8A),
                                     ),
                                     child: DataTable(
-                                      headingRowColor: MaterialStateProperty.all(const Color(0xFF18283E)),
+                                      headingRowColor: MaterialStateProperty.all(const Color(0xFF263852)),
                                       columns: [
                                         const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),

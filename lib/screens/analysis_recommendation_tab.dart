@@ -69,7 +69,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       Container(
                         padding: const EdgeInsets.all(8.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1D304A),
+                          color: const Color(0xFF2C415E),
                           borderRadius: BorderRadius.circular(10.0),
                           border: Border.all(color: const Color(0xFF1E3A8A)),
                         ),
@@ -117,7 +117,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
             width: double.infinity,
             padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF243B58),
+              color: const Color(0xFF344D6E),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(color: const Color(0xFF1E3A8A)),
               boxShadow: const [
@@ -221,7 +221,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF243B58),
+                      color: const Color(0xFF344D6E),
                       borderRadius: BorderRadius.circular(12.0),
                       border: Border.all(
                         color: weeklyReport.isLeaksIncreasing ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFF1E3A8A),
@@ -324,7 +324,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF243B58),
+                      color: const Color(0xFF344D6E),
                       borderRadius: BorderRadius.circular(12.0),
                       border: Border.all(
                         color: weeklyReport.isPressureUnstable ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFF1E3A8A),
@@ -438,7 +438,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
             width: double.infinity,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF243B58),
+              color: const Color(0xFF344D6E),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(color: const Color(0xFF1E3A8A)),
               boxShadow: const [
@@ -460,7 +460,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1D304A),
+                            color: const Color(0xFF2C415E),
                             borderRadius: BorderRadius.circular(8.0),
                             border: Border.all(color: const Color(0xFF1E3A8A)),
                           ),
@@ -478,14 +478,14 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1D304A),
+                          color: const Color(0xFF2C415E),
                           borderRadius: BorderRadius.circular(8.0),
                           border: Border.all(color: const Color(0xFF1E3A8A)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<BallisticRecord>(
                             value: activeRecord,
-                            dropdownColor: const Color(0xFF243B58),
+                            dropdownColor: const Color(0xFF344D6E),
                             style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
                             onChanged: (rec) {
                               if (rec != null) setState(() => _selectedRecord = rec);
@@ -537,7 +537,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1D304A),
+                          color: const Color(0xFF2C415E),
                           borderRadius: BorderRadius.circular(6.0),
                           border: Border.all(color: const Color(0xFF1E3A8A)),
                         ),
@@ -563,7 +563,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         child: Container(
                           padding: const EdgeInsets.all(16.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1D304A),
+                            color: const Color(0xFF2C415E),
                             borderRadius: BorderRadius.circular(8.0),
                             border: Border.all(color: const Color(0xFF1E3A8A)),
                           ),
@@ -599,7 +599,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         child: Container(
                           padding: const EdgeInsets.all(16.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1D304A),
+                            color: const Color(0xFF2C415E),
                             borderRadius: BorderRadius.circular(8.0),
                             border: Border.all(color: const Color(0xFF1E3A8A)),
                           ),

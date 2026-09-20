@@ -148,6 +148,10 @@
     // Safety fallback for older PCs (e.g. Windows 7, Intel HD Graphics 4600)
     // Dismisses loading splash after 3 seconds so the login form is never blocked
     setTimeout(dismissOmpcSplash, 3000);
+    window.exitOmpcApp = function() {
+      fetch('/api/exit').catch(function(){});
+      setTimeout(function() { window.close(); }, 300);
+    };
   </script>
   <script>
     // Seamless live auto-update check without stopping the app

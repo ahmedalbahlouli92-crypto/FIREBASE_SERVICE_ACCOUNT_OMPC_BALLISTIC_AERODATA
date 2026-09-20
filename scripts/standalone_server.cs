@@ -316,7 +316,7 @@ namespace OmpcBallisticAeroData
                     try
                     {
                         string browserArgs = string.Format(
-                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
+                            "--app=\"{0}\" --start-fullscreen --kiosk --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
                             appUrl, userProfileDir);
 
                         ProcessStartInfo psi = new ProcessStartInfo
@@ -439,6 +439,23 @@ namespace OmpcBallisticAeroData
             try
             {
                 string rawUrl = ctx.Request.Url.AbsolutePath;
+                if (rawUrl == "/api/exit" || rawUrl == "/exit")
+                {
+                    Log("Exit request received from client API.");
+                    ctx.Response.StatusCode = 200;
+                    ctx.Response.ContentType = "application/json";
+                    byte[] exitBytes = Encoding.UTF8.GetBytes("{\"ok\":true}");
+                    ctx.Response.ContentLength64 = exitBytes.Length;
+                    ctx.Response.OutputStream.Write(exitBytes, 0, exitBytes.Length);
+                    try { ctx.Response.OutputStream.Close(); } catch { }
+                    ThreadPool.QueueUserWorkItem((s) =>
+                    {
+                        Thread.Sleep(300);
+                        try { if (_browserProcess != null && !_browserProcess.HasExited) _browserProcess.Kill(); } catch { }
+                        Environment.Exit(0);
+                    });
+                    return;
+                }
                 if (rawUrl == "/" || string.IsNullOrEmpty(rawUrl)) rawUrl = "/index.html";
                 string cleanPath = Uri.UnescapeDataString(rawUrl).TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
                 string fullPath = Path.Combine(_webRoot, cleanPath);
@@ -490,6 +507,21 @@ namespace OmpcBallisticAeroData
                     string rawUrl = parts[1];
                     int qIdx = rawUrl.IndexOf('?');
                     if (qIdx >= 0) rawUrl = rawUrl.Substring(0, qIdx);
+                    if (rawUrl == "/api/exit" || rawUrl == "/exit")
+                    {
+                        Log("Exit request received via TCP client.");
+                        string okResp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"ok\":true}";
+                        byte[] respBytes = Encoding.ASCII.GetBytes(okResp);
+                        stream.Write(respBytes, 0, respBytes.Length);
+                        stream.Flush();
+                        ThreadPool.QueueUserWorkItem((s) =>
+                        {
+                            Thread.Sleep(300);
+                            try { if (_browserProcess != null && !_browserProcess.HasExited) _browserProcess.Kill(); } catch { }
+                            Environment.Exit(0);
+                        });
+                        return;
+                    }
                     if (rawUrl == "/" || string.IsNullOrEmpty(rawUrl)) rawUrl = "/index.html";
 
                     string cleanPath = Uri.UnescapeDataString(rawUrl).TrimStart('/').Replace('/', Path.DirectorySeparatorChar);

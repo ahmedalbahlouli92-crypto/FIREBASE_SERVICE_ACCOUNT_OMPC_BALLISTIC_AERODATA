@@ -19,24 +19,24 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.4';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.4 (Single Window & 20% Lightened Dark Theme)';
-const BODY = `## OMPC Ballistic AeroData v1.3.4
+const TAG_NAME = 'v1.3.5';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.5 (Full-Screen Kiosk, 15% Darker Inputs & 15% Lightened Dark Theme)';
+const BODY = `## OMPC Ballistic AeroData v1.3.5
 
 ### Key Fixes & Enhancements:
-1. **Single Native Full-Scale Window (Fixed Input Shrinking & Dual Window)**:
-   - Removed the nested WinForms host container and \`SetParent\` wrapping that caused Chromium viewport shrinkage, miniature input fields, and dual window artifacts.
-   - Restored direct native Chromium application mode (\`--app\` with \`--start-maximized\`) providing a clean, single, full-scale window with razor-sharp DPI and smooth native rendering.
-   - Attached explicit AppUserModelID and relaunch metadata directly to the Chromium window for consistent taskbar grouping.
-2. **20% Darkness Reduction (Refined Slate-Navy Theme)**:
-   - Reduced dark background intensity by 20% across the entire application:
-     - Scaffold / Deep Backgrounds: \`#0A192F\` $\\to$ \`#18283E\`
-     - Canvas / Data Tables / Inputs: \`#0D1E33\` $\\to$ \`#1D304A\`
-     - Surface Cards / Dialogs: \`#132B45\` $\\to$ \`#243B58\`
-     - Gradients & Search Headers: \`#0F1E36\` $\\to$ \`#1F324E\`, \`#071322\` $\\to$ \`#142234\`
-   - Improved readability, field clarity, and long-session comfort while maintaining the professional ballistic military-tech design language.
-3. **Multi-User Port Isolation Preserved**:
-   - Simultaneous instances on ports 8080-8200 with dedicated profile directories (\`session_<port>\`) remain fully supported.
+1. **Full-Screen Borderless Kiosk (Removed Title Bar Minimize, Resize & Exit Icons)**:
+   - Launched Chromium in true borderless full-screen kiosk mode (\`--start-fullscreen --kiosk\`), completely removing the Windows title bar, minimize icon, resize/restore icon, and title bar exit button.
+   - Added in-app Exit confirmation buttons in the sidebar, mobile navigation bar, and login portal with graceful \`/api/exit\` shutdown hook and \`Alt+F4\` support.
+2. **15% Darker Input Value Backgrounds (Eliminated Glare)**:
+   - Replaced pure white input fields (\`#FFFFFF\`) with a 15% darker soft slate-tinted background (\`#DAE0E9\`) and \`#C7D0DC\` for read-only fields with refined borders (\`#B0BDCF\`).
+   - High-contrast slate-900 typography ensures optimal legibility without glaring white boxes.
+3. **15% Theme Darkness Reduction (Enhanced Visual Balance)**:
+   - Softened and lightened overall theme darkness by an additional 15%:
+     - Main Background / Scaffold: \`#18283E\` $\\to$ \`#263852\`
+     - Canvas / Data Tables / Inner Panels: \`#1D304A\` $\\to$ \`#2C415E\`
+     - Surface Cards / Dialogs: \`#243B58\` $\\to$ \`#344D6E\`
+     - Top Gradients & Headers: \`#1F324E\` $\\to$ \`#2F4464\`, \`#142234\` $\\to$ \`#213146\`
+     - Sidebar Navigation: \`#0E223D\` $\\to$ \`#1C3351\`
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer

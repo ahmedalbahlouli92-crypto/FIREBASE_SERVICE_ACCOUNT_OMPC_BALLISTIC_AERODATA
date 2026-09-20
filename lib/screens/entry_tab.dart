@@ -2217,7 +2217,7 @@ class _EntryTabState extends State<EntryTab> {
               constraints: const BoxConstraints(maxWidth: 800.0),
               padding: const EdgeInsets.all(24.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF243B58),
+                color: const Color(0xFF344D6E),
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(color: const Color(0xFF1E3A8A)),
                 boxShadow: [
@@ -3429,14 +3429,14 @@ class _EntryTabState extends State<EntryTab> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1D304A),
+                                      color: const Color(0xFF2C415E),
                                       borderRadius: BorderRadius.circular(6.0),
                                       border: Border.all(color: const Color(0xFF1E3A8A)),
                                     ),
                                     child: DropdownButton<String>(
                                       value: weapons.any((w) => w['name'] == _cyclicRateWeaponType) ? _cyclicRateWeaponType : (weapons.isNotEmpty ? weapons.first['name'] as String : ''),
                                       isExpanded: true,
-                                      dropdownColor: const Color(0xFF243B58),
+                                      dropdownColor: const Color(0xFF344D6E),
                                       underline: const SizedBox(),
                                       style: const TextStyle(color: Colors.white, fontSize: 13.0),
                                       onChanged: (val) => setState(() => _cyclicRateWeaponType = val ?? ''),
@@ -3624,14 +3624,14 @@ class _EntryTabState extends State<EntryTab> {
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF1D304A),
+                                            color: const Color(0xFF2C415E),
                                             borderRadius: BorderRadius.circular(6.0),
                                             border: Border.all(color: const Color(0xFF1E3A8A)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalHoleDiameterRounds[idx],
-                                              dropdownColor: const Color(0xFF243B58),
+                                              dropdownColor: const Color(0xFF344D6E),
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalHoleDiameterRounds[idx] = v!),
                                               items: const [
@@ -3647,14 +3647,14 @@ class _EntryTabState extends State<EntryTab> {
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF1D304A),
+                                            color: const Color(0xFF2C415E),
                                             borderRadius: BorderRadius.circular(6.0),
                                             border: Border.all(color: const Color(0xFF1E3A8A)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalSteelPenetrationRounds[idx],
-                                              dropdownColor: const Color(0xFF243B58),
+                                              dropdownColor: const Color(0xFF344D6E),
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalSteelPenetrationRounds[idx] = v!),
                                               items: const [
@@ -3670,14 +3670,14 @@ class _EntryTabState extends State<EntryTab> {
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF1D304A),
+                                            color: const Color(0xFF2C415E),
                                             borderRadius: BorderRadius.circular(6.0),
                                             border: Border.all(color: const Color(0xFF1E3A8A)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalAluminumPenetrationRounds[idx],
-                                              dropdownColor: const Color(0xFF243B58),
+                                              dropdownColor: const Color(0xFF344D6E),
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalAluminumPenetrationRounds[idx] = v!),
                                               items: const [
@@ -4249,7 +4249,7 @@ class _EntryTabState extends State<EntryTab> {
                                               const SizedBox(width: 8.0),
                                               DropdownButton<int>(
                                                 value: _epvatOverallRoundCount[t] ?? 30,
-                                                dropdownColor: const Color(0xFF243B58),
+                                                dropdownColor: const Color(0xFF344D6E),
                                                 style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                                 underline: const SizedBox(),
                                                 onChanged: (val) {
@@ -5733,15 +5733,15 @@ class _EntryTabState extends State<EntryTab> {
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
         filled: true,
-        fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
+        fillColor: readOnly ? const Color(0xFFC7D0DC) : const Color(0xFFDAE0E9),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
@@ -5763,19 +5763,19 @@ class _EntryTabState extends State<EntryTab> {
       isExpanded: true,
       onChanged: onChanged,
       style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w500),
-      dropdownColor: Colors.white,
+      dropdownColor: const Color(0xFFDAE0E9),
       icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0284C7)),
       decoration: InputDecoration(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFDAE0E9),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
@@ -5808,11 +5808,11 @@ class _EntryTabState extends State<EntryTab> {
                 hintText: '###',
                 hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: const Color(0xFFDAE0E9),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
@@ -5846,11 +5846,11 @@ class _EntryTabState extends State<EntryTab> {
                 hintText: 'YY',
                 hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: const Color(0xFFDAE0E9),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
@@ -5885,11 +5885,11 @@ class _EntryTabState extends State<EntryTab> {
                 hintText: '###',
                 hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: const Color(0xFFDAE0E9),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
@@ -5927,11 +5927,11 @@ class _EntryTabState extends State<EntryTab> {
                 hintText: 'YYYY',
                 hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: const Color(0xFFDAE0E9),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  borderSide: const BorderSide(color: Color(0xFFB0BDCF)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
