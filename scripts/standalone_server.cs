@@ -203,32 +203,101 @@ namespace OmpcBallisticAeroData
                 try { SetCurrentProcessExplicitAppUserModelID(AppId); } catch { }
                 string currentExe = Process.GetCurrentProcess().MainModule.FileName;
 
-                // Clean up any stale or orphaned instances from earlier crashes or sessions
-                try
+                // Support --kill or /kill to immediately unlock files
+                if (args.Length > 0 && (args[0] == "--kill" || args[0] == "/kill" || args[0] == "-kill"))
                 {
-                    int myPid = Process.GetCurrentProcess().Id;
                     foreach (var proc in Process.GetProcessesByName("OMPC_Ballistic_AeroData"))
                     {
-                        if (proc.Id != myPid)
+                        try { proc.Kill(); proc.WaitForExit(1000); } catch { }
+                    }
+                    foreach (var proc in Process.GetProcessesByName("OMPC_App_Host"))
+                    {
+                        try { proc.Kill(); proc.WaitForExit(1000); } catch { }
+                    }
+                    return;
+                }
+
+                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string shadowDir = Path.Combine(localAppData, "OMPC_Ballistic_AeroData", "host");
+                string shadowExe = Path.Combine(shadowDir, "OMPC_App_Host.exe");
+
+                bool isShadowHost = false;
+                if (args.Length > 0 && args[0] == "--shadow-host")
+                {
+                    isShadowHost = true;
+                }
+                else if (string.Equals(currentExe, shadowExe, StringComparison.OrdinalIgnoreCase))
+                {
+                    isShadowHost = true;
+                }
+
+                // If launched from user directory (Desktop, USB, Network Share):
+                // Shadow-copy and run from LocalAppData so the source file is NEVER locked!
+                if (!isShadowHost)
+                {
+                    try
+                    {
+                        // 1. Terminate any previous host instances
+                        foreach (var proc in Process.GetProcessesByName("OMPC_App_Host"))
                         {
-                            try { proc.Kill(); proc.WaitForExit(1500); } catch { }
+                            try { proc.Kill(); proc.WaitForExit(1000); } catch { }
                         }
+                        int myPid = Process.GetCurrentProcess().Id;
+                        foreach (var proc in Process.GetProcessesByName("OMPC_Ballistic_AeroData"))
+                        {
+                            if (proc.Id != myPid)
+                            {
+                                try { proc.Kill(); proc.WaitForExit(1000); } catch { }
+                            }
+                        }
+
+                        // 2. Prepare shadow directory in LocalAppData
+                        Directory.CreateDirectory(shadowDir);
+
+                        // 3. Copy executable to shadow location
+                        File.Copy(currentExe, shadowExe, true);
+
+                        // 4. If build/web exists next to executable, copy it as well
+                        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                        string srcWeb = Path.Combine(baseDir, "build", "web");
+                        string dstWeb = Path.Combine(shadowDir, "build", "web");
+                        if (Directory.Exists(srcWeb))
+                        {
+                            CopyDirectoryRecursive(srcWeb, dstWeb);
+                        }
+
+                        // 5. Launch shadow host
+                        ProcessStartInfo psi = new ProcessStartInfo
+                        {
+                            FileName = shadowExe,
+                            Arguments = "--shadow-host \"" + currentExe + "\"",
+                            WorkingDirectory = shadowDir,
+                            UseShellExecute = false
+                        };
+                        Process.Start(psi);
+
+                        // 6. EXIT LAUNCHER PROCESS IMMEDIATELY!
+                        // The user's original file is completely unlocked and free to be deleted, moved, or overwritten anytime!
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("Shadow launch exception, running direct: " + ex);
                     }
                 }
-                catch { }
 
-                Log("Starting OMPC Ballistic AeroData at " + DateTime.Now);
+                Log("Starting OMPC Ballistic AeroData Host at " + DateTime.Now);
 
                 // Resolve web directory relative to executable
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                _webRoot = Path.Combine(baseDir, "build", "web");
-                Log("baseDir: " + baseDir + "\r\n_webRoot: " + _webRoot);
+                string baseDirHost = AppDomain.CurrentDomain.BaseDirectory;
+                _webRoot = Path.Combine(baseDirHost, "build", "web");
+                Log("baseDirHost: " + baseDirHost + "\r\n_webRoot: " + _webRoot);
 
                 if (!Directory.Exists(_webRoot) || !File.Exists(Path.Combine(_webRoot, "index.html")))
                 {
-                    if (File.Exists(Path.Combine(baseDir, "index.html")))
+                    if (File.Exists(Path.Combine(baseDirHost, "index.html")))
                     {
-                        _webRoot = baseDir;
+                        _webRoot = baseDirHost;
                     }
                     else
                     {
@@ -320,7 +389,6 @@ namespace OmpcBallisticAeroData
                 Thread.Sleep(100);
 
                 // Multi-User Isolated Session: Assign dedicated profile folder per port
-                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 _userProfileDir = Path.Combine(localAppData, "OMPC_Ballistic_AeroData", "profiles", "session_" + _port);
                 try { Directory.CreateDirectory(_userProfileDir); } catch { }
 
@@ -862,6 +930,25 @@ namespace OmpcBallisticAeroData
             }
 
             return null;
+        }
+
+        private static void CopyDirectoryRecursive(string sourceDir, string targetDir)
+        {
+            try
+            {
+                Directory.CreateDirectory(targetDir);
+                foreach (string file in Directory.GetFiles(sourceDir))
+                {
+                    string destFile = Path.Combine(targetDir, Path.GetFileName(file));
+                    try { File.Copy(file, destFile, true); } catch { }
+                }
+                foreach (string subDir in Directory.GetDirectories(sourceDir))
+                {
+                    string destSub = Path.Combine(targetDir, Path.GetFileName(subDir));
+                    CopyDirectoryRecursive(subDir, destSub);
+                }
+            }
+            catch { }
         }
     }
 }

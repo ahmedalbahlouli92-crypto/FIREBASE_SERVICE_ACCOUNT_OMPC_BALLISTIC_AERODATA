@@ -48,6 +48,10 @@ try {
         Copy-Item "scripts\Stop_OMPC.bat" -Destination "$stagingDir\Stop_OMPC.bat" -Force
         Copy-Item "scripts\Stop_OMPC.bat" -Destination "C:\Users\user\Desktop\Stop_OMPC.bat" -Force -ErrorAction SilentlyContinue
     }
+    if (Test-Path "scripts\Force_Unlock_All.bat") {
+        Copy-Item "scripts\Force_Unlock_All.bat" -Destination "$stagingDir\Force_Unlock_All.bat" -Force
+        Copy-Item "scripts\Force_Unlock_All.bat" -Destination "C:\Users\user\Desktop\Force_Unlock_All.bat" -Force -ErrorAction SilentlyContinue
+    }
 
     if (Test-Path $zipPath) {
         Remove-Item -Force $zipPath -ErrorAction SilentlyContinue

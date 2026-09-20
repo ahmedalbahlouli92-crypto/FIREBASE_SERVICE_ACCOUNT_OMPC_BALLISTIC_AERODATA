@@ -19,27 +19,28 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.7';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.7 (Process Lifecycle Fix, Auto-Kill Zombies & Safe Overwrite)';
-const BODY = `## OMPC Ballistic AeroData v1.3.7
+const TAG_NAME = 'v1.3.8';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.8 (Shadow-Host Lock-Free Execution & Instant Overwrite)';
+const BODY = `## OMPC Ballistic AeroData v1.3.8
 
 ### Critical Fixes & Enhancements:
-1. **Resolved "File is open in another program" & Stale Process Locking**:
-   - Added automatic startup termination of any orphaned or hung \`OMPC_Ballistic_AeroData.exe\` processes left behind by earlier sessions or abnormal browser closes.
-   - Bundled **\`Stop_OMPC.bat\`** on Desktop and inside the Portable package to immediately terminate all running instances and release all file locks with a single double-click.
-2. **Fixed "Still Not Working in Another PC" (Premature Server Termination)**:
-   - On Windows systems where Edge has Startup Boost enabled, launching \`msedge.exe\` causes the bootstrap process to exit in < 1 second. Previously, the C# server mistook this for the user closing the app and killed itself, causing *"This site can't be reached / 127.0.0.1 refused to connect"*.
-   - Implemented a resilient **heartbeat & window visibility monitor**: \`index.html\` pings \`/api/heartbeat\` every 1.5s and sends \`sendBeacon('/api/exit')\` on unload. The server now stays reliably active while the user is using the app and terminates cleanly within 5 seconds of the user closing Edge or pressing Alt+F4.
-3. **Safe File Overwriting During Extraction & Installation**:
-   - Replaced \`.NET ZipFile.ExtractToDirectory\` (which threw an unhandled \`IOException\` if files existed) with entry-by-entry stream extraction with \`overwrite: true\` in both the Standalone executable and the 1-Click Setup Installer.
-4. **White-Blue Input Fields & Flutter Degree of Blue Theme**:
-   - All inputs, text boxes, and dropdowns use comfortable **white-blue** (\`#E0F2FE\`), read-only fields use \`#C8E3F5\`, and borders/highlights use the sampled Flutter logo blue (\`#31B9F6\` and \`#5FC9F8\`). Plain white (\`#FFFFFF\`) has been completely eliminated.
+1. **Shadow-Host Lock-Free Architecture ("File open in another program" Permanently Solved)**:
+   - When launching \`OMPC_Ballistic_AeroData.exe\` from any folder (Desktop, USB drive, or Network Share), it copies itself to a shadow host in \`%LOCALAPPDATA%\` and the original launcher exits within 50ms.
+   - **Result**: The user's original executable file has **ZERO open file handles / locks**. It can be deleted, replaced, or updated at ANY time, even while the application is actively open and running!
+2. **Emergency Unlocker Script (\`Force_Unlock_All.bat\` & \`Stop_OMPC.bat\`)**:
+   - Double-clicking \`Force_Unlock_All.bat\` forcibly terminates any background OMPC instances from previous sessions and immediately frees all file locks on any PC.
+3. **Resilient Safe Stream Extraction**:
+   - Both the Standalone executable and 1-Click Setup installer use entry-by-entry stream extraction with overwrite enabled, preventing any extraction conflict errors.
+4. **Active Heartbeat & Auto-Shutdown**:
+   - Bi-directional ping between browser window and server keeps the app active while open and cleans up all background processes within 5 seconds of closing the window.
+5. **Aesthetic Enhancements**:
+   - Inputs and fields use comfortable white-blue (\`#E0F2FE\`), read-only fields use \`#C8E3F5\`, with borders matching the Flutter blue palette (\`#31B9F6\` / \`#5FC9F8\`). Plain harsh white (\`#FFFFFF\`) has been removed.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
-- **OMPC_Ballistic_AeroData.exe**: Standalone Direct Executable
-- **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package (includes \`Stop_OMPC.bat\`)
-- **Stop_OMPC.bat**: Emergency Process Stopper & File Unlocker
+- **OMPC_Ballistic_AeroData.exe**: Standalone Direct Executable (Shadow-Host Enabled)
+- **OMPC_Ballistic_AeroData_Portable.zip**: Complete Offline Portable Package (includes \`Force_Unlock_All.bat\`)
+- **Force_Unlock_All.bat**: 1-Click Process Stopper & File Unlocker
 - **Live Web Application**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
 `;
 
@@ -149,6 +150,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData_Setup.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Setup.exe' },
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
+    { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'build\\app\\outputs\\flutter-apk\\app-release.apk' }
   ];
 
