@@ -135,15 +135,19 @@
     </div>
   </div>
   <script>
-    window.addEventListener('flutter-first-frame', function() {
+    function dismissOmpcSplash() {
       var splash = document.getElementById('ompc-app-splash');
-      if (splash) {
+      if (splash && splash.style.opacity !== '0') {
         splash.style.opacity = '0';
         setTimeout(function() {
           if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
         }, 350);
       }
-    });
+    }
+    window.addEventListener('flutter-first-frame', dismissOmpcSplash);
+    // Safety fallback for older PCs (e.g. Windows 7, Intel HD Graphics 4600)
+    // Dismisses loading splash after 3 seconds so the login form is never blocked
+    setTimeout(dismissOmpcSplash, 3000);
   </script>
   <script>
     // Seamless live auto-update check without stopping the app
@@ -179,6 +183,14 @@
 
       setInterval(checkAppUpdates, 30000); // Checks every 30 seconds
     })();
+  </script>
+  <script>
+    window._flutter = window._flutter || {};
+    window._flutter.loader = window._flutter.loader || {};
+    window._flutter.buildConfig = {
+      useLocalCanvasKit: true,
+      canvasKitBaseUrl: "canvaskit/"
+    };
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

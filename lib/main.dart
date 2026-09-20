@@ -16,7 +16,11 @@ import 'services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SupabaseService.initialize();
+  try {
+    await SupabaseService.initialize().timeout(const Duration(seconds: 2));
+  } catch (e) {
+    debugPrint("Supabase initialization timeout or offline: $e");
+  }
   runApp(const OmpcBallisticAeroDataApp());
 }
 

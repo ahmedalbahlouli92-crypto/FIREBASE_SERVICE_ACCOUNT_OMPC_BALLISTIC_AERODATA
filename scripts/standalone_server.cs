@@ -50,20 +50,6 @@ namespace OmpcBallisticAeroData
                 }
             }
 
-            // Terminate any old lingering instances
-            try
-            {
-                int currentId = Process.GetCurrentProcess().Id;
-                foreach (var proc in Process.GetProcessesByName("OMPC_Ballistic_AeroData"))
-                {
-                    if (proc.Id != currentId)
-                    {
-                        try { proc.Kill(); proc.WaitForExit(1000); } catch { }
-                    }
-                }
-            }
-            catch { }
-
             // Find an open port starting from 8080
             for (int p = 8080; p < 8180; p++)
             {
@@ -102,42 +88,10 @@ namespace OmpcBallisticAeroData
             serverThread.Start();
             Thread.Sleep(150); // Ensure listener is ready to serve first request
 
-            // Auto-update support: If connected to the internet, launch the live production web app directly
-            // so every user automatically receives updates the instant they are published without stopping or reinstalling.
-            // If offline, seamlessly fall back to the built-in embedded server.
+            // Launch purely offline local instance with instant zero-latency loading
             string appUrl = "http://127.0.0.1:" + _port + "/";
-            try
-            {
-                HttpWebRequest onlineCheck = (HttpWebRequest)WebRequest.Create("https://ompc-ballistic-aerodata.web.app/");
-                onlineCheck.Timeout = 1200;
-                onlineCheck.Method = "HEAD";
-                using (HttpWebResponse res = (HttpWebResponse)onlineCheck.GetResponse())
-                {
-                    if (res.StatusCode == HttpStatusCode.OK)
-                    {
-                        appUrl = "https://ompc-ballistic-aerodata.web.app/";
-                    }
-                }
-            }
-            catch { }
             string userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OMPC_Ballistic_AeroData", "browser_profile");
-            try 
-            { 
-                Directory.CreateDirectory(userDataDir); 
-                string firstRunFile = Path.Combine(userDataDir, "First Run");
-                if (!File.Exists(firstRunFile))
-                {
-                    File.WriteAllText(firstRunFile, "");
-                }
-                string defaultDir = Path.Combine(userDataDir, "Default");
-                Directory.CreateDirectory(defaultDir);
-                string prefFile = Path.Combine(defaultDir, "Preferences");
-                if (!File.Exists(prefFile))
-                {
-                    File.WriteAllText(prefFile, "{\"browser\":{\"has_seen_welcome_page\":true,\"check_default_browser\":false},\"profile\":{\"exit_type\":\"Normal\",\"exited_cleanly\":true}}");
-                }
-            } 
-            catch { }
+            try { Directory.CreateDirectory(userDataDir); } catch { }
 
             string browserExe = FindChromiumBrowser();
 
@@ -154,6 +108,8 @@ namespace OmpcBallisticAeroData
                         "--no-default-browser-check " +
                         "--disable-first-run-ui " +
                         "--disable-notifications " +
+                        "--ignore-gpu-blocklist " +
+                        "--enable-gpu-rasterization " +
                         "--disable-features=msEdgeSidebarV2,msHub,msHubEdgeShopping,Translate,OptimizationHints,MediaRouter " +
                         "--disable-extensions " +
                         "--disable-background-networking " +
