@@ -6,6 +6,8 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using Microsoft.Win32;
 
 namespace OmpcInstaller
@@ -430,6 +432,88 @@ namespace OmpcInstaller
             worker.Start();
         }
 
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        public struct PROPERTYKEY
+        {
+            public Guid fmtid;
+            public uint pid;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct PROPVARIANT
+        {
+            [FieldOffset(0)] public ushort vt;
+            [FieldOffset(8)] public IntPtr pwszVal;
+        }
+
+        [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        public interface IPropertyStore
+        {
+            [PreserveSig] int GetCount(out uint cProps);
+            [PreserveSig] int GetAt(uint iProp, out PROPERTYKEY pkey);
+            [PreserveSig] int GetValue([In] ref PROPERTYKEY key, out PROPVARIANT pv);
+            [PreserveSig] int SetValue([In] ref PROPERTYKEY key, [In] ref PROPVARIANT pv);
+            [PreserveSig] int Commit();
+        }
+
+        [ComImport, Guid("00021401-0000-0000-C000-000000000046"), ClassInterface(ClassInterfaceType.None)]
+        public class ShellLink { }
+
+        public static readonly PROPERTYKEY PKEY_AppUserModel_ID = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 5
+        };
+        public static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchCommand = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 2
+        };
+        public static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchDisplayNameResource = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 4
+        };
+        public static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchIconResource = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 3
+        };
+
+        private static void SetProp(IPropertyStore store, PROPERTYKEY key, string value)
+        {
+            PROPVARIANT pv = new PROPVARIANT();
+            pv.vt = 31; // VT_LPWSTR
+            pv.pwszVal = Marshal.StringToCoTaskMemUni(value);
+            try
+            {
+                store.SetValue(ref key, ref pv);
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(pv.pwszVal);
+            }
+        }
+
+        private static void SetAumidOnShortcut(string shortcutPath, string aumid, string targetExe)
+        {
+            try
+            {
+                ShellLink link = new ShellLink();
+                IPersistFile persistFile = (IPersistFile)link;
+                // STGM_READWRITE = 2
+                persistFile.Load(shortcutPath, 2);
+
+                IPropertyStore store = (IPropertyStore)link;
+                SetProp(store, PKEY_AppUserModel_ID, aumid);
+                SetProp(store, PKEY_AppUserModel_RelaunchCommand, targetExe);
+                SetProp(store, PKEY_AppUserModel_RelaunchDisplayNameResource, "OMPC Ballistic AeroData");
+                SetProp(store, PKEY_AppUserModel_RelaunchIconResource, targetExe + ",0");
+                store.Commit();
+
+                persistFile.Save(shortcutPath, true);
+                Marshal.ReleaseComObject(store);
+                Marshal.ReleaseComObject(link);
+            }
+            catch { }
+        }
+
         private static void CreateShortcut(string shortcutPath, string targetExePath, string description)
         {
             try
@@ -454,6 +538,8 @@ namespace OmpcInstaller
 
                 scType.InvokeMember("Description", BindingFlags.SetProperty, null, shortcut, new object[] { description });
                 scType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
+
+                SetAumidOnShortcut(shortcutPath, "OMPC.Ballistic.AeroData", targetExePath);
             }
             catch { }
         }

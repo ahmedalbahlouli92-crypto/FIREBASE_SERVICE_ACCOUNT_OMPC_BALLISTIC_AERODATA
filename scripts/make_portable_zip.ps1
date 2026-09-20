@@ -25,9 +25,9 @@ try {
     }
 
     if ($iconArg -ne "") {
-        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
+        & $cscPath /target:winexe $iconArg /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
     } else {
-        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
+        & $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll "/resource:$webBundleZip" /out:OMPC_Ballistic_AeroData.exe scripts\standalone_server.cs
     }
 
     if ($LASTEXITCODE -ne 0) {

@@ -5,6 +5,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Diagnostics;
 using System.Threading;
+using System.Runtime.InteropServices;
+using System.Drawing;
+using System.Windows.Forms;
 using Microsoft.Win32;
 
 namespace OmpcBallisticAeroData
@@ -16,12 +19,339 @@ namespace OmpcBallisticAeroData
         private static string _webRoot;
         private static int _port = 8080;
         private static Process _browserProcess;
+        private static IntPtr _browserHwnd = IntPtr.Zero;
+
+        private const string AppId = "OMPC.Ballistic.AeroData";
+
+        #region Win32 Shell & Window APIs for Taskbar Grouping
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        public struct PROPERTYKEY
+        {
+            public Guid fmtid;
+            public uint pid;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct PROPVARIANT
+        {
+            [FieldOffset(0)] public ushort vt;
+            [FieldOffset(8)] public IntPtr pwszVal;
+        }
+
+        [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        public interface IPropertyStore
+        {
+            [PreserveSig] int GetCount(out uint cProps);
+            [PreserveSig] int GetAt(uint iProp, out PROPERTYKEY pkey);
+            [PreserveSig] int GetValue([In] ref PROPERTYKEY key, out PROPVARIANT pv);
+            [PreserveSig] int SetValue([In] ref PROPERTYKEY key, [In] ref PROPVARIANT pv);
+            [PreserveSig] int Commit();
+        }
+
+        [DllImport("shell32.dll", SetLastError = true)]
+        public static extern int SHGetPropertyStoreForWindow(IntPtr handle, ref Guid riid, out IPropertyStore propertyStore);
+
+        [DllImport("shell32.dll", SetLastError = true)]
+        public static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
+
+        [DllImport("user32.dll")]
+        public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool IsWindowVisible(IntPtr hWnd);
+
+        public static readonly PROPERTYKEY PKEY_AppUserModel_ID = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 5
+        };
+        public static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchCommand = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 2
+        };
+        public static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchDisplayNameResource = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 4
+        };
+        public static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchIconResource = new PROPERTYKEY
+        {
+            fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 3
+        };
+
+        private static bool ApplyAumidToWindow(IntPtr hwnd, string aumid, string exePath, string displayName)
+        {
+            try
+            {
+                Guid guid = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
+                IPropertyStore store;
+                int hr = SHGetPropertyStoreForWindow(hwnd, ref guid, out store);
+                if (hr != 0 || store == null) return false;
+
+                try
+                {
+                    SetProp(store, PKEY_AppUserModel_RelaunchCommand, exePath);
+                    SetProp(store, PKEY_AppUserModel_RelaunchDisplayNameResource, displayName);
+                    SetProp(store, PKEY_AppUserModel_RelaunchIconResource, exePath + ",0");
+                    SetProp(store, PKEY_AppUserModel_ID, aumid);
+                    store.Commit();
+                    return true;
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(store);
+                }
+            }
+            catch { return false; }
+        }
+
+        private static void SetProp(IPropertyStore store, PROPERTYKEY key, string value)
+        {
+            PROPVARIANT pv = new PROPVARIANT();
+            pv.vt = 31; // VT_LPWSTR
+            pv.pwszVal = Marshal.StringToCoTaskMemUni(value);
+            try
+            {
+                store.SetValue(ref key, ref pv);
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(pv.pwszVal);
+            }
+        }
+
+        private static IntPtr FindBrowserWindow(int targetPid)
+        {
+            IntPtr foundHwnd = IntPtr.Zero;
+            EnumWindows((hwnd, lparam) =>
+            {
+                if (!IsWindowVisible(hwnd)) return true;
+
+                StringBuilder cls = new StringBuilder(256);
+                GetClassName(hwnd, cls, cls.Capacity);
+                if (cls.ToString() == "Chrome_WidgetWin_1")
+                {
+                    uint winPid;
+                    GetWindowThreadProcessId(hwnd, out winPid);
+                    StringBuilder title = new StringBuilder(256);
+                    GetWindowText(hwnd, title, title.Capacity);
+                    string t = title.ToString();
+
+                    if ((targetPid > 0 && winPid == targetPid) ||
+                        t.IndexOf("OMPC", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        t.IndexOf("Ballistic", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        t.IndexOf("127.0.0.1", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        foundHwnd = hwnd;
+                        return false;
+                    }
+                }
+                return true;
+            }, IntPtr.Zero);
+            return foundHwnd;
+        }
+
+        public static bool IsPortAvailable(int port)
+        {
+            TcpListener tcp = null;
+            try
+            {
+                tcp = new TcpListener(IPAddress.Loopback, port);
+                tcp.ExclusiveAddressUse = true;
+                tcp.Start();
+                tcp.Stop();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                if (tcp != null)
+                {
+                    try { tcp.Stop(); } catch { }
+                }
+            }
+        }
+        #endregion
+
+        #region App Host Form (Prevents Duplicate Taskbar Icon)
+        public class AppHostForm : Form
+        {
+            [DllImport("user32.dll")] public static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+            [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+            [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+            [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+            [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+            private const int GWL_STYLE = -16;
+            private const int WS_VISIBLE = 0x10000000;
+            private const int WS_CHILD = 0x40000000;
+            private const int WS_POPUP = unchecked((int)0x80000000);
+            private const int WS_CAPTION = 0x00C00000;
+            private const int WS_THICKFRAME = 0x00040000;
+
+            private Process _childProc;
+            private IntPtr _childHwnd = IntPtr.Zero;
+            private string _profileDir;
+            private Label _loadingLabel;
+            private bool _embedded = false;
+
+            public AppHostForm(string appUrl, string profileDir, string browserExe, string currentExe)
+            {
+                this.Text = "OMPC Ballistic AeroData";
+                this.Size = new Size(1280, 800);
+                this.StartPosition = FormStartPosition.CenterScreen;
+                this.WindowState = FormWindowState.Maximized;
+                this.BackColor = Color.FromArgb(11, 15, 25); // OMPC dark theme background
+
+                _profileDir = profileDir;
+
+                // Load custom application icon
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string iconPath = Path.Combine(baseDir, "app_icon.ico");
+                if (!File.Exists(iconPath))
+                    iconPath = Path.Combine(baseDir, "windows", "runner", "resources", "app_icon.ico");
+                if (File.Exists(iconPath))
+                {
+                    try { this.Icon = new Icon(iconPath); } catch { }
+                }
+                else
+                {
+                    try { this.Icon = Icon.ExtractAssociatedIcon(currentExe); } catch { }
+                }
+
+                _loadingLabel = new Label
+                {
+                    Text = "Starting OMPC Ballistic AeroData...",
+                    ForeColor = Color.FromArgb(16, 149, 193),
+                    Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                    AutoSize = false,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Dock = DockStyle.Fill
+                };
+                this.Controls.Add(_loadingLabel);
+
+                // Launch browser process
+                try
+                {
+                    string browserArgs = string.Format(
+                        "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
+                        appUrl, profileDir);
+
+                    ProcessStartInfo psi = new ProcessStartInfo
+                    {
+                        FileName = browserExe,
+                        Arguments = browserArgs,
+                        UseShellExecute = true
+                    };
+                    Program.Log("Launching browser from host form: " + browserExe + " " + browserArgs);
+                    _childProc = Process.Start(psi);
+                    _browserProcess = _childProc;
+                }
+                catch (Exception ex)
+                {
+                    Program.Log("Error starting browser process: " + ex);
+                }
+
+                // Background Thread: Locate browser window and embed into this Form
+                Thread embedThread = new Thread(() =>
+                {
+                    for (int i = 0; i < 60; i++)
+                    {
+                        Thread.Sleep(100);
+                        if (_childProc != null && !_childProc.HasExited)
+                        {
+                            IntPtr found = FindBrowserWindow(_childProc.Id);
+                            if (found != IntPtr.Zero)
+                            {
+                                _childHwnd = found;
+                                _browserHwnd = found;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (_childHwnd != IntPtr.Zero)
+                    {
+                        try
+                        {
+                            this.BeginInvoke(new MethodInvoker(() =>
+                            {
+                                try
+                                {
+                                    SetParent(_childHwnd, this.Handle);
+                                    int style = GetWindowLong(_childHwnd, GWL_STYLE);
+                                    style = (style & ~WS_POPUP & ~WS_CAPTION & ~WS_THICKFRAME) | WS_CHILD | WS_VISIBLE;
+                                    SetWindowLong(_childHwnd, GWL_STYLE, style);
+                                    ResizeChild();
+                                    SetForegroundWindow(_childHwnd);
+                                    _loadingLabel.Visible = false;
+                                    _embedded = true;
+                                    Program.Log("Browser window embedded into host Form successfully.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Program.Log("Exception embedding browser: " + ex);
+                                }
+                            }));
+                        }
+                        catch { }
+                    }
+                    else
+                    {
+                        Program.Log("Browser window embedding timed out; continuing in dual mode.");
+                    }
+                });
+                embedThread.IsBackground = true;
+                embedThread.Start();
+
+                this.Resize += (s, e) => ResizeChild();
+
+                this.FormClosed += (s, e) =>
+                {
+                    Program.Log("AppHostForm closed. Exiting application.");
+                    try { if (_childProc != null && !_childProc.HasExited) _childProc.Kill(); } catch { }
+                    try
+                    {
+                        if (Directory.Exists(_profileDir))
+                            Directory.Delete(_profileDir, true);
+                    }
+                    catch { }
+                };
+            }
+
+            private void ResizeChild()
+            {
+                if (_childHwnd != IntPtr.Zero && _embedded)
+                {
+                    MoveWindow(_childHwnd, 0, 0, this.ClientSize.Width, this.ClientSize.Height, true);
+                }
+            }
+        }
+        #endregion
 
         [STAThread]
         static void Main(string[] args)
         {
             try
             {
+                try { SetCurrentProcessExplicitAppUserModelID(AppId); } catch { }
+                string currentExe = Process.GetCurrentProcess().MainModule.FileName;
+
                 Log("Starting OMPC Ballistic AeroData at " + DateTime.Now);
 
                 // Resolve web directory relative to executable
@@ -58,9 +388,10 @@ namespace OmpcBallisticAeroData
                 }
                 Log("Resolved _webRoot: " + _webRoot);
 
-                // Engine 1: Try kernel HttpListener on ports 8080 - 8180 (Best for Windows 10 & 11)
-                for (int p = 8080; p < 8180; p++)
+                // Port Selection with Strict Availability Check (allows multiple concurrent users/instances)
+                for (int p = 8080; p < 8200; p++)
                 {
+                    if (!IsPortAvailable(p)) continue;
                     try
                     {
                         _httpListener = new HttpListener();
@@ -80,21 +411,36 @@ namespace OmpcBallisticAeroData
                     }
                 }
 
-                // Engine 2 Fallback: If HttpListener failed (e.g. Windows 7 non-admin without URL ACL), use loopback TcpListener!
+                // Fallback TcpListener if HttpListener failed
                 if (_httpListener == null || !_httpListener.IsListening)
                 {
-                    try
+                    for (int p = 8080; p < 8200; p++)
                     {
-                        _tcpListener = new TcpListener(IPAddress.Loopback, 0);
-                        _tcpListener.Start();
-                        _port = ((IPEndPoint)_tcpListener.LocalEndpoint).Port;
-                        Log("TcpListener fallback bound to port: " + _port);
+                        if (!IsPortAvailable(p)) continue;
+                        try
+                        {
+                            _tcpListener = new TcpListener(IPAddress.Loopback, p);
+                            _tcpListener.ExclusiveAddressUse = true;
+                            _tcpListener.Start();
+                            _port = p;
+                            Log("TcpListener fallback bound to port: " + _port);
+                            break;
+                        }
+                        catch
+                        {
+                            if (_tcpListener != null)
+                            {
+                                try { _tcpListener.Stop(); } catch { }
+                                _tcpListener = null;
+                            }
+                        }
                     }
-                    catch (Exception ex)
+
+                    if (_tcpListener == null)
                     {
-                        Log("TcpListener failed: " + ex);
+                        Log("All port bindings failed!");
                         System.Windows.Forms.MessageBox.Show(
-                            "Could not start local server: " + ex.Message,
+                            "Could not find an available local port for the OMPC server.",
                             "OMPC Ballistic AeroData - Error",
                             System.Windows.Forms.MessageBoxButtons.OK,
                             System.Windows.Forms.MessageBoxIcon.Error);
@@ -108,7 +454,12 @@ namespace OmpcBallisticAeroData
                 serverThread.Start();
                 Thread.Sleep(100);
 
-                // Launch local application URL in dedicated window mode
+                // Multi-User Isolated Session: Assign dedicated profile folder per port
+                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string userProfileDir = Path.Combine(localAppData, "OMPC_Ballistic_AeroData", "profiles", "session_" + _port);
+                try { Directory.CreateDirectory(userProfileDir); } catch { }
+
+                // Launch local application URL
                 string appUrl = "http://127.0.0.1:" + _port + "/";
                 Log("App URL: " + appUrl);
 
@@ -117,50 +468,14 @@ namespace OmpcBallisticAeroData
 
                 if (browserExe != null)
                 {
-                    try
-                    {
-                        ProcessStartInfo psi = new ProcessStartInfo
-                        {
-                            FileName = browserExe,
-                            Arguments = string.Format("--app=\"{0}\" --start-maximized", appUrl),
-                            UseShellExecute = true
-                        };
-                        Log("Launching browser: " + browserExe + " " + psi.Arguments);
-                        _browserProcess = Process.Start(psi);
-                        Log("Process.Start returned: " + (_browserProcess != null ? _browserProcess.Id.ToString() : "NULL (shell delegated)"));
-                    }
-                    catch (Exception ex)
-                    {
-                        Log("Process.Start exception: " + ex);
-                        Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
-                    }
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    Application.Run(new AppHostForm(appUrl, userProfileDir, browserExe, currentExe));
                 }
                 else
                 {
-                    Log("No browserExe found, opening default URL");
+                    Log("No browserExe found, opening default system browser");
                     Process.Start(new ProcessStartInfo { FileName = appUrl, UseShellExecute = true });
-                }
-
-                // Keep server running indefinitely while app is active
-                Log("Entering wait loop...");
-                if (_browserProcess != null)
-                {
-                    bool quickExit = _browserProcess.WaitForExit(4000);
-                    Log("WaitForExit(4000) returned: " + quickExit);
-                    if (!quickExit)
-                    {
-                        _browserProcess.WaitForExit();
-                        Log("Browser process exited.");
-                    }
-                    else
-                    {
-                        Log("Browser quick exit detected (delegated to existing instance), sleeping infinite...");
-                        Thread.Sleep(Timeout.Infinite);
-                    }
-                }
-                else
-                {
-                    Log("_browserProcess is null (delegated), sleeping infinite...");
                     Thread.Sleep(Timeout.Infinite);
                 }
             }

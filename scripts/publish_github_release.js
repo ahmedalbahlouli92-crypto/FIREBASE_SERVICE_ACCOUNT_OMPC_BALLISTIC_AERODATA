@@ -19,20 +19,18 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.3.2';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.2 (Universal Engine Fix for Windows 7/10/11 & Instant Offline CanvasKit Startup)';
-const BODY = `## OMPC Ballistic AeroData v1.3.2
+const TAG_NAME = 'v1.3.3';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.3.3 (Native Taskbar Grouping & Multi-User Port Isolation)';
+const BODY = `## OMPC Ballistic AeroData v1.3.3
 
 ### Key Fixes & Enhancements:
-1. **Critical Startup Fix (Blank Screen Elimination)**:
-   - Resolved a critical JavaScript initialization conflict in Flutter web loader bootstrap where an empty object initialization prevented \`_flutter.loader.load()\` from firing. The app now starts instantly and reliably across all devices.
-2. **Universal Dual-Engine Local Server**:
-   - **Engine 1 (Windows 10/11)**: High-speed asynchronous kernel \`HttpListener\` across ports 8080-8179.
-   - **Engine 2 (Windows 7 / Legacy PC Fallback)**: Standard loopback \`TcpListener\` on dynamic port 0 for non-administrator accounts, completely eliminating "Could not bind local HTTP server port" errors without needing UAC elevation.
-3. **Optimized Chromium Runtime Launch**:
-   - Standardized Chromium/Edge dedicated app-mode launch parameters without conflicting graphics switches, eliminating graphics driver freezes and black screens on older Intel HD Graphics 4600 machines.
-4. **Resilient Server Lifecycle**:
-   - Server process maintains an active heartbeat and properly serves all local assets even when browser process delegation occurs.
+1. **Native Taskbar Window Grouping (Zero Duplicate Icons)**:
+   - Fixed the taskbar duplication issue where pinning the app resulted in separate unlinked browser windows. \`OMPC_Ballistic_AeroData.exe\` now hosts the application window natively with official icon and matching AppUserModelID, grouping seamlessly under the pinned taskbar icon.
+2. **Multi-User & Simultaneous Session Support**:
+   - Implemented strict TCP socket probing (\`ExclusiveAddressUse = true\`) across ports 8080-8200.
+   - Each user session automatically binds to an isolated available port (e.g. 8080, 8081) with dedicated session profile directories, allowing multiple users and concurrent instances without collisions or browser delegation crashes.
+3. **Installer Shortcut Property Integration**:
+   - Enhanced shortcut creation in \`OMPC_Ballistic_AeroData_Setup.exe\` with write-mode COM property store (\`STGM_READWRITE\`) and full relaunch metadata.
 
 ### Download Binaries:
 - **OMPC_Ballistic_AeroData_Setup.exe**: Windows 1-Click Installer
