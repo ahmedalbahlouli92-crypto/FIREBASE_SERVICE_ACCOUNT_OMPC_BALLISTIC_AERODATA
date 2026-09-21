@@ -164,52 +164,6 @@
       }
       setInterval(sendHeartbeat, 1500);
       sendHeartbeat();
-
-      function notifyExit() {
-        if (navigator.sendBeacon) {
-          navigator.sendBeacon('/api/exit');
-        } else {
-          fetch('/api/exit', { keepalive: true }).catch(function() {});
-        }
-      }
-      window.addEventListener('pagehide', notifyExit);
-      window.addEventListener('beforeunload', notifyExit);
-      window.addEventListener('unload', notifyExit);
-    })();
-  </script>
-  <script>
-    // Seamless live auto-update check without stopping the app
-    (function() {
-      var currentBuildTime = 1789843000;
-      var isUpdating = false;
-
-      function checkAppUpdates() {
-        if (isUpdating) return;
-        fetch('version.json?nocache=' + Date.now(), { cache: 'no-store' })
-          .then(function(res) { return res.ok ? res.json() : null; })
-          .then(function(data) {
-            if (data && data.build && data.build > currentBuildTime) {
-              isUpdating = true;
-              showUpdateToast(data.version || 'New update');
-            }
-          })
-          .catch(function() {});
-      }
-
-      function showUpdateToast(version) {
-        var toast = document.createElement('div');
-        toast.id = 'ompc-update-toast';
-        toast.innerHTML = '<div style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#0284C7;color:#ffffff;padding:12px 24px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5);font-size:14px;font-weight:600;display:flex;align-items:center;gap:12px;z-index:999999;transition:all 0.3s ease;">' +
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
-          '<span>Update Published (' + version + ') — Applying update seamlessly...</span>' +
-          '</div>';
-        document.body.appendChild(toast);
-        setTimeout(function() {
-          window.location.reload(true);
-        }, 3000);
-      }
-
-      setInterval(checkAppUpdates, 30000); // Checks every 30 seconds
     })();
   </script>
   <script src="flutter_bootstrap.js" async></script>

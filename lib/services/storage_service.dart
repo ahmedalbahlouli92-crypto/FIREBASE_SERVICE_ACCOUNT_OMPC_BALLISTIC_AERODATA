@@ -353,6 +353,7 @@ class StorageService {
     ];
 
     // 1. Try to fetch registered operators from Supabase Cloud (syncs across all PCs)
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         final cloudOps = await SupabaseService.fetchOperatorsFromCloud();
@@ -439,6 +440,7 @@ class StorageService {
     }
 
     // 2. Cloud synchronization (ensures user exists across all other PCs & web)
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         await SupabaseService.saveOperatorsToCloud(operators);
@@ -463,6 +465,7 @@ class StorageService {
       } catch (_) {}
     }
 
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         await SupabaseService.saveOperatorsToCloud(operators);
@@ -498,6 +501,7 @@ class StorageService {
 
   // Load Admin Rules (cloud-synced + local fallback)
   Future<Map<String, dynamic>> loadRules() async {
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         final cloudRules = await SupabaseService.fetchRulesFromCloud();
@@ -547,6 +551,7 @@ class StorageService {
       } catch (_) {}
     }
 
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         await SupabaseService.saveRulesToCloud(rules);

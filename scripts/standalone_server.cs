@@ -409,7 +409,7 @@ namespace OmpcBallisticAeroData
                     try
                     {
                         string browserArgs = string.Format(
-                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check",
+                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"",
                             appUrl, _userProfileDir);
 
                         ProcessStartInfo psi = new ProcessStartInfo

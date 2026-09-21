@@ -24,26 +24,28 @@ const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.1 (Supabase Cross-PC Sync, EP
 const BODY = `## OMPC Ballistic AeroData v1.4.1
 
 ### Key Updates & Enhancements:
-1. **EPVAT ± (Plus-Minus) Tolerance Calculations**:
+1. **PC Auto-Update & Immediate Logout Fix**:
+   - Eliminated the false "Update Published" popup loop and premature session reset.
+   - Suppressed legacy Windows 7 & 8 Microsoft Edge unsupported browser banners via Chromium flags.
+2. **Android Release APK Cloud Sync & Registered Users**:
+   - Added missing \`android.permission.INTERNET\` and \`android.permission.ACCESS_NETWORK_STATE\` to release APK manifest.
+   - All cloud-registered laboratory personnel, admin rules, and test records now synchronize seamlessly across mobile and all PCs.
+3. **EPVAT ± (Plus-Minus) Tolerance Calculations**:
    - Added full support for \`±\` and \`+/-\` operators in mathematical formula evaluation, arithmetic substitution, and administrative formula definitions.
    - Evaluates range-bound acceptance criteria (\`abs(x - target) <= tol\`).
-2. **Strict Submission Validation Across All 9 Test Types**:
-   - Comprehensive required-field checks on all ballistic and mechanical tests (EPVAT, Waterproof, Extraction, Accuracy, Residual Stress, Function, Firing Rate, Terminal Effect, Primer Sensitivity).
+4. **Strict Submission Validation Across All 9 Test Types**:
+   - Comprehensive required-field checks on all ballistic and mechanical tests.
    - Blocks submission if required test fields are empty and automatically jumps to missing fields.
-3. **Action Time 2-Digit Input Formatter**:
-   - Enforces \`^\\d{0,2}(\\.\\d{0,3})?$\` across all action time inputs (accepts \`00.000\`, \`1.5\`, \`12.345\`; rejects 3 or more digits before decimal).
-4. **Supabase Cloud Database Cross-PC Synchronization**:
-   - Resolved cold-boot connection timeouts by adding robust \`ensureInitialized()\` and increasing initial connection timeout to 15s.
-   - Implemented bidirectional sync in \`StorageService\` that merges cloud records with local desktop CSV records and pushes unsynced offline records to Supabase in the background.
-5. **Android Layout & Responsive Screen Adjustments**:
-   - Redesigned mobile AppBar with a compact dropdown, clock badge, and consolidated profile & options \`PopupMenuButton\`, completely eliminating pixel overflow on Android devices.
-   - Made dialogs adaptive with \`math.min(width, screenWidth * 0.94)\` and added horizontal scrolling to EPVAT round tables.
-6. **Windows Desktop Auto-Hiding Modules Sidebar**:
-   - Animated sidebar that smoothly collapses to width 0 when the cursor moves into the main content, allowing the dashboard, log entry, and inspection screens to take 100% full screen.
-   - Hovering near the left edge smoothly reveals the sidebar; includes pin/unpin header button to lock open if desired.
+5. **Action Time 2-Digit Input Formatter**:
+   - Enforces \`^\\d{0,2}(\\.\\d{0,3})?$\` across all action time inputs.
+6. **Supabase Cloud Database Cross-PC Synchronization**:
+   - Automatic retry and robust connection handling across all platforms.
+7. **Android Layout & Responsive Screen Adjustments**:
+   - Redesigned mobile AppBar with a compact dropdown, clock badge, and consolidated profile & options \`PopupMenuButton\`.
+8. **Windows Desktop Auto-Hiding Modules Sidebar**:
+   - Animated sidebar that smoothly collapses when moving to main content, taking 100% full screen.
 
 ### Binaries & Deployments:
-- **Live Web Portal**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
 - **Android APK**: \`OMPC_Ballistic_AeroData_v1.4.1.apk\`
 - **Windows Setup**: \`OMPC_Ballistic_AeroData_Setup.exe\`
 - **Windows Standalone**: \`OMPC_Ballistic_AeroData.exe\`
