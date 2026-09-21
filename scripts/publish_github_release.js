@@ -19,46 +19,35 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.4.0';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.0 (Enhanced QC, EPVAT Multi-Temp, SPC Export, Minimize Support & Consumables)';
-const BODY = `## OMPC Ballistic AeroData v1.4.0
+const TAG_NAME = 'v1.4.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.1 (Supabase Cross-PC Sync, EPVAT ± Formula, Strict Field Validation, 2-Digit Action Time, Responsive Mobile UI & Windows Auto-Hide Sidebar)';
+const BODY = `## OMPC Ballistic AeroData v1.4.1
 
-### Key Updates & New Features:
-1. **Waterproof Caliber Exclusion**:
-   - Excluded Waterproof Test option for \`.223 69 grains\`, \`.223 55 grains\`, \`.223 77 grains\`, \`7.62x51 .308\`, \`9mm Match\`, and \`9mm Luger\`.
-2. **Editable Primer Sensitivity HM & SD**:
-   - Operators can now directly enter Bruceton \`HM\` and \`SD\` parameters. The system automatically computes All Fire ($\\bar{H} + 5S$), No Fire ($\\bar{H} - 2S$), and evaluates sentencing against specifications.
-3. **Streamlined Evaluation Rules**:
-   - Removed GP Transducers, Barrels, and Weapons from the Evaluation Rules dropdown to focus strictly on ballistic and mechanical inspection requirements.
-4. **Formula & Input Focus Stability**:
-   - Fixed formula editor text loss / unfocus bug by using permanent keys on dynamic input fields.
-5. **Enlarged High-Visibility Branding**:
-   - Enlarged OMPC logos across the splash screen (120px), login modal (150px), and navigation sidebar (68px).
-6. **Centered Welcome Access Modal**:
-   - Implemented an access-granted modal dialog in the center of the screen upon authentication.
-7. **Default Waterproof Sample Size**:
-   - Defaulted Waterproof Test sample size to 20 rounds (editable by operators).
-8. **EPVAT Multi-Temperature Testing Workflow**:
-   - Integrated \`Single Temperature\` vs \`All 3 Temperatures (+21°C, +52°C, -54°C)\` segmented workflow identical to Function Test.
-9. **Statistical Process Control (SPC) Trend Export**:
-   - Added Test Type dropdown filter with dynamic parameter population and an **Export Trend Report** button generating print-ready reports with Grand Mean, Grand SD, Control Limits (UCL/LCL), and group breakdown tables.
-10. **M193 Velocity Distance Persistence**:
-    - Defaulted velocity distance for M193 to 21m and preserved it across test submission and field reset.
-11. **Window Minimize Support**:
-    - Windows standalone executable now allows minimizing the application to the taskbar without shutting down or terminating the background server.
-12. **Blank Caliber Cyclic Rate Testing**:
-    - Enabled cyclic rate testing and admin evaluation limits for blank calibers (5.56 M200 Blank and 7.62 M82 Blank).
-13. **Full Consumable Items Management Module**:
-    - Complete stock management with item registration, restock (auto count-up), user consumption (auto count-down), transaction history logs, and two-way Supabase Cloud synchronization.
-14. **Android APK Release**:
-    - Compiled standalone Android APK (\`OMPC_Ballistic_AeroData_v1.4.0.apk\`).
+### Key Updates & Enhancements:
+1. **EPVAT ± (Plus-Minus) Tolerance Calculations**:
+   - Added full support for \`±\` and \`+/-\` operators in mathematical formula evaluation, arithmetic substitution, and administrative formula definitions.
+   - Evaluates range-bound acceptance criteria (\`abs(x - target) <= tol\`).
+2. **Strict Submission Validation Across All 9 Test Types**:
+   - Comprehensive required-field checks on all ballistic and mechanical tests (EPVAT, Waterproof, Extraction, Accuracy, Residual Stress, Function, Firing Rate, Terminal Effect, Primer Sensitivity).
+   - Blocks submission if required test fields are empty and automatically jumps to missing fields.
+3. **Action Time 2-Digit Input Formatter**:
+   - Enforces \`^\\d{0,2}(\\.\\d{0,3})?$\` across all action time inputs (accepts \`00.000\`, \`1.5\`, \`12.345\`; rejects 3 or more digits before decimal).
+4. **Supabase Cloud Database Cross-PC Synchronization**:
+   - Resolved cold-boot connection timeouts by adding robust \`ensureInitialized()\` and increasing initial connection timeout to 15s.
+   - Implemented bidirectional sync in \`StorageService\` that merges cloud records with local desktop CSV records and pushes unsynced offline records to Supabase in the background.
+5. **Android Layout & Responsive Screen Adjustments**:
+   - Redesigned mobile AppBar with a compact dropdown, clock badge, and consolidated profile & options \`PopupMenuButton\`, completely eliminating pixel overflow on Android devices.
+   - Made dialogs adaptive with \`math.min(width, screenWidth * 0.94)\` and added horizontal scrolling to EPVAT round tables.
+6. **Windows Desktop Auto-Hiding Modules Sidebar**:
+   - Animated sidebar that smoothly collapses to width 0 when the cursor moves into the main content, allowing the dashboard, log entry, and inspection screens to take 100% full screen.
+   - Hovering near the left edge smoothly reveals the sidebar; includes pin/unpin header button to lock open if desired.
 
 ### Binaries & Deployments:
-- **Web Portal**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
-- **Android APK**: \`OMPC_Ballistic_AeroData.apk\`
+- **Live Web Portal**: [https://ompc-ballistic-aerodata.web.app](https://ompc-ballistic-aerodata.web.app)
+- **Android APK**: \`OMPC_Ballistic_AeroData_v1.4.1.apk\`
 - **Windows Setup**: \`OMPC_Ballistic_AeroData_Setup.exe\`
+- **Windows Standalone**: \`OMPC_Ballistic_AeroData.exe\`
 - **Windows Portable**: \`OMPC_Ballistic_AeroData_Portable.zip\`
-- **Standalone EXE**: \`OMPC_Ballistic_AeroData.exe\`
 `;
 
 function request(options, postData) {
@@ -168,8 +157,8 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.4.0.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.0.apk' },
-    { name: 'OMPC_Ballistic_AeroData.apk', path: 'build\\app\\outputs\\flutter-apk\\app-release.apk' }
+    { name: 'OMPC_Ballistic_AeroData_v1.4.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.1.apk' },
+    { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' }
   ];
 
   for (const asset of assets) {

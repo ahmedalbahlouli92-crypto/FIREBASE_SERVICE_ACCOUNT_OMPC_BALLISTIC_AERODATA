@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -354,7 +355,7 @@ class _HistoryTabState extends State<HistoryTab> {
                 ],
               ),
               content: SizedBox(
-                width: 650.0,
+                width: math.min(650.0, MediaQuery.of(context).size.width * 0.94),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1273,7 +1274,7 @@ class _HistoryTabState extends State<HistoryTab> {
         backgroundColor: const Color(0xFF0F172A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
         child: Container(
-          width: 550.0,
+          width: math.min(550.0, MediaQuery.of(context).size.width * 0.94),
           padding: const EdgeInsets.all(20.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1380,9 +1381,12 @@ class _HistoryTabState extends State<HistoryTab> {
                 borderRadius: BorderRadius.circular(16.0),
                 side: const BorderSide(color: Color(0xFF1E3A8A)),
               ),
-              insetPadding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width < 600 ? 12.0 : 40.0,
+                vertical: 24.0,
+              ),
               child: Container(
-                width: 1000.0,
+                width: math.min(1000.0, MediaQuery.of(context).size.width * 0.94),
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

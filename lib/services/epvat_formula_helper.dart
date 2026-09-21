@@ -222,28 +222,43 @@ class EpvatFormulaHelper {
     }
 
     final double calculated = evaluate(formula, variables, defaultTemp: defaultTemp);
-    final double limitVal = evaluate(limitStr, variables, defaultTemp: defaultTemp);
     final String substitutedText = buildSubstitutedArithmetic(formula, variables, defaultTemp: defaultTemp);
 
+    double limitVal = 0.0;
     bool passed = true;
-    switch (op) {
-      case '<=':
-        passed = calculated <= (limitVal + 0.0001);
-        break;
-      case '>=':
-        passed = calculated >= (limitVal - 0.0001);
-        break;
-      case '<':
-        passed = calculated < limitVal;
-        break;
-      case '>':
-        passed = calculated > limitVal;
-        break;
-      case '==':
-        passed = (calculated - limitVal).abs() < 0.01;
-        break;
-      default:
-        passed = calculated <= limitVal;
+
+    // Check if limitStr is formatted as "Target ± Tol" (e.g. "920 ± 15" or "920 +/- 15")
+    final targetTolMatch = RegExp(r'^([\d\.\-]+)\s*(?:±|\+\/-)\s*([\d\.]+)$').firstMatch(limitStr);
+    if (targetTolMatch != null) {
+      final target = double.tryParse(targetTolMatch.group(1)!) ?? 0.0;
+      final tol = double.tryParse(targetTolMatch.group(2)!) ?? 0.0;
+      limitVal = tol;
+      passed = (calculated >= (target - tol - 0.0001)) && (calculated <= (target + tol + 0.0001));
+    } else {
+      limitVal = evaluate(limitStr.replaceAll('±', '').replaceAll('+/-', '').trim(), variables, defaultTemp: defaultTemp);
+      switch (op) {
+        case '<=':
+          passed = calculated <= (limitVal + 0.0001);
+          break;
+        case '>=':
+          passed = calculated >= (limitVal - 0.0001);
+          break;
+        case '<':
+          passed = calculated < limitVal;
+          break;
+        case '>':
+          passed = calculated > limitVal;
+          break;
+        case '==':
+          passed = (calculated - limitVal).abs() < 0.01;
+          break;
+        case '±':
+        case '+/-':
+          passed = calculated.abs() <= (limitVal.abs() + 0.0001);
+          break;
+        default:
+          passed = calculated <= limitVal;
+      }
     }
 
     return EpvatFormulaResult(

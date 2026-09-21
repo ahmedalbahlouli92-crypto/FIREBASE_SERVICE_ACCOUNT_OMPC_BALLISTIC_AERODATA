@@ -19,7 +19,7 @@ import 'services/app_exit_helper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await SupabaseService.initialize().timeout(const Duration(seconds: 2));
+    await SupabaseService.initialize().timeout(const Duration(seconds: 15));
   } catch (e) {
     debugPrint("Supabase initialization timeout or offline: $e");
   }
@@ -792,6 +792,8 @@ class _MainShellState extends State<MainShell> {
     return '$h:$m:$s';
   }
   
+  bool _sidebarHovered = false;
+  bool _sidebarPinned = false;
   Map<String, dynamic> _adminRules = {};
   String _selectedRuleTest = 'Waterproof Test';
   bool _submissionAlertsEnabled = true;
@@ -4151,6 +4153,27 @@ class _MainShellState extends State<MainShell> {
                           });
                         },
                       ),
+                      ActionChip(
+                        avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
+                        label: const Text('Velocity Delta (±30 m/s)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
+                        backgroundColor: const Color(0xFF2C415E),
+                        side: const BorderSide(color: Color(0xFF1E3A8A)),
+                        onPressed: () {
+                          setState(() {
+                            final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
+                            final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
+                            curList.add({
+                              'name': 'Velocity Tolerance (+21°C vs +52°C)',
+                              'formula': 'abs(Vel Mean @ 21 - Vel Mean @ 52)',
+                              'operator': '±',
+                              'limit': '30',
+                              'unit': 'm/s',
+                            });
+                            newMap[_ruleSelectedCaliber] = curList;
+                            _adminRules['epvat']?['custom_formulas'] = newMap;
+                          });
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14.0),
@@ -4226,7 +4249,9 @@ class _MainShellState extends State<MainShell> {
                                 ),
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
-                                    value: item['operator'] ?? '<=',
+                                    value: (['<=', '>=', '<', '>', '==', '±'].contains(item['operator']))
+                                        ? item['operator']
+                                        : (item['operator'] == '+/-' ? '±' : '<='),
                                     isExpanded: true,
                                     dropdownColor: const Color(0xFF344D6E),
                                     style: const TextStyle(color: Colors.white, fontSize: 12.0),
@@ -4241,7 +4266,7 @@ class _MainShellState extends State<MainShell> {
                                         _adminRules['epvat']?['custom_formulas'] = newMap;
                                       });
                                     },
-                                    items: ['<=', '>=', '<', '>', '=='].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                                    items: ['<=', '>=', '<', '>', '==', '±'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                                   ),
                                 ),
                               ),
@@ -5618,65 +5643,99 @@ class _MainShellState extends State<MainShell> {
         final bool isDesktop = constraints.maxWidth > 800;
 
         if (isDesktop) {
-          // DESKTOP LAYOUT WITH SIDEBAR NAVIGATION
+          // DESKTOP LAYOUT WITH AUTO-HIDING SIDEBAR NAVIGATION
           return Scaffold(
-            body: Row(
+            body: Stack(
               children: [
-                // SIDEBAR
-                Container(
-                  width: 250.0,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1C3351),
-                    border: Border(right: BorderSide(color: Color(0xFF1E3A8A))),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Sidebar Header Branding
-                      SizedBox(
-                        width: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12.0),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF263852),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xFF1E3A8A)),
+                Row(
+                  children: [
+                    // Auto-hiding Animated Sidebar
+                    MouseRegion(
+                      onEnter: (_) => setState(() => _sidebarHovered = true),
+                      onExit: (_) => setState(() => _sidebarHovered = false),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeInOut,
+                        width: (_sidebarPinned || _sidebarHovered) ? 250.0 : 0.0,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            minWidth: 250.0,
+                            maxWidth: 250.0,
+                            alignment: Alignment.topLeft,
+                            child: Container(
+                              width: 250.0,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF1C3351),
+                                border: Border(right: BorderSide(color: Color(0xFF1E3A8A))),
                               ),
-                              child: Image.asset(
-                                'assets/logo.png',
-                                height: 68.0,
-                                width: 68.0,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                            const SizedBox(height: 14.0),
-                            const Text(
-                              'OMPC BALLISTIC',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const Text(
-                              'AERODATA PORTAL',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF38BDF8),
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                              padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Sidebar Header Branding with Pin Toggle
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Stack(
+                                      alignment: Alignment.topCenter,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(12.0),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF263852),
+                                                shape: BoxShape.circle,
+                                                border: Border.all(color: const Color(0xFF1E3A8A)),
+                                              ),
+                                              child: Image.asset(
+                                                'assets/logo.png',
+                                                height: 68.0,
+                                                width: 68.0,
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 14.0),
+                                            const Text(
+                                              'OMPC BALLISTIC',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                            const Text(
+                                              'AERODATA PORTAL',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 9.0,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF38BDF8),
+                                                letterSpacing: 1.0,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Positioned(
+                                          top: 0,
+                                          right: 0,
+                                          child: IconButton(
+                                            icon: Icon(
+                                              _sidebarPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                              size: 16.0,
+                                              color: _sidebarPinned ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
+                                            ),
+                                            tooltip: _sidebarPinned ? 'Unpin Sidebar (Auto-Hide on mouse move)' : 'Pin Sidebar Open',
+                                            onPressed: () => setState(() => _sidebarPinned = !_sidebarPinned),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                       const SizedBox(height: 18.0),
                       Container(
                         padding: const EdgeInsets.all(10.0),
@@ -5767,7 +5826,7 @@ class _MainShellState extends State<MainShell> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'v1.3.4',
+                              'v1.4.1',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -5796,8 +5855,12 @@ class _MainShellState extends State<MainShell> {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+        ),
 
-                // ACTIVE SCREEN PANEL
+                // ACTIVE SCREEN PANEL (Full width when sidebar auto-hides)
                 Expanded(
                   child: Container(
                     color: const Color(0xFF263852),
@@ -5809,9 +5872,39 @@ class _MainShellState extends State<MainShell> {
                 ),
               ],
             ),
-          );
+            // Left hover detection strip to reveal sidebar when auto-hidden
+            if (!_sidebarPinned && !_sidebarHovered)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 20.0,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _sidebarHovered = true),
+                  child: Container(
+                    color: Colors.transparent,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 4.0,
+                        height: 54.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF38BDF8).withOpacity(0.55),
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(4.0),
+                            bottomRight: Radius.circular(4.0),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
         } else {
-          // MOBILE LAYOUT WITH APP BAR DROPDOWN
+          // MOBILE LAYOUT WITH APP BAR DROPDOWN (Responsive, no overflow)
           return Scaffold(
             appBar: AppBar(
               backgroundColor: const Color(0xFF1C3351),
@@ -5820,9 +5913,10 @@ class _MainShellState extends State<MainShell> {
               title: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _currentModule,
-                  dropdownColor: const Color(0xFF344D6E),
-                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
-                  style: const TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold),
+                  dropdownColor: const Color(0xFF1C3351),
+                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8), size: 20.0),
+                  isDense: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
                   onChanged: (String? val) {
                     if (val != null) {
                       setState(() {
@@ -5840,16 +5934,16 @@ class _MainShellState extends State<MainShell> {
                   ].map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
-                      child: Text(value),
+                      child: Text(value, style: const TextStyle(fontSize: 13.0)),
                     );
                   }).toList(),
                 ),
               ),
               actions: [
-                // Live ticking digital clock (Mobile AppBar)
+                // Live ticking digital clock (Compact Mobile AppBar)
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
                     margin: const EdgeInsets.only(right: 6.0),
                     decoration: BoxDecoration(
                       color: const Color(0xFF2C415E),
@@ -5859,14 +5953,14 @@ class _MainShellState extends State<MainShell> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.schedule, size: 12.0, color: Color(0xFF38BDF8)),
-                        const SizedBox(width: 4.0),
+                        const Icon(Icons.schedule, size: 11.0, color: Color(0xFF38BDF8)),
+                        const SizedBox(width: 3.0),
                         Text(
                           _formatLiveClock(_currentTime),
                           style: const TextStyle(
                             fontFamily: 'JetBrainsMono',
                             color: Color(0xFF38BDF8),
-                            fontSize: 11.0,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -5874,59 +5968,99 @@ class _MainShellState extends State<MainShell> {
                     ),
                   ),
                 ),
-                if (_currentUserRole != null)
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                      margin: const EdgeInsets.only(right: 6.0),
-                      decoration: BoxDecoration(
-                        color: _currentUserRole!.color.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6.0),
-                        border: Border.all(color: _currentUserRole!.color.withOpacity(0.4)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                // Mobile Options & Profile Menu
+                PopupMenuButton<String>(
+                  icon: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: (_currentUserRole?.color ?? const Color(0xFF38BDF8)).withOpacity(0.2),
+                    child: Icon(
+                      _currentUserRole?.icon ?? Icons.more_vert,
+                      size: 16,
+                      color: _currentUserRole?.color ?? const Color(0xFF38BDF8),
+                    ),
+                  ),
+                  color: const Color(0xFF1C3351),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    side: const BorderSide(color: Color(0xFF1E3A8A)),
+                  ),
+                  onSelected: (val) {
+                    if (val == 'toggle_alerts') {
+                      setState(() {
+                        _submissionAlertsEnabled = !_submissionAlertsEnabled;
+                        _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
+                      });
+                      _storageService.saveRules(_adminRules);
+                    } else if (val == 'sign_out') {
+                      setState(() {
+                        _currentUserRole = null;
+                      });
+                    } else if (val == 'exit_app') {
+                      _confirmExitApp(context);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      enabled: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(_currentUserRole!.icon, size: 13.0, color: _currentUserRole!.color),
-                          const SizedBox(width: 4.0),
                           Text(
-                            _currentUserRole!.label,
-                            style: TextStyle(color: _currentUserRole!.color, fontSize: 11.0, fontWeight: FontWeight.bold),
+                            _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Active User',
+                            style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            _currentUserRole?.label.toUpperCase() ?? 'OPERATOR',
+                            style: TextStyle(
+                              color: _currentUserRole?.color ?? const Color(0xFF38BDF8),
+                              fontSize: 10.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(color: Color(0xFF1E3A8A)),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'toggle_alerts',
+                      child: Row(
+                        children: [
+                          Icon(
+                            _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
+                            color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                            size: 18.0,
+                          ),
+                          const SizedBox(width: 8.0),
+                          Text(
+                            _submissionAlertsEnabled ? 'Submission Alerts (ON)' : 'Submission Alerts (OFF)',
+                            style: const TextStyle(color: Colors.white, fontSize: 12.0),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                IconButton(
-                  icon: Icon(
-                    _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
-                    color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
-                    size: 18.0,
-                  ),
-                  tooltip: _submissionAlertsEnabled ? 'Submission Alerts (ON) - Tap to turn off' : 'Submission Alerts (OFF) - Tap to turn on',
-                  onPressed: () {
-                    setState(() {
-                      _submissionAlertsEnabled = !_submissionAlertsEnabled;
-                      _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
-                    });
-                    _storageService.saveRules(_adminRules);
-                  },
+                    const PopupMenuItem(
+                      value: 'sign_out',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout, color: Color(0xFFF59E0B), size: 18.0),
+                          SizedBox(width: 8.0),
+                          Text('Sign Out', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'exit_app',
+                      child: Row(
+                        children: [
+                          Icon(Icons.power_settings_new_rounded, color: Color(0xFFEF4444), size: 18.0),
+                          SizedBox(width: 8.0),
+                          Text('Exit App', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12.0)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.logout, color: Color(0xFFF59E0B), size: 18.0),
-                  onPressed: () {
-                    setState(() {
-                      _currentUserRole = null;
-                    });
-                  },
-                  tooltip: 'Sign Out',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.power_settings_new_rounded, color: Color(0xFFEF4444), size: 20.0),
-                  onPressed: () => _confirmExitApp(context),
-                  tooltip: 'Exit Application',
-                ),
-                const SizedBox(width: 8.0),
+                const SizedBox(width: 6.0),
               ],
             ),
             body: Padding(

@@ -20,6 +20,18 @@ class SupabaseService {
     return Supabase.instance.client;
   }
 
+  /// Ensure Supabase client is initialized, retrying if earlier startup timed out
+  static Future<bool> ensureInitialized() async {
+    if (_initialized) return true;
+    try {
+      await initialize();
+      return _initialized;
+    } catch (e) {
+      debugPrint('ensureInitialized failed: $e');
+      return false;
+    }
+  }
+
   /// Initialize Supabase Flutter Client
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -32,13 +44,23 @@ class SupabaseService {
       _initialized = true;
       debugPrint('Supabase connection initialized successfully');
     } catch (e) {
+      try {
+        if (Supabase.instance.client != null) {
+          _initialized = true;
+          debugPrint('Supabase client was already active');
+          return;
+        }
+      } catch (_) {}
       debugPrint('Error initializing Supabase: $e');
     }
   }
 
   /// Check whether Supabase is reachable and table exists
   static Future<bool> isConnected() async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
     try {
       final res = await client
           .from(tableName)
@@ -82,7 +104,10 @@ class SupabaseService {
 
   /// Insert a single BallisticRecord to Supabase (saves to dedicated test table AND master table)
   static Future<BallisticRecord?> insertRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
-    if (!_initialized) return null;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return null;
+    }
     try {
       final effectiveModule = record.module.isNotEmpty ? record.module : module;
       final map = record.toSupabaseMap();
@@ -127,7 +152,10 @@ class SupabaseService {
     int limit = 3000,
     bool useDedicatedTable = true,
   }) async {
-    if (!_initialized) return [];
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return [];
+    }
     try {
       final targetTable = (useDedicatedTable && module != null && testName != null && testName != 'All')
           ? getTableName(module: module, testName: testName)
@@ -179,7 +207,11 @@ class SupabaseService {
 
   /// Update an existing record in Supabase
   static Future<bool> updateRecord(String id, BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
-    if (!_initialized || id.isEmpty) return false;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    if (id.isEmpty) return false;
     try {
       final map = record.toSupabaseMap();
       map['module'] = module;
@@ -206,7 +238,10 @@ class SupabaseService {
 
   /// Delete a record from Supabase by its id or attributes
   static Future<bool> deleteRecord(String id, {String? module, String? testName, String? timestamp, String? lotNo}) async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
     try {
       if (module != null && testName != null) {
         final dedicatedTable = getTableName(module: module, testName: testName);
@@ -255,7 +290,10 @@ class SupabaseService {
 
   /// Clear records from Supabase for a specific module or all
   static Future<void> clearAllRecords({String? module}) async {
-    if (!_initialized) return;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return;
+    }
     try {
       final isDaily = module == 'Daily Test' || module == 'Daily Test Report';
       final isLot = module == 'Lot Acceptance Test';
@@ -315,7 +353,10 @@ class SupabaseService {
 
   /// Fetch operators registry from Supabase cloud configuration
   static Future<List<Map<String, String>>?> fetchOperatorsFromCloud() async {
-    if (!_initialized) return null;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return null;
+    }
     try {
       final res = await client
           .from(tableName)
@@ -346,7 +387,10 @@ class SupabaseService {
 
   /// Save operators registry to Supabase cloud configuration
   static Future<bool> saveOperatorsToCloud(List<Map<String, String>> operators) async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
     try {
       final jsonString = jsonEncode(operators);
       final existing = await client
@@ -381,7 +425,10 @@ class SupabaseService {
 
   /// Fetch admin rules from Supabase cloud configuration
   static Future<Map<String, dynamic>?> fetchRulesFromCloud() async {
-    if (!_initialized) return null;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return null;
+    }
     try {
       final res = await client
           .from(tableName)
@@ -406,7 +453,10 @@ class SupabaseService {
 
   /// Save admin rules to Supabase cloud configuration
   static Future<bool> saveRulesToCloud(Map<String, dynamic> rules) async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
     try {
       final jsonString = jsonEncode(rules);
       final existing = await client
@@ -441,7 +491,10 @@ class SupabaseService {
 
   /// Fetch consumables inventory from Supabase cloud configuration
   static Future<List<Map<String, dynamic>>?> fetchConsumablesFromCloud() async {
-    if (!_initialized) return null;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return null;
+    }
     try {
       final res = await client
           .from(tableName)
@@ -467,7 +520,10 @@ class SupabaseService {
 
   /// Save consumables inventory to Supabase cloud configuration
   static Future<bool> saveConsumablesToCloud(List<Map<String, dynamic>> items) async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
     try {
       final jsonString = jsonEncode(items);
       final existing = await client

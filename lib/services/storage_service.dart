@@ -92,6 +92,7 @@ class StorageService {
     }
 
     // 2. Save to Supabase Cloud Database
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         final inserted = await SupabaseService.insertRecord(recordToSave, module: cleanModule);
@@ -116,6 +117,49 @@ class StorageService {
     }
   }
 
+  // Read all local CSV records from disk for desktop
+  Future<List<BallisticRecord>> _loadAllLocalCsvRecords(String cleanModule) async {
+    if (kIsWeb) return [];
+    try {
+      final dirPath = await getDirectoryPath();
+      final dir = Directory(dirPath);
+      if (!await dir.exists()) return [];
+
+      final prefix = cleanModule == 'Lot Acceptance Test' ? 'ballistic_report' : 'daily_test_report';
+      final isDaily = cleanModule == 'Daily Test';
+      final List<BallisticRecord> records = [];
+
+      final entities = dir.listSync();
+      for (final entity in entities) {
+        if (entity is File && entity.path.endsWith('.csv')) {
+          final fileName = entity.uri.pathSegments.last;
+          if (fileName.startsWith(prefix) || fileName.startsWith('ballistic_report') || fileName.startsWith('daily_test_report')) {
+            try {
+              final lines = await entity.readAsLines();
+              for (int i = 1; i < lines.length; i++) {
+                final line = lines[i].trim();
+                if (line.isNotEmpty) {
+                  try {
+                    final r = BallisticRecord.fromCsvRow(line);
+                    if (isDaily) {
+                      if (r.module == 'Daily Test') records.add(r);
+                    } else {
+                      if (r.module.isEmpty || r.module == 'Lot Acceptance Test') records.add(r);
+                    }
+                  } catch (_) {}
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+      return records;
+    } catch (e) {
+      print("Error loading all local CSV records: $e");
+      return [];
+    }
+  }
+
   // Load and parse all ballistic logs (from Supabase if connected, else local cache)
   Future<List<BallisticRecord>> loadRecords({String module = 'Lot Acceptance Test'}) async {
     final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
@@ -123,35 +167,58 @@ class StorageService {
         : 'Lot Acceptance Test';
     final bool isDaily = cleanModule == 'Daily Test';
 
+    // Ensure Supabase is initialized
+    await SupabaseService.ensureInitialized();
+
     // 1. Attempt to fetch from Supabase Cloud Database
     if (SupabaseService.isInitialized) {
       try {
         final cloudRecords = await SupabaseService.fetchRecords(module: cleanModule);
-        if (cloudRecords.isNotEmpty) {
-          final filtered = cloudRecords.where((r) {
-            if (isDaily) {
-              return r.module == 'Daily Test';
-            } else {
-              return r.module.isEmpty || r.module == 'Lot Acceptance Test';
-            }
-          }).toList();
-
-          // Merge with any locally cached records that might not be in cloud yet
-          final List<BallisticRecord> localRecords = kIsWeb ? getWebRecords(cleanModule) : [];
-          final combined = <BallisticRecord>[...filtered];
-          for (final local in localRecords) {
-            final exists = combined.any((c) =>
-              (c.id != null && c.id!.isNotEmpty && c.id == local.id) ||
-              (c.timestamp == local.timestamp && c.lotNo == local.lotNo && c.testName == local.testName)
-            );
-            if (!exists) {
-              combined.add(local);
-            }
+        final filtered = cloudRecords.where((r) {
+          if (isDaily) {
+            return r.module == 'Daily Test';
+          } else {
+            return r.module.isEmpty || r.module == 'Lot Acceptance Test';
           }
+        }).toList();
 
-          if (kIsWeb) {
-            overwriteWebRecords(combined, cleanModule);
+        // Merge with any locally cached records (web or desktop CSV)
+        final List<BallisticRecord> localRecords = kIsWeb
+            ? getWebRecords(cleanModule)
+            : await _loadAllLocalCsvRecords(cleanModule);
+
+        final combined = <BallisticRecord>[...filtered];
+        final unsynced = <BallisticRecord>[];
+
+        for (final local in localRecords) {
+          final exists = combined.any((c) =>
+            (c.id != null && c.id!.isNotEmpty && local.id != null && local.id!.isNotEmpty && c.id == local.id) ||
+            (c.timestamp == local.timestamp && c.lotNo == local.lotNo && c.testName == local.testName)
+          );
+          if (!exists) {
+            combined.add(local);
+            unsynced.add(local);
           }
+        }
+
+        // Background sync: Upload unsynced local records up to Supabase
+        if (unsynced.isNotEmpty) {
+          Future.microtask(() async {
+            for (final rec in unsynced) {
+              try {
+                await SupabaseService.insertRecord(rec, module: cleanModule);
+              } catch (e) {
+                print("Background sync upload failed: $e");
+              }
+            }
+          });
+        }
+
+        if (kIsWeb) {
+          overwriteWebRecords(combined, cleanModule);
+        }
+
+        if (combined.isNotEmpty) {
           return BallisticRecord.consolidateRecords(combined);
         }
       } catch (e) {
@@ -204,6 +271,7 @@ class StorageService {
 
   // Delete record from Supabase by id or attributes
   Future<void> deleteRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         await SupabaseService.deleteRecord(
@@ -236,6 +304,7 @@ class StorageService {
 
   // Update existing record on Supabase cloud database
   Future<void> updateRecord(BallisticRecord oldRecord, BallisticRecord newRecord, {String module = 'Lot Acceptance Test'}) async {
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized && oldRecord.id != null && oldRecord.id!.isNotEmpty) {
       try {
         await SupabaseService.updateRecord(oldRecord.id!, newRecord, module: module);
@@ -247,6 +316,7 @@ class StorageService {
 
   // Clear all records for a specific module (e.g. Daily Test) locally and on Supabase
   Future<void> clearRecords({String module = 'Daily Test'}) async {
+    await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         await SupabaseService.clearAllRecords(module: module);

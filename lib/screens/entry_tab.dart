@@ -9,6 +9,26 @@ import '../services/attachment_helper.dart';
 import '../services/epvat_formula_helper.dart';
 import '../services/storage_service.dart';
 
+/// Formatter restricting Action Time inputs to at most 2 digits before decimal (supports 00.000, 1.5, 12.345)
+class ActionTimeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) {
+      return newValue;
+    }
+    // Allow at most 2 digits before decimal point, and up to 3 digits after decimal point
+    final regExp = RegExp(r'^\d{0,2}(\.\d{0,3})?$');
+    if (regExp.hasMatch(text)) {
+      return newValue;
+    }
+    return oldValue;
+  }
+}
+
 class EntryTab extends StatefulWidget {
   final String currentModule;
   final Future<void> Function(BallisticRecord) onSubmit;
@@ -678,7 +698,32 @@ class _EntryTabState extends State<EntryTab> {
             children: [
               const Icon(Icons.error_outline, color: Colors.white),
               const SizedBox(width: 8),
-              Expanded(child: Text('Required field missing: $fieldName. Please fill it in before submitting.')),
+              Expanded(child: Text('Required field missing: $fieldName. All fields must be filled before the report can be submitted.')),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+
+    void notifyMissing(String fieldName, [GlobalKey? key, FocusNode? focusNode]) {
+      if (key != null && key.currentContext != null) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: const Duration(milliseconds: 400),
+          alignment: 0.15,
+          curve: Curves.easeInOut,
+        );
+      }
+      focusNode?.requestFocus();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Required field missing: $fieldName. All fields must be filled before the report can be submitted.')),
             ],
           ),
           backgroundColor: const Color(0xFFEF4444),
@@ -717,22 +762,70 @@ class _EntryTabState extends State<EntryTab> {
       return false;
     }
 
-    // 5. Residual Stress Required Room Temp
-    if (_testName == 'Residual Stress Test') {
-      if (_roomTempController.text.trim().isEmpty) {
-        jumpTo(_roomTempFieldKey, _roomTempFocusNode, 'Room Temperature (°C)');
+    // 5. Test specific field validation
+    if (_testName == 'Waterproof Test') {
+      if (_pressureController.text.trim().isEmpty) {
+        notifyMissing('Waterproof Pressure (Bar)');
         return false;
       }
-    }
-
-    // 6. Equipment selection based on test type
-    if (_testName == 'Accuracy Test') {
+      if (_viscosityController.text.trim().isEmpty) {
+        notifyMissing('Viscosity');
+        return false;
+      }
+      if (_locationController.text.trim().isEmpty) {
+        notifyMissing('Sampling Location');
+        return false;
+      }
+    } else if (_testName == 'Accuracy Test') {
       if (_barrelSNController.text.trim().isEmpty) {
         jumpTo(_barrelFieldKey, _barrelFocusNode, 'Accuracy Barrel Test Serial');
         return false;
       }
       if (_distanceController.text.trim().isEmpty) {
         jumpTo(_distanceFieldKey, _distanceFocusNode, 'Distance of Velocity');
+        return false;
+      }
+      if (_caliber == '5.56x45 M193') {
+        if (_sdXController.text.trim().isEmpty) {
+          notifyMissing('SD of X');
+          return false;
+        }
+        if (_sdYController.text.trim().isEmpty) {
+          notifyMissing('SD of Y');
+          return false;
+        }
+        if (_meanRadiusController.text.trim().isEmpty) {
+          notifyMissing('Mean Radius');
+          return false;
+        }
+      } else {
+        if (_meanXController.text.trim().isEmpty) {
+          notifyMissing('Mean of X');
+          return false;
+        }
+        if (_maxXController.text.trim().isEmpty) {
+          notifyMissing('Max of X');
+          return false;
+        }
+        if (_minXController.text.trim().isEmpty) {
+          notifyMissing('Min of X');
+          return false;
+        }
+        if (_meanYController.text.trim().isEmpty) {
+          notifyMissing('Mean of Y');
+          return false;
+        }
+        if (_maxYController.text.trim().isEmpty) {
+          notifyMissing('Max of Y');
+          return false;
+        }
+        if (_minYController.text.trim().isEmpty) {
+          notifyMissing('Min of Y');
+          return false;
+        }
+      }
+      if (_meanVelController.text.trim().isEmpty) {
+        notifyMissing('Mean Velocity');
         return false;
       }
     } else if (_testName == 'EPVAT test') {
@@ -744,12 +837,71 @@ class _EntryTabState extends State<EntryTab> {
         jumpTo(_gp6FieldKey, _gp6FocusNode, 'GP6 Serial Number');
         return false;
       }
+      if (_distanceController.text.trim().isEmpty) {
+        jumpTo(_distanceFieldKey, _distanceFocusNode, 'Distance of Velocity');
+        return false;
+      }
+      if (_epvatSensor1Controller.text.trim().isEmpty) {
+        notifyMissing('GP Transducer (GP1 Chamber)');
+        return false;
+      }
+      if (_epvatPressureType == 'Overall') {
+        const temps = ['+21', '+52', '-54'];
+        for (final t in temps) {
+          if (_overallEpvatControllers[t]?['vel_mean']?.text.trim().isEmpty ?? true) {
+            notifyMissing('Velocity Mean (' + t + '°C)');
+            return false;
+          }
+          if (_overallEpvatControllers[t]?['action_time_mean']?.text.trim().isEmpty ?? true) {
+            notifyMissing('Action Time Mean (' + t + '°C)');
+            return false;
+          }
+          if (_overallEpvatControllers[t]?['p1_mean']?.text.trim().isEmpty ?? true) {
+            notifyMissing('P1 Chamber Pressure Mean (' + t + '°C)');
+            return false;
+          }
+          if (_overallEpvatControllers[t]?['p2_mean']?.text.trim().isEmpty ?? true) {
+            notifyMissing('P2 Port Pressure Mean (' + t + '°C)');
+            return false;
+          }
+        }
+      } else {
+        if (_cartridgeTempController.text.trim().isEmpty) {
+          notifyMissing('Cartridge Temperature');
+          return false;
+        }
+        if (_meanVelController.text.trim().isEmpty) {
+          notifyMissing('Mean Velocity');
+          return false;
+        }
+        if (_actionTimeMeanController.text.trim().isEmpty) {
+          notifyMissing('Mean Action Time');
+          return false;
+        }
+        if (_epvatMeanPressureController.text.trim().isEmpty) {
+          notifyMissing('P1 Mean Chamber Pressure');
+          return false;
+        }
+        if (_epvatP2MeanPressureController.text.trim().isEmpty) {
+          notifyMissing('P2 Mean Port Pressure');
+          return false;
+        }
+      }
+    } else if (_testName == 'Residual Stress Test') {
+      if (_roomTempController.text.trim().isEmpty) {
+        jumpTo(_roomTempFieldKey, _roomTempFocusNode, 'Room Temperature (°C)');
+        return false;
+      }
+      if (_locationController.text.trim().isEmpty) {
+        notifyMissing('Sampling Location');
+        return false;
+      }
     } else if (_testName == 'Function Test') {
       final effectiveWeapon = _selectedWeaponType.isNotEmpty
           ? (_selectedWeaponType == 'Other'
               ? _customWeaponTypeController.text.trim()
               : (_selectedWeaponSN.isNotEmpty
-                  ? '$_selectedWeaponType (SN: ${_selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN})'
+                  ? '$_selectedWeaponType (SN: ' + (_selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN) + ')'
                   : _selectedWeaponType))
           : _functionWeapon;
       if (effectiveWeapon.trim().isEmpty) {
@@ -762,12 +914,54 @@ class _EntryTabState extends State<EntryTab> {
         jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type & Serial');
         return false;
       }
+      if (_cyclicRateController.text.trim().isEmpty) {
+        notifyMissing('Cyclic Rate Value (RPM)');
+        return false;
+      }
+    } else if (_testName == 'Terminal Effect Test') {
+      if (_terminalBarrelSNController.text.trim().isEmpty) {
+        notifyMissing('Terminal Barrel Serial');
+        return false;
+      }
+      if (_terminalDistanceController.text.trim().isEmpty) {
+        notifyMissing('Distance of Velocity');
+        return false;
+      }
+      final visCount = _getTerminalVisibleRounds();
+      bool hasVel = false;
+      for (int i = 0; i < visCount; i++) {
+        if (i < _terminalVelocityRoundsControllers.length && _terminalVelocityRoundsControllers[i].text.trim().isNotEmpty) {
+          hasVel = true;
+          break;
+        }
+      }
+      if (!hasVel) {
+        notifyMissing('Terminal Velocity (at least 1 round)');
+        return false;
+      }
+    } else if (_testName == 'Primer Sensitivity Test') {
+      if (_primerHbarController.text.trim().isEmpty) {
+        notifyMissing('H-bar (Average Height)');
+        return false;
+      }
+      if (_primerSDController.text.trim().isEmpty) {
+        notifyMissing('Standard Deviation (S)');
+        return false;
+      }
+      if (_primerHbarPlus5SController.text.trim().isEmpty) {
+        notifyMissing('All Fire Height (H + 5s)');
+        return false;
+      }
+      if (_primerHbarMinus2SController.text.trim().isEmpty) {
+        notifyMissing('No Fire Height (H - 2s)');
+        return false;
+      }
     }
 
     return true;
   }
 
-  Future<void> _confirmCancelTest() async {
+    Future<void> _confirmCancelTest() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -4383,6 +4577,7 @@ class _EntryTabState extends State<EntryTab> {
                                                         controller: _overallEpvatActionTimeRoundsControllers[t]![rIdx],
                                                         hint: 'ms',
                                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        inputFormatters: [ActionTimeInputFormatter()],
                                                       ),
                                                     ),
                                                   ),
@@ -4418,12 +4613,17 @@ class _EntryTabState extends State<EntryTab> {
                                     ],
                                     
                                     Text(
-                                      'Chamber Pressure P1 ($t °C) (${_epvatPressureUnit})',
+                                      'Summary Statistics Evaluation ($t °C)',
+                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 13.0, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 12.0),
+                                    Text(
+                                      'P1 Chamber Pressure ($t °C) (${_epvatPressureUnit})',
                                       style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 8.0),
                                     _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: 'Mean P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
                                       _buildFlexibleField(flex: 1, label: 'Max P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                       _buildFlexibleField(flex: 1, label: 'Min P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                       _buildFlexibleField(flex: 1, label: 'Range P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
@@ -4431,12 +4631,12 @@ class _EntryTabState extends State<EntryTab> {
                                     ]),
                                     const SizedBox(height: 16.0),
                                     Text(
-                                      'Port Pressure P2 ($t °C) (${_epvatPressureUnit})',
+                                      'P2 Port Pressure ($t °C) (${_epvatPressureUnit})',
                                       style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 8.0),
                                     _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
                                       _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                       _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                       _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
@@ -4462,11 +4662,11 @@ class _EntryTabState extends State<EntryTab> {
                                     ),
                                     const SizedBox(height: 8.0),
                                     _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                     ]),
                                     
                                     // --- Kinetic Energy Display (only for +21°C tab) ---
@@ -4573,6 +4773,7 @@ class _EntryTabState extends State<EntryTab> {
                                               controller: _actionTimeRoundsControllers[index],
                                               hint: '0.0',
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              inputFormatters: [ActionTimeInputFormatter()],
                                               onChanged: (val) => _recalculateEpvatStats(),
                                             ),
                                           ),
@@ -4627,11 +4828,11 @@ class _EntryTabState extends State<EntryTab> {
                                 ),
                                 const SizedBox(height: 4.0),
                                 _buildFormRow([
-                                   _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _actionTimeMeanController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _actionTimeMaxController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _actionTimeMinController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _actionTimeRangeController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _actionTimeSDController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                   _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _actionTimeMeanController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _actionTimeMaxController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _actionTimeMinController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _actionTimeRangeController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _actionTimeSDController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                  ]),
                                 const SizedBox(height: 12.0),
                                 Text(
@@ -6924,7 +7125,9 @@ class _EntryTabState extends State<EntryTab> {
                                 style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
                               ),
                               TextSpan(
-                                text: ' ${res.unit} ${res.op} ${res.limitValue.toStringAsFixed(1)} ${res.unit}',
+                                text: res.op == '±' || res.op == '+/-'
+                                    ? ' ${res.unit} (Limit: ±${res.limitValue.toStringAsFixed(1)} ${res.unit})'
+                                    : ' ${res.unit} ${res.op} ${res.limitValue.toStringAsFixed(1)} ${res.unit}',
                                 style: TextStyle(color: passed ? const Color(0xFF8E96A3) : const Color(0xFFF87171), fontWeight: FontWeight.w600),
                               ),
                             ],
