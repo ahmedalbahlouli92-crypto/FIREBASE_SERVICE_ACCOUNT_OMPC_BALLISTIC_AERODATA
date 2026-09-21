@@ -57,7 +57,7 @@ namespace OmpcBallisticAeroData
                 ProcessStartInfo appInfo = new ProcessStartInfo
                 {
                     FileName = browserExe,
-                    Arguments = string.Format("--app=\"{0}\" --start-maximized --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"", url),
+                    Arguments = string.Format("--app=\"{0}\" --start-maximized --disable-features=msEdgeSyncNotice,msEdgeSyncNoticeDialog,msEdgeProfilePicker,msEdgeShowSyncNotice,msFirstRunExperience --disable-sync --disable-fre --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"", url),
                     UseShellExecute = true
                 };
                 Process.Start(appInfo);

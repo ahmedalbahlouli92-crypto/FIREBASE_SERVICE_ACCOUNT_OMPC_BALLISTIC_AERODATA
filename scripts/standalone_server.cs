@@ -395,7 +395,18 @@ namespace OmpcBallisticAeroData
 
                 // Multi-User Isolated Session: Assign dedicated profile folder per port
                 _userProfileDir = Path.Combine(localAppData, "OMPC_Ballistic_AeroData", "profiles", "session_" + _port);
-                try { Directory.CreateDirectory(_userProfileDir); } catch { }
+                try 
+                { 
+                    Directory.CreateDirectory(_userProfileDir);
+                    string defaultProfileDir = Path.Combine(_userProfileDir, "Default");
+                    Directory.CreateDirectory(defaultProfileDir);
+                    string prefFile = Path.Combine(defaultProfileDir, "Preferences");
+                    if (!File.Exists(prefFile))
+                    {
+                        File.WriteAllText(prefFile, "{\"sync\":{\"has_setup_completed\":false,\"suppress_start\":true},\"edge\":{\"show_sync_notice\":false,\"sync_prompt_state\":2},\"profile\":{\"password_manager_enabled\":false}}");
+                    }
+                } 
+                catch { }
 
                 // Launch local application URL
                 string appUrl = "http://127.0.0.1:" + _port + "/";
@@ -409,7 +420,7 @@ namespace OmpcBallisticAeroData
                     try
                     {
                         string browserArgs = string.Format(
-                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"",
+                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check --disable-features=msEdgeSyncNotice,msEdgeSyncNoticeDialog,msEdgeProfilePicker,msEdgeShowSyncNotice,msFirstRunExperience --disable-sync --disable-fre --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"",
                             appUrl, _userProfileDir);
 
                         ProcessStartInfo psi = new ProcessStartInfo
@@ -469,18 +480,22 @@ namespace OmpcBallisticAeroData
 
                     if (hadHb)
                     {
-                        // Allow longer tolerance when minimized due to browser background power throttling
-                        double maxHbSeconds = isMinimized ? 60.0 : 6.0;
+                        // Allow generous tolerance (120s) for printing, saving PDF, or background throttling
+                        double maxHbSeconds = isMinimized ? 120.0 : 90.0;
                         if ((DateTime.UtcNow - lastHb).TotalSeconds > maxHbSeconds)
                         {
-                            Log("Heartbeat lost (> " + maxHbSeconds + "s). User closed the app window. Exiting server.");
-                            break;
+                            // Check if browser process has truly exited
+                            if (_browserProcess == null || _browserProcess.HasExited)
+                            {
+                                Log("Heartbeat lost (> " + maxHbSeconds + "s) and browser process exited. Exiting server.");
+                                break;
+                            }
                         }
                     }
                     else
                     {
-                        // During initial startup, allow up to 30 seconds for the browser to launch and connect
-                        if ((DateTime.UtcNow - serverStart).TotalSeconds > 30)
+                        // During initial startup, allow up to 45 seconds for the browser to launch and connect
+                        if ((DateTime.UtcNow - serverStart).TotalSeconds > 45)
                         {
                             if (_browserProcess != null && _browserProcess.HasExited && _browserHwnd == IntPtr.Zero)
                             {
@@ -493,16 +508,9 @@ namespace OmpcBallisticAeroData
                     // 2. If browser HWND is captured, verify it still exists
                     if (_browserHwnd != IntPtr.Zero)
                     {
-                        if (!IsWindow(_browserHwnd))
+                        if (!IsWindow(_browserHwnd) && (_browserProcess == null || _browserProcess.HasExited))
                         {
-                            Log("Browser window handle is no longer valid. Exiting server.");
-                            break;
-                        }
-
-                        // Only check visibility if not minimized
-                        if (!isMinimized && !IsWindowVisible(_browserHwnd))
-                        {
-                            Log("Browser window is no longer visible. Exiting server.");
+                            Log("Browser window handle is no longer valid and process has exited. Exiting server.");
                             break;
                         }
                     }

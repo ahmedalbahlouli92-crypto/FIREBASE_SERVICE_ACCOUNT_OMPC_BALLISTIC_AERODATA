@@ -196,17 +196,37 @@ class EpvatFormulaHelper {
     return '$substituted = $resStr';
   }
 
+  /// Converts pressure value between bar, MPa, and kg/cm²
+  static double convertPressure(double val, String fromUnit, String toUnit) {
+    if (fromUnit == toUnit) return val;
+    double inBar = val;
+    if (fromUnit == 'MPa') {
+      inBar = val * 10.0;
+    } else if (fromUnit == 'kg/cm²' || fromUnit == 'Kg/cm2') {
+      inBar = val * 0.980665;
+    }
+
+    if (toUnit == 'bar') return inBar;
+    if (toUnit == 'MPa') return inBar * 0.1;
+    if (toUnit == 'kg/cm²' || toUnit == 'Kg/cm2') return inBar / 0.980665;
+    return val;
+  }
+
   /// Evaluates an admin formula item against variables and produces an EpvatFormulaResult
   static EpvatFormulaResult evaluateFormulaItem(
     Map<String, dynamic> item,
     Map<String, double> variables, {
     String defaultTemp = '21',
+    String activePressureUnit = 'bar',
   }) {
     final String name = (item['name'] ?? 'Calculation').toString().trim();
     final String formula = (item['formula'] ?? '').toString().trim();
     final String op = (item['operator'] ?? '<=').toString().trim();
     final String limitStr = (item['limit'] ?? '0').toString().trim();
-    final String unit = (item['unit'] ?? (formula.toLowerCase().contains('vel') ? 'm/s' : 'bar')).toString().trim();
+    String rawUnit = (item['unit'] ?? (formula.toLowerCase().contains('vel') ? 'm/s' : 'bar')).toString().trim();
+
+    final bool isPressure = rawUnit.toLowerCase().contains('bar') || rawUnit.toLowerCase().contains('mpa') || rawUnit.toLowerCase().contains('kg');
+    final String displayUnit = isPressure ? activePressureUnit : rawUnit;
 
     if (formula.isEmpty) {
       return EpvatFormulaResult(
@@ -216,12 +236,12 @@ class EpvatFormulaHelper {
         calculatedValue: 0.0,
         op: op,
         limitValue: 0.0,
-        unit: unit,
+        unit: displayUnit,
         isPassed: true,
       );
     }
 
-    final double calculated = evaluate(formula, variables, defaultTemp: defaultTemp);
+    double calculated = evaluate(formula, variables, defaultTemp: defaultTemp);
     final String substitutedText = buildSubstitutedArithmetic(formula, variables, defaultTemp: defaultTemp);
 
     double limitVal = 0.0;
@@ -233,9 +253,19 @@ class EpvatFormulaHelper {
       final target = double.tryParse(targetTolMatch.group(1)!) ?? 0.0;
       final tol = double.tryParse(targetTolMatch.group(2)!) ?? 0.0;
       limitVal = tol;
-      passed = (calculated >= (target - tol - 0.0001)) && (calculated <= (target + tol + 0.0001));
+      if (isPressure && rawUnit != activePressureUnit) {
+        final convTarget = convertPressure(target, rawUnit, activePressureUnit);
+        final convTol = convertPressure(tol, rawUnit, activePressureUnit);
+        limitVal = convTol;
+        passed = (calculated >= (convTarget - convTol - 0.0001)) && (calculated <= (convTarget + convTol + 0.0001));
+      } else {
+        passed = (calculated >= (target - tol - 0.0001)) && (calculated <= (target + tol + 0.0001));
+      }
     } else {
       limitVal = evaluate(limitStr.replaceAll('±', '').replaceAll('+/-', '').trim(), variables, defaultTemp: defaultTemp);
+      if (isPressure && rawUnit != activePressureUnit) {
+        limitVal = convertPressure(limitVal, rawUnit, activePressureUnit);
+      }
       switch (op) {
         case '<=':
           passed = calculated <= (limitVal + 0.0001);
@@ -268,13 +298,31 @@ class EpvatFormulaHelper {
       calculatedValue: calculated,
       op: op,
       limitValue: limitVal,
-      unit: unit,
+      unit: displayUnit,
       isPassed: passed,
     );
   }
 
   /// Returns standard default formulas if none are defined for the caliber
-  static List<Map<String, dynamic>> getDefaultFormulas() {
+  static List<Map<String, dynamic>> getDefaultFormulas({bool isThreeTemp = true}) {
+    if (!isThreeTemp) {
+      return [
+        {
+          'name': 'P1 3-Sigma (Single Temp)',
+          'formula': 'P1 Mean + 3 * P1 SD',
+          'operator': '<=',
+          'limit': '3800',
+          'unit': 'bar',
+        },
+        {
+          'name': 'P1 Peak Maximum',
+          'formula': 'P1 Max',
+          'operator': '<=',
+          'limit': '3800',
+          'unit': 'bar',
+        },
+      ];
+    }
     return [
       {
         'name': 'P1 3-Sigma (+21°C)',

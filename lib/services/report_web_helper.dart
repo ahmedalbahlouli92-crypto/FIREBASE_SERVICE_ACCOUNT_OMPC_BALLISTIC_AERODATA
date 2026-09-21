@@ -62,17 +62,35 @@ class ReportHelperImpl implements ReportHelper {
       '''
       (function() {
         var html = atob('$base64Html');
-        var win = window.open('', '_blank');
-        win.document.write(html);
-        win.document.close();
-        win.focus();
+        var iframe = document.getElementById('__ompc_print_frame__');
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = '__ompc_print_frame__';
+          iframe.style.position = 'fixed';
+          iframe.style.right = '0';
+          iframe.style.bottom = '0';
+          iframe.style.width = '0';
+          iframe.style.height = '0';
+          iframe.style.border = '0';
+          iframe.style.visibility = 'hidden';
+          document.body.appendChild(iframe);
+        }
+        var doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
         setTimeout(function() {
-          win.print();
-          win.close();
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
         }, 500);
       })()
       '''
     ]);
+  }
+
+  @override
+  Future<void> openUrl({required String url}) async {
+    js.context.callMethod('open', [url, '_blank']);
   }
 }
 

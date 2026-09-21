@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/ballistic_record.dart';
@@ -769,8 +770,17 @@ class _HistoryTabState extends State<HistoryTab> {
       return matchesSearch && matchesCaliber && matchesStatus && matchesTestName && matchesLot && matchesHopper;
     }).toList();
 
-    // Show newest first
-    final displayRecords = filtered.reversed.toList();
+    // Show newest first (explicitly sorted by timestamp descending)
+    final displayRecords = List<BallisticRecord>.from(filtered)
+      ..sort((a, b) {
+        try {
+          final da = DateFormat('M/d/yyyy h:mm:ss a').parse(a.timestamp);
+          final db = DateFormat('M/d/yyyy h:mm:ss a').parse(b.timestamp);
+          return db.compareTo(da);
+        } catch (_) {
+          return b.timestamp.compareTo(a.timestamp);
+        }
+      });
     final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS);
 
     return Column(

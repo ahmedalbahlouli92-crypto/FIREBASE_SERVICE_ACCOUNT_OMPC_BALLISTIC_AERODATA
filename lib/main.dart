@@ -15,6 +15,8 @@ import 'screens/consumables_tab.dart';
 import 'services/epvat_formula_helper.dart';
 import 'services/supabase_service.dart';
 import 'services/app_exit_helper.dart';
+import 'services/apk_update_service.dart';
+import 'services/report_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -824,6 +826,16 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _newGP6SerialCtrl = TextEditingController();
   final TextEditingController _newWeaponTypeInputCtrl = TextEditingController();
   final TextEditingController _newWeaponSerialInputCtrl = TextEditingController();
+  String _selectedAdminWeaponType = 'Pistol';
+  String _selectedAdminWeaponManufacturer = 'Beretta';
+  final Map<String, List<String>> _adminWeaponManufacturers = {
+    'Pistol': ['Beretta', 'Glock', 'SIG Sauer', 'CZ', 'Smith & Wesson', 'Colt', 'Browning', 'Other'],
+    'Rifle': ['Colt', 'FN Herstal', 'Heckler & Koch', 'Steyr', 'Kalashnikov', 'Remington', 'Other'],
+    'Carbine': ['Colt', 'M4/M16 Mil-Spec', 'Daniel Defense', 'FN Herstal', 'Heckler & Koch', 'Other'],
+    'Submachine Gun': ['Heckler & Koch', 'CZ', 'FN Herstal', 'B&T', 'Uzi', 'Other'],
+    'Machine Gun': ['FN Herstal', 'U.S. Ordnance', 'Browning', 'Rheinmetall', 'Other'],
+    'Other': ['Other'],
+  };
   
   List<Map<String, String>> _operators = [];
   String _loginErrorMessage = '';
@@ -1574,6 +1586,111 @@ class _MainShellState extends State<MainShell> {
     _storageService.openLogsDirectory();
   }
 
+  String _getTimeBasedGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 4 && hour < 12) {
+      return 'Alsalamu Alaikum - Good Morning';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Alsalamu Alaikum - Good Afternoon';
+    } else {
+      return 'Alsalamu Alaikum - Good Evening';
+    }
+  }
+
+  void _checkForApkUpdate() async {
+    try {
+      final updateInfo = await ApkUpdateService.checkForUpdate();
+      if (updateInfo != null && updateInfo.hasUpdate && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+            ),
+            title: Row(
+              children: const [
+                Icon(Icons.system_update_rounded, color: Color(0xFF38BDF8), size: 26),
+                SizedBox(width: 10),
+                Text('New Version Available', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'A newer version of OMPC Ballistic AeroData is available for download.',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF334155)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Current Version:', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                          Text('v${updateInfo.currentVersion}', style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Latest Version:', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                          Text('v${updateInfo.latestVersion}', style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (updateInfo.releaseNotes.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Text('Release Notes:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(updateInfo.releaseNotes, maxLines: 4, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Later', style: TextStyle(color: Color(0xFF94A3B8))),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  if (updateInfo.apkDownloadUrl.isNotEmpty) {
+                    ReportHelper.instance.openUrl(url: updateInfo.apkDownloadUrl);
+                  }
+                },
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Download APK', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("APK update check error: $e");
+    }
+  }
+
   void _authenticateAdmin() {
     final password = _passwordController.text.trim();
     print("ADMIN LOGIN ATTEMPT: Password: '$password'");
@@ -1587,6 +1704,7 @@ class _MainShellState extends State<MainShell> {
       });
       _passwordController.clear();
       _showWelcomeNotification('System Administrator', 'Administrator');
+      _checkForApkUpdate();
     } else {
       print("ADMIN LOGIN FAILED: Expected 'admin123', got '$password'");
       setState(() {
@@ -1642,7 +1760,32 @@ class _MainShellState extends State<MainShell> {
                   ),
                   child: const Icon(Icons.verified_user_outlined, color: Color(0xFF38BDF8), size: 48.0),
                 ),
-                const SizedBox(height: 22.0),
+                const SizedBox(height: 18.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(20.0),
+                    border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.6)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.wb_sunny_rounded, color: Color(0xFF38BDF8), size: 16.0),
+                      const SizedBox(width: 8.0),
+                      Text(
+                        _getTimeBasedGreeting(),
+                        style: const TextStyle(
+                          fontSize: 13.0,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF38BDF8),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18.0),
                 Text(
                   'WELCOME, ${name.toUpperCase()}!',
                   textAlign: TextAlign.center,
@@ -1739,6 +1882,7 @@ class _MainShellState extends State<MainShell> {
       _opEmailController.clear();
       _opPasswordController.clear();
       _showWelcomeNotification('System Administrator', 'Administrator');
+      _checkForApkUpdate();
       return;
     }
 
@@ -1764,6 +1908,7 @@ class _MainShellState extends State<MainShell> {
       _opEmailController.clear();
       _opPasswordController.clear();
       _showWelcomeNotification(displayName, role.label);
+      _checkForApkUpdate();
     } else {
       print("USER LOGIN FAILED: No matching credentials");
       setState(() {
@@ -3176,86 +3321,185 @@ class _MainShellState extends State<MainShell> {
           const SizedBox(height: 20.0),
 
           // 1. WEAPONS SECTION (Type & Serial)
-          _buildAssetCategoryHeader('Weapons (Type & Serial)', Icons.military_tech_rounded, const Color(0xFF38BDF8)),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: TextField(
-                  controller: _newWeaponTypeInputCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                  decoration: InputDecoration(
-                    hintText: 'Weapon Type (e.g., M4A1 Carbine)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
-                  ),
+          _buildAssetCategoryHeader('Weapons Registration (Type, Manufacturer & Serial)', Icons.military_tech_rounded, const Color(0xFF38BDF8)),
+          const SizedBox(height: 10.0),
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFF23364F),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: const Color(0xFF1E3A8A)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Weapon Category', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4.0),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2C415E),
+                              borderRadius: BorderRadius.circular(6.0),
+                              border: Border.all(color: const Color(0xFF1E3A8A)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _adminWeaponManufacturers.containsKey(_selectedAdminWeaponType) ? _selectedAdminWeaponType : 'Pistol',
+                                isExpanded: true,
+                                dropdownColor: const Color(0xFF2C415E),
+                                icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      _selectedAdminWeaponType = val;
+                                      final mfgList = _adminWeaponManufacturers[val] ?? ['Other'];
+                                      _selectedAdminWeaponManufacturer = mfgList.first;
+                                    });
+                                  }
+                                },
+                                items: _adminWeaponManufacturers.keys.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10.0),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Manufacturer (Cascaded)', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4.0),
+                          Builder(builder: (ctx) {
+                            final mfgList = _adminWeaponManufacturers[_selectedAdminWeaponType] ?? ['Other'];
+                            final currentMfg = mfgList.contains(_selectedAdminWeaponManufacturer) ? _selectedAdminWeaponManufacturer : mfgList.first;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C415E),
+                                borderRadius: BorderRadius.circular(6.0),
+                                border: Border.all(color: const Color(0xFF1E3A8A)),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: currentMfg,
+                                  isExpanded: true,
+                                  dropdownColor: const Color(0xFF2C415E),
+                                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        _selectedAdminWeaponManufacturer = val;
+                                      });
+                                    }
+                                  },
+                                  items: mfgList.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8.0),
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: _newWeaponSerialInputCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
-                  decoration: InputDecoration(
-                    hintText: 'Serial No. (e.g., W-9012)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8.0),
-              ElevatedButton(
-                onPressed: () async {
-                  final type = _newWeaponTypeInputCtrl.text.trim();
-                  final serial = _newWeaponSerialInputCtrl.text.trim();
-                  if (type.isEmpty) return;
-                  final list = List<Map<String, dynamic>>.from(
-                    (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
-                      if (e is Map) return Map<String, dynamic>.from(e);
-                      return {'type': e.toString(), 'serial': ''};
-                    }),
-                  );
-                  list.add({'type': type, 'serial': serial});
-                  _adminRules['weapons'] = list;
+                const SizedBox(height: 10.0),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: TextField(
+                        controller: _newWeaponTypeInputCtrl,
+                        style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                        decoration: InputDecoration(
+                          hintText: 'Model / Variant (e.g., M9, M4A1, MP5)',
+                          hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                          filled: true,
+                          fillColor: const Color(0xFF2C415E),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _newWeaponSerialInputCtrl,
+                        style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                        decoration: InputDecoration(
+                          hintText: 'Serial No. (e.g., W-9012)',
+                          hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                          filled: true,
+                          fillColor: const Color(0xFF2C415E),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final model = _newWeaponTypeInputCtrl.text.trim();
+                        final mfg = _selectedAdminWeaponManufacturer;
+                        final weaponType = _selectedAdminWeaponType;
+                        final type = model.isNotEmpty ? '$mfg $model ($weaponType)' : '$mfg $weaponType';
+                        final serial = _newWeaponSerialInputCtrl.text.trim();
+                        if (type.isEmpty) return;
+                        final list = List<Map<String, dynamic>>.from(
+                          (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
+                            if (e is Map) return Map<String, dynamic>.from(e);
+                            return {'type': e.toString(), 'serial': ''};
+                          }),
+                        );
+                        list.add({'type': type, 'serial': serial, 'category': weaponType, 'manufacturer': mfg});
+                        _adminRules['weapons'] = list;
 
-                  // Also add to function_test weapons list if not present
-                  final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
-                  final funcWeapons = List<String>.from(func['weapons'] ?? []);
-                  final fullLabel = serial.isNotEmpty ? '$type (SN: $serial)' : type;
-                  if (!funcWeapons.contains(fullLabel)) {
-                    funcWeapons.add(fullLabel);
-                    func['weapons'] = funcWeapons;
-                    _adminRules['function_test'] = func;
-                  }
+                        // Also add to function_test weapons list if not present
+                        final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
+                        final funcWeapons = List<String>.from(func['weapons'] ?? []);
+                        final fullLabel = serial.isNotEmpty ? '$type (SN: $serial)' : type;
+                        if (!funcWeapons.contains(fullLabel)) {
+                          funcWeapons.add(fullLabel);
+                          func['weapons'] = funcWeapons;
+                          _adminRules['function_test'] = func;
+                        }
 
-                  await _storageService.saveRules(_adminRules);
-                  setState(() {
-                    _adminRules = Map<String, dynamic>.from(_adminRules);
-                    _newWeaponTypeInputCtrl.clear();
-                    _newWeaponSerialInputCtrl.clear();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                        await _storageService.saveRules(_adminRules);
+                        setState(() {
+                          _adminRules = Map<String, dynamic>.from(_adminRules);
+                          _newWeaponTypeInputCtrl.clear();
+                          _newWeaponSerialInputCtrl.clear();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                      ),
+                      icon: const Icon(Icons.add, size: 16.0),
+                      label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
-                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 8.0),
           _buildAssetItemList(
@@ -5587,8 +5831,8 @@ class _MainShellState extends State<MainShell> {
                                               ),
                                               child: Image.asset(
                                                 'assets/logo.png',
-                                                height: 68.0,
-                                                width: 68.0,
+                                                height: 136.0,
+                                                width: 136.0,
                                                 fit: BoxFit.contain,
                                               ),
                                             ),
@@ -5657,6 +5901,23 @@ class _MainShellState extends State<MainShell> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 4.0),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0284C7).withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      _getTimeBasedGreeting(),
+                                      style: const TextStyle(
+                                        color: Color(0xFF38BDF8),
+                                        fontSize: 9.0,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                   Text(
                                     _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Active User',
                                     style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.bold),

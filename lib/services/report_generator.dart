@@ -185,12 +185,24 @@ class ReportGenerator {
     if (list.isEmpty) {
       list = List<dynamic>.from(formulasMap['default'] ?? []);
     }
+    final bool isThreeTemp = records.map((r) => r.cartridgeTemp).toSet().length > 1;
+    final String activePressureUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty
+        ? records[0].epvatPressureUnit
+        : 'bar';
+    final String defaultTemp = records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty
+        ? records[0].cartridgeTemp.replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim()
+        : '21';
     if (list.isEmpty) {
-      list = EpvatFormulaHelper.getDefaultFormulas();
+      list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: isThreeTemp);
     }
 
     final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
-    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), variables)).toList();
+    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
+      Map<String, dynamic>.from(f as Map),
+      variables,
+      defaultTemp: defaultTemp,
+      activePressureUnit: activePressureUnit,
+    )).toList();
     final bool allPassed = results.every((r) => r.isPassed);
 
     // Kinetic Energy row if applicable
@@ -277,6 +289,14 @@ class ReportGenerator {
         .toList();
     final requirementText = requirementList.isNotEmpty ? requirementList.join(', ') : 'N/A';
 
+    final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
+    final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
+    final lotNo = records.isNotEmpty
+        ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
+            ? records[0].lotNo
+            : '${records[0].lotNo} (Hopper: ${records[0].hopperNo}, Box: ${records[0].boxNo})')
+        : 'N/A';
+
     final title = testName == 'All' ? 'Combined Tests' : testName;
 
     String epvatCombinedSection = '';
@@ -291,30 +311,39 @@ class ReportGenerator {
     // Classification reference image section (Residual Stress and Function Test)
     String classificationImageSection = '';
     if (adminRules.isNotEmpty) {
+      final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
+      final String fallbackCartridgeImg = isCaliber9mm
+          ? (adminRules['default_cartridge_9mm'] as String? ?? '').trim()
+          : (adminRules['default_cartridge_bottleneck'] as String? ?? '').trim();
+
       if (testName == 'Residual Stress Test') {
         final rsImg = (adminRules['residual_stress']?['classification_image'] as String? ?? '').trim();
-        if (rsImg.isNotEmpty) {
-          final src = _formatImageSrc(rsImg);
+        final imgToUse = rsImg.isNotEmpty ? rsImg : fallbackCartridgeImg;
+        if (imgToUse.isNotEmpty) {
+          final src = _formatImageSrc(imgToUse);
+          final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
           classificationImageSection = '''
           <div style="margin-top: 15px; margin-bottom: 15px;">
             <h3 class="section-title">Residual Stress Classification Reference</h3>
             <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-              <img src="$src" style="max-width: 100%; max-height: 400px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Residual Stress Classification Reference" />
-              <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">Visual Classification Standard for Residual Stress Cracks & Splits</div>
+              <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
+              <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
             </div>
           </div>
           ''';
         }
       } else if (testName == 'Function Test') {
         final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
-        if (funcImg.isNotEmpty) {
-          final src = _formatImageSrc(funcImg);
+        final imgToUse = funcImg.isNotEmpty ? funcImg : fallbackCartridgeImg;
+        if (imgToUse.isNotEmpty) {
+          final src = _formatImageSrc(imgToUse);
+          final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
           classificationImageSection = '''
           <div style="margin-top: 15px; margin-bottom: 15px;">
             <h3 class="section-title">Defect Classification Reference Guide</h3>
             <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-              <img src="$src" style="max-width: 100%; max-height: 400px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Defect Classification Reference" />
-              <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">Official Visual Classification Chart for Level 1 to Level 4 Defects</div>
+              <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Function Test Reference" />
+              <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
             </div>
           </div>
           ''';
@@ -351,14 +380,6 @@ class ReportGenerator {
       attachBuffer.writeln('</div></div>');
       attachmentsSection = attachBuffer.toString();
     }
-
-    final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
-    final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
-    final lotNo = records.isNotEmpty
-        ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
-            ? records[0].lotNo
-            : '${records[0].lotNo} (Hopper: ${records[0].hopperNo}, Box: ${records[0].boxNo})')
-        : 'N/A';
 
     String formatViscosity(String vStr) {
       final v = vStr.trim();
@@ -900,6 +921,7 @@ class ReportGenerator {
           </tr>
         ''');
       } else if (testName == 'EPVAT test') {
+        final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
         if (r.epvatPressureRounds.isNotEmpty) {
@@ -911,8 +933,11 @@ class ReportGenerator {
           bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round</th>');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">P1 Chamber Pres (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">P2 Port Pres (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
+          final chamberHeader = is9mm ? 'Chamber Pres' : 'GP1 (Chamber)';
+          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$chamberHeader (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
+          if (!is9mm) {
+            bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
+          }
           bufferRounds.write('</tr>');
           for (int idx = 0; idx < roundsList.length; idx++) {
             final roundNo = idx + 1;
@@ -923,7 +948,9 @@ class ReportGenerator {
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">Round $roundNo</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$velVal</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p1Val</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p2Val</td>');
+            if (!is9mm) {
+              bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p2Val</td>');
+            }
             bufferRounds.write('</tr>');
           }
           bufferRounds.write('</table>');
@@ -949,23 +976,30 @@ class ReportGenerator {
         final vRange = r.velRange.trim().isNotEmpty ? r.velRange : '-';
         final vSD = r.velSD.trim().isNotEmpty ? r.velSD : '-';
 
+        final chamberRowLabel = is9mm ? 'Chamber Pressure' : 'GP1 (Chamber)';
         buffer.writeln('''
           <tr>
-            <td style="font-weight: bold;">Chamber Pressure P1 (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
+            <td style="font-weight: bold;">$chamberRowLabel (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
             <td>$p1Mean</td>
             <td>$p1Max</td>
             <td>$p1Min</td>
             <td>$p1Range</td>
             <td>$p1SD</td>
           </tr>
+        ''');
+        if (!is9mm) {
+          buffer.writeln('''
           <tr>
-            <td style="font-weight: bold;">Port Pressure P2 (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
+            <td style="font-weight: bold;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
             <td>$p2Mean</td>
             <td>$p2Max</td>
             <td>$p2Min</td>
             <td>$p2Range</td>
             <td>$p2SD</td>
           </tr>
+          ''');
+        }
+        buffer.writeln('''
           <tr>
             <td style="font-weight: bold;">Velocity (m/s)</td>
             <td>$vMean</td>
@@ -1162,10 +1196,17 @@ class ReportGenerator {
     // Classification reference image section (Residual Stress and Function Test)
     String classificationImageSection = '';
     if (adminRules.isNotEmpty) {
+      final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
+      final String fallbackCartridgeImg = isCaliber9mm
+          ? (adminRules['default_cartridge_9mm'] as String? ?? '').trim()
+          : (adminRules['default_cartridge_bottleneck'] as String? ?? '').trim();
+
       if (testName == 'Residual Stress Test') {
         final rsImg = (adminRules['residual_stress']?['classification_image'] as String? ?? '').trim();
-        if (rsImg.isNotEmpty) {
-          final src = _formatImageSrc(rsImg);
+        final imgToUse = rsImg.isNotEmpty ? rsImg : fallbackCartridgeImg;
+        if (imgToUse.isNotEmpty) {
+          final src = _formatImageSrc(imgToUse);
+          final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
           classificationImageSection = '''
           <div style="margin-top: 15px; margin-bottom: 15px;">
             <h2 class="section-title">Residual Stress Classification Reference</h2>
@@ -1173,7 +1214,7 @@ class ReportGenerator {
               <tr>
                 <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
                   <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Residual Stress Classification Reference" />
-                  <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">Visual Classification Standard for Residual Stress Cracks & Splits</p>
+                  <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
                 </td>
               </tr>
             </table>
@@ -1182,8 +1223,10 @@ class ReportGenerator {
         }
       } else if (testName == 'Function Test') {
         final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
-        if (funcImg.isNotEmpty) {
-          final src = _formatImageSrc(funcImg);
+        final imgToUse = funcImg.isNotEmpty ? funcImg : fallbackCartridgeImg;
+        if (imgToUse.isNotEmpty) {
+          final src = _formatImageSrc(imgToUse);
+          final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
           classificationImageSection = '''
           <div style="margin-top: 15px; margin-bottom: 15px;">
             <h2 class="section-title">Defect Classification Reference Guide</h2>
@@ -1191,7 +1234,7 @@ class ReportGenerator {
               <tr>
                 <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
                   <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Defect Classification Reference" />
-                  <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">Official Visual Classification Chart for Level 1 to Level 4 Defects</p>
+                  <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
                 </td>
               </tr>
             </table>
@@ -1606,6 +1649,7 @@ class ReportGenerator {
           </tr>
         ''');
       } else if (testName == 'EPVAT test') {
+        final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
         if (r.epvatPressureRounds.isNotEmpty) {
@@ -1617,8 +1661,11 @@ class ReportGenerator {
           bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round</th>');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">P1 Chamber Pres (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">P2 Port Pres (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
+          final chamberHeader = is9mm ? 'Chamber Pres' : 'GP1 (Chamber)';
+          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$chamberHeader (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
+          if (!is9mm) {
+            bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
+          }
           bufferRounds.write('</tr>');
           for (int idx = 0; idx < roundsList.length; idx++) {
             final roundNo = idx + 1;
@@ -1629,7 +1676,9 @@ class ReportGenerator {
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">Round $roundNo</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$velVal</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p1Val</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p2Val</td>');
+            if (!is9mm) {
+              bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p2Val</td>');
+            }
             bufferRounds.write('</tr>');
           }
           bufferRounds.write('</table>');
@@ -1655,23 +1704,30 @@ class ReportGenerator {
         final vRange = r.velRange.trim().isNotEmpty ? r.velRange : '-';
         final vSD = r.velSD.trim().isNotEmpty ? r.velSD : '-';
 
+        final chamberRowLabel = is9mm ? 'Chamber Pressure' : 'GP1 (Chamber)';
         buffer.writeln('''
           <tr>
-            <td style="font-weight: bold;">Chamber Pressure P1 (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
+            <td style="font-weight: bold;">$chamberRowLabel (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
             <td>$p1Mean</td>
             <td>$p1Max</td>
             <td>$p1Min</td>
             <td>$p1Range</td>
             <td>$p1SD</td>
           </tr>
+        ''');
+        if (!is9mm) {
+          buffer.writeln('''
           <tr>
-            <td style="font-weight: bold;">Port Pressure P2 (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
+            <td style="font-weight: bold;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
             <td>$p2Mean</td>
             <td>$p2Max</td>
             <td>$p2Min</td>
             <td>$p2Range</td>
             <td>$p2SD</td>
           </tr>
+          ''');
+        }
+        buffer.writeln('''
           <tr>
             <td style="font-weight: bold;">Velocity (m/s)</td>
             <td>$vMean</td>

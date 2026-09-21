@@ -128,6 +128,23 @@ class _EntryTabState extends State<EntryTab> {
   final _pressureController = TextEditingController();
   final _viscosityController = TextEditingController();
   final _testTimeController = TextEditingController();
+  bool _isManualTestTime = false;
+
+  bool get _isCaliber9mm => _caliber.toLowerCase().contains('9mm') || _caliber.toLowerCase().contains('9x19');
+  bool get _isCaliberSingleTempOnly {
+    final c = _caliber.toLowerCase();
+    return c.contains('.223') || c.contains('.308') || c.contains('luger') || c.contains('match');
+  }
+
+  List<String> get _yearList {
+    final List<String> years = [];
+    for (int y = 2016; y <= 2035; y++) {
+      years.add(y.toString());
+    }
+    return years;
+  }
+
+  List<String> get _shortYearList => _yearList.map((y) => (int.parse(y) % 100).toString().padLeft(2, '0')).toList();
   final _locationController = TextEditingController();
   final _mouthSlowController = TextEditingController(text: '0');
   final _mouthFastController = TextEditingController(text: '0');
@@ -171,8 +188,6 @@ class _EntryTabState extends State<EntryTab> {
   ];
 
   // Weapon cascading selection state
-  bool get _isCaliber9mm => _caliber.toLowerCase().contains('9mm') || _caliber.toLowerCase().contains('9x19');
-
   List<String> get _availableWeaponTypes {
     if (_isCaliber9mm) {
       return ['Pistol', 'Submachine Gun', 'Other'];
@@ -601,6 +616,7 @@ class _EntryTabState extends State<EntryTab> {
       now.second,
     );
     setState(() {
+      _isManualTestTime = true;
       _testTimeController.text = DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
     });
     _scheduleAutoSave();
@@ -749,8 +765,18 @@ class _EntryTabState extends State<EntryTab> {
         jumpTo(_lotFieldKey, _lotFocusNode, 'Lot Number (3 Digits)');
         return false;
       }
+      if (_lotThreeDigitsController.text.trim().length < 3) {
+        notifyMissing('Please add three digits');
+        jumpTo(_lotFieldKey, _lotFocusNode, 'Lot Number (3 Digits)');
+        return false;
+      }
     } else {
       if (_hopperThreeDigitsController.text.trim().isEmpty && _lotController.text.trim().isEmpty) {
+        jumpTo(_lotFieldKey, _lotFocusNode, 'Hopper Number (3 Digits)');
+        return false;
+      }
+      if (_hopperThreeDigitsController.text.trim().isNotEmpty && _hopperThreeDigitsController.text.trim().length < 3) {
+        notifyMissing('Please add three digits');
         jumpTo(_lotFieldKey, _lotFocusNode, 'Hopper Number (3 Digits)');
         return false;
       }
@@ -833,8 +859,8 @@ class _EntryTabState extends State<EntryTab> {
         jumpTo(_barrelFieldKey, _barrelFocusNode, 'EPVAT Barrel Test Serial');
         return false;
       }
-      if (_gp6SerialController.text.trim().isEmpty) {
-        jumpTo(_gp6FieldKey, _gp6FocusNode, 'GP6 Serial Number');
+      if (!_isCaliber9mm && _gp6SerialController.text.trim().isEmpty) {
+        jumpTo(_gp6FieldKey, _gp6FocusNode, 'GP Transducer (GP2 Port)');
         return false;
       }
       if (_distanceController.text.trim().isEmpty) {
@@ -842,7 +868,7 @@ class _EntryTabState extends State<EntryTab> {
         return false;
       }
       if (_epvatSensor1Controller.text.trim().isEmpty) {
-        notifyMissing('GP Transducer (GP1 Chamber)');
+        notifyMissing(_isCaliber9mm ? 'GP Transducer (Chamber)' : 'GP Transducer (GP1 Chamber)');
         return false;
       }
       if (_epvatPressureType == 'Overall') {
@@ -857,11 +883,11 @@ class _EntryTabState extends State<EntryTab> {
             return false;
           }
           if (_overallEpvatControllers[t]?['p1_mean']?.text.trim().isEmpty ?? true) {
-            notifyMissing('P1 Chamber Pressure Mean (' + t + '°C)');
+            notifyMissing((_isCaliber9mm ? 'Chamber Pressure Mean (' : 'GP1 Chamber Pressure Mean (') + t + '°C)');
             return false;
           }
-          if (_overallEpvatControllers[t]?['p2_mean']?.text.trim().isEmpty ?? true) {
-            notifyMissing('P2 Port Pressure Mean (' + t + '°C)');
+          if (!_isCaliber9mm && (_overallEpvatControllers[t]?['p2_mean']?.text.trim().isEmpty ?? true)) {
+            notifyMissing('GP2 Port Pressure Mean (' + t + '°C)');
             return false;
           }
         }
@@ -879,11 +905,11 @@ class _EntryTabState extends State<EntryTab> {
           return false;
         }
         if (_epvatMeanPressureController.text.trim().isEmpty) {
-          notifyMissing('P1 Mean Chamber Pressure');
+          notifyMissing(_isCaliber9mm ? 'Mean Chamber Pressure' : 'GP1 Mean Chamber Pressure');
           return false;
         }
-        if (_epvatP2MeanPressureController.text.trim().isEmpty) {
-          notifyMissing('P2 Mean Port Pressure');
+        if (!_isCaliber9mm && _epvatP2MeanPressureController.text.trim().isEmpty) {
+          notifyMissing('GP2 Mean Port Pressure');
           return false;
         }
       }
@@ -1435,16 +1461,8 @@ class _EntryTabState extends State<EntryTab> {
       _epvatSensor2Controller.text = _gp2Transducers.first;
     }
     
-    // Auto-generate test date and time for every test and update automatically
+    // Initialize test date and time locked to opening time (allows manual edit or defaults to submission time)
     _autoGenerateTime(force: true);
-    _liveClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        final nowStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-        if (_testTimeController.text != nowStr) {
-          _testTimeController.text = nowStr;
-        }
-      }
-    });
     
     // Initialize one round controller for Extraction Force Test
     _extractionRoundsControllers.add(TextEditingController());
@@ -1857,9 +1875,15 @@ class _EntryTabState extends State<EntryTab> {
     if (widget.currentModule == 'Lot Acceptance Test') {
       final String threeDigits = _lotThreeDigitsController.text.trim();
       final String year = _lotYearController.text.trim();
-      finalLotNo = threeDigits.isEmpty ? 'OMPC/$year' : '$threeDigits OMPC/$year';
+      finalLotNo = threeDigits.isEmpty ? 'OMPC/$year' : '${threeDigits.padLeft(3, '0')} OMPC/$year';
     } else {
-      finalLotNo = _lotController.text.trim();
+      final String threeDigits = _hopperThreeDigitsController.text.trim();
+      final String year = _hopperYearController.text.trim();
+      if (threeDigits.isNotEmpty && year.isNotEmpty) {
+        finalLotNo = '${threeDigits.padLeft(3, '0')}-$year';
+      } else {
+        finalLotNo = _lotController.text.trim();
+      }
     }
 
     final String finalStatus = _getCalculatedStatus();
@@ -2440,7 +2464,7 @@ class _EntryTabState extends State<EntryTab> {
 
             // Form container card
             Container(
-              constraints: const BoxConstraints(maxWidth: 800.0),
+              width: double.infinity,
               padding: const EdgeInsets.all(24.0),
               decoration: BoxDecoration(
                 color: const Color(0xFF344D6E),
@@ -2577,6 +2601,13 @@ class _EntryTabState extends State<EntryTab> {
                               _testName = _isWaterproofExcluded(_caliber) ? 'Extraction Force Test' : 'Waterproof Test';
                               widget.onTestNameChanged(_testName);
                             }
+                            if (_isCaliberSingleTempOnly && _epvatPressureType == 'Overall') {
+                              _epvatPressureType = 'Individual';
+                              _producedController.text = '30';
+                              if (_cartridgeTempController.text.trim().isEmpty) {
+                                _cartridgeTempController.text = '+21';
+                              }
+                            }
                             if (_testName == 'Waterproof Test') {
                               _producedController.text = '20';
                               if (_caliber.contains('M82') || _caliber.contains('M200')) {
@@ -2590,6 +2621,9 @@ class _EntryTabState extends State<EntryTab> {
                             if (_testName == 'Primer Sensitivity Test') {
                               final prRules = _getPrimerRulesForCaliber();
                               _primerDropWeightController.text = ((prRules['drop_weight'] ?? 55.0) as num).toStringAsFixed(1);
+                            }
+                            if (_testName == 'EPVAT test') {
+                              _recalculateEpvatStats();
                             }
                           });
                           widget.onCaliberChanged(v!);
@@ -2674,8 +2708,10 @@ class _EntryTabState extends State<EntryTab> {
                                 flex: 1,
                                 label: 'Temperature Evaluation Mode',
                                 child: _buildDropdownField(
-                                  value: _epvatPressureType == 'Overall' ? 'All 3 Temperatures (+21, +52, -54)' : 'Single Temperature',
-                                  items: const ['Single Temperature', 'All 3 Temperatures (+21, +52, -54)'],
+                                  value: (_isCaliberSingleTempOnly || _epvatPressureType != 'Overall') ? 'Single Temperature' : 'All 3 Temperatures (+21, +52, -54)',
+                                  items: _isCaliberSingleTempOnly
+                                      ? const ['Single Temperature']
+                                      : const ['Single Temperature', 'All 3 Temperatures (+21, +52, -54)'],
                                   onChanged: (v) {
                                     if (v != null) {
                                       setState(() {
@@ -2767,39 +2803,9 @@ class _EntryTabState extends State<EntryTab> {
                             const SizedBox(height: 14.0),
                             _buildFormRow([
                               _buildFlexibleField(
-                                key: _gp6FieldKey,
                                 flex: 1,
-                                label: 'GP6 Transducer Serial Number',
+                                label: _isCaliber9mm ? 'GP Transducer (Chamber)' : 'GP Transducer (GP1 Chamber)',
                                 isRequired: true,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildDropdownField(
-                                      focusNode: _gp6FocusNode,
-                                      value: _gp6Serials.contains(_gp6SerialController.text)
-                                          ? _gp6SerialController.text
-                                          : (_gp6Serials.isNotEmpty ? _gp6Serials.first : ''),
-                                      items: _gp6Serials,
-                                      onChanged: (v) {
-                                        if (v != null) {
-                                          setState(() {
-                                            _gp6SerialController.text = v;
-                                            _epvatSensor2Controller.text = v;
-                                          });
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(height: 4.0),
-                                    Text(
-                                      '${_getAssetRounds(_gp6SerialController.text)} cumulative rounds fired',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'GP Transducer (GP1 Chamber)',
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -2831,6 +2837,38 @@ class _EntryTabState extends State<EntryTab> {
                                   ],
                                 ),
                               ),
+                              if (!_isCaliber9mm)
+                                _buildFlexibleField(
+                                  key: _gp6FieldKey,
+                                  flex: 1,
+                                  label: 'GP Transducer (GP2 Port)',
+                                  isRequired: true,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildDropdownField(
+                                        focusNode: _gp6FocusNode,
+                                        value: _gp6Serials.contains(_gp6SerialController.text)
+                                            ? _gp6SerialController.text
+                                            : (_gp6Serials.isNotEmpty ? _gp6Serials.first : ''),
+                                        items: _gp6Serials,
+                                        onChanged: (v) {
+                                          if (v != null) {
+                                            setState(() {
+                                              _gp6SerialController.text = v;
+                                              _epvatSensor2Controller.text = v;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                      const SizedBox(height: 4.0),
+                                      Text(
+                                        '${_getAssetRounds(_gp6SerialController.text)} cumulative rounds fired',
+                                        style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ]),
                           ],
                         ],
@@ -3606,6 +3644,51 @@ class _EntryTabState extends State<EntryTab> {
                                 ],
                               );
                             },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20.0),
+
+                    // 3. Cartridge classification reference diagram
+                    Container(
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.photo_outlined, color: Color(0xFF06B6D4), size: 18.0),
+                              SizedBox(width: 8.0),
+                              Text(
+                                'Residual Stress Classification Reference Diagram',
+                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12.0),
+                          Center(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: Image.asset(
+                                _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
+                                height: 220,
+                                fit: BoxFit.contain,
+                                errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6.0),
+                          Center(
+                            child: Text(
+                              _isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram',
+                              style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontStyle: FontStyle.italic),
+                            ),
                           ),
                         ],
                       ),
@@ -4527,12 +4610,13 @@ class _EntryTabState extends State<EntryTab> {
                                       ),
                                       const SizedBox(height: 8.0),
                                       Row(
-                                        children: const [
-                                          Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                          Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                          Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                          Expanded(flex: 2, child: Text('P1 Chamber Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                          Expanded(flex: 2, child: Text('P2 Port Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                        children: [
+                                          const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                          const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                          const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                          Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                          if (!_isCaliber9mm)
+                                            const Expanded(flex: 2, child: Text('GP2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                         ],
                                       ),
                                       const SizedBox(height: 8.0),
@@ -4592,17 +4676,18 @@ class _EntryTabState extends State<EntryTab> {
                                                       ),
                                                     ),
                                                   ),
-                                                  Expanded(
-                                                    flex: 2,
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                                                      child: _buildTextField(
-                                                        controller: _overallEpvatP2RoundsControllers[t]![rIdx],
-                                                        hint: 'P2',
-                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                  if (!_isCaliber9mm)
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                                        child: _buildTextField(
+                                                          controller: _overallEpvatP2RoundsControllers[t]![rIdx],
+                                                          hint: 'P2',
+                                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
                                                 ],
                                               ),
                                             );
@@ -4618,30 +4703,32 @@ class _EntryTabState extends State<EntryTab> {
                                     ),
                                     const SizedBox(height: 12.0),
                                     Text(
-                                      'P1 Chamber Pressure ($t °C) (${_epvatPressureUnit})',
+                                      _isCaliber9mm ? 'Chamber Pressure ($t °C) (${_epvatPressureUnit})' : 'GP1 (Chamber) Pressure ($t °C) (${_epvatPressureUnit})',
                                       style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 8.0),
                                     _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Min P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Range P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'SD P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Mean P' : 'Mean P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Range P' : 'Range P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                     ]),
-                                    const SizedBox(height: 16.0),
-                                    Text(
-                                      'P2 Port Pressure ($t °C) (${_epvatPressureUnit})',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    ]),
+                                    if (!_isCaliber9mm) ...[
+                                      const SizedBox(height: 16.0),
+                                      Text(
+                                        'GP2 (Port) Pressure ($t °C) (${_epvatPressureUnit})',
+                                        style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 8.0),
+                                      _buildFormRow([
+                                        _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                        _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                        _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                        _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                        _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      ]),
+                                    ],
                                     const SizedBox(height: 16.0),
                                     Text(
                                       'Velocity ($t °C) (m/s)',
@@ -4732,12 +4819,13 @@ class _EntryTabState extends State<EntryTab> {
                                 ),
                                 const SizedBox(height: 8.0),
                                 Row(
-                                  children: const [
-                                    Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text('P1 Chamber Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text('P2 Port Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                  children: [
+                                    const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    if (!_isCaliber9mm)
+                                      const Expanded(flex: 2, child: Text('GP2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                   ],
                                 ),
                                 const SizedBox(height: 8.0),
@@ -4781,7 +4869,7 @@ class _EntryTabState extends State<EntryTab> {
                                         Expanded(
                                           flex: 2,
                                           child: Padding(
-                                            padding: const EdgeInsets.only(right: 8.0),
+                                            padding: EdgeInsets.only(right: _isCaliber9mm ? 0.0 : 8.0),
                                             child: _buildTextField(
                                               controller: _epvatRoundsControllers[index],
                                               hint: '0.0',
@@ -4790,15 +4878,16 @@ class _EntryTabState extends State<EntryTab> {
                                             ),
                                           ),
                                         ),
-                                        Expanded(
-                                          flex: 2,
-                                          child: _buildTextField(
-                                            controller: _epvatP2RoundsControllers[index],
-                                            hint: '0.0',
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                            onChanged: (val) => _recalculateEpvatStats(),
+                                        if (!_isCaliber9mm)
+                                          Expanded(
+                                            flex: 2,
+                                            child: _buildTextField(
+                                              controller: _epvatP2RoundsControllers[index],
+                                              hint: '0.0',
+                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              onChanged: (val) => _recalculateEpvatStats(),
+                                            ),
                                           ),
-                                        ),
                                       ],
                                     ),
                                   );
@@ -4836,30 +4925,32 @@ class _EntryTabState extends State<EntryTab> {
                                  ]),
                                 const SizedBox(height: 12.0),
                                 Text(
-                                  'P1 Chamber Pressure Statistics (${_epvatPressureUnit})',
+                                  _isCaliber9mm ? 'Chamber Pressure Statistics (${_epvatPressureUnit})' : 'GP1 (Chamber) Pressure Statistics (${_epvatPressureUnit})',
                                   style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 4.0),
                                 _buildFormRow([
-                                  _buildFlexibleField(flex: 1, label: 'Mean P1', child: _buildTextField(controller: _epvatMeanPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'Max P1', child: _buildTextField(controller: _epvatMaxPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'Min P1', child: _buildTextField(controller: _epvatMinPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'Range P1', child: _buildTextField(controller: _epvatRangePressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'SD P1', child: _buildTextField(controller: _epvatSDPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Mean P' : 'Mean P1', child: _buildTextField(controller: _epvatMeanPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _epvatMaxPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _epvatMinPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Range P' : 'Range P1', child: _buildTextField(controller: _epvatRangePressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _epvatSDPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                 ]),
-                                const SizedBox(height: 12.0),
-                                Text(
-                                  'P2 Port Pressure Statistics (${_epvatPressureUnit})',
-                                  style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4.0),
-                                _buildFormRow([
-                                  _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _epvatP2MeanPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _epvatP2MaxPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _epvatP2MinPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _epvatP2RangePressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _epvatP2SDPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                ]),
+                                if (!_isCaliber9mm) ...[
+                                  const SizedBox(height: 12.0),
+                                  Text(
+                                    'GP2 (Port) Pressure Statistics (${_epvatPressureUnit})',
+                                    style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4.0),
+                                  _buildFormRow([
+                                    _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _epvatP2MeanPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                    _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _epvatP2MaxPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                    _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _epvatP2MinPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                    _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _epvatP2RangePressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                    _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _epvatP2SDPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  ]),
+                                ],
                               ],
                             ),
                           ],
@@ -5278,6 +5369,49 @@ class _EntryTabState extends State<EntryTab> {
               ),
             ),
           ],
+          const SizedBox(height: 16.0),
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F9FF),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: const Color(0xFFBAE6FD)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.photo_outlined, color: Color(0xFF0284C7), size: 16.0),
+                    SizedBox(width: 8.0),
+                    Text(
+                      'Cartridge Classification Reference Diagram',
+                      style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8.0),
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6.0),
+                    child: Image.asset(
+                      _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
+                      height: 180,
+                      fit: BoxFit.contain,
+                      errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4.0),
+                Center(
+                  child: Text(
+                    _isCaliber9mm ? '9mm Cartridge Reference' : '5.56 / 7.62 Cartridge Reference',
+                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.0, fontStyle: FontStyle.italic),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -6083,6 +6217,12 @@ class _EntryTabState extends State<EntryTab> {
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
               ],
+              validator: (v) {
+                if (v == null || v.trim().isEmpty || v.trim().length != 3) {
+                  return 'Please add three digits';
+                }
+                return null;
+              },
             ),
           ),
           const SizedBox(width: 12.0),
@@ -6097,34 +6237,17 @@ class _EntryTabState extends State<EntryTab> {
           const SizedBox(width: 12.0),
           Expanded(
             flex: 2,
-            child: TextFormField(
-              controller: _lotYearController,
-              keyboardType: TextInputType.number,
-              maxLength: 2,
-              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                counterText: '',
-                hintText: 'YY',
-                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
-                filled: true,
-                fillColor: const Color(0xFFE0F2FE),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
-                ),
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Required';
-                if (v.length != 2) return 'Must be 2 digits';
-                return null;
+            child: _buildDropdownField(
+              value: _shortYearList.contains(_lotYearController.text.trim())
+                  ? _lotYearController.text.trim()
+                  : _shortYearList.last,
+              items: _shortYearList,
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _lotYearController.text = val;
+                  });
+                }
               },
             ),
           ),
@@ -6164,6 +6287,12 @@ class _EntryTabState extends State<EntryTab> {
                 final y = _hopperYearController.text.trim();
                 _lotController.text = val.isNotEmpty ? '${val.padLeft(3, '0')}-$y' : '';
               },
+              validator: (v) {
+                if (v == null || v.trim().isEmpty || v.trim().length != 3) {
+                  return 'Please add three digits';
+                }
+                return null;
+              },
             ),
           ),
           const SizedBox(width: 8.0),
@@ -6178,38 +6307,19 @@ class _EntryTabState extends State<EntryTab> {
           const SizedBox(width: 8.0),
           Expanded(
             flex: 2,
-            child: TextFormField(
-              controller: _hopperYearController,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                counterText: '',
-                hintText: 'YYYY',
-                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
-                filled: true,
-                fillColor: const Color(0xFFE0F2FE),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
-                ),
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
+            child: _buildDropdownField(
+              value: _yearList.contains(_hopperYearController.text.trim())
+                  ? _hopperYearController.text.trim()
+                  : _yearList.last,
+              items: _yearList,
               onChanged: (val) {
-                final d = _hopperThreeDigitsController.text.trim();
-                _lotController.text = d.isNotEmpty ? '${d.padLeft(3, '0')}-$val' : '';
-              },
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Required';
-                if (v.length != 4) return '4 digits';
-                return null;
+                if (val != null) {
+                  setState(() {
+                    _hopperYearController.text = val;
+                    final d = _hopperThreeDigitsController.text.trim();
+                    _lotController.text = d.isNotEmpty ? '${d.padLeft(3, '0')}-$val' : '';
+                  });
+                }
               },
             ),
           ),
@@ -6270,14 +6380,77 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  void _onPressureUnitChanged(String newUnit) {
+    if (_epvatPressureUnit == newUnit) return;
+    final oldUnit = _epvatPressureUnit;
+
+    void convertCtrl(TextEditingController ctrl) {
+      final val = double.tryParse(ctrl.text.trim());
+      if (val != null) {
+        final converted = EpvatFormulaHelper.convertPressure(val, oldUnit, newUnit);
+        ctrl.text = converted.toStringAsFixed(2);
+      }
+    }
+
+    // 1. Individual rounds
+    for (var ctrl in _epvatRoundsControllers) {
+      convertCtrl(ctrl);
+    }
+    for (var ctrl in _epvatP2RoundsControllers) {
+      convertCtrl(ctrl);
+    }
+
+    // 2. Individual statistics
+    convertCtrl(_epvatMeanPressureController);
+    convertCtrl(_epvatMaxPressureController);
+    convertCtrl(_epvatMinPressureController);
+    convertCtrl(_epvatRangePressureController);
+    convertCtrl(_epvatSDPressureController);
+    convertCtrl(_epvatP2MeanPressureController);
+    convertCtrl(_epvatP2MaxPressureController);
+    convertCtrl(_epvatP2MinPressureController);
+    convertCtrl(_epvatP2RangePressureController);
+    convertCtrl(_epvatP2SDPressureController);
+
+    // 3. Overall mode temperatures
+    final temps = ['+21', '+52', '-54', '-32'];
+    for (var t in temps) {
+      if (_overallEpvatControllers.containsKey(t)) {
+        for (var sub in ['mean', 'max', 'min', 'range', 'sd']) {
+          final p1c = _overallEpvatControllers[t]!['p1_$sub'];
+          if (p1c != null) convertCtrl(p1c);
+          final p2c = _overallEpvatControllers[t]!['p2_$sub'];
+          if (p2c != null) convertCtrl(p2c);
+        }
+      }
+      if (_overallEpvatP1RoundsControllers.containsKey(t)) {
+        for (var c in _overallEpvatP1RoundsControllers[t]!) {
+          convertCtrl(c);
+        }
+      }
+      if (_overallEpvatP2RoundsControllers.containsKey(t)) {
+        for (var c in _overallEpvatP2RoundsControllers[t]!) {
+          convertCtrl(c);
+        }
+      }
+    }
+
+    setState(() {
+      _epvatPressureUnit = newUnit;
+    });
+    if (_epvatPressureType == 'Individual') {
+      _recalculateEpvatStats();
+    } else {
+      for (var t in temps) {
+        _calculateOverallTempStats(t);
+      }
+    }
+  }
+
   Widget _buildEpvatUnitRadioButton(String unit, String label) {
     final bool isSelected = _epvatPressureUnit == unit;
     return InkWell(
-      onTap: () {
-        setState(() {
-          _epvatPressureUnit = unit;
-        });
-      },
+      onTap: () => _onPressureUnitChanged(unit),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -6286,9 +6459,7 @@ class _EntryTabState extends State<EntryTab> {
             groupValue: _epvatPressureUnit,
             activeColor: const Color(0xFF06B6D4),
             onChanged: (val) {
-              setState(() {
-                _epvatPressureUnit = val!;
-              });
+              if (val != null) _onPressureUnitChanged(val);
             },
           ),
           Text(
@@ -7009,12 +7180,23 @@ class _EntryTabState extends State<EntryTab> {
         list = List<dynamic>.from(formulasMap['default'] ?? []);
       }
       if (list.isEmpty) {
-        list = EpvatFormulaHelper.getDefaultFormulas();
+        list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: _epvatPressureType == 'Overall');
       }
       
+      final defaultTemp = _epvatPressureType == 'Overall'
+          ? '21'
+          : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
+              ? '21'
+              : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
+
       for (var f in list) {
         final item = Map<String, dynamic>.from(f as Map);
-        final res = EpvatFormulaHelper.evaluateFormulaItem(item, variables);
+        final res = EpvatFormulaHelper.evaluateFormulaItem(
+          item,
+          variables,
+          defaultTemp: defaultTemp,
+          activePressureUnit: _epvatPressureUnit,
+        );
         if (!res.isPassed) {
           return 'Rejected';
         }
@@ -7032,13 +7214,24 @@ class _EntryTabState extends State<EntryTab> {
       list = List<dynamic>.from(formulasMap['default'] ?? []);
     }
     if (list.isEmpty) {
-      list = EpvatFormulaHelper.getDefaultFormulas();
+      list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: _epvatPressureType == 'Overall');
     }
     
     if (list.isEmpty) return const SizedBox.shrink();
     
+    final defaultTemp = _epvatPressureType == 'Overall'
+        ? '21'
+        : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
+            ? '21'
+            : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
+
     final variables = _getEpvatVariablesMap();
-    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), variables)).toList();
+    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
+      Map<String, dynamic>.from(f as Map),
+      variables,
+      defaultTemp: defaultTemp,
+      activePressureUnit: _epvatPressureUnit,
+    )).toList();
     
     return Container(
       margin: const EdgeInsets.only(bottom: 20.0),

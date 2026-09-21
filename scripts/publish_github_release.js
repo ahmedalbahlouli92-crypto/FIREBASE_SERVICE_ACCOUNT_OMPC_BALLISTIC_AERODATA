@@ -19,34 +19,39 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.4.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.1 (Supabase Cross-PC Sync, EPVAT ± Formula, Strict Field Validation, 2-Digit Action Time, Responsive Mobile UI & Windows Auto-Hide Sidebar)';
-const BODY = `## OMPC Ballistic AeroData v1.4.1
+const TAG_NAME = 'v1.4.2';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.2 (3-Digit Lot Validation, GP1/GP2 9mm Chamber Isolation, Dynamic Pressure Unit Auto-Conversion, Cartridge Reference Diagrams & Admin Weapon Registry)';
+const BODY = `## OMPC Ballistic AeroData v1.4.2
 
 ### Key Updates & Enhancements:
-1. **PC Auto-Update & Immediate Logout Fix**:
-   - Eliminated the false "Update Published" popup loop and premature session reset.
-   - Suppressed legacy Windows 7 & 8 Microsoft Edge unsupported browser banners via Chromium flags.
-2. **Android Release APK Cloud Sync & Registered Users**:
-   - Added missing \`android.permission.INTERNET\` and \`android.permission.ACCESS_NETWORK_STATE\` to release APK manifest.
-   - All cloud-registered laboratory personnel, admin rules, and test records now synchronize seamlessly across mobile and all PCs.
-3. **EPVAT ± (Plus-Minus) Tolerance Calculations**:
-   - Added full support for \`±\` and \`+/-\` operators in mathematical formula evaluation, arithmetic substitution, and administrative formula definitions.
-   - Evaluates range-bound acceptance criteria (\`abs(x - target) <= tol\`).
-4. **Strict Submission Validation Across All 9 Test Types**:
-   - Comprehensive required-field checks on all ballistic and mechanical tests.
-   - Blocks submission if required test fields are empty and automatically jumps to missing fields.
-5. **Action Time 2-Digit Input Formatter**:
-   - Enforces \`^\\d{0,2}(\\.\\d{0,3})?$\` across all action time inputs.
-6. **Supabase Cloud Database Cross-PC Synchronization**:
-   - Automatic retry and robust connection handling across all platforms.
-7. **Android Layout & Responsive Screen Adjustments**:
-   - Redesigned mobile AppBar with a compact dropdown, clock badge, and consolidated profile & options \`PopupMenuButton\`.
-8. **Windows Desktop Auto-Hiding Modules Sidebar**:
-   - Animated sidebar that smoothly collapses when moving to main content, taking 100% full screen.
+1. **3-Digit Lot & Hopper Validation with Year Dropdowns**:
+   - Strictly enforces 3-digit validation ("Please add three digits") for Lot and Hopper numbers.
+   - Replaced manual year inputs with standardized dropdown selectors covering 2016–2035.
+2. **GP1 (Chamber) & GP2 (Port) Standardization & 9mm Chamber Isolation**:
+   - Re-labeled ballistic pressure metrics to GP1 (Chamber) and GP2 (Port).
+   - GP2 (Port) pressure fields and statistics are completely hidden across entry inputs, statistics, and generated HTML/Word reports for all 9mm calibers.
+3. **EPVAT Pressure Unit Dynamic Auto-Conversion**:
+   - Toggling pressure units (bar, MPa, kg/cm²) automatically converts individual round inputs, statistics, and formula limit thresholds in real-time.
+4. **EPVAT Formula Differentiation (Single-Temp vs 3-Temp Modes)**:
+   - Specific single-temp formula evaluation versus multi-temperature tolerance calculations.
+   - Enforced single-temperature mode for .223, .308, 9mm Luger, and 9mm Match calibers.
+5. **Locked Test Time**:
+   - Initial test time remains locked upon opening without auto-ticking timer, with manual picker and refresh support.
+6. **Cartridge Classification Reference Diagrams**:
+   - Visual reference diagrams integrated for Residual Stress and Function tests in both Log Entry and exported reports.
+7. **Admin Weapon Registration**:
+   - Weapon category selection with cascaded manufacturer dropdown, model, and serial number registration.
+8. **Welcoming Greeting & APK Auto-Update**:
+   - Time-based "Alsalamu Alaikum" badge and welcome dialog on session start.
+   - Automatic GitHub Release APK update check and direct download prompt.
+9. **Blank Caliber Function Test Cold Temperature**:
+   - M82 and M200 blanks default cold test temperature to -32 °C.
+10. **UI & Layout Optimizations**:
+    - Sidebar logo enlarged x2 (136px).
+    - Log Entry form converted to 100% full width.
 
 ### Binaries & Deployments:
-- **Android APK**: \`OMPC_Ballistic_AeroData_v1.4.1.apk\`
+- **Android APK**: \`OMPC_Ballistic_AeroData_v1.4.2.apk\`
 - **Windows Setup**: \`OMPC_Ballistic_AeroData_Setup.exe\`
 - **Windows Standalone**: \`OMPC_Ballistic_AeroData.exe\`
 - **Windows Portable**: \`OMPC_Ballistic_AeroData_Portable.zip\`
@@ -159,7 +164,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.4.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.1.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.4.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.2.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' }
   ];
 

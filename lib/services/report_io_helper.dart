@@ -37,6 +37,17 @@ class ReportHelperImpl implements ReportHelper {
     final file = File('${reportsDir.path}/report_preview.html');
     await file.writeAsString(htmlContent, flush: true);
   }
+
+  @override
+  Future<void> openUrl({required String url}) async {
+    if (Platform.isWindows) {
+      await Process.run('cmd', ['/c', 'start', '', url]);
+    } else if (Platform.isMacOS) {
+      await Process.run('open', [url]);
+    } else if (Platform.isLinux) {
+      await Process.run('xdg-open', [url]);
+    }
+  }
 }
 
 ReportHelper getHelper() => ReportHelperImpl();

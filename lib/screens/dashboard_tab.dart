@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/ballistic_record.dart';
 import '../widgets/custom_dashboard_charts.dart';
 import '../widgets/trend_chart.dart';
@@ -228,10 +229,20 @@ class _DashboardTabState extends State<DashboardTab> {
     final int lotAcceptanceTestsCount = lotAcceptanceRecords.length;
     final int lotAcceptanceLotsCount = lotAcceptanceLots.length;
 
-    // Recent logs for table (show all matched logs if a lot is selected, otherwise limit to 5)
+    // Recent logs for table (show all matched logs if a lot is selected, otherwise limit to 5, sorted newest first)
+    final sortedFiltered = List<BallisticRecord>.from(filtered)
+      ..sort((a, b) {
+        try {
+          final da = DateFormat('M/d/yyyy h:mm:ss a').parse(a.timestamp);
+          final db = DateFormat('M/d/yyyy h:mm:ss a').parse(b.timestamp);
+          return db.compareTo(da);
+        } catch (_) {
+          return b.timestamp.compareTo(a.timestamp);
+        }
+      });
     final recentRecords = _selectedLot != 'Overall'
-        ? filtered.reversed.toList()
-        : filtered.reversed.take(5).toList();
+        ? sortedFiltered
+        : sortedFiltered.take(5).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
