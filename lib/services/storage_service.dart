@@ -356,7 +356,7 @@ class StorageService {
     }
   }
 
-  // Load registered operators from storage (cloud-synced + local fallback)
+  // Load registered operators from storage (cloud-synced + local fallback with smart merging)
   Future<List<Map<String, String>>> loadOperators() async {
     final defaultOperators = [
       {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
@@ -364,69 +364,88 @@ class StorageService {
       {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
       {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
       {'email': 'operator', 'password': 'operator123', 'role': 'operator', 'name': 'Ahmed Said'},
+      {'email': 'admin@ompc.com', 'password': 'admin', 'role': 'admin', 'name': 'System Admin'},
+      {'email': 'operator@ompc.com', 'password': 'operator123', 'role': 'operator', 'name': 'Lead Operator'},
     ];
 
-    // 1. Try to fetch registered operators from Supabase Cloud (syncs across all PCs)
+    final Map<String, Map<String, String>> merged = {};
+
+    // 1. Seed with default baseline personnel
+    for (var op in defaultOperators) {
+      final key = (op['email'] ?? '').trim().toLowerCase();
+      if (key.isNotEmpty) merged[key] = Map<String, String>.from(op);
+    }
+
+    // 2. Overlay local storage users so local accounts are NEVER wiped out
+    if (kIsWeb) {
+      final localWeb = getWebOperators();
+      for (var op in localWeb) {
+        final key = (op['email'] ?? '').trim().toLowerCase();
+        if (key.isNotEmpty) merged[key] = Map<String, String>.from(op);
+      }
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/operators.json');
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          if (content.isNotEmpty) {
+            final List<dynamic> decoded = jsonDecode(content);
+            for (var item in decoded) {
+              final em = ((item['email'] ?? item['username'] ?? '') as String).trim();
+              if (em.isNotEmpty) {
+                merged[em.toLowerCase()] = {
+                  'email': em,
+                  'password': (item['password'] ?? '') as String,
+                  'role': (item['role'] ?? 'operator') as String,
+                  'name': (item['name'] ?? item['email'] ?? '') as String,
+                };
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print("Error reading local operators: $e");
+      }
+    }
+
+    // 3. Overlay Supabase Cloud users (syncs across PCs and mobile devices)
     await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         final cloudOps = await SupabaseService.fetchOperatorsFromCloud();
         if (cloudOps != null && cloudOps.isNotEmpty) {
-          // Cache locally
-          if (kIsWeb) {
-            for (var op in cloudOps) {
-              saveWebOperator(op['email'] ?? '', op['password'] ?? '', role: op['role'] ?? 'operator', name: op['name'] ?? '');
-            }
-          } else {
-            try {
-              final dirPath = await getDirectoryPath();
-              final file = File('$dirPath/operators.json');
-              await file.writeAsString(jsonEncode(cloudOps), mode: FileMode.write, flush: true);
-            } catch (_) {}
+          for (var op in cloudOps) {
+            final key = (op['email'] ?? '').trim().toLowerCase();
+            if (key.isNotEmpty) merged[key] = Map<String, String>.from(op);
           }
-          return cloudOps;
         }
       } catch (e) {
         print("Supabase load operators error: $e");
       }
     }
 
-    // 2. Fallback to local storage (Web localStorage or Desktop JSON file)
+    final combinedList = merged.values.toList();
+
+    // 4. Save merged list locally to ensure offline operation
     if (kIsWeb) {
-      final list = getWebOperators();
-      if (list.isEmpty) {
-        for (var op in defaultOperators) {
-          saveWebOperator(op['email']!, op['password']!, role: op['role']!, name: op['name']!);
-        }
-        if (SupabaseService.isInitialized) {
-          SupabaseService.saveOperatorsToCloud(defaultOperators);
-        }
-        return defaultOperators;
+      for (var op in combinedList) {
+        saveWebOperator(op['email'] ?? '', op['password'] ?? '', role: op['role'] ?? 'operator', name: op['name'] ?? '');
       }
-      return list;
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/operators.json');
+        await file.writeAsString(jsonEncode(combinedList), mode: FileMode.write, flush: true);
+      } catch (_) {}
     }
-    try {
-      final dirPath = await getDirectoryPath();
-      final file = File('$dirPath/operators.json');
-      if (!await file.exists()) {
-        await file.writeAsString(jsonEncode(defaultOperators), mode: FileMode.write, flush: true);
-        if (SupabaseService.isInitialized) {
-          SupabaseService.saveOperatorsToCloud(defaultOperators);
-        }
-        return defaultOperators;
-      }
-      final content = await file.readAsString();
-      final List<dynamic> decoded = jsonDecode(content);
-      return decoded.map((item) => {
-        'email': (item['email'] ?? item['username'] ?? '') as String,
-        'password': (item['password'] ?? '') as String,
-        'role': (item['role'] ?? 'operator') as String,
-        'name': (item['name'] ?? item['email'] ?? '') as String,
-      }).toList();
-    } catch (e) {
-      print("Error loading operators: $e");
-      return defaultOperators;
+
+    // 5. Background sync: ensure cloud is fully updated with any new/merged accounts
+    if (SupabaseService.isInitialized) {
+      SupabaseService.saveOperatorsToCloud(combinedList);
     }
+
+    return combinedList;
   }
 
   // Save new user credentials with role (syncs to both local and Supabase cloud)

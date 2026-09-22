@@ -364,6 +364,23 @@ class SupabaseService {
       final ok = await ensureInitialized();
       if (!ok) return null;
     }
+    // 1. Try dedicated admin_users table first
+    try {
+      final usersRes = await client.from('admin_users').select().eq('is_active', true);
+      if (usersRes.isNotEmpty) {
+        return (usersRes as List<dynamic>).map((u) {
+          final m = Map<String, dynamic>.from(u as Map);
+          return {
+            'email': (m['username'] ?? m['email'] ?? '').toString(),
+            'password': (m['password_hash'] ?? m['password'] ?? '').toString(),
+            'role': (m['role'] ?? 'operator').toString(),
+            'name': (m['name'] ?? m['username'] ?? '').toString(),
+          };
+        }).toList();
+      }
+    } catch (_) {}
+
+    // 2. Fallback to master ballistic_records (SYSTEM_CONFIG)
     try {
       final res = await client
           .from(tableName)
@@ -399,6 +416,21 @@ class SupabaseService {
       if (!ok) return false;
     }
     try {
+      // 1. Upsert into dedicated admin_users table
+      try {
+        final rows = operators.map((op) => {
+          'username': op['email'] ?? '',
+          'password_hash': op['password'] ?? '',
+          'role': op['role'] ?? 'operator',
+          'name': op['name'] ?? op['email'] ?? '',
+          'is_active': true,
+        }).toList();
+        await client.from('admin_users').upsert(rows, onConflict: 'username');
+      } catch (e) {
+        debugPrint('admin_users upsert note: $e');
+      }
+
+      // 2. Always sync with master ballistic_records (SYSTEM_CONFIG)
       final jsonString = jsonEncode(operators);
       final existing = await client
           .from(tableName)

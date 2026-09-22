@@ -533,6 +533,22 @@ DROP POLICY IF EXISTS "Public access policy" ON public.admin_users;
 CREATE POLICY "Public access policy" ON public.admin_users FOR ALL USING (true) WITH CHECK (true);
 GRANT ALL ON TABLE public.admin_users TO anon, authenticated, service_role;
 
+-- Seed default laboratory personnel and admin accounts
+INSERT INTO public.admin_users (username, password_hash, role, name, is_active)
+VALUES
+    ('admin', 'admin123', 'admin', 'System Administrator', true),
+    ('manager', 'manager123', 'manager', 'Quality Manager', true),
+    ('supervisor', 'supervisor123', 'supervisor', 'Shift Supervisor', true),
+    ('technician', 'technician123', 'technician', 'Ballistics Technician', true),
+    ('operator', 'operator123', 'operator', 'Ahmed Said', true),
+    ('admin@ompc.com', 'admin', 'admin', 'System Admin', true),
+    ('operator@ompc.com', 'operator123', 'operator', 'Lead Operator', true)
+ON CONFLICT (username) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    role = EXCLUDED.role,
+    name = EXCLUDED.name,
+    is_active = true;
+
 CREATE TABLE IF NOT EXISTS public.admin_suppliers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ DEFAULT now(),
