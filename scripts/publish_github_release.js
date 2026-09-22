@@ -19,39 +19,29 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.4.2';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.2 (3-Digit Lot Validation, GP1/GP2 9mm Chamber Isolation, Dynamic Pressure Unit Auto-Conversion, Cartridge Reference Diagrams & Admin Weapon Registry)';
-const BODY = `## OMPC Ballistic AeroData v1.4.2
+const TAG_NAME = 'v1.4.3';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.3 (Android Log Sizing, Mobile Dialog Bounding, Responsive Stacking & In-Place APK Update)';
+const BODY = `## OMPC Ballistic AeroData v1.4.3
 
 ### Key Updates & Enhancements:
-1. **3-Digit Lot & Hopper Validation with Year Dropdowns**:
-   - Strictly enforces 3-digit validation ("Please add three digits") for Lot and Hopper numbers.
-   - Replaced manual year inputs with standardized dropdown selectors covering 2016–2035.
-2. **GP1 (Chamber) & GP2 (Port) Standardization & 9mm Chamber Isolation**:
-   - Re-labeled ballistic pressure metrics to GP1 (Chamber) and GP2 (Port).
-   - GP2 (Port) pressure fields and statistics are completely hidden across entry inputs, statistics, and generated HTML/Word reports for all 9mm calibers.
-3. **EPVAT Pressure Unit Dynamic Auto-Conversion**:
-   - Toggling pressure units (bar, MPa, kg/cm²) automatically converts individual round inputs, statistics, and formula limit thresholds in real-time.
-4. **EPVAT Formula Differentiation (Single-Temp vs 3-Temp Modes)**:
-   - Specific single-temp formula evaluation versus multi-temperature tolerance calculations.
-   - Enforced single-temperature mode for .223, .308, 9mm Luger, and 9mm Match calibers.
-5. **Locked Test Time**:
-   - Initial test time remains locked upon opening without auto-ticking timer, with manual picker and refresh support.
-6. **Cartridge Classification Reference Diagrams**:
-   - Visual reference diagrams integrated for Residual Stress and Function tests in both Log Entry and exported reports.
-7. **Admin Weapon Registration**:
-   - Weapon category selection with cascaded manufacturer dropdown, model, and serial number registration.
-8. **Welcoming Greeting & APK Auto-Update**:
-   - Time-based "Alsalamu Alaikum" badge and welcome dialog on session start.
-   - Automatic GitHub Release APK update check and direct download prompt.
-9. **Blank Caliber Function Test Cold Temperature**:
-   - M82 and M200 blanks default cold test temperature to -32 °C.
-10. **UI & Layout Optimizations**:
-    - Sidebar logo enlarged x2 (136px).
-    - Log Entry form converted to 100% full width.
+1. **Android Log Sizing & Responsive Mobile Layout**:
+   - **Log Entry Tab**: Implemented dynamic responsive rows that stack fields cleanly on mobile screens (< 620px), arrange in balanced chunks on tablets, and preserve full single rows on desktop. Removed horizontal margin waste to allow full touch target widths.
+   - **Inspection History Filters**: Rewrote the filter panel to adapt to mobile (< 750px) by wrapping search, calibers, test names, lot, hopper, and status into readable, spacious rows instead of squeezed 3-column rows.
+2. **Quality & Individual Report Generator Dialog Fixes**:
+   - Added bounded height constraints (\`math.min(850.0, screenHeight * 0.90)\`) to resolve Flutter's unbounded flex crash on Android when previewing reports.
+   - Stacked test type selector and summary statistics vertically on mobile dialog widths (< 650px).
+   - Replaced rigid horizontal button row with a responsive \`Wrap\` widget so "Export Excel", "Export Word", and "Download / Print PDF" buttons never overflow or get clipped on Android screens.
+3. **Inspection Log Edit Dialog Mobile Responsiveness**:
+   - Added bounded height constraints (\`maxHeight: screenHeight * 0.85\`) with internal scrolling.
+   - Stacks inspector, shift, caliber, lot, quantity, defect, and test-specific fields (Waterproof, Propellant, Primer Sensitivity) into ergonomic 1-column or 2-column mobile layouts on screens < 600px.
+4. **Mobile Navigation & Component Test Support**:
+   - Added full mobile tab navigation and bottom bar support for the "Component Test" module, ensuring feature parity with Lot Acceptance Test and Daily Test.
+5. **Zero-Reinstall Seamless In-Place APK Updates**:
+   - Android Package Installer automatically performs in-place upgrades preserving all local databases and caches without requiring uninstall/reinstall.
+   - Live GitHub Release APK auto-updater verifies v1.4.3 and prompts direct download.
 
 ### Binaries & Deployments:
-- **Android APK**: \`OMPC_Ballistic_AeroData_v1.4.2.apk\`
+- **Android APK**: \`OMPC_Ballistic_AeroData_v1.4.3.apk\`
 - **Windows Setup**: \`OMPC_Ballistic_AeroData_Setup.exe\`
 - **Windows Standalone**: \`OMPC_Ballistic_AeroData.exe\`
 - **Windows Portable**: \`OMPC_Ballistic_AeroData_Portable.zip\`
@@ -164,7 +154,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.4.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.2.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.4.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.3.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' }
   ];
 

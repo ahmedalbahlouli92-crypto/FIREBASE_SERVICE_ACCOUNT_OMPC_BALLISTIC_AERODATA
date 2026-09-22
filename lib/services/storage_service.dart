@@ -54,7 +54,9 @@ class StorageService {
     final year = d.year;
     final month = d.month.toString().padLeft(2, '0');
     final day = d.day.toString().padLeft(2, '0');
-    final prefix = module == 'Lot Acceptance Test' ? 'ballistic_report' : 'daily_test_report';
+    final prefix = module == 'Lot Acceptance Test'
+        ? 'ballistic_report'
+        : (module == 'Component Test' ? 'component_test_report' : 'daily_test_report');
     return '${prefix}_$year-$month-$day.csv';
   }
 
@@ -66,7 +68,7 @@ class StorageService {
     final file = File('$dirPath/$fileName');
     
     if (!await file.exists()) {
-      const headers = 'Timestamp,Operators,Shift,Caliber Specification,Projectile/Lot Number,Quantity Tested,Defects Found,Remarks,Quality Status,Test Name,Pressure (Bar),Viscosity,Time of Test,Sampling Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Hopper No,Box No,Requirement,Barrel S.N,Barrel Type,Distance,Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Mean Radius,Extraction Force Type,Extraction Force Rounds,Cartridge Temp,EPVAT Pressure Type,EPVAT Pressure Unit,EPVAT Pressure Rounds,EPVAT Mean Pressure,EPVAT Max Pressure,EPVAT Min Pressure,EPVAT Range Pressure,EPVAT SD Pressure,EPVAT P2 Mean Pressure,EPVAT P2 Max Pressure,EPVAT P2 Min Pressure,EPVAT P2 Range Pressure,EPVAT P2 SD Pressure,EPVAT P2 Pressure Rounds,EPVAT Velocity Rounds,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Room Temp,Sensor 1,Sensor 2,Cyclic Weapon,Cyclic Ammo,Cyclic Val,Cyclic Min,Cyclic Max,Term Hole,Term Steel,Term Alum,Term Vel,Func L1,Func L2,Func L3,Func L4,Att Name,Att Base64,Func Defect Details,Action Time Mean,Action Time Min,Action Time Max,Action Time Range,Action Time SD,Action Time Rounds,Primer Drop Heights,Primer Fire Results,Primer Hbar,Primer SD,Primer All Fire H,Primer No Fire H\n';
+      const headers = 'Timestamp,Operators,Shift,Caliber Specification,Projectile/Lot Number,Quantity Tested,Defects Found,Remarks,Quality Status,Test Name,Pressure (Bar),Viscosity,Time of Test,Sampling Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Hopper No,Box No,Requirement,Barrel S.N,Barrel Type,Distance,Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Mean Radius,Extraction Force Type,Extraction Force Rounds,Cartridge Temp,EPVAT Pressure Type,EPVAT Pressure Unit,EPVAT Pressure Rounds,EPVAT Mean Pressure,EPVAT Max Pressure,EPVAT Min Pressure,EPVAT Range Pressure,EPVAT SD Pressure,EPVAT P2 Mean Pressure,EPVAT P2 Max Pressure,EPVAT P2 Min Pressure,EPVAT P2 Range Pressure,EPVAT P2 SD Pressure,EPVAT P2 Pressure Rounds,EPVAT Velocity Rounds,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Room Temp,Sensor 1,Sensor 2,Cyclic Weapon,Cyclic Ammo,Cyclic Val,Cyclic Min,Cyclic Max,Term Hole,Term Steel,Term Alum,Term Vel,Func L1,Func L2,Func L3,Func L4,Att Name,Att Base64,Func Defect Details,Action Time Mean,Action Time Min,Action Time Max,Action Time Range,Action Time SD,Action Time Rounds,Primer Drop Heights,Primer Fire Results,Primer Hbar,Primer SD,Primer All Fire H,Primer No Fire H,Primer Lot,Primer Supplier,Primer Insertion Depth,Propellant Supplier,Propellant Code,Propellant Lot\n';
       await file.writeAsString(headers, mode: FileMode.write, flush: true);
     }
     return file;
@@ -76,7 +78,7 @@ class StorageService {
   Future<void> saveRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
     final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
         ? 'Daily Test'
-        : 'Lot Acceptance Test';
+        : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
     BallisticRecord recordToSave = record.copyWith(module: cleanModule);
 
     // 1. Immediate local persistence (guarantees record is saved even if offline)
@@ -125,15 +127,18 @@ class StorageService {
       final dir = Directory(dirPath);
       if (!await dir.exists()) return [];
 
-      final prefix = cleanModule == 'Lot Acceptance Test' ? 'ballistic_report' : 'daily_test_report';
+      final isComponent = cleanModule == 'Component Test';
       final isDaily = cleanModule == 'Daily Test';
+      final prefix = cleanModule == 'Lot Acceptance Test'
+          ? 'ballistic_report'
+          : (isComponent ? 'component_test_report' : 'daily_test_report');
       final List<BallisticRecord> records = [];
 
       final entities = dir.listSync();
       for (final entity in entities) {
         if (entity is File && entity.path.endsWith('.csv')) {
           final fileName = entity.uri.pathSegments.last;
-          if (fileName.startsWith(prefix) || fileName.startsWith('ballistic_report') || fileName.startsWith('daily_test_report')) {
+          if (fileName.startsWith(prefix) || fileName.startsWith('ballistic_report') || fileName.startsWith('daily_test_report') || fileName.startsWith('component_test_report')) {
             try {
               final lines = await entity.readAsLines();
               for (int i = 1; i < lines.length; i++) {
@@ -143,6 +148,8 @@ class StorageService {
                     final r = BallisticRecord.fromCsvRow(line);
                     if (isDaily) {
                       if (r.module == 'Daily Test') records.add(r);
+                    } else if (isComponent) {
+                      if (r.module == 'Component Test') records.add(r);
                     } else {
                       if (r.module.isEmpty || r.module == 'Lot Acceptance Test') records.add(r);
                     }
@@ -164,8 +171,9 @@ class StorageService {
   Future<List<BallisticRecord>> loadRecords({String module = 'Lot Acceptance Test'}) async {
     final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
         ? 'Daily Test'
-        : 'Lot Acceptance Test';
+        : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
     final bool isDaily = cleanModule == 'Daily Test';
+    final bool isComponent = cleanModule == 'Component Test';
 
     // Ensure Supabase is initialized
     await SupabaseService.ensureInitialized();
@@ -177,6 +185,8 @@ class StorageService {
         final filtered = cloudRecords.where((r) {
           if (isDaily) {
             return r.module == 'Daily Test';
+          } else if (isComponent) {
+            return r.module == 'Component Test';
           } else {
             return r.module.isEmpty || r.module == 'Lot Acceptance Test';
           }
@@ -235,6 +245,8 @@ class StorageService {
       final filteredWeb = webList.where((r) {
         if (isDaily) {
           return r.module == 'Daily Test';
+        } else if (isComponent) {
+          return r.module == 'Component Test';
         } else {
           return r.module.isEmpty || r.module == 'Lot Acceptance Test';
         }
@@ -254,6 +266,8 @@ class StorageService {
             final r = BallisticRecord.fromCsvRow(line);
             if (isDaily) {
               if (r.module == 'Daily Test') records.add(r);
+            } else if (isComponent) {
+              if (r.module == 'Component Test') records.add(r);
             } else {
               if (r.module.isEmpty || r.module == 'Lot Acceptance Test') records.add(r);
             }
@@ -294,7 +308,7 @@ class StorageService {
       return;
     }
     final file = await ensureDailyFileExists(module: module) as File;
-    const headers = 'Timestamp,Operators,Shift,Caliber Specification,Projectile/Lot Number,Quantity Tested,Defects Found,Remarks,Quality Status,Test Name,Pressure (Bar),Viscosity,Time of Test,Sampling Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Hopper No,Box No,Requirement,Barrel S.N,Barrel Type,Distance,Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Mean Radius,Extraction Force Type,Extraction Force Rounds,Cartridge Temp,EPVAT Pressure Type,EPVAT Pressure Unit,EPVAT Pressure Rounds,EPVAT Mean Pressure,EPVAT Max Pressure,EPVAT Min Pressure,EPVAT Range Pressure,EPVAT SD Pressure,EPVAT P2 Mean Pressure,EPVAT P2 Max Pressure,EPVAT P2 Min Pressure,EPVAT P2 Range Pressure,EPVAT P2 SD Pressure,EPVAT P2 Pressure Rounds,EPVAT Velocity Rounds,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Room Temp,Sensor 1,Sensor 2,Cyclic Weapon,Cyclic Ammo,Cyclic Val,Cyclic Min,Cyclic Max,Term Hole,Term Steel,Term Alum,Term Vel,Func L1,Func L2,Func L3,Func L4,Att Name,Att Base64,Func Defect Details,Action Time Mean,Action Time Min,Action Time Max,Action Time Range,Action Time SD,Action Time Rounds,Primer Drop Heights,Primer Fire Results,Primer Hbar,Primer SD,Primer All Fire H,Primer No Fire H\n';
+    const headers = 'Timestamp,Operators,Shift,Caliber Specification,Projectile/Lot Number,Quantity Tested,Defects Found,Remarks,Quality Status,Test Name,Pressure (Bar),Viscosity,Time of Test,Sampling Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Hopper No,Box No,Requirement,Barrel S.N,Barrel Type,Distance,Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Mean Radius,Extraction Force Type,Extraction Force Rounds,Cartridge Temp,EPVAT Pressure Type,EPVAT Pressure Unit,EPVAT Pressure Rounds,EPVAT Mean Pressure,EPVAT Max Pressure,EPVAT Min Pressure,EPVAT Range Pressure,EPVAT SD Pressure,EPVAT P2 Mean Pressure,EPVAT P2 Max Pressure,EPVAT P2 Min Pressure,EPVAT P2 Range Pressure,EPVAT P2 SD Pressure,EPVAT P2 Pressure Rounds,EPVAT Velocity Rounds,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Room Temp,Sensor 1,Sensor 2,Cyclic Weapon,Cyclic Ammo,Cyclic Val,Cyclic Min,Cyclic Max,Term Hole,Term Steel,Term Alum,Term Vel,Func L1,Func L2,Func L3,Func L4,Att Name,Att Base64,Func Defect Details,Action Time Mean,Action Time Min,Action Time Max,Action Time Range,Action Time SD,Action Time Rounds,Primer Drop Heights,Primer Fire Results,Primer Hbar,Primer SD,Primer All Fire H,Primer No Fire H,Primer Lot,Primer Supplier,Primer Insertion Depth,Propellant Supplier,Propellant Code,Propellant Lot\n';
     final buffer = StringBuffer(headers);
     for (var r in records) {
       buffer.write(r.toCsvRow());

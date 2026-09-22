@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
@@ -464,9 +465,8 @@ final Map<String, dynamic> _defaultRules = {
     'EPVAT-B-203',
   ],
   'gp6_serials': [
-    'GP6-Kistler-8801',
-    'GP6-Kistler-8802',
-    'GP6-PCB-9901',
+    'GP2-PCB-9901',
+    'GP2-PCB-9902',
   ],
   'weapons': [
     {'type': 'M4A1 Carbine', 'serial': 'W-9012'},
@@ -476,18 +476,35 @@ final Map<String, dynamic> _defaultRules = {
   ],
   'gp_transducers': {
     'gp1': [
-      'GP1-001 (Kistler 6215)',
-      'GP1-002 (Kistler 6215)',
+      'GP1-001 (PCB 119B)',
+      'GP1-002 (PCB 119B)',
       'GP1-003 (PCB 119B)',
-      'GP1-004 (Kistler 6215)',
     ],
     'gp2': [
-      'GP2-001 (Kistler 6215)',
-      'GP2-002 (Kistler 6215)',
+      'GP2-001 (PCB 119B)',
+      'GP2-002 (PCB 119B)',
       'GP2-003 (PCB 119B)',
-      'GP2-004 (Kistler 6215)',
     ],
   },
+  'primer_suppliers': [
+    'CBC',
+    'UNIS "GINIX"',
+    'S&B',
+    'MD',
+  ],
+  'propellant_suppliers': [
+    'Explosia',
+    'Gold Force',
+    'PB Clermont',
+    'Milan',
+  ],
+  'propellant_codes': [
+    'D073.5',
+    'D073.6',
+    'SP9',
+    'Bofors RP3',
+    'PCL 507',
+  ],
   'primer_sensitivity': {
     'drop_weight_grams': 55.0,
     'instructions': 'Run-Down / Bruceton Primer Sensitivity Test: Drop steel ball onto primed cases at specified heights.',
@@ -802,6 +819,7 @@ class _MainShellState extends State<MainShell> {
   int _activeTabIndex = 0;
   List<BallisticRecord> _records = [];
   List<BallisticRecord> _dailyTestRecords = [];
+  List<BallisticRecord> _componentTestRecords = [];
   bool _isLoading = true;
   String _storagePath = '';
   String _base64Logo = '';
@@ -812,6 +830,12 @@ class _MainShellState extends State<MainShell> {
   String _currentModule = 'Lot Acceptance Test';
   String _selectedEntryCaliber = '5.56x45 SS109';
   String _selectedEntryTestName = 'Waterproof Test';
+
+  List<BallisticRecord> get _activeRecords {
+    if (_currentModule == 'Lot Acceptance Test') return _records;
+    if (_currentModule == 'Component Test') return _componentTestRecords;
+    return _dailyTestRecords;
+  }
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _opEmailController = TextEditingController();
   final TextEditingController _opPasswordController = TextEditingController();
@@ -824,6 +848,9 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _newAccuracyBarrelCtrl = TextEditingController();
   final TextEditingController _newEpvatBarrelCtrl = TextEditingController();
   final TextEditingController _newGP6SerialCtrl = TextEditingController();
+  final TextEditingController _newPrimerSupplierCtrl = TextEditingController();
+  final TextEditingController _newPropellantSupplierCtrl = TextEditingController();
+  final TextEditingController _newPropellantCodeCtrl = TextEditingController();
   final TextEditingController _newWeaponTypeInputCtrl = TextEditingController();
   final TextEditingController _newWeaponSerialInputCtrl = TextEditingController();
   String _selectedAdminWeaponType = 'Pistol';
@@ -1032,6 +1059,9 @@ class _MainShellState extends State<MainShell> {
     _newAccuracyBarrelCtrl.dispose();
     _newEpvatBarrelCtrl.dispose();
     _newGP6SerialCtrl.dispose();
+    _newPrimerSupplierCtrl.dispose();
+    _newPropellantSupplierCtrl.dispose();
+    _newPropellantCodeCtrl.dispose();
     _newWeaponTypeInputCtrl.dispose();
     _newWeaponSerialInputCtrl.dispose();
     
@@ -1469,17 +1499,34 @@ class _MainShellState extends State<MainShell> {
       if (activeRules['submission_alerts_enabled'] == null) {
         activeRules['submission_alerts_enabled'] = true;
       }
+      if (activeRules['primer_suppliers'] == null) {
+        activeRules['primer_suppliers'] = List<String>.from(_defaultRules['primer_suppliers']);
+      } else {
+        activeRules['primer_suppliers'] = List<String>.from(activeRules['primer_suppliers'] as List);
+      }
+      if (activeRules['propellant_suppliers'] == null) {
+        activeRules['propellant_suppliers'] = List<String>.from(_defaultRules['propellant_suppliers']);
+      } else {
+        activeRules['propellant_suppliers'] = List<String>.from(activeRules['propellant_suppliers'] as List);
+      }
+      if (activeRules['propellant_codes'] == null) {
+        activeRules['propellant_codes'] = List<String>.from(_defaultRules['propellant_codes']);
+      } else {
+        activeRules['propellant_codes'] = List<String>.from(activeRules['propellant_codes'] as List);
+      }
 
       // Save rules back to write out any migrated schemas
       await _storageService.saveRules(activeRules);
       
       final recordsList = await _storageService.loadRecords(module: 'Lot Acceptance Test');
       final dailyList = await _storageService.loadRecords(module: 'Daily Test');
+      final componentList = await _storageService.loadRecords(module: 'Component Test');
       final path = await _storageService.getDirectoryPath();
 
       setState(() {
         _records = recordsList;
         _dailyTestRecords = dailyList;
+        _componentTestRecords = componentList;
         _storagePath = path;
         _operators = opsList;
         _adminRules = activeRules;
@@ -1518,6 +1565,8 @@ class _MainShellState extends State<MainShell> {
     setState(() {
       if (_currentModule == 'Lot Acceptance Test') {
         _records = updated;
+      } else if (_currentModule == 'Component Test') {
+        _componentTestRecords = updated;
       } else {
         _dailyTestRecords = updated;
       }
@@ -1729,7 +1778,7 @@ class _MainShellState extends State<MainShell> {
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
           child: Container(
-            width: 490.0,
+            width: math.min(520.0, MediaQuery.of(context).size.width * 0.94),
             padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 36.0),
             decoration: BoxDecoration(
               color: const Color(0xFF162B46),
@@ -1773,13 +1822,16 @@ class _MainShellState extends State<MainShell> {
                     children: [
                       const Icon(Icons.wb_sunny_rounded, color: Color(0xFF38BDF8), size: 16.0),
                       const SizedBox(width: 8.0),
-                      Text(
-                        _getTimeBasedGreeting(),
-                        style: const TextStyle(
-                          fontSize: 13.0,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF38BDF8),
-                          letterSpacing: 0.5,
+                      Flexible(
+                        child: Text(
+                          _getTimeBasedGreeting(),
+                          style: const TextStyle(
+                            fontSize: 13.0,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF38BDF8),
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -2018,6 +2070,14 @@ class _MainShellState extends State<MainShell> {
           r.produced == record.produced &&
           r.defects == record.defects)
         );
+      } else if (_currentModule == 'Component Test') {
+        _componentTestRecords.removeWhere((r) => 
+          (record.id != null && record.id!.isNotEmpty && r.id == record.id) ||
+          (r.timestamp == record.timestamp && 
+          r.lotNumber == record.lotNumber && 
+          r.produced == record.produced &&
+          r.defects == record.defects)
+        );
       } else {
         _dailyTestRecords.removeWhere((r) => 
           (record.id != null && record.id!.isNotEmpty && r.id == record.id) ||
@@ -2030,7 +2090,7 @@ class _MainShellState extends State<MainShell> {
     });
     try {
       await _storageService.deleteRecord(record, module: _currentModule);
-      final recordsToSave = _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords;
+      final recordsToSave = _currentModule == 'Lot Acceptance Test' ? _records : (_currentModule == 'Component Test' ? _componentTestRecords : _dailyTestRecords);
       await _storageService.overwriteRecords(recordsToSave, module: _currentModule);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -2050,6 +2110,8 @@ class _MainShellState extends State<MainShell> {
       setState(() {
         if (_currentModule == 'Lot Acceptance Test') {
           _records = currentRecords;
+        } else if (_currentModule == 'Component Test') {
+          _componentTestRecords = currentRecords;
         } else {
           _dailyTestRecords = currentRecords;
         }
@@ -2068,6 +2130,15 @@ class _MainShellState extends State<MainShell> {
            r.defects == original.defects)
         );
         if (idx != -1) _records[idx] = updated;
+      } else if (_currentModule == 'Component Test') {
+        final idx = _componentTestRecords.indexWhere((r) =>
+          (original.id != null && original.id!.isNotEmpty && r.id == original.id) ||
+          (r.timestamp == original.timestamp &&
+           r.lotNumber == original.lotNumber &&
+           r.produced == original.produced &&
+           r.defects == original.defects)
+        );
+        if (idx != -1) _componentTestRecords[idx] = updated;
       } else {
         final idx = _dailyTestRecords.indexWhere((r) =>
           (original.id != null && original.id!.isNotEmpty && r.id == original.id) ||
@@ -2082,7 +2153,7 @@ class _MainShellState extends State<MainShell> {
 
     try {
       await _storageService.updateRecord(original, updated, module: _currentModule);
-      final recordsToSave = _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords;
+      final recordsToSave = _currentModule == 'Lot Acceptance Test' ? _records : (_currentModule == 'Component Test' ? _componentTestRecords : _dailyTestRecords);
       await _storageService.overwriteRecords(recordsToSave, module: _currentModule);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2108,6 +2179,8 @@ class _MainShellState extends State<MainShell> {
         setState(() {
           if (_currentModule == 'Lot Acceptance Test') {
             _records = currentRecords;
+          } else if (_currentModule == 'Component Test') {
+            _componentTestRecords = currentRecords;
           } else {
             _dailyTestRecords = currentRecords;
           }
@@ -3274,6 +3347,9 @@ class _MainShellState extends State<MainShell> {
     final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
     final epvatBarrels = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
     final accBarrels = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
+    final primerSuppliers = List<String>.from(_adminRules['primer_suppliers'] as List<dynamic>? ?? []);
+    final propellantSuppliers = List<String>.from(_adminRules['propellant_suppliers'] as List<dynamic>? ?? []);
+    final propellantCodes = List<String>.from(_adminRules['propellant_codes'] as List<dynamic>? ?? []);
 
     return Container(
       width: width,
@@ -3530,8 +3606,8 @@ class _MainShellState extends State<MainShell> {
           ),
           const SizedBox(height: 18.0),
 
-          // 2. GP6 SERIAL NUMBERS
-          _buildAssetCategoryHeader('GP6 Serial Numbers (EPVAT Transducers)', Icons.sensors_rounded, const Color(0xFF10B981)),
+          // 2. GP2 (PORT) TRANSDUCER SERIAL NUMBERS
+          _buildAssetCategoryHeader('GP2 (Port) Transducer Serial Numbers (EPVAT)', Icons.sensors_rounded, const Color(0xFF10B981)),
           const SizedBox(height: 8.0),
           Row(
             children: [
@@ -3540,7 +3616,7 @@ class _MainShellState extends State<MainShell> {
                   controller: _newGP6SerialCtrl,
                   style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
                   decoration: InputDecoration(
-                    hintText: 'GP6 Serial (e.g., GP6-Kistler-8801)',
+                    hintText: 'GP2 Serial (e.g., GP2-PCB-9901)',
                     hintStyle: const TextStyle(color: Color(0xFF64748B)),
                     filled: true,
                     fillColor: const Color(0xFF2C415E),
@@ -3585,7 +3661,7 @@ class _MainShellState extends State<MainShell> {
                 'label': sn,
                 'serial': sn,
                 'rounds': rounds,
-                'category': 'GP6',
+                'category': 'GP2 (Port)',
               };
             }).toList(),
             accentColor: const Color(0xFF10B981),
@@ -3728,6 +3804,186 @@ class _MainShellState extends State<MainShell> {
             onDelete: (item) async {
               accBarrels.remove(item['serial']);
               _adminRules['accuracy_barrels'] = accBarrels;
+              await _storageService.saveRules(_adminRules);
+              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+            },
+          ),
+          const SizedBox(height: 18.0),
+
+          // 5. PRIMER SUPPLIERS
+          _buildAssetCategoryHeader('Primer Suppliers (Component & Lot Acceptance Tests)', Icons.grain_rounded, const Color(0xFFEC4899)),
+          const SizedBox(height: 8.0),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newPrimerSupplierCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                  decoration: InputDecoration(
+                    hintText: 'Supplier Name (e.g., CBC, UNIS "GINIX", S&B, MD)',
+                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                    filled: true,
+                    fillColor: const Color(0xFF2C415E),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFEC4899))),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              ElevatedButton(
+                onPressed: () async {
+                  final sup = _newPrimerSupplierCtrl.text.trim();
+                  if (sup.isEmpty) return;
+                  final list = List<String>.from(_adminRules['primer_suppliers'] as List<dynamic>? ?? []);
+                  if (!list.contains(sup)) {
+                    list.add(sup);
+                    _adminRules['primer_suppliers'] = list;
+                    await _storageService.saveRules(_adminRules);
+                    setState(() {
+                      _adminRules = Map<String, dynamic>.from(_adminRules);
+                      _newPrimerSupplierCtrl.clear();
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEC4899),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                ),
+                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8.0),
+          _buildAssetItemList(
+            items: primerSuppliers.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Primer Supplier'}).toList(),
+            accentColor: const Color(0xFFEC4899),
+            onDelete: (item) async {
+              primerSuppliers.remove(item['serial']);
+              _adminRules['primer_suppliers'] = primerSuppliers;
+              await _storageService.saveRules(_adminRules);
+              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+            },
+          ),
+          const SizedBox(height: 18.0),
+
+          // 6. PROPELLANT SUPPLIERS
+          _buildAssetCategoryHeader('Propellant Suppliers (Component Test)', Icons.local_fire_department_rounded, const Color(0xFFF97316)),
+          const SizedBox(height: 8.0),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newPropellantSupplierCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                  decoration: InputDecoration(
+                    hintText: 'Propellant Supplier (e.g., Explosia, Gold Force, PB Clermont, Milan)',
+                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                    filled: true,
+                    fillColor: const Color(0xFF2C415E),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              ElevatedButton(
+                onPressed: () async {
+                  final sup = _newPropellantSupplierCtrl.text.trim();
+                  if (sup.isEmpty) return;
+                  final list = List<String>.from(_adminRules['propellant_suppliers'] as List<dynamic>? ?? []);
+                  if (!list.contains(sup)) {
+                    list.add(sup);
+                    _adminRules['propellant_suppliers'] = list;
+                    await _storageService.saveRules(_adminRules);
+                    setState(() {
+                      _adminRules = Map<String, dynamic>.from(_adminRules);
+                      _newPropellantSupplierCtrl.clear();
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF97316),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                ),
+                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8.0),
+          _buildAssetItemList(
+            items: propellantSuppliers.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Propellant Supplier'}).toList(),
+            accentColor: const Color(0xFFF97316),
+            onDelete: (item) async {
+              propellantSuppliers.remove(item['serial']);
+              _adminRules['propellant_suppliers'] = propellantSuppliers;
+              await _storageService.saveRules(_adminRules);
+              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+            },
+          ),
+          const SizedBox(height: 18.0),
+
+          // 7. PROPELLANT CODES
+          _buildAssetCategoryHeader('Propellant Codes (Component Test)', Icons.qr_code_rounded, const Color(0xFFA855F7)),
+          const SizedBox(height: 8.0),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newPropellantCodeCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                  decoration: InputDecoration(
+                    hintText: 'Propellant Code (e.g., D-073.4, S-060, P-30, PB-540)',
+                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                    filled: true,
+                    fillColor: const Color(0xFF2C415E),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFA855F7))),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              ElevatedButton(
+                onPressed: () async {
+                  final code = _newPropellantCodeCtrl.text.trim();
+                  if (code.isEmpty) return;
+                  final list = List<String>.from(_adminRules['propellant_codes'] as List<dynamic>? ?? []);
+                  if (!list.contains(code)) {
+                    list.add(code);
+                    _adminRules['propellant_codes'] = list;
+                    await _storageService.saveRules(_adminRules);
+                    setState(() {
+                      _adminRules = Map<String, dynamic>.from(_adminRules);
+                      _newPropellantCodeCtrl.clear();
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFA855F7),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                ),
+                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8.0),
+          _buildAssetItemList(
+            items: propellantCodes.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Propellant Code'}).toList(),
+            accentColor: const Color(0xFFA855F7),
+            onDelete: (item) async {
+              propellantCodes.remove(item['serial']);
+              _adminRules['propellant_codes'] = propellantCodes;
               await _storageService.saveRules(_adminRules);
               setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
             },
@@ -4768,8 +5024,8 @@ class _MainShellState extends State<MainShell> {
                     style: const TextStyle(color: Colors.white, fontSize: 13.0, fontFamily: 'JetBrainsMono'),
                     decoration: InputDecoration(
                       hintText: _ruleSelectedGPType == 'GP1'
-                          ? 'Enter GP1 Model / S.N. (e.g., GP1-005, Kistler 6215 SN#4120)'
-                          : 'Enter GP2 Model / S.N. (e.g., GP2-005, Kistler 6215 SN#4121)',
+                          ? 'Enter GP1 Model / S.N. (e.g., GP1-005, PCB 119B SN#4120)'
+                          : 'Enter GP2 Model / S.N. (e.g., GP2-005, PCB 119B SN#4121)',
                       hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12.0),
                       filled: true,
                       fillColor: Colors.black.withOpacity(0.2),
@@ -5721,7 +5977,7 @@ class _MainShellState extends State<MainShell> {
     final List<Widget> tabs = [
       DashboardTab(
         currentModule: _currentModule,
-        records: _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords,
+        records: _activeRecords,
         onGoToLogs: () => setState(() => _activeTabIndex = 2),
         onClearAllRecords: _handleClearDashboardRecords,
       ),
@@ -5729,17 +5985,18 @@ class _MainShellState extends State<MainShell> {
         currentModule: _currentModule,
         onSubmit: _handleNewRecord,
         loggedInUser: _currentUserEmail,
-        records: _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords,
+        records: _activeRecords,
         userRole: _currentUserRole?.label ?? 'Operator',
         initialCaliber: _selectedEntryCaliber,
         initialTestName: _selectedEntryTestName,
         onCaliberChanged: (val) => setState(() => _selectedEntryCaliber = val),
         onTestNameChanged: (val) => setState(() => _selectedEntryTestName = val),
         adminRules: _adminRules,
+        componentPrimerRecords: _componentTestRecords.where((r) => r.testName == 'Primer Sensitivity Test').toList(),
       ),
       HistoryTab(
         currentModule: _currentModule,
-        records: _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords,
+        records: _activeRecords,
         onOpenFolder: _openFolder,
         isAdmin: _currentUserRole == UserRole.admin,
         canEditRecords: _hasPermission('can_edit_records'),
@@ -5753,14 +6010,14 @@ class _MainShellState extends State<MainShell> {
       ),
       AnalysisRecommendationTab(
         currentModule: _currentModule,
-        records: _currentModule == 'Lot Acceptance Test' ? _records : _dailyTestRecords,
+        records: _activeRecords,
         adminRules: _adminRules,
       ),
       _buildControlPanelTab(),
     ];
 
     Widget mainContent;
-    if (_currentModule == 'Lot Acceptance Test' || _currentModule == 'Daily Test') {
+    if (_currentModule == 'Lot Acceptance Test' || _currentModule == 'Daily Test' || _currentModule == 'Component Test') {
       mainContent = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -5768,8 +6025,6 @@ class _MainShellState extends State<MainShell> {
           Expanded(child: tabs[_activeTabIndex]),
         ],
       );
-    } else if (_currentModule == 'Component Test') {
-      mainContent = _buildModulePlaceholder('Component Test', Icons.extension_outlined, const Color(0xFF3B82F6));
     } else if (_currentModule == 'Equipment Report') {
       mainContent = _buildModulePlaceholder('Equipment Report', Icons.construction_outlined, const Color(0xFFF59E0B));
     } else {
@@ -5984,7 +6239,7 @@ class _MainShellState extends State<MainShell> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'v1.4.1',
+                              'v1.4.3',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -6223,11 +6478,11 @@ class _MainShellState extends State<MainShell> {
             ),
             body: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: (_currentModule == 'Lot Acceptance Test' || _currentModule == 'Daily Test')
+              child: (_currentModule == 'Lot Acceptance Test' || _currentModule == 'Daily Test' || _currentModule == 'Component Test')
                   ? tabs[_activeTabIndex]
                   : mainContent,
             ),
-            bottomNavigationBar: (_currentModule == 'Lot Acceptance Test' || _currentModule == 'Daily Test')
+            bottomNavigationBar: (_currentModule == 'Lot Acceptance Test' || _currentModule == 'Daily Test' || _currentModule == 'Component Test')
                 ? BottomNavigationBar(
                     currentIndex: _activeTabIndex,
                     onTap: (index) => setState(() => _activeTabIndex = index),

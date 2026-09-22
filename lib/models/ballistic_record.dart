@@ -127,6 +127,14 @@ class BallisticRecord {
   final String gp6Serial;
   final String userRole;
   final String module;
+
+  // Primer & Propellant Component / Acceptance Tracking
+  final String primerLot;
+  final String primerSupplier;
+  final String primerInsertionDepth;
+  final String propellantSupplier;
+  final String propellantCode;
+  final String propellantLot;
  
   BallisticRecord({
     this.id,
@@ -231,6 +239,12 @@ class BallisticRecord {
     this.gp6Serial = '',
     this.userRole = 'Operator',
     this.module = 'Lot Acceptance Test',
+    this.primerLot = '',
+    this.primerSupplier = '',
+    this.primerInsertionDepth = '',
+    this.propellantSupplier = '',
+    this.propellantCode = '',
+    this.propellantLot = '',
   });
 
   // Backward compatibility getter
@@ -326,8 +340,14 @@ class BallisticRecord {
     final cleanGp6Serial = gp6Serial.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanUserRole = userRole.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanModule = module.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPrimerLot = primerLot.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPrimerSupplier = primerSupplier.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPrimerDepth = primerInsertionDepth.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPropSupplier = propellantSupplier.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPropCode = propellantCode.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPropLot = propellantLot.replaceAll('"', '""').replaceAll(',', ' ');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -484,6 +504,12 @@ class BallisticRecord {
     final String userRole = fields.length > 98 ? fields[98].replaceAll('"', '').trim() : 'Operator';
     final String module = fields.length > 99 ? fields[99].replaceAll('"', '').trim() : 'Lot Acceptance Test';
     final String accLargestDistance = fields.length > 100 ? fields[100].replaceAll('"', '').trim() : '';
+    final String primerLot = fields.length > 101 ? fields[101].replaceAll('"', '').trim() : '';
+    final String primerSupplier = fields.length > 102 ? fields[102].replaceAll('"', '').trim() : '';
+    final String primerInsertionDepth = fields.length > 103 ? fields[103].replaceAll('"', '').trim() : '';
+    final String propellantSupplier = fields.length > 104 ? fields[104].replaceAll('"', '').trim() : '';
+    final String propellantCode = fields.length > 105 ? fields[105].replaceAll('"', '').trim() : '';
+    final String propellantLot = fields.length > 106 ? fields[106].replaceAll('"', '').trim() : '';
  
     return BallisticRecord(
       timestamp: timestamp,
@@ -587,6 +613,12 @@ class BallisticRecord {
       gp6Serial: gp6Serial,
       userRole: userRole,
       module: module.isNotEmpty ? module : 'Lot Acceptance Test',
+      primerLot: primerLot,
+      primerSupplier: primerSupplier,
+      primerInsertionDepth: primerInsertionDepth,
+      propellantSupplier: propellantSupplier,
+      propellantCode: propellantCode,
+      propellantLot: propellantLot,
     );
   }
 
@@ -693,6 +725,12 @@ class BallisticRecord {
       'gp6_serial': gp6Serial,
       'user_role': userRole,
       'module': module,
+      'primer_lot': primerLot,
+      'primer_supplier': primerSupplier,
+      'primer_insertion_depth': primerInsertionDepth,
+      'propellant_supplier': propellantSupplier,
+      'propellant_code': propellantCode,
+      'propellant_lot': propellantLot,
     };
     if (id != null && id!.isNotEmpty) {
       map['id'] = id;
@@ -817,6 +855,12 @@ class BallisticRecord {
       gp6Serial: toStr(map['gp6_serial']),
       userRole: toStr(map['user_role']).isEmpty ? 'Operator' : toStr(map['user_role']),
       module: toStr(map['module']).isEmpty ? 'Lot Acceptance Test' : toStr(map['module']),
+      primerLot: toStr(map['primer_lot']),
+      primerSupplier: toStr(map['primer_supplier']),
+      primerInsertionDepth: toStr(map['primer_insertion_depth']),
+      propellantSupplier: toStr(map['propellant_supplier']),
+      propellantCode: toStr(map['propellant_code']),
+      propellantLot: toStr(map['propellant_lot']),
     );
   }
 
@@ -924,6 +968,12 @@ class BallisticRecord {
     String? gp6Serial,
     String? userRole,
     String? module,
+    String? primerLot,
+    String? primerSupplier,
+    String? primerInsertionDepth,
+    String? propellantSupplier,
+    String? propellantCode,
+    String? propellantLot,
   }) {
     return BallisticRecord(
       id: id ?? this.id,
@@ -1028,6 +1078,12 @@ class BallisticRecord {
       gp6Serial: gp6Serial ?? this.gp6Serial,
       userRole: userRole ?? this.userRole,
       module: module ?? this.module,
+      primerLot: primerLot ?? this.primerLot,
+      primerSupplier: primerSupplier ?? this.primerSupplier,
+      primerInsertionDepth: primerInsertionDepth ?? this.primerInsertionDepth,
+      propellantSupplier: propellantSupplier ?? this.propellantSupplier,
+      propellantCode: propellantCode ?? this.propellantCode,
+      propellantLot: propellantLot ?? this.propellantLot,
     );
   }
 

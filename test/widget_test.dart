@@ -1,12 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ompc_ballistic_aerodata/main.dart';
 import 'package:ompc_ballistic_aerodata/screens/entry_tab.dart';
 import 'package:ompc_ballistic_aerodata/screens/dashboard_tab.dart';
 import 'package:ompc_ballistic_aerodata/models/ballistic_record.dart';
 
 void main() {
+  setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+
+    const MethodChannel appLinksChannel = MethodChannel('com.llfbandit.app_links/messages');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      appLinksChannel,
+      (MethodCall methodCall) async => null,
+    );
+
+    const EventChannel appLinksEvents = EventChannel('com.llfbandit.app_links/events');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockStreamHandler(
+      appLinksEvents,
+      MockStreamHandler.inline(
+        onListen: (args, sink) {},
+        onCancel: (args) {},
+      ),
+    );
+  });
+
   testWidgets('App initialization smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const OmpcBallisticAeroDataApp());
     expect(find.byType(CircularProgressIndicator), findsOneWidget);

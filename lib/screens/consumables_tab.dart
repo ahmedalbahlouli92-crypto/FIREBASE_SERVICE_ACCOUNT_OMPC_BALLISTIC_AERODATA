@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
+import '../services/attachment_helper.dart';
+import '../models/default_consumables.dart';
 
 class ConsumablesTab extends StatefulWidget {
   final String loggedInUser;
@@ -29,14 +31,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
 
   static const List<String> _categories = [
     'All',
-    'Primers',
-    'Propellants & Powders',
-    'Projectiles & Bullets',
-    'Cartridge Cases',
-    'EPVAT Transducers & Consumables',
-    'Targets & Range Supplies',
-    'Packaging & Crates',
-    'Other Supplies',
+    'Shooting System',
+    'Closed Vessel and Calibration Unit',
+    'Primer Equipment',
+    'Residual Stress Items',
+    'Weapon Cleaning Items',
+    'Steyr Rifle Spare Parts',
+    'M16 & M4 Spare Parts',
   ];
 
   static const List<String> _units = [
@@ -57,11 +58,40 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
 
   bool get _isAdmin => widget.userRole.toLowerCase() == 'admin';
 
+  bool _isLegacyData(List<Map<String, dynamic>> list) {
+    if (list.isEmpty) return true;
+    return list.any((it) {
+      final cat = it['category']?.toString() ?? '';
+      final sup = it['supplier']?.toString().toLowerCase() ?? '';
+      return cat == 'Primers' ||
+          cat == 'Propellants & Powders' ||
+          cat == 'Projectiles & Bullets' ||
+          cat == 'Cartridge Cases' ||
+          cat == 'EPVAT Transducers & Consumables' ||
+          cat == 'Targets & Range Supplies' ||
+          cat == 'Packaging & Crates' ||
+          cat == 'Other Supplies' ||
+          sup.contains('kistler');
+    });
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       // 1. Load local cache first
       final local = await _storageService.loadConsumables();
+      if (_isLegacyData(local)) {
+        final fresh = _getDefaultInitialItems();
+        if (mounted) {
+          setState(() {
+            _items = fresh;
+            _isLoading = false;
+          });
+        }
+        await _saveData();
+        return;
+      }
+
       if (local.isNotEmpty && mounted) {
         setState(() {
           _items = local;
@@ -72,13 +102,21 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       // 2. Fetch from Supabase Cloud
       final cloud = await SupabaseService.fetchConsumablesFromCloud();
       if (cloud != null && mounted) {
-        setState(() {
-          _items = cloud;
-          _isLoading = false;
-        });
-        await _storageService.saveConsumables(cloud);
+        if (_isLegacyData(cloud)) {
+          final fresh = _getDefaultInitialItems();
+          setState(() {
+            _items = fresh;
+            _isLoading = false;
+          });
+          await _saveData();
+        } else {
+          setState(() {
+            _items = cloud;
+            _isLoading = false;
+          });
+          await _storageService.saveConsumables(cloud);
+        }
       } else if (local.isEmpty && mounted) {
-        // Initialize default consumables if completely empty
         _items = _getDefaultInitialItems();
         await _saveData();
       }
@@ -90,119 +128,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   }
 
   List<Map<String, dynamic>> _getDefaultInitialItems() {
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    return [
-      {
-        'id': 'cons_1',
-        'name': 'Boxer Primers 5.56mm Small Rifle',
-        'serial': 'PR-556-2026-A',
-        'category': 'Primers',
-        'quantity': 25000,
-        'minSafeThreshold': 5000,
-        'unit': 'pcs',
-        'supplier': 'OMPC Ballistics Plant 1',
-        'location': 'Ammunition Vault A-02',
-        'imageBase64': '',
-        'history': [
-          {
-            'type': 'RECEIVED',
-            'quantity': 25000,
-            'date': now,
-            'user': 'System',
-            'purpose': 'Initial Stock Allocation',
-            'remaining': 25000,
-          }
-        ]
-      },
-      {
-        'id': 'cons_2',
-        'name': 'Smokeless Propellant WC844 (5.56mm)',
-        'serial': 'POW-WC844-LOT88',
-        'category': 'Propellants & Powders',
-        'quantity': 450,
-        'minSafeThreshold': 80,
-        'unit': 'kg',
-        'supplier': 'Standard Nitrochem Corp',
-        'location': 'Bunker 4 - Hazardous Material',
-        'imageBase64': '',
-        'history': [
-          {
-            'type': 'RECEIVED',
-            'quantity': 450,
-            'date': now,
-            'user': 'System',
-            'purpose': 'Initial Stock Allocation',
-            'remaining': 450,
-          }
-        ]
-      },
-      {
-        'id': 'cons_3',
-        'name': 'FMJ Projectiles 55gr M193',
-        'serial': 'BUL-M193-55G-01',
-        'category': 'Projectiles & Bullets',
-        'quantity': 40000,
-        'minSafeThreshold': 6000,
-        'unit': 'pcs',
-        'supplier': 'Precision Metallurgy Div',
-        'location': 'Bay 12 Shelf C',
-        'imageBase64': '',
-        'history': [
-          {
-            'type': 'RECEIVED',
-            'quantity': 40000,
-            'date': now,
-            'user': 'System',
-            'purpose': 'Initial Stock Allocation',
-            'remaining': 40000,
-          }
-        ]
-      },
-      {
-        'id': 'cons_4',
-        'name': 'EPVAT Copper Crusher Gauges (P1)',
-        'serial': 'EPV-CRUSH-P1-26',
-        'category': 'EPVAT Transducers & Consumables',
-        'quantity': 350,
-        'minSafeThreshold': 100,
-        'unit': 'pcs',
-        'supplier': 'Kistler Instruments',
-        'location': 'Metrology Lab Cabinet 2',
-        'imageBase64': '',
-        'history': [
-          {
-            'type': 'RECEIVED',
-            'quantity': 350,
-            'date': now,
-            'user': 'System',
-            'purpose': 'Calibration Stock Allocation',
-            'remaining': 350,
-          }
-        ]
-      },
-      {
-        'id': 'cons_5',
-        'name': 'Standard 25m EPVAT Paper Targets',
-        'serial': 'TGT-25M-OMPC',
-        'category': 'Targets & Range Supplies',
-        'quantity': 1200,
-        'minSafeThreshold': 200,
-        'unit': 'pcs',
-        'supplier': 'OMPC Logistics Depot',
-        'location': 'Shooting Tunnel Storage',
-        'imageBase64': '',
-        'history': [
-          {
-            'type': 'RECEIVED',
-            'quantity': 1200,
-            'date': now,
-            'user': 'System',
-            'purpose': 'Range Readiness Stock',
-            'remaining': 1200,
-          }
-        ]
-      },
-    ];
+    return getDefaultConsumablesCatalog();
   }
 
   Future<void> _saveData() async {
@@ -1391,10 +1317,12 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   void _openEditItemDialog(Map<String, dynamic> item) {
     final nameCtrl = TextEditingController(text: item['name'] ?? '');
     final serialCtrl = TextEditingController(text: item['serial'] ?? '');
+    final quantityCtrl = TextEditingController(text: '${item['quantity'] ?? 0}');
     final minSafeCtrl = TextEditingController(text: '${item['minSafeThreshold'] ?? 0}');
     final supplierCtrl = TextEditingController(text: item['supplier'] ?? '');
     final locationCtrl = TextEditingController(text: item['location'] ?? '');
-    String category = item['category'] ?? 'Primers';
+    String currentImageBase64 = (item['imageBase64'] ?? '') as String;
+    String category = item['category'] ?? _categories.firstWhere((c) => c != 'All', orElse: () => 'Shooting System');
     String unit = item['unit'] ?? 'pcs';
 
     showDialog(
@@ -1405,7 +1333,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
           title: const Text('Edit Consumable Item', style: TextStyle(color: Colors.white, fontSize: 16.0)),
           content: SizedBox(
-            width: 450.0,
+            width: 480.0,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1416,10 +1344,50 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     decoration: const InputDecoration(labelText: 'Item Name', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
                   ),
                   const SizedBox(height: 10.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: serialCtrl,
+                          style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                          decoration: const InputDecoration(labelText: 'Serial / SKU', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0E223D),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _categories.contains(category) ? category : _categories.firstWhere((c) => c != 'All'),
+                              dropdownColor: const Color(0xFF1C3351),
+                              style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                              isExpanded: true,
+                              items: _categories.where((c) => c != 'All').map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                              onChanged: (v) {
+                                if (v != null) setDlgState(() => category = v);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10.0),
                   TextField(
-                    controller: serialCtrl,
+                    controller: quantityCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                    decoration: const InputDecoration(labelText: 'Serial / SKU', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
+                    decoration: InputDecoration(
+                      labelText: 'Quantity in Stock ($unit)',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                      suffixIcon: const Icon(Icons.inventory_2_outlined, color: Color(0xFF06B6D4), size: 18),
+                    ),
                   ),
                   const SizedBox(height: 10.0),
                   TextField(
@@ -1440,6 +1408,88 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
                     decoration: const InputDecoration(labelText: 'Location', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
                   ),
+                  const SizedBox(height: 14.0),
+                  // Picture Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0E223D),
+                      borderRadius: BorderRadius.circular(8.0),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Item Picture', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                              ),
+                              child: currentImageBase64.isNotEmpty
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(7.0),
+                                      child: Image.memory(
+                                        base64Decode(currentImageBase64),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const Icon(Icons.broken_image_outlined, color: Colors.orange, size: 28),
+                                      ),
+                                    )
+                                  : const Icon(Icons.image_not_supported_outlined, color: Color(0xFF64748B), size: 28),
+                            ),
+                            const SizedBox(width: 14.0),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF0284C7),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    icon: const Icon(Icons.photo_camera_outlined, size: 16, color: Colors.white),
+                                    label: Text(
+                                      currentImageBase64.isNotEmpty ? 'Change Picture' : 'Upload Picture',
+                                      style: const TextStyle(fontSize: 12.0, color: Colors.white),
+                                    ),
+                                    onPressed: () async {
+                                      final res = await getAttachmentHelper().pickFileAsBase64(accept: 'image/*');
+                                      if (res != null && res['data'] != null) {
+                                        setDlgState(() {
+                                          currentImageBase64 = res['data']!;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                  if (currentImageBase64.isNotEmpty) ...[
+                                    const SizedBox(height: 6.0),
+                                    TextButton.icon(
+                                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                                      icon: const Icon(Icons.delete_outline, size: 14, color: Colors.redAccent),
+                                      label: const Text('Remove Picture', style: TextStyle(fontSize: 11.5, color: Colors.redAccent)),
+                                      onPressed: () {
+                                        setDlgState(() {
+                                          currentImageBase64 = '';
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1452,12 +1502,31 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF06B6D4)),
               onPressed: () async {
+                final oldQty = num.tryParse('${item['quantity'] ?? 0}') ?? 0;
+                final newQty = num.tryParse(quantityCtrl.text.trim()) ?? oldQty;
+
                 setState(() {
                   item['name'] = nameCtrl.text.trim();
                   item['serial'] = serialCtrl.text.trim();
+                  item['category'] = category;
+                  item['quantity'] = newQty;
+                  item['imageBase64'] = currentImageBase64;
                   item['minSafeThreshold'] = num.tryParse(minSafeCtrl.text.trim()) ?? item['minSafeThreshold'];
                   item['supplier'] = supplierCtrl.text.trim();
                   item['location'] = locationCtrl.text.trim();
+
+                  if (newQty != oldQty) {
+                    final historyList = List<Map<String, dynamic>>.from(item['history'] ?? []);
+                    historyList.insert(0, {
+                      'type': newQty > oldQty ? 'RECEIVED' : 'DISPENSED',
+                      'quantity': (newQty - oldQty).abs(),
+                      'date': DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()),
+                      'user': widget.loggedInUser,
+                      'purpose': 'Admin stock adjustment',
+                      'remaining': newQty,
+                    });
+                    item['history'] = historyList;
+                  }
                 });
                 await _saveData();
                 Navigator.pop(ctx);

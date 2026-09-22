@@ -69,6 +69,10 @@ class ReportGenerator {
       return '${r.cyclicRateValue} RPM (${r.cyclicRateWeaponType})';
     } else if (r.testName == 'Terminal Effect Test') {
       return 'Dist: ${r.velocityDistance}m, Hole: ${r.terminalHoleDiameter}';
+    } else if (r.testName == 'Primer Sensitivity Test') {
+      return 'Lot: ${r.primerLot.isNotEmpty ? r.primerLot : r.lotNo}, Sup: ${r.primerSupplier}, H̄: ${r.primerHbar} cm, SD: ${r.primerSD} cm';
+    } else if (r.testName == 'Propellant Test') {
+      return 'Lot: ${r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo}, Sup: ${r.propellantSupplier}, Code: ${r.propellantCode}, P1: ${r.epvatMeanPressure} ${r.epvatPressureUnit}, Vel: ${r.velMean} m/s';
     }
     return r.notes;
   }
@@ -156,6 +160,31 @@ class ReportGenerator {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.cyclicRateWeaponType, r.cartridgeTemp, r.status, r.produced,
           r.functionLevel1, r.functionLevel2, r.functionLevel3, r.functionLevel4, r.defects, r.notes
+        ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
+        buffer.writeln(row);
+      }
+    } else if (testName == 'Primer Sensitivity Test') {
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Primer Lot,Primer Supplier,Insertion Depth (mm),Hbar (cm),SD (cm),All Fire H (cm),No Fire H (cm),Drop Heights,Fire Results,Remarks');
+      for (var r in records) {
+        final row = [
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
+          r.primerLot, r.primerSupplier, r.primerInsertionDepth,
+          r.primerHbar, r.primerSD, r.primerAllFireH, r.primerNoFireH,
+          r.primerDropHeights, r.primerFireResults, r.notes
+        ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
+        buffer.writeln(row);
+      }
+    } else if (testName == 'Propellant Test') {
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Propellant Lot,Propellant Supplier,Propellant Code,Barrel S.N.,Distance (m),Cartridge Temp,Pressure Type,Pressure Unit,Mean P1,Max P1,Min P1,Range P1,SD P1,Mean P2,Max P2,Min P2,Range P2,SD P2,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,P1 Rounds,P2 Rounds,Vel Rounds,Remarks');
+      for (var r in records) {
+        final row = [
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
+          r.propellantLot, r.propellantSupplier, r.propellantCode,
+          r.barrelSN, r.velocityDistance, r.cartridgeTemp, r.epvatPressureType, r.epvatPressureUnit,
+          r.epvatMeanPressure, r.epvatMaxPressure, r.epvatMinPressure, r.epvatRangePressure, r.epvatSDPressure,
+          r.epvatP2MeanPressure, r.epvatP2MaxPressure, r.epvatP2MinPressure, r.epvatP2RangePressure, r.epvatP2SDPressure,
+          r.velMean, r.velMin, r.velMax, r.velRange, r.velSD,
+          r.epvatPressureRounds, r.epvatP2PressureRounds, r.epvatVelRounds, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -270,7 +299,6 @@ class ReportGenerator {
   static String generateHtml(List<BallisticRecord> records, String testName, String moduleName, {String base64Logo = '', Map<String, dynamic> adminRules = const {}}) {
     final now = DateFormat('M/d/yyyy').format(DateTime.now());
     final totalQty = records.fold<int>(0, (sum, r) => sum + r.produced);
-    final totalDefects = records.fold<int>(0, (sum, r) => sum + r.defects);
     final logoHtml = base64Logo.isNotEmpty 
         ? '<img src="data:image/png;base64,$base64Logo" style="height: 85px; width: auto; object-fit: contain;" />' 
         : '';
@@ -300,7 +328,7 @@ class ReportGenerator {
     final title = testName == 'All' ? 'Combined Tests' : testName;
 
     String epvatCombinedSection = '';
-    if (testName == 'EPVAT test') {
+    if (testName == 'EPVAT test' || testName == 'Propellant Test') {
       epvatCombinedSection = _buildEpvatCombinedSectionHtml(
         records: records,
         adminRules: adminRules,
@@ -392,7 +420,6 @@ class ReportGenerator {
 
     final pressure = records.isNotEmpty ? (records[0].pressureBar.isEmpty ? '' : '${records[0].pressureBar} bar') : '';
     final viscosity = records.isNotEmpty ? formatViscosity(records[0].viscosity) : '';
-    final testTime = records.isNotEmpty ? records[0].testTime : '';
     final samplingLocation = records.isNotEmpty ? records[0].samplingLocation : '';
     final batchResult = records.isNotEmpty ? records[0].status : 'N/A';
 
@@ -525,6 +552,40 @@ class ReportGenerator {
       terminalRows.write('<td style="font-weight: bold; color: #475569;">Distance:</td>');
       terminalRows.write('<td>${records.isNotEmpty && records[0].velocityDistance.isNotEmpty ? '${records[0].velocityDistance} m' : ''}</td>');
       terminalRows.write('</tr>');
+    }
+
+    final primerRows = StringBuffer();
+    if (testName == 'Primer Sensitivity Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      primerRows.write('<tr>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Primer Lot:</td>');
+      primerRows.write('<td>${r0 != null && r0.primerLot.isNotEmpty ? r0.primerLot : (r0?.lotNo ?? '')}</td>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Primer Supplier:</td>');
+      primerRows.write('<td>${r0?.primerSupplier ?? ''}</td>');
+      primerRows.write('</tr>');
+      primerRows.write('<tr>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Avg Insertion Depth:</td>');
+      primerRows.write('<td>${r0 != null && r0.primerInsertionDepth.isNotEmpty ? '${r0.primerInsertionDepth} mm' : ''}</td>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Mean Height (H̄):</td>');
+      primerRows.write('<td>${r0 != null && r0.primerHbar.isNotEmpty ? '${r0.primerHbar} cm' : ''}</td>');
+      primerRows.write('</tr>');
+    }
+
+    final propellantRows = StringBuffer();
+    if (testName == 'Propellant Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      propellantRows.write('<tr>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Propellant Lot:</td>');
+      propellantRows.write('<td>${r0 != null && r0.propellantLot.isNotEmpty ? r0.propellantLot : (r0?.lotNo ?? '')}</td>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Propellant Supplier:</td>');
+      propellantRows.write('<td>${r0?.propellantSupplier ?? ''}</td>');
+      propellantRows.write('</tr>');
+      propellantRows.write('<tr>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Propellant Code:</td>');
+      propellantRows.write('<td>${r0?.propellantCode ?? ''}</td>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Barrel S.N:</td>');
+      propellantRows.write('<td>${r0?.barrelSN ?? ''}</td>');
+      propellantRows.write('</tr>');
     }
 
     final buffer = StringBuffer();
@@ -735,9 +796,11 @@ class ReportGenerator {
       ${testName == 'Waterproof Test' ? waterproofRows.toString() : ''}
       ${testName == 'Residual Stress Test' ? residualStressRows.toString() : ''}
       ${testName == 'Accuracy Test' ? accuracyRows.toString() : ''}
-      ${testName == 'EPVAT test' ? epvatRows.toString() : ''}
+      ${testName == 'EPVAT test' || testName == 'Propellant Test' ? epvatRows.toString() : ''}
       ${testName == 'Firing Rate Cycle Test' ? cyclicRows.toString() : ''}
       ${testName == 'Terminal Effect Test' ? terminalRows.toString() : ''}
+      ${testName == 'Primer Sensitivity Test' ? primerRows.toString() : ''}
+      ${testName == 'Propellant Test' ? propellantRows.toString() : ''}
     </table>
   </div>
 
@@ -762,7 +825,7 @@ class ReportGenerator {
         <th>Head Splits (Min/Maj)</th>
         <th>Total Splits</th>
       ''');
-    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test') {
+    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test' || testName == 'Propellant Test') {
       buffer.writeln('''
         <th>Coordinate / Parameter</th>
         <th>Mean</th>
@@ -770,6 +833,14 @@ class ReportGenerator {
         <th>Min</th>
         <th>Range</th>
         <th>SD</th>
+      ''');
+    } else if (testName == 'Primer Sensitivity Test') {
+      buffer.writeln('''
+        <th>H̄ (Mean Height)</th>
+        <th>SD (Standard Deviation)</th>
+        <th>All Fire Height (H̄ + 5S)</th>
+        <th>No Fire Height (H̄ - 2S)</th>
+        <th>Remarks</th>
       ''');
     } else if (testName == 'Firing Rate Cycle Test') {
       buffer.writeln('''
@@ -920,7 +991,7 @@ class ReportGenerator {
             <td>${r.accSDX}</td>
           </tr>
         ''');
-      } else if (testName == 'EPVAT test') {
+      } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
@@ -1092,6 +1163,17 @@ class ReportGenerator {
             </tr>
           ''');
         }
+      } else if (testName == 'Primer Sensitivity Test') {
+        buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold;">Primer Sensitivity Metrics</td>
+            <td>${r.primerHbar.isNotEmpty ? '${r.primerHbar} cm' : '-'}</td>
+            <td>${r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-'}</td>
+            <td>${r.primerAllFireH.isNotEmpty ? '${r.primerAllFireH} cm' : '-'}</td>
+            <td>${r.primerNoFireH.isNotEmpty ? '${r.primerNoFireH} cm' : '-'}</td>
+            <td>${r.notes.isNotEmpty ? r.notes : '-'}</td>
+          </tr>
+        ''');
       } else {
         final metrics = _getRecordMetricsSummary(r);
         final badgeClass = 'badge-${r.status.toLowerCase().replaceAll(' ', '-')}';
@@ -1154,10 +1236,28 @@ class ReportGenerator {
     return buffer.toString();
   }
 
+  static String _buildWordTableHeader(String testName) {
+    if (testName == 'Waterproof Test') {
+      return '<th>Mouth Leaks (S/F)</th><th>Primer Leaks (S/F)</th>';
+    } else if (testName == 'Residual Stress Test') {
+      return '<th>Neck Splits (Min/Maj)</th><th>Shoulder Splits (Min/Maj)</th><th>Body Splits (Min/Maj)</th><th>Head Splits (Min/Maj)</th><th>Total Splits</th>';
+    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test' || testName == 'Propellant Test') {
+      return '<th>Coordinate / Parameter</th><th>Mean</th><th>Max</th><th>Min</th><th>Range</th><th>SD</th>';
+    } else if (testName == 'Primer Sensitivity Test') {
+      return '<th>H̄ (Mean Height)</th><th>SD (Standard Deviation)</th><th>All Fire Height (H̄ + 5S)</th><th>No Fire Height (H̄ - 2S)</th><th>Remarks</th>';
+    } else if (testName == 'Firing Rate Cycle Test') {
+      return '<th>Weapon Model</th><th>Category</th><th>Min RPM</th><th>Max RPM</th><th>Measured RPM</th>';
+    } else if (testName == 'Terminal Effect Test') {
+      return '<th colspan="6">Terminal Effect Test Metrics</th>';
+    } else if (testName == 'Function Test') {
+      return '<th>Tested Qty</th><th>Level 1 (Critical)</th><th>Level 2 (Major)</th><th>Level 3 (Minor)</th><th>Level 4</th><th>Total Defects</th>';
+    }
+    return '<th>Test Name</th><th>Time</th><th>Inspector</th><th>Sample Size</th><th>Key Results / Metrics</th><th>Status</th><th>Remarks</th>';
+  }
+
   static String generateWordHtml(List<BallisticRecord> records, String testName, String moduleName, {String base64Logo = '', Map<String, dynamic> adminRules = const {}}) {
     final now = DateFormat('M/d/yyyy').format(DateTime.now());
     final totalQty = records.fold<int>(0, (sum, r) => sum + r.produced);
-    final totalDefects = records.fold<int>(0, (sum, r) => sum + r.defects);
     final logoHtml = base64Logo.isNotEmpty 
         ? '<img src="data:image/png;base64,$base64Logo" width="140" height="85" style="object-fit: contain;" />' 
         : '';
@@ -1185,7 +1285,7 @@ class ReportGenerator {
         : 'N/A';
 
     String epvatCombinedSection = '';
-    if (testName == 'EPVAT test') {
+    if (testName == 'EPVAT test' || testName == 'Propellant Test') {
       epvatCombinedSection = _buildEpvatCombinedSectionHtml(
         records: records,
         adminRules: adminRules,
@@ -1286,7 +1386,6 @@ class ReportGenerator {
 
     final pressure = records.isNotEmpty ? (records[0].pressureBar.isEmpty ? '' : '${records[0].pressureBar} bar') : '';
     final viscosity = records.isNotEmpty ? formatViscosity(records[0].viscosity) : '';
-    final testTime = records.isNotEmpty ? records[0].testTime : '';
     final samplingLocation = records.isNotEmpty ? records[0].samplingLocation : '';
     final batchResult = records.isNotEmpty ? records[0].status : 'N/A';
 
@@ -1355,7 +1454,7 @@ class ReportGenerator {
     }
 
     final epvatRows = StringBuffer();
-    if (testName == 'EPVAT test') {
+    if (testName == 'EPVAT test' || testName == 'Propellant Test') {
       epvatRows.write('<tr>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Barrel S.N:</td>');
       epvatRows.write('<td>${records.isNotEmpty ? records[0].barrelSN : ''}</td>');
@@ -1399,6 +1498,40 @@ class ReportGenerator {
       terminalRows.write('<td style="font-weight: bold; color: #475569;">Distance:</td>');
       terminalRows.write('<td>${records.isNotEmpty && records[0].velocityDistance.isNotEmpty ? '${records[0].velocityDistance} m' : ''}</td>');
       terminalRows.write('</tr>');
+    }
+
+    final primerRows = StringBuffer();
+    if (testName == 'Primer Sensitivity Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      primerRows.write('<tr>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Primer Lot:</td>');
+      primerRows.write('<td>${r0 != null && r0.primerLot.isNotEmpty ? r0.primerLot : (r0?.lotNo ?? '')}</td>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Primer Supplier:</td>');
+      primerRows.write('<td>${r0?.primerSupplier ?? ''}</td>');
+      primerRows.write('</tr>');
+      primerRows.write('<tr>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Avg Insertion Depth:</td>');
+      primerRows.write('<td>${r0 != null && r0.primerInsertionDepth.isNotEmpty ? '${r0.primerInsertionDepth} mm' : ''}</td>');
+      primerRows.write('<td style="font-weight: bold; color: #475569;">Mean Height (H̄):</td>');
+      primerRows.write('<td>${r0 != null && r0.primerHbar.isNotEmpty ? '${r0.primerHbar} cm' : ''}</td>');
+      primerRows.write('</tr>');
+    }
+
+    final propellantRows = StringBuffer();
+    if (testName == 'Propellant Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      propellantRows.write('<tr>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Propellant Lot:</td>');
+      propellantRows.write('<td>${r0 != null && r0.propellantLot.isNotEmpty ? r0.propellantLot : (r0?.lotNo ?? '')}</td>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Propellant Supplier:</td>');
+      propellantRows.write('<td>${r0?.propellantSupplier ?? ''}</td>');
+      propellantRows.write('</tr>');
+      propellantRows.write('<tr>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Propellant Code:</td>');
+      propellantRows.write('<td>${r0?.propellantCode ?? ''}</td>');
+      propellantRows.write('<td style="font-weight: bold; color: #475569;">Barrel S.N:</td>');
+      propellantRows.write('<td>${r0?.barrelSN ?? ''}</td>');
+      propellantRows.write('</tr>');
     }
 
     final buffer = StringBuffer();
@@ -1524,16 +1657,17 @@ class ReportGenerator {
     ${testName == 'Waterproof Test' ? waterproofRows.toString() : ''}
     ${testName == 'Residual Stress Test' ? residualStressRows.toString() : ''}
     ${testName == 'Accuracy Test' ? accuracyRows.toString() : ''}
-    ${testName == 'EPVAT test' ? epvatRows.toString() : ''}
+    ${testName == 'EPVAT test' || testName == 'Propellant Test' ? epvatRows.toString() : ''}
     ${testName == 'Firing Rate Cycle Test' ? cyclicRows.toString() : ''}
     ${testName == 'Terminal Effect Test' ? terminalRows.toString() : ''}
+    ${testName == 'Primer Sensitivity Test' ? primerRows.toString() : ''}
+    ${testName == 'Propellant Test' ? propellantRows.toString() : ''}
   </table>
 
   <h2 class="section-title">Parameters/Results</h2>
   <table class="data-table">
     <thead>
-      <tr>
-        ${testName == 'Waterproof Test' ? '<th>Mouth Leaks (S/F)</th><th>Primer Leaks (S/F)</th>' : (testName == 'Residual Stress Test' ? '<th>Neck Splits (Min/Maj)</th><th>Shoulder Splits (Min/Maj)</th><th>Body Splits (Min/Maj)</th><th>Head Splits (Min/Maj)</th><th>Total Splits</th>' : (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test' ? '<th>Coordinate / Parameter</th><th>Mean</th><th>Max</th><th>Min</th><th>Range</th><th>SD</th>' : (testName == 'Firing Rate Cycle Test' ? '<th>Weapon Model</th><th>Category</th><th>Min RPM</th><th>Max RPM</th><th>Measured RPM</th>' : (testName == 'Terminal Effect Test' ? '<th colspan="6">Terminal Effect Test Metrics</th>' : (testName == 'Function Test' ? '<th>Tested Qty</th><th>Level 1 (Critical)</th><th>Level 2 (Major)</th><th>Level 3 (Minor)</th><th>Level 4</th><th>Total Defects</th>' : '<th>Test Name</th><th>Time</th><th>Inspector</th><th>Sample Size</th><th>Key Results / Metrics</th><th>Status</th><th>Remarks</th>')))))}
+        ${_buildWordTableHeader(testName)}
       </tr>
     </thead>
     <tbody>
@@ -1648,7 +1782,7 @@ class ReportGenerator {
             <td>${r.accSDX}</td>
           </tr>
         ''');
-      } else if (testName == 'EPVAT test') {
+      } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
@@ -1820,6 +1954,17 @@ class ReportGenerator {
             </tr>
           ''');
         }
+      } else if (testName == 'Primer Sensitivity Test') {
+        buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold;">Primer Sensitivity Metrics</td>
+            <td>${r.primerHbar.isNotEmpty ? '${r.primerHbar} cm' : '-'}</td>
+            <td>${r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-'}</td>
+            <td>${r.primerAllFireH.isNotEmpty ? '${r.primerAllFireH} cm' : '-'}</td>
+            <td>${r.primerNoFireH.isNotEmpty ? '${r.primerNoFireH} cm' : '-'}</td>
+            <td>${r.notes.isNotEmpty ? r.notes : '-'}</td>
+          </tr>
+        ''');
       } else {
         final metrics = _getRecordMetricsSummary(r);
         final badgeClass = 'badge-${r.status.toLowerCase().replaceAll(' ', '-')}';

@@ -79,6 +79,8 @@ class _HistoryTabState extends State<HistoryTab> {
     'Residual Stress Test',
     'Terminal Effect Test',
     'Firing Rate Cycle Test',
+    'Primer Sensitivity Test',
+    'Propellant Test',
   ];
 
   @override
@@ -302,7 +304,6 @@ class _HistoryTabState extends State<HistoryTab> {
     final notesController = TextEditingController(text: r.notes);
     final pressureController = TextEditingController(text: r.pressureBar);
     final viscosityController = TextEditingController(text: r.viscosity);
-    final testTimeController = TextEditingController(text: r.testTime);
     final locationController = TextEditingController(text: r.samplingLocation);
     final mouthSlowController = TextEditingController(text: '${r.mouthSlow}');
     final mouthFastController = TextEditingController(text: '${r.mouthFast}');
@@ -311,6 +312,12 @@ class _HistoryTabState extends State<HistoryTab> {
     final velMeanController = TextEditingController(text: r.velMean);
     final barrelSNController = TextEditingController(text: r.barrelSN);
     final roomTempController = TextEditingController(text: r.roomTemp);
+    final primerLotController = TextEditingController(text: r.primerLot);
+    final primerSupplierController = TextEditingController(text: r.primerSupplier);
+    final primerInsertionDepthController = TextEditingController(text: r.primerInsertionDepth);
+    final propellantLotController = TextEditingController(text: r.propellantLot);
+    final propellantSupplierController = TextEditingController(text: r.propellantSupplier);
+    final propellantCodeController = TextEditingController(text: r.propellantCode);
 
     String editShift = r.shift;
     String editStatus = r.status;
@@ -321,6 +328,8 @@ class _HistoryTabState extends State<HistoryTab> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final isMobile = MediaQuery.of(context).size.width < 600;
+
             return AlertDialog(
               backgroundColor: const Color(0xFF344D6E),
               shape: RoundedRectangleBorder(
@@ -355,115 +364,195 @@ class _HistoryTabState extends State<HistoryTab> {
                   ),
                 ],
               ),
-              content: SizedBox(
+              content: Container(
                 width: math.min(650.0, MediaQuery.of(context).size.width * 0.94),
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Section 1: Inspector & Shift
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: _buildDialogField(
-                              label: 'Operators / Inspectors',
-                              child: _buildDialogTextField(controller: operatorsController),
-                            ),
+                      if (isMobile) ...[
+                        _buildDialogField(
+                          label: 'Operators / Inspectors',
+                          child: _buildDialogTextField(controller: operatorsController),
+                        ),
+                        const SizedBox(height: 12.0),
+                        _buildDialogField(
+                          label: 'Shift Time',
+                          child: DropdownButtonFormField<String>(
+                            value: ['Day', 'Night'].contains(editShift) ? editShift : 'Day',
+                            dropdownColor: const Color(0xFF1A2035),
+                            style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                            decoration: _dialogInputDecoration(),
+                            items: ['Day', 'Night'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            onChanged: (v) => setDialogState(() => editShift = v!),
                           ),
-                          const SizedBox(width: 12.0),
-                          Expanded(
-                            flex: 1,
-                            child: _buildDialogField(
-                              label: 'Shift Time',
-                              child: DropdownButtonFormField<String>(
-                                value: ['Day', 'Night'].contains(editShift) ? editShift : 'Day',
-                                dropdownColor: const Color(0xFF1A2035),
-                                style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                                decoration: _dialogInputDecoration(),
-                                items: ['Day', 'Night'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                                onChanged: (v) => setDialogState(() => editShift = v!),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(
+                                label: 'Operators / Inspectors',
+                                child: _buildDialogTextField(controller: operatorsController),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              flex: 1,
+                              child: _buildDialogField(
+                                label: 'Shift Time',
+                                child: DropdownButtonFormField<String>(
+                                  value: ['Day', 'Night'].contains(editShift) ? editShift : 'Day',
+                                  dropdownColor: const Color(0xFF1A2035),
+                                  style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                                  decoration: _dialogInputDecoration(),
+                                  items: ['Day', 'Night'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                  onChanged: (v) => setDialogState(() => editShift = v!),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12.0),
 
                       // Section 2: Caliber & Lot / Hopper
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: _buildDialogField(
-                              label: 'Caliber Specification',
-                              child: DropdownButtonFormField<String>(
-                                value: calibers.contains(editCaliber) ? editCaliber : calibers.first,
-                                dropdownColor: const Color(0xFF1A2035),
-                                style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                                decoration: _dialogInputDecoration(),
-                                items: calibers.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
-                                onChanged: (v) => setDialogState(() => editCaliber = v!),
+                      if (isMobile) ...[
+                        _buildDialogField(
+                          label: 'Caliber Specification',
+                          child: DropdownButtonFormField<String>(
+                            value: calibers.contains(editCaliber) ? editCaliber : calibers.first,
+                            dropdownColor: const Color(0xFF1A2035),
+                            style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                            decoration: _dialogInputDecoration(),
+                            items: calibers.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                            onChanged: (v) => setDialogState(() => editCaliber = v!),
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        _buildDialogField(
+                          label: widget.currentModule == 'Daily Test' ? 'Hopper No. / Production Date' : 'Lot Number',
+                          child: _buildDialogTextField(controller: lotNoController),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(
+                                label: 'Caliber Specification',
+                                child: DropdownButtonFormField<String>(
+                                  value: calibers.contains(editCaliber) ? editCaliber : calibers.first,
+                                  dropdownColor: const Color(0xFF1A2035),
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                  decoration: _dialogInputDecoration(),
+                                  items: calibers.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                                  onChanged: (v) => setDialogState(() => editCaliber = v!),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12.0),
-                          Expanded(
-                            flex: 2,
-                            child: _buildDialogField(
-                              label: widget.currentModule == 'Daily Test' ? 'Hopper No. / Production Date' : 'Lot Number',
-                              child: _buildDialogTextField(controller: lotNoController),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(
+                                label: widget.currentModule == 'Daily Test' ? 'Hopper No. / Production Date' : 'Lot Number',
+                                child: _buildDialogTextField(controller: lotNoController),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12.0),
 
                       // Section 3: Quantity Tested, Defects, Status
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 1,
-                            child: _buildDialogField(
-                              label: 'Quantity Tested',
-                              child: _buildDialogTextField(controller: producedController, keyboardType: TextInputType.number),
-                            ),
-                          ),
-                          const SizedBox(width: 12.0),
-                          Expanded(
-                            flex: 1,
-                            child: _buildDialogField(
-                              label: 'Defects',
-                              child: _buildDialogTextField(controller: defectsController, keyboardType: TextInputType.number),
-                            ),
-                          ),
-                          const SizedBox(width: 12.0),
-                          Expanded(
-                            flex: 2,
-                            child: _buildDialogField(
-                              label: 'Quality Sentencing Status',
-                              child: DropdownButtonFormField<String>(
-                                value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
-                                dropdownColor: const Color(0xFF1A2035),
-                                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
-                                decoration: _dialogInputDecoration(),
-                                items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
-                                  final col = s == 'Approved'
-                                      ? const Color(0xFF10B981)
-                                      : s == 'Rejected'
-                                          ? const Color(0xFFEF4444)
-                                          : s == 'Retest'
-                                              ? const Color(0xFFF59E0B)
-                                              : const Color(0xFF06B6D4);
-                                  return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
-                                }).toList(),
-                                onChanged: (v) => setDialogState(() => editStatus = v!),
+                      if (isMobile) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildDialogField(
+                                label: 'Quantity Tested',
+                                child: _buildDialogTextField(controller: producedController, keyboardType: TextInputType.number),
                               ),
                             ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              child: _buildDialogField(
+                                label: 'Defects',
+                                child: _buildDialogTextField(controller: defectsController, keyboardType: TextInputType.number),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12.0),
+                        _buildDialogField(
+                          label: 'Quality Sentencing Status',
+                          child: DropdownButtonFormField<String>(
+                            value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
+                            dropdownColor: const Color(0xFF1A2035),
+                            style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                            decoration: _dialogInputDecoration(),
+                            items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
+                              final col = s == 'Approved'
+                                  ? const Color(0xFF10B981)
+                                  : s == 'Rejected'
+                                      ? const Color(0xFFEF4444)
+                                      : s == 'Retest'
+                                          ? const Color(0xFFF59E0B)
+                                          : const Color(0xFF06B6D4);
+                              return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
+                            }).toList(),
+                            onChanged: (v) => setDialogState(() => editStatus = v!),
                           ),
-                        ],
-                      ),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 1,
+                              child: _buildDialogField(
+                                label: 'Quantity Tested',
+                                child: _buildDialogTextField(controller: producedController, keyboardType: TextInputType.number),
+                              ),
+                            ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              flex: 1,
+                              child: _buildDialogField(
+                                label: 'Defects',
+                                child: _buildDialogTextField(controller: defectsController, keyboardType: TextInputType.number),
+                              ),
+                            ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(
+                                label: 'Quality Sentencing Status',
+                                child: DropdownButtonFormField<String>(
+                                  value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
+                                  dropdownColor: const Color(0xFF1A2035),
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                  decoration: _dialogInputDecoration(),
+                                  items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
+                                    final col = s == 'Approved'
+                                        ? const Color(0xFF10B981)
+                                        : s == 'Rejected'
+                                            ? const Color(0xFFEF4444)
+                                            : s == 'Retest'
+                                                ? const Color(0xFFF59E0B)
+                                                : const Color(0xFF06B6D4);
+                                    return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
+                                  }).toList(),
+                                  onChanged: (v) => setDialogState(() => editStatus = v!),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12.0),
 
                       // Section 4: Remarks / Notes
@@ -475,31 +564,59 @@ class _HistoryTabState extends State<HistoryTab> {
                       // Test-specific quick edits
                       if (r.testName == 'Waterproof Test') ...[
                         const SizedBox(height: 12.0),
-                        Row(
-                          children: [
-                            Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
-                            const SizedBox(width: 12.0),
-                            Expanded(child: _buildDialogField(label: 'Viscosity', child: _buildDialogTextField(controller: viscosityController))),
-                            const SizedBox(width: 12.0),
-                            Expanded(child: _buildDialogField(label: 'Location', child: _buildDialogTextField(controller: locationController))),
-                          ],
-                        ),
-                        const SizedBox(height: 10.0),
-                        Row(
-                          children: [
-                            Expanded(child: _buildDialogField(label: 'Mouth Slow', child: _buildDialogTextField(controller: mouthSlowController, keyboardType: TextInputType.number))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Mouth Fast', child: _buildDialogTextField(controller: mouthFastController, keyboardType: TextInputType.number))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Primer Slow', child: _buildDialogTextField(controller: primerSlowController, keyboardType: TextInputType.number))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
-                          ],
-                        ),
+                        if (isMobile) ...[
+                          Row(
+                            children: [
+                              Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
+                              const SizedBox(width: 12.0),
+                              Expanded(child: _buildDialogField(label: 'Viscosity', child: _buildDialogTextField(controller: viscosityController))),
+                            ],
+                          ),
+                          const SizedBox(height: 10.0),
+                          _buildDialogField(label: 'Location', child: _buildDialogTextField(controller: locationController)),
+                          const SizedBox(height: 10.0),
+                          Row(
+                            children: [
+                              Expanded(child: _buildDialogField(label: 'Mouth Slow', child: _buildDialogTextField(controller: mouthSlowController, keyboardType: TextInputType.number))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Mouth Fast', child: _buildDialogTextField(controller: mouthFastController, keyboardType: TextInputType.number))),
+                            ],
+                          ),
+                          const SizedBox(height: 10.0),
+                          Row(
+                            children: [
+                              Expanded(child: _buildDialogField(label: 'Primer Slow', child: _buildDialogTextField(controller: primerSlowController, keyboardType: TextInputType.number))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
+                            ],
+                          ),
+                        ] else ...[
+                          Row(
+                            children: [
+                              Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
+                              const SizedBox(width: 12.0),
+                              Expanded(child: _buildDialogField(label: 'Viscosity', child: _buildDialogTextField(controller: viscosityController))),
+                              const SizedBox(width: 12.0),
+                              Expanded(child: _buildDialogField(label: 'Location', child: _buildDialogTextField(controller: locationController))),
+                            ],
+                          ),
+                          const SizedBox(height: 10.0),
+                          Row(
+                            children: [
+                              Expanded(child: _buildDialogField(label: 'Mouth Slow', child: _buildDialogTextField(controller: mouthSlowController, keyboardType: TextInputType.number))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Mouth Fast', child: _buildDialogTextField(controller: mouthFastController, keyboardType: TextInputType.number))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Primer Slow', child: _buildDialogTextField(controller: primerSlowController, keyboardType: TextInputType.number))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
+                            ],
+                          ),
+                        ],
                       ] else if (r.testName == 'Residual Stress Test') ...[
                         const SizedBox(height: 12.0),
                         _buildDialogField(label: 'Room Temperature (°C)', child: _buildDialogTextField(controller: roomTempController)),
-                      ] else if (r.testName == 'Accuracy Test' || r.testName == 'EPVAT test') ...[
+                      ] else if (r.testName == 'Accuracy Test' || r.testName == 'EPVAT test' || r.testName == 'Propellant Test') ...[
                         const SizedBox(height: 12.0),
                         Row(
                           children: [
@@ -508,6 +625,53 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
                           ],
                         ),
+                        if (r.testName == 'Propellant Test') ...[
+                          const SizedBox(height: 10.0),
+                          if (isMobile) ...[
+                            _buildDialogField(label: 'Propellant Lot', child: _buildDialogTextField(controller: propellantLotController)),
+                            const SizedBox(height: 10.0),
+                            Row(
+                              children: [
+                                Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: propellantSupplierController))),
+                                const SizedBox(width: 8.0),
+                                Expanded(child: _buildDialogField(label: 'Code', child: _buildDialogTextField(controller: propellantCodeController))),
+                              ],
+                            ),
+                          ] else ...[
+                            Row(
+                              children: [
+                                Expanded(child: _buildDialogField(label: 'Propellant Lot', child: _buildDialogTextField(controller: propellantLotController))),
+                                const SizedBox(width: 8.0),
+                                Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: propellantSupplierController))),
+                                const SizedBox(width: 8.0),
+                                Expanded(child: _buildDialogField(label: 'Code', child: _buildDialogTextField(controller: propellantCodeController))),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ] else if (r.testName == 'Primer Sensitivity Test') ...[
+                        const SizedBox(height: 12.0),
+                        if (isMobile) ...[
+                          Row(
+                            children: [
+                              Expanded(child: _buildDialogField(label: 'Primer Lot', child: _buildDialogTextField(controller: primerLotController))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: primerSupplierController))),
+                            ],
+                          ),
+                          const SizedBox(height: 10.0),
+                          _buildDialogField(label: 'Avg Insertion Depth (mm)', child: _buildDialogTextField(controller: primerInsertionDepthController)),
+                        ] else ...[
+                          Row(
+                            children: [
+                              Expanded(child: _buildDialogField(label: 'Primer Lot', child: _buildDialogTextField(controller: primerLotController))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: primerSupplierController))),
+                              const SizedBox(width: 8.0),
+                              Expanded(child: _buildDialogField(label: 'Avg Insertion Depth (mm)', child: _buildDialogTextField(controller: primerInsertionDepthController))),
+                            ],
+                          ),
+                        ],
                       ],
                     ],
                   ),
@@ -546,6 +710,12 @@ class _HistoryTabState extends State<HistoryTab> {
                       barrelSN: barrelSNController.text.trim(),
                       velMean: velMeanController.text.trim(),
                       roomTemp: roomTempController.text.trim(),
+                      primerLot: primerLotController.text.trim(),
+                      primerSupplier: primerSupplierController.text.trim(),
+                      primerInsertionDepth: primerInsertionDepthController.text.trim(),
+                      propellantLot: propellantLotController.text.trim(),
+                      propellantSupplier: propellantSupplierController.text.trim(),
+                      propellantCode: propellantCodeController.text.trim(),
                     );
                     Navigator.pop(ctx);
                     widget.onEditRecord?.call(r, updated);
@@ -738,6 +908,36 @@ class _HistoryTabState extends State<HistoryTab> {
         'Dist: ${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"}m | Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}',
         style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
       );
+    } else if (r.testName == 'Primer Sensitivity Test') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Lot: ${r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : "-")}${r.primerSupplier.isNotEmpty ? " (${r.primerSupplier})" : ""}',
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          Text(
+            'H̄: ${r.primerHbar.isNotEmpty ? r.primerHbar : "-"} cm | Ins: ${r.primerInsertionDepth.isNotEmpty ? "${r.primerInsertionDepth}mm" : "-"}',
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+          ),
+        ],
+      );
+    } else if (r.testName == 'Propellant Test') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'P1: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} ${r.epvatPressureUnit}${r.propellantCode.isNotEmpty ? " [${r.propellantCode}]" : ""}',
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          Text(
+            'Lot: ${r.propellantLot.isNotEmpty ? r.propellantLot : "-"} | Sup: ${r.propellantSupplier.isNotEmpty ? r.propellantSupplier : "-"}',
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+          ),
+        ],
+      );
     }
     return Text(
       r.notes.isNotEmpty ? r.notes : '-',
@@ -875,132 +1075,159 @@ class _HistoryTabState extends State<HistoryTab> {
         const SizedBox(height: 20.0),
 
         // Filters card
-        Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFF344D6E),
-            borderRadius: BorderRadius.circular(12.0),
-            border: Border.all(color: const Color(0xFF1E3A8A)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x20000000), blurRadius: 10, offset: Offset(0, 2)),
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('SEARCH LOT / HOPPER / INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6.0),
-                        TextField(
-                          controller: _searchController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                          decoration: InputDecoration(
-                            hintText: 'Type to filter logs...',
-                            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.0),
-                            prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF38BDF8)),
-                            isDense: true,
-                            filled: true,
-                            fillColor: const Color(0xFF2C415E),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                          ),
-                          onChanged: (val) => setState(() {}),
-                        ),
-                      ],
-                    ),
+        Builder(
+          builder: (context) {
+            final isSmallScreen = MediaQuery.of(context).size.width < 750;
+
+            final searchField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('SEARCH LOT / HOPPER / INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6.0),
+                TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                  decoration: InputDecoration(
+                    hintText: 'Type to filter logs...',
+                    hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.0),
+                    prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF38BDF8)),
+                    isDense: true,
+                    filled: true,
+                    fillColor: const Color(0xFF2C415E),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
                   ),
-                  const SizedBox(width: 14.0),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6.0),
-                        _buildDropdown(
-                          value: _caliberFilter,
-                          items: ['All', ...calibers],
-                          onChanged: (v) => setState(() => _caliberFilter = v!),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 14.0),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6.0),
-                        _buildDropdown(
-                          value: _testNameFilter,
-                          items: ['All', ...testNames],
-                          onChanged: (v) => setState(() => _testNameFilter = v!),
-                        ),
-                      ],
-                    ),
-                  ),
+                  onChanged: (val) => setState(() {}),
+                ),
+              ],
+            );
+
+            final caliberField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6.0),
+                _buildDropdown(
+                  value: _caliberFilter,
+                  items: ['All', ...calibers],
+                  onChanged: (v) => setState(() => _caliberFilter = v!),
+                ),
+              ],
+            );
+
+            final testNameField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6.0),
+                _buildDropdown(
+                  value: _testNameFilter,
+                  items: ['All', ...testNames],
+                  onChanged: (v) => setState(() => _testNameFilter = v!),
+                ),
+              ],
+            );
+
+            final lotField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('LOT NUMBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6.0),
+                _buildDropdown(
+                  value: _lotFilter,
+                  items: availableLots,
+                  onChanged: (v) => setState(() => _lotFilter = v!),
+                ),
+              ],
+            );
+
+            final hopperField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('HOPPER NO.', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6.0),
+                _buildDropdown(
+                  value: _hopperFilter,
+                  items: availableHoppers,
+                  onChanged: (v) => setState(() => _hopperFilter = v!),
+                ),
+              ],
+            );
+
+            final statusField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6.0),
+                _buildDropdown(
+                  value: _statusFilter,
+                  items: const ['All', 'Approved', 'Pending Review', 'Rejected', 'Retest', 'Approved with condition'],
+                  onChanged: (v) => setState(() => _statusFilter = v!),
+                ),
+              ],
+            );
+
+            return Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF344D6E),
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x20000000), blurRadius: 10, offset: Offset(0, 2)),
                 ],
               ),
-              const SizedBox(height: 12.0),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: isSmallScreen
+                  ? Column(
                       children: [
-                        const Text('LOT NUMBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6.0),
-                        _buildDropdown(
-                          value: _lotFilter,
-                          items: availableLots,
-                          onChanged: (v) => setState(() => _lotFilter = v!),
+                        searchField,
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: caliberField),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: testNameField),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: lotField),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: hopperField),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        statusField,
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(flex: 2, child: searchField),
+                            const SizedBox(width: 14.0),
+                            Expanded(flex: 1, child: caliberField),
+                            const SizedBox(width: 14.0),
+                            Expanded(flex: 1, child: testNameField),
+                          ],
+                        ),
+                        const SizedBox(height: 12.0),
+                        Row(
+                          children: [
+                            Expanded(child: lotField),
+                            const SizedBox(width: 14.0),
+                            Expanded(child: hopperField),
+                            const SizedBox(width: 14.0),
+                            Expanded(child: statusField),
+                          ],
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 14.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('HOPPER NO.', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6.0),
-                        _buildDropdown(
-                          value: _hopperFilter,
-                          items: availableHoppers,
-                          onChanged: (v) => setState(() => _hopperFilter = v!),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 14.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6.0),
-                        _buildDropdown(
-                          value: _statusFilter,
-                          items: const ['All', 'Approved', 'Pending Review', 'Rejected', 'Retest', 'Approved with condition'],
-                          onChanged: (v) => setState(() => _statusFilter = v!),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
         const SizedBox(height: 20.0),
 
@@ -1397,29 +1624,33 @@ class _HistoryTabState extends State<HistoryTab> {
               ),
               child: Container(
                 width: math.min(1000.0, MediaQuery.of(context).size.width * 0.94),
-                padding: const EdgeInsets.all(24.0),
+                height: math.min(850.0, MediaQuery.of(context).size.height * 0.90),
+                padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 14.0 : 24.0),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              singleRecord != null ? 'Individual Report Generator' : 'Quality Report Generator',
-                              style: const TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4.0),
-                            Text(
-                              singleRecord != null
-                                  ? 'Generate and download quality log sheets for this specific test entry'
-                                  : 'Review and download quality log sheets for tests',
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
-                            ),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                singleRecord != null ? 'Individual Report Generator' : 'Quality Report Generator',
+                                style: const TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4.0),
+                              Text(
+                                singleRecord != null
+                                    ? 'Generate and download quality log sheets for this specific test entry'
+                                    : 'Review and download quality log sheets for tests',
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
@@ -1429,94 +1660,109 @@ class _HistoryTabState extends State<HistoryTab> {
                     ),
                     const Divider(color: Color(0xFF1E3A8A), height: 24.0),
 
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: singleRecord != null
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'INDIVIDUAL TEST RECORD',
-                                      style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                    Builder(
+                      builder: (context) {
+                        final isMobileDialog = MediaQuery.of(context).size.width < 650;
+
+                        final testSelectorWidget = singleRecord != null
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'INDIVIDUAL TEST RECORD',
+                                    style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 6.0),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2C415E),
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      border: Border.all(color: const Color(0xFF1E3A8A)),
                                     ),
-                                    const SizedBox(height: 6.0),
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF2C415E),
-                                        borderRadius: BorderRadius.circular(8.0),
-                                        border: Border.all(color: const Color(0xFF1E3A8A)),
-                                      ),
-                                      child: Text(
-                                        '${singleRecord.testName} (Lot: ${singleRecord.lotNo})',
-                                        style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13.5, fontWeight: FontWeight.bold),
-                                      ),
+                                    child: Text(
+                                      '${singleRecord.testName} (Lot: ${singleRecord.lotNo})',
+                                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13.5, fontWeight: FontWeight.bold),
                                     ),
-                                  ],
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'SELECT TEST TYPE',
-                                      style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'SELECT TEST TYPE',
+                                    style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 6.0),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2C415E),
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      border: Border.all(color: const Color(0xFF1E3A8A)),
                                     ),
-                                    const SizedBox(height: 6.0),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF2C415E),
-                                        borderRadius: BorderRadius.circular(8.0),
-                                        border: Border.all(color: const Color(0xFF1E3A8A)),
-                                      ),
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<String>(
-                                          value: selectedReportTest,
-                                          isExpanded: true,
-                                          dropdownColor: const Color(0xFF344D6E),
-                                          style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
-                                          items: ['All', ...testNames].map((String value) {
-                                            return DropdownMenuItem<String>(
-                                              value: value,
-                                              child: Text(value),
-                                            );
-                                          }).toList(),
-                                          onChanged: (v) {
-                                            setStateDialog(() {
-                                              selectedReportTest = v!;
-                                            });
-                                          },
-                                        ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: selectedReportTest,
+                                        isExpanded: true,
+                                        dropdownColor: const Color(0xFF344D6E),
+                                        style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
+                                        items: ['All', ...testNames].map((String value) {
+                                          return DropdownMenuItem<String>(
+                                            value: value,
+                                            child: Text(value),
+                                          );
+                                        }).toList(),
+                                        onChanged: (v) {
+                                          setStateDialog(() {
+                                            selectedReportTest = v!;
+                                          });
+                                        },
                                       ),
                                     ),
-                                  ],
-                                ),
-                        ),
-                        const SizedBox(width: 24.0),
-                        Expanded(
-                          flex: 3,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2C415E),
-                              borderRadius: BorderRadius.circular(8.0),
-                              border: Border.all(color: const Color(0xFF1E3A8A)),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildDialogStat('TOTAL LOGS', '${reportRecords.length}'),
-                                _buildDialogStat('TOTAL TESTED', '$totalQty rounds'),
-                                _buildDialogStat('YIELD RATE', '${yieldRate.toStringAsFixed(2)}%'),
-                              ],
-                            ),
+                                  ),
+                                ],
+                              );
+
+                        final statsBoxWidget = Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C415E),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFF1E3A8A)),
                           ),
-                        ),
-                      ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildDialogStat('TOTAL LOGS', '${reportRecords.length}'),
+                              _buildDialogStat('TOTAL TESTED', '$totalQty rounds'),
+                              _buildDialogStat('YIELD RATE', '${yieldRate.toStringAsFixed(2)}%'),
+                            ],
+                          ),
+                        );
+
+                        if (isMobileDialog) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              testSelectorWidget,
+                              const SizedBox(height: 12.0),
+                              statsBoxWidget,
+                            ],
+                          );
+                        } else {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(flex: 2, child: testSelectorWidget),
+                              const SizedBox(width: 24.0),
+                              Expanded(flex: 3, child: statsBoxWidget),
+                            ],
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(height: 20.0),
 
@@ -1608,6 +1854,20 @@ class _HistoryTabState extends State<HistoryTab> {
                                           const DataColumn(label: Text('LEVEL 4', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('TOTAL DEFECTS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        ] else if (selectedReportTest == 'Primer Sensitivity Test') ...[
+                                          const DataColumn(label: Text('PRIMER LOT', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('SUPPLIER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('INSERTION DEPTH', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('MEAN H̄', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('SD', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                        ] else if (selectedReportTest == 'Propellant Test') ...[
+                                          const DataColumn(label: Text('PROPELLANT LOT', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('SUPPLIER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('CODE', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('MEAN PRESS (P1/P2)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('VEL MEAN', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else ...[
                                           const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ],
@@ -1666,6 +1926,20 @@ class _HistoryTabState extends State<HistoryTab> {
                                               DataCell(Text('${r.functionLevel4}', style: TextStyle(fontWeight: r.functionLevel4 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel4 > 0 ? const Color(0xFF38BDF8) : Colors.white))),
                                               DataCell(Text('${r.defects}', style: TextStyle(fontWeight: FontWeight.bold, color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)))),
                                               DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                            ] else if (selectedReportTest == 'Primer Sensitivity Test') ...[
+                                              DataCell(Text(r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : '-'), style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.primerSupplier.isNotEmpty ? r.primerSupplier : '-', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.primerInsertionDepth.isNotEmpty ? '${r.primerInsertionDepth} mm' : '-', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.primerHbar.isNotEmpty ? '${r.primerHbar} cm' : '-', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                            ] else if (selectedReportTest == 'Propellant Test') ...[
+                                              DataCell(Text(r.propellantLot.isNotEmpty ? r.propellantLot : (r.lotNo.isNotEmpty ? r.lotNo : '-'), style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.propellantSupplier.isNotEmpty ? r.propellantSupplier : '-', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.propellantCode.isNotEmpty ? r.propellantCode : '-', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.epvatMeanPressure.isEmpty ? '-' : 'P1: ${r.epvatMeanPressure} / P2: ${r.epvatP2MeanPressure.isEmpty ? "-" : r.epvatP2MeanPressure} ${r.epvatPressureUnit}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else ...[
                                               DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ],
@@ -1680,8 +1954,11 @@ class _HistoryTabState extends State<HistoryTab> {
                     ),
                     const SizedBox(height: 20.0),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 10.0,
+                      runSpacing: 10.0,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         OutlinedButton(
                           onPressed: () => Navigator.of(context).pop(),
@@ -1693,7 +1970,6 @@ class _HistoryTabState extends State<HistoryTab> {
                           ),
                           child: const Text('Close'),
                         ),
-                        const SizedBox(width: 12.0),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final csvContent = ReportGenerator.generateCsv(reportRecords, selectedReportTest, widget.currentModule);
@@ -1720,7 +1996,6 @@ class _HistoryTabState extends State<HistoryTab> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
                         ),
-                        const SizedBox(width: 12.0),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final docContent = ReportGenerator.generateWordHtml(
@@ -1753,7 +2028,6 @@ class _HistoryTabState extends State<HistoryTab> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
                         ),
-                        const SizedBox(width: 12.0),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final htmlContent = ReportGenerator.generateHtml(
