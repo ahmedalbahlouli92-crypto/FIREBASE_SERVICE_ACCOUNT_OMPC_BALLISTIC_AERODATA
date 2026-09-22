@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'services/storage_service.dart';
 import 'models/ballistic_record.dart';
 import 'services/attachment_helper.dart';
@@ -1647,6 +1647,11 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _checkForApkUpdate() async {
+    // Only check and display APK update notifications on Android mobile/tablet (APK app).
+    // Never show APK update notifications on Windows desktop or Web.
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
     try {
       final updateInfo = await ApkUpdateService.checkForUpdate();
       if (updateInfo != null && updateInfo.hasUpdate && mounted) {

@@ -34,6 +34,7 @@ void main() {
         propellantSupplier: 'Explosia',
         propellantCode: 'D-073.4',
         propellantLot: 'PROP-LOT-55',
+        propellantCharge: '1.62',
       );
 
       // Verify toSupabaseMap and fromSupabaseMap
@@ -44,6 +45,7 @@ void main() {
       expect(map['propellant_supplier'], 'Explosia');
       expect(map['propellant_code'], 'D-073.4');
       expect(map['propellant_lot'], 'PROP-LOT-55');
+      expect(map['propellant_charge'], '1.62');
 
       final reconstructed = BallisticRecord.fromSupabaseMap(map);
       expect(reconstructed.primerLot, 'PRIMER-LOT-88');
@@ -52,6 +54,7 @@ void main() {
       expect(reconstructed.propellantSupplier, 'Explosia');
       expect(reconstructed.propellantCode, 'D-073.4');
       expect(reconstructed.propellantLot, 'PROP-LOT-55');
+      expect(reconstructed.propellantCharge, '1.62');
 
       // Verify CSV serialization
       final csvLine = record.toCsvRow();
@@ -62,22 +65,23 @@ void main() {
       expect(fromCsv.propellantSupplier, 'Explosia');
       expect(fromCsv.propellantCode, 'D-073.4');
       expect(fromCsv.propellantLot, 'PROP-LOT-55');
+      expect(fromCsv.propellantCharge, '1.62');
     });
   });
 
   group('2. Default Consumables Catalog Verification', () {
-    test('Should contain ~170 items categorized across all 7 specified categories', () {
+    test('Should contain 214 items categorized across the 8 specified categories', () {
       final items = getDefaultConsumablesCatalog();
-      expect(items.length, greaterThanOrEqualTo(160));
+      expect(items.length, 214);
 
       final categories = items.map((i) => i['category'] as String).toSet();
-      expect(categories, contains('Shooting System'));
-      expect(categories, contains('Closed Vessel and Calibration Unit'));
+      expect(categories, contains('Shooting system'));
+      expect(categories, contains('closed Vessel and Calibration Unit'));
+      expect(categories, contains('Manual loading tools'));
       expect(categories, contains('Primer Equipment'));
-      expect(categories, contains('Residual Stress Items'));
-      expect(categories, contains('Weapon Cleaning Items'));
-      expect(categories, contains('Steyr Rifle Spare Parts'));
-      expect(categories, contains('M16 & M4 Spare Parts'));
+      expect(categories, contains('Weapon cleaning item'));
+      expect(categories, contains('Styer rifle spare Part'));
+      expect(categories, contains('M16 & M4 Spare Part'));
 
       // Check specific items from user prompt
       expect(items.any((i) => (i['name'] as String).contains('Firing Pin Diameter 1..52mm') && i['serial'] == '290105U'), isTrue);

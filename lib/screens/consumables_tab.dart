@@ -26,28 +26,34 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   List<Map<String, dynamic>> _items = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  String _selectedCategory = 'All';
+  String _selectedCategory = 'None'; // User chooses category -> items appear. If 'None', no items appear, only statistics.
   String _stockFilter = 'All'; // 'All', 'Low Stock', 'In Stock'
 
-  static const List<String> _categories = [
-    'All',
-    'Shooting System',
-    'Closed Vessel and Calibration Unit',
+  // Exact 8 categories requested by user
+  static const List<String> _defaultCategories = [
+    'Shooting system',
+    'closed Vessel and Calibration Unit',
+    'Manual loading tools',
     'Primer Equipment',
-    'Residual Stress Items',
-    'Weapon Cleaning Items',
-    'Steyr Rifle Spare Parts',
-    'M16 & M4 Spare Parts',
+    'Weapon cleaning item',
+    'Residual Stress items',
+    'Styer rifle spare Part',
+    'M16 & M4 Spare Part',
   ];
+
+  List<String> _categories = List<String>.from(_defaultCategories);
 
   static const List<String> _units = [
     'pcs',
+    'liters',
     'rounds',
     'boxes',
     'kg',
     'grams',
-    'liters',
     'sets',
+    'cans',
+    'bottles',
+    'packs',
   ];
 
   @override
@@ -62,23 +68,35 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     if (list.isEmpty) return true;
     return list.any((it) {
       final cat = it['category']?.toString() ?? '';
-      final sup = it['supplier']?.toString().toLowerCase() ?? '';
-      return cat == 'Primers' ||
+      return cat == 'Shooting System' ||
+          cat == 'Closed Vessel and Calibration Unit' ||
+          cat == 'Steyr Rifle Spare Parts' ||
+          cat == 'Weapon Cleaning Items' ||
+          cat == 'Residual Stress Items' ||
+          cat == 'M16 & M4 Spare Parts' ||
+          cat == 'Primers' ||
           cat == 'Propellants & Powders' ||
           cat == 'Projectiles & Bullets' ||
           cat == 'Cartridge Cases' ||
           cat == 'EPVAT Transducers & Consumables' ||
           cat == 'Targets & Range Supplies' ||
           cat == 'Packaging & Crates' ||
-          cat == 'Other Supplies' ||
-          sup.contains('kistler');
+          cat == 'Other Supplies';
     });
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Load local cache first
+      // Load saved categories first
+      final savedCats = await _storageService.loadConsumableCategories();
+      final mergedCats = <String>[..._defaultCategories];
+      for (final c in savedCats) {
+        if (!mergedCats.contains(c)) mergedCats.add(c);
+      }
+      _categories = mergedCats;
+
+      // 1. Load local cache
       final local = await _storageService.loadConsumables();
       if (_isLegacyData(local)) {
         final fresh = _getDefaultInitialItems();
@@ -136,8 +154,12 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     SupabaseService.saveConsumablesToCloud(_items);
   }
 
-  // Filtered items list
+  // Filtered items list: when _selectedCategory == 'None', NO items appear
   List<Map<String, dynamic>> get _filteredItems {
+    if (_selectedCategory == 'None') {
+      return [];
+    }
+
     return _items.where((item) {
       final name = (item['name'] ?? '').toString().toLowerCase();
       final serial = (item['serial'] ?? '').toString().toLowerCase();
@@ -145,7 +167,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       final query = _searchQuery.toLowerCase();
 
       final matchesQuery = query.isEmpty || name.contains(query) || serial.contains(query);
-      final matchesCategory = _selectedCategory == 'All' || category == _selectedCategory;
+      final matchesCategory = category == _selectedCategory;
 
       final qty = (item['quantity'] ?? 0) as num;
       final min = (item['minSafeThreshold'] ?? 0) as num;
@@ -169,8 +191,36 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     }).length;
   }
 
-  num get _totalUnitsCount {
-    return _items.fold<num>(0, (sum, item) => sum + ((item['quantity'] ?? 0) as num));
+  // Calculate items used in day / month / year / all-time
+  num _getUsage(String period) {
+    final now = DateTime.now();
+    final todayStr = DateFormat('yyyy-MM-dd').format(now);
+    final thisMonthStr = DateFormat('yyyy-MM').format(now);
+    final thisYearStr = DateFormat('yyyy').format(now);
+
+    num total = 0;
+    for (final item in _items) {
+      final history = item['history'] as List<dynamic>? ?? [];
+      for (final h in history) {
+        if (h is Map) {
+          final type = (h['type'] ?? '').toString();
+          if (type == 'CONSUMED' || type == 'DISPENSED') {
+            final dateStr = (h['date'] ?? '').toString();
+            final qty = (h['quantity'] ?? 0) as num;
+            if (period == 'day' && dateStr.startsWith(todayStr)) {
+              total += qty;
+            } else if (period == 'month' && dateStr.startsWith(thisMonthStr)) {
+              total += qty;
+            } else if (period == 'year' && dateStr.startsWith(thisYearStr)) {
+              total += qty;
+            } else if (period == 'all') {
+              total += qty;
+            }
+          }
+        }
+      }
+    }
+    return total;
   }
 
   @override
@@ -181,6 +231,8 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       );
     }
 
+    final lowStock = _lowStockCount;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0E223D),
       body: SingleChildScrollView(
@@ -190,11 +242,47 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           children: [
             // ─── Header & Top Actions ──────────────────────────────────────────
             _buildHeader(),
-            const SizedBox(height: 20.0),
+            const SizedBox(height: 16.0),
 
-            // ─── Metric Cards ─────────────────────────────────────────────────
-            _buildMetricCards(),
-            const SizedBox(height: 24.0),
+            // ─── Low Stock Alert Banner (if any) ───────────────────────────────
+            if (lowStock > 0) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10.0),
+                  border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24.0),
+                    const SizedBox(width: 12.0),
+                    Expanded(
+                      child: Text(
+                        'Attention: $lowStock item(s) are currently at or below their safe minimum stock threshold! Immediate replenishment is recommended.',
+                        style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13.0, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _stockFilter = 'Low Stock';
+                          if (_selectedCategory == 'None' && _categories.isNotEmpty) {
+                            _selectedCategory = _categories.first;
+                          }
+                        });
+                      },
+                      child: const Text('View Low Stock', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16.0),
+            ],
+
+            // ─── Statistics Section (Always visible) ─────────────────────────
+            _buildStatisticsSection(),
+            const SizedBox(height: 20.0),
 
             // ─── Filter & Search Bar ───────────────────────────────────────────
             _buildFilterBar(),
@@ -233,7 +321,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Consumable Items & Inventory Management',
+                  'Consumables & Inventory Management',
                   style: TextStyle(
                     fontSize: 18.0,
                     fontWeight: FontWeight.bold,
@@ -243,7 +331,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 ),
                 const SizedBox(height: 4.0),
                 Text(
-                  'Track ammunition components, propellants, primers, and testing hardware. Auto-deduct usage & receive shipments.',
+                  'Select a category to view and log items. Monitor real-time daily, monthly, and yearly consumption statistics.',
                   style: TextStyle(fontSize: 12.0, color: const Color(0xFFBAE6FD).withOpacity(0.8)),
                 ),
               ],
@@ -289,6 +377,17 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                   ),
                 ),
+                ElevatedButton.icon(
+                  onPressed: _openAddCategoryDialog,
+                  icon: const Icon(Icons.create_new_folder_outlined, size: 16.0),
+                  label: const Text('Add Category', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D9488),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  ),
+                ),
               ],
               IconButton(
                 icon: const Icon(Icons.sync, color: Color(0xFF06B6D4)),
@@ -313,37 +412,88 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     );
   }
 
-  Widget _buildMetricCards() {
-    return Row(
+  // ─── Statistics Section (Usage per day, month, year, in total) ───────────
+  Widget _buildStatisticsSection() {
+    final usedToday = _getUsage('day');
+    final usedMonth = _getUsage('month');
+    final usedYear = _getUsage('year');
+    final usedTotal = _getUsage('all');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _buildStatCard(
-            title: 'TOTAL REGISTERED ITEMS',
-            value: '${_items.length}',
-            subtitle: '${_categories.length - 1} Distinct Categories',
-            icon: Icons.category_outlined,
-            color: const Color(0xFF06B6D4),
-          ),
+        Row(
+          children: [
+            const Icon(Icons.analytics_outlined, color: Color(0xFF38BDF8), size: 18.0),
+            const SizedBox(width: 8.0),
+            const Text(
+              'CONSUMPTION & INVENTORY STATISTICS',
+              style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12.0, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+            ),
+            const Spacer(),
+            Text(
+              '${_categories.length} Categories • ${_items.length} Registered Items',
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5),
+            ),
+          ],
         ),
-        const SizedBox(width: 14.0),
-        Expanded(
-          child: _buildStatCard(
-            title: 'TOTAL CUMULATIVE UNITS',
-            value: NumberFormat('#,###').format(_totalUnitsCount),
-            subtitle: 'Stocked across all vaults',
-            icon: Icons.all_inbox_outlined,
-            color: const Color(0xFF38BDF8),
-          ),
-        ),
-        const SizedBox(width: 14.0),
-        Expanded(
-          child: _buildStatCard(
-            title: 'LOW STOCK ALERTS',
-            value: '$_lowStockCount',
-            subtitle: _lowStockCount > 0 ? 'Action needed: reorder soon' : 'All safe thresholds met',
-            icon: Icons.warning_amber_rounded,
-            color: _lowStockCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-          ),
+        const SizedBox(height: 10.0),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 900;
+            return GridView.count(
+              crossAxisCount: isWide ? 6 : (constraints.maxWidth > 600 ? 3 : 2),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 12.0,
+              mainAxisSpacing: 12.0,
+              childAspectRatio: isWide ? 1.7 : 1.9,
+              children: [
+                _buildStatCard(
+                  title: 'USED TODAY',
+                  value: NumberFormat('#,###').format(usedToday),
+                  subtitle: DateFormat('MMM dd, yyyy').format(DateTime.now()),
+                  icon: Icons.today,
+                  color: const Color(0xFF06B6D4),
+                ),
+                _buildStatCard(
+                  title: 'THIS MONTH',
+                  value: NumberFormat('#,###').format(usedMonth),
+                  subtitle: DateFormat('MMMM yyyy').format(DateTime.now()),
+                  icon: Icons.calendar_month,
+                  color: const Color(0xFF3B82F6),
+                ),
+                _buildStatCard(
+                  title: 'THIS YEAR',
+                  value: NumberFormat('#,###').format(usedYear),
+                  subtitle: 'Year ${DateTime.now().year}',
+                  icon: Icons.date_range,
+                  color: const Color(0xFF8B5CF6),
+                ),
+                _buildStatCard(
+                  title: 'TOTAL USAGE',
+                  value: NumberFormat('#,###').format(usedTotal),
+                  subtitle: 'Lifetime consumption',
+                  icon: Icons.history_edu,
+                  color: const Color(0xFFEC4899),
+                ),
+                _buildStatCard(
+                  title: 'TOTAL ITEMS',
+                  value: '${_items.length}',
+                  subtitle: 'Across ${_categories.length} categories',
+                  icon: Icons.category_outlined,
+                  color: const Color(0xFF10B981),
+                ),
+                _buildStatCard(
+                  title: 'LOW STOCK',
+                  value: '$_lowStockCount',
+                  subtitle: _lowStockCount > 0 ? 'Action required' : 'All stocks safe',
+                  icon: Icons.warning_amber_rounded,
+                  color: _lowStockCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -357,7 +507,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: const Color(0xFF1A2E49),
         borderRadius: BorderRadius.circular(10.0),
@@ -366,31 +516,38 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10.0),
+            padding: const EdgeInsets.all(8.0),
             decoration: BoxDecoration(
               color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8.0),
             ),
-            child: Icon(icon, color: color, size: 24.0),
+            child: Icon(icon, color: color, size: 20.0),
           ),
-          const SizedBox(width: 14.0),
+          const SizedBox(width: 10.0),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                ),
-                const SizedBox(height: 4.0),
-                Text(
-                  value,
-                  style: TextStyle(color: color, fontSize: 22.0, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 9.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2.0),
                 Text(
+                  value,
+                  style: TextStyle(color: color, fontSize: 18.0, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1.0),
+                Text(
                   subtitle,
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11.0),
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 9.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -417,7 +574,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               style: const TextStyle(color: Colors.white, fontSize: 13.0),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Search by item name or serial...',
+                hintText: 'Search by part name or serial...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.5),
                 prefixIcon: const Icon(Icons.search, color: Color(0xFF06B6D4), size: 18.0),
                 filled: true,
@@ -430,15 +587,18 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           ),
           const SizedBox(width: 14.0),
 
-          // Category Dropdown
+          // Category Dropdown (Defaults to 'None')
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
               decoration: BoxDecoration(
                 color: const Color(0xFF0E223D),
                 borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: const Color(0xFF1E3A8A)),
+                border: Border.all(
+                  color: _selectedCategory == 'None' ? const Color(0xFFF59E0B) : const Color(0xFF06B6D4),
+                  width: _selectedCategory == 'None' ? 1.5 : 1.0,
+                ),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -446,8 +606,17 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   dropdownColor: const Color(0xFF1C3351),
                   style: const TextStyle(color: Colors.white, fontSize: 12.5),
                   isExpanded: true,
-                  onChanged: (v) => setState(() => _selectedCategory = v ?? 'All'),
-                  items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                  onChanged: (v) => setState(() => _selectedCategory = v ?? 'None'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: 'None',
+                      child: Text(
+                        '-- Choose Category (Items Hidden) --',
+                        style: TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    ..._categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                  ],
                 ),
               ),
             ),
@@ -482,6 +651,63 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   }
 
   Widget _buildItemsList() {
+    // Crucial requirement: When category is not chosen ('None'), DO NOT show any items, only show statistics
+    if (_selectedCategory == 'None') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 48.0, horizontal: 24.0),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C3351),
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF06B6D4).withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.touch_app_outlined, color: Color(0xFF06B6D4), size: 40.0),
+            ),
+            const SizedBox(height: 16.0),
+            const Text(
+              'Select a Category to View Inventory Items',
+              style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8.0),
+            SizedBox(
+              width: 580.0,
+              child: Text(
+                'Please select one of the ${_categories.length} categories from the dropdown above to display its corresponding items and parts. General usage and threshold statistics for all items are displayed in the dashboard above.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13.0, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              alignment: WrapAlignment.center,
+              children: _categories.map((cat) {
+                final count = _items.where((it) => it['category'] == cat).length;
+                return ActionChip(
+                  backgroundColor: const Color(0xFF0E223D),
+                  side: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                  avatar: const Icon(Icons.folder_open, size: 14.0, color: Color(0xFF06B6D4)),
+                  label: Text('$cat ($count)', style: const TextStyle(color: Colors.white, fontSize: 11.5)),
+                  onPressed: () {
+                    setState(() => _selectedCategory = cat);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      );
+    }
+
     final filtered = _filteredItems;
     if (filtered.isEmpty) {
       return Container(
@@ -496,13 +722,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           children: [
             const Icon(Icons.inbox_outlined, color: Color(0xFF8E96A3), size: 48.0),
             const SizedBox(height: 12.0),
-            const Text(
-              'No Consumable Items Found',
-              style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+            Text(
+              'No items found under "$_selectedCategory"',
+              style: const TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6.0),
             Text(
-              'Try changing your search query or click "Register Item" to add new inventory.',
+              'Try changing your search query or click "Register Item" to add new inventory under this category.',
               style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.5),
             ),
           ],
@@ -510,24 +736,44 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 1100 ? 3 : (constraints.maxWidth > 700 ? 2 : 1);
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 16.0,
-            mainAxisSpacing: 16.0,
-            mainAxisExtent: 275.0,
-          ),
-          itemCount: filtered.length,
-          itemBuilder: (context, index) {
-            return _buildItemCard(filtered[index]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'CATEGORY: ${_selectedCategory.toUpperCase()} (${filtered.length} ITEMS)',
+              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.0, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+            ),
+            TextButton.icon(
+              onPressed: () => setState(() => _selectedCategory = 'None'),
+              icon: const Icon(Icons.visibility_off_outlined, size: 14.0, color: Color(0xFF94A3B8)),
+              label: const Text('Hide Items', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10.0),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final crossAxisCount = constraints.maxWidth > 1100 ? 3 : (constraints.maxWidth > 700 ? 2 : 1);
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 16.0,
+                mainAxisSpacing: 16.0,
+                mainAxisExtent: 280.0,
+              ),
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                return _buildItemCard(filtered[index]);
+              },
+            );
           },
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -546,7 +792,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       badgeText = 'OUT OF STOCK';
     } else if (isLowStock) {
       badgeColor = const Color(0xFFF59E0B);
-      badgeText = 'LOW STOCK';
+      badgeText = 'LOW STOCK ALERT';
     }
 
     return Container(
@@ -555,7 +801,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
         color: const Color(0xFF1C3351),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
-          color: isLowStock ? badgeColor.withOpacity(0.5) : const Color(0xFF06B6D4).withOpacity(0.2),
+          color: isLowStock ? badgeColor.withOpacity(0.6) : const Color(0xFF06B6D4).withOpacity(0.2),
           width: isLowStock ? 1.5 : 1.0,
         ),
         boxShadow: [
@@ -573,17 +819,21 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF06B6D4).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-                child: Text(
-                  (item['category'] ?? 'General').toString().toUpperCase(),
-                  style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 9.5, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF06B6D4).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    (item['category'] ?? 'General').toString().toUpperCase(),
+                    style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 9.5, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8.0),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
                 decoration: BoxDecoration(
@@ -611,13 +861,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           ),
           const SizedBox(height: 12.0),
 
-          // Item Visual Thumbnail & Name
+          // Item Visual Thumbnail & Name (Separate Part Name and Serial Number)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 56.0,
-                height: 56.0,
+                width: 54.0,
+                height: 54.0,
                 decoration: BoxDecoration(
                   color: const Color(0xFF0E223D),
                   borderRadius: BorderRadius.circular(8.0),
@@ -630,7 +880,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, color: Color(0xFF06B6D4)),
                       )
-                    : Icon(_getCategoryIcon(item['category']), color: const Color(0xFF06B6D4), size: 28.0),
+                    : Icon(_getCategoryIcon(item['category']), color: const Color(0xFF06B6D4), size: 26.0),
               ),
               const SizedBox(width: 12.0),
               Expanded(
@@ -639,14 +889,22 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   children: [
                     Text(
                       item['name'] ?? 'Unnamed Consumable',
-                      style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4.0),
-                    Text(
-                      'S/N: ${item['serial'] ?? 'N/A'}',
-                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontFamily: 'JetBrainsMono'),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0E223D),
+                        borderRadius: BorderRadius.circular(4.0),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: Text(
+                        'S/N: ${item['serial'] ?? 'N/A'}',
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10.5, fontFamily: 'JetBrainsMono'),
+                      ),
                     ),
                   ],
                 ),
@@ -674,7 +932,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                       '${NumberFormat('#,###').format(qty)} $unit',
                       style: TextStyle(
                         color: isLowStock ? const Color(0xFFF59E0B) : const Color(0xFF38BDF8),
-                        fontSize: 15.0,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -752,7 +1010,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                         children: [
                           Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 16.0),
                           SizedBox(width: 8.0),
-                          Text('Edit Item', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          Text('Edit Item & Specs', style: TextStyle(color: Colors.white, fontSize: 12.0)),
                         ],
                       ),
                     ),
@@ -778,12 +1036,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   IconData _getCategoryIcon(dynamic category) {
     final cat = (category ?? '').toString();
     if (cat.contains('Primer')) return Icons.flash_on_outlined;
-    if (cat.contains('Propellant') || cat.contains('Powder')) return Icons.local_fire_department_outlined;
-    if (cat.contains('Projectile') || cat.contains('Bullet')) return Icons.filter_center_focus;
-    if (cat.contains('Case')) return Icons.crop_portrait_outlined;
-    if (cat.contains('EPVAT')) return Icons.compress_outlined;
-    if (cat.contains('Target')) return Icons.track_changes;
-    if (cat.contains('Packaging')) return Icons.inventory_2;
+    if (cat.contains('Shooting')) return Icons.track_changes;
+    if (cat.contains('Vessel') || cat.contains('Calibration')) return Icons.speed_outlined;
+    if (cat.contains('Manual loading')) return Icons.build_outlined;
+    if (cat.contains('Weapon cleaning')) return Icons.cleaning_services_outlined;
+    if (cat.contains('Residual')) return Icons.science_outlined;
+    if (cat.contains('Styer')) return Icons.military_tech_outlined;
+    if (cat.contains('M16') || cat.contains('M4')) return Icons.gavel_outlined;
     return Icons.widgets_outlined;
   }
 
@@ -804,7 +1063,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           children: [
             const Icon(Icons.remove_circle_outline, color: Color(0xFF38BDF8)),
             const SizedBox(width: 8.0),
-            Text('Log Consumption: ${item['name']}', style: const TextStyle(color: Colors.white, fontSize: 15.0)),
+            Expanded(
+              child: Text(
+                'Log Consumption: ${item['name']}',
+                style: const TextStyle(color: Colors.white, fontSize: 15.0),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: SizedBox(
@@ -844,24 +1109,24 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               TextField(
                 controller: purposeCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Testing Purpose / Lot Number / Order Ref',
-                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                  labelStyle: TextStyle(color: Color(0xFF94A3B8)),
                   filled: true,
-                  fillColor: const Color(0xFF0E223D),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+                  fillColor: Color(0xFF0E223D),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
                 ),
               ),
               const SizedBox(height: 12.0),
               TextField(
                 controller: userCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Operator In Charge',
-                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                  labelStyle: TextStyle(color: Color(0xFF94A3B8)),
                   filled: true,
-                  fillColor: const Color(0xFF0E223D),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+                  fillColor: Color(0xFF0E223D),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
                 ),
               ),
             ],
@@ -930,7 +1195,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   // 2. Restock Dialog (Increments stock)
   void _openItemRestockModal(Map<String, dynamic> item) {
     final qtyCtrl = TextEditingController();
-    final invoiceCtrl = TextEditingController();
+    final batchCtrl = TextEditingController();
     final supplierCtrl = TextEditingController(text: item['supplier'] ?? '');
 
     showDialog(
@@ -942,7 +1207,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           children: [
             const Icon(Icons.add_shopping_cart, color: Color(0xFF10B981)),
             const SizedBox(width: 8.0),
-            Text('Receive Shipment: ${item['name']}', style: const TextStyle(color: Colors.white, fontSize: 15.0)),
+            Expanded(
+              child: Text(
+                'Receive Shipment: ${item['name']}',
+                style: const TextStyle(color: Colors.white, fontSize: 15.0),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: SizedBox(
@@ -971,7 +1242,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(color: Colors.white, fontSize: 13.0),
                 decoration: InputDecoration(
-                  labelText: 'Received Quantity (${item['unit']})',
+                  labelText: 'Quantity Received (${item['unit']})',
                   labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                   filled: true,
                   fillColor: const Color(0xFF0E223D),
@@ -980,26 +1251,26 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               ),
               const SizedBox(height: 12.0),
               TextField(
-                controller: invoiceCtrl,
+                controller: batchCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                decoration: InputDecoration(
-                  labelText: 'Invoice / PO / Shipment Tracking No.',
-                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                decoration: const InputDecoration(
+                  labelText: 'Shipment / Invoice / Batch No.',
+                  labelStyle: TextStyle(color: Color(0xFF94A3B8)),
                   filled: true,
-                  fillColor: const Color(0xFF0E223D),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+                  fillColor: Color(0xFF0E223D),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
                 ),
               ),
               const SizedBox(height: 12.0),
               TextField(
                 controller: supplierCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                decoration: InputDecoration(
-                  labelText: 'Supplier / Origin Source',
-                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                decoration: const InputDecoration(
+                  labelText: 'Supplier / Manufacturer',
+                  labelStyle: TextStyle(color: Color(0xFF94A3B8)),
                   filled: true,
-                  fillColor: const Color(0xFF0E223D),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+                  fillColor: Color(0xFF0E223D),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
                 ),
               ),
             ],
@@ -1020,7 +1291,6 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 );
                 return;
               }
-
               final currentQty = (item['quantity'] ?? 0) as num;
               final newQty = currentQty + val;
               final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
@@ -1031,16 +1301,16 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 'quantity': val,
                 'date': now,
                 'user': widget.loggedInUser,
-                'purpose': invoiceCtrl.text.trim().isNotEmpty ? 'Shipment Inv #${invoiceCtrl.text.trim()}' : 'Stock Replenishment',
+                'purpose': 'Shipment Batch: ${batchCtrl.text.trim().isNotEmpty ? batchCtrl.text.trim() : 'Standard Delivery'}',
                 'remaining': newQty,
               });
 
               setState(() {
                 item['quantity'] = newQty;
-                item['history'] = historyList;
                 if (supplierCtrl.text.trim().isNotEmpty) {
                   item['supplier'] = supplierCtrl.text.trim();
                 }
+                item['history'] = historyList;
               });
 
               await _saveData();
@@ -1066,11 +1336,11 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   void _openRegisterItemDialog() {
     final nameCtrl = TextEditingController();
     final serialCtrl = TextEditingController();
-    final qtyCtrl = TextEditingController(text: '1000');
-    final minSafeCtrl = TextEditingController(text: '200');
+    final qtyCtrl = TextEditingController(text: '0');
+    final minSafeCtrl = TextEditingController(text: '10');
     final supplierCtrl = TextEditingController();
     final locationCtrl = TextEditingController();
-    String category = _categories.firstWhere((c) => c != 'All', orElse: () => 'Primers');
+    String category = _selectedCategory != 'None' ? _selectedCategory : _categories.first;
     String unit = 'pcs';
 
     showDialog(
@@ -1097,7 +1367,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     controller: nameCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
                     decoration: InputDecoration(
-                      labelText: 'Item Name *',
+                      labelText: 'Part / Item Name *',
                       labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: const Color(0xFF0E223D),
@@ -1112,8 +1382,9 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                           controller: serialCtrl,
                           style: const TextStyle(color: Colors.white, fontSize: 13.0),
                           decoration: InputDecoration(
-                            labelText: 'Serial / SKU / Lot No.',
+                            labelText: 'Serial Number / SKU (Separate field)',
                             labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                            hintText: 'e.g. SN-4901 or N/A',
                             filled: true,
                             fillColor: const Color(0xFF0E223D),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
@@ -1131,12 +1402,14 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: category,
+                              value: _categories.contains(category) ? category : _categories.first,
                               dropdownColor: const Color(0xFF1C3351),
-                              style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                              style: const TextStyle(color: Colors.white, fontSize: 12.0),
                               isExpanded: true,
-                              items: _categories.where((c) => c != 'All').map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                              onChanged: (v) => setDlgState(() => category = v!),
+                              items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                              onChanged: (v) {
+                                if (v != null) setDlgState(() => category = v);
+                              },
                             ),
                           ),
                         ),
@@ -1152,7 +1425,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           style: const TextStyle(color: Colors.white, fontSize: 13.0),
                           decoration: InputDecoration(
-                            labelText: 'Initial Total Quantity *',
+                            labelText: 'Initial Quantity in Stock *',
                             labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                             filled: true,
                             fillColor: const Color(0xFF0E223D),
@@ -1171,12 +1444,14 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: unit,
+                              value: _units.contains(unit) ? unit : _units.first,
                               dropdownColor: const Color(0xFF1C3351),
                               style: const TextStyle(color: Colors.white, fontSize: 12.5),
                               isExpanded: true,
                               items: _units.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
-                              onChanged: (v) => setDlgState(() => unit = v!),
+                              onChanged: (v) {
+                                if (v != null) setDlgState(() => unit = v);
+                              },
                             ),
                           ),
                         ),
@@ -1189,8 +1464,10 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
                     decoration: InputDecoration(
-                      labelText: 'Safe Min Alert Threshold',
+                      labelText: 'Safe Minimum Stock Alert Threshold',
                       labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                      helperText: 'Alert triggers when stock falls to or below this value',
+                      helperStyle: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0),
                       filled: true,
                       fillColor: const Color(0xFF0E223D),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
@@ -1247,7 +1524,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 final newItem = {
                   'id': 'cons_${DateTime.now().millisecondsSinceEpoch}',
                   'name': name,
-                  'serial': serialCtrl.text.trim().isNotEmpty ? serialCtrl.text.trim() : 'GEN-${DateTime.now().millisecondsSinceEpoch % 10000}',
+                  'serial': serialCtrl.text.trim().isNotEmpty ? serialCtrl.text.trim() : 'N/A',
                   'category': category,
                   'quantity': qty,
                   'minSafeThreshold': minSafe,
@@ -1269,6 +1546,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
 
                 setState(() {
                   _items.insert(0, newItem);
+                  _selectedCategory = category;
                 });
 
                 await _saveData();
@@ -1277,7 +1555,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Registered item "$name" successfully with $qty $unit.'),
+                      content: Text('Registered item "$name" successfully under $category.'),
                       backgroundColor: const Color(0xFF6366F1),
                     ),
                   );
@@ -1291,29 +1569,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     );
   }
 
-  // Generic Consume Trigger Button
-  void _openConsumeDialog() {
-    if (_items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No items in inventory to consume.'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-    _openItemConsumeModal(_items.first);
-  }
-
-  // Generic Receive Shipment Trigger Button
-  void _openReceiveShipmentDialog() {
-    if (_items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No items registered. Please register an item first.'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-    _openItemRestockModal(_items.first);
-  }
-
-  // Edit Item Dialog
+  // 4. Edit Item Dialog (Admin can change part name, edit serial, change unit, adjust min safe threshold)
   void _openEditItemDialog(Map<String, dynamic> item) {
     final nameCtrl = TextEditingController(text: item['name'] ?? '');
     final serialCtrl = TextEditingController(text: item['serial'] ?? '');
@@ -1322,7 +1578,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     final supplierCtrl = TextEditingController(text: item['supplier'] ?? '');
     final locationCtrl = TextEditingController(text: item['location'] ?? '');
     String currentImageBase64 = (item['imageBase64'] ?? '') as String;
-    String category = item['category'] ?? _categories.firstWhere((c) => c != 'All', orElse: () => 'Shooting System');
+    String category = item['category'] ?? (_categories.isNotEmpty ? _categories.first : 'Shooting system');
     String unit = item['unit'] ?? 'pcs';
 
     showDialog(
@@ -1331,9 +1587,15 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
         builder: (ctx, setDlgState) => AlertDialog(
           backgroundColor: const Color(0xFF1C3351),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          title: const Text('Edit Consumable Item', style: TextStyle(color: Colors.white, fontSize: 16.0)),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_note, color: Color(0xFF06B6D4)),
+              SizedBox(width: 8.0),
+              Text('Edit Consumable Item & Settings', style: TextStyle(color: Colors.white, fontSize: 16.0)),
+            ],
+          ),
           content: SizedBox(
-            width: 480.0,
+            width: 500.0,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1341,7 +1603,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   TextField(
                     controller: nameCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                    decoration: const InputDecoration(labelText: 'Item Name', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
+                    decoration: const InputDecoration(
+                      labelText: 'Part / Item Name (Admin editable)',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      filled: true,
+                      fillColor: Color(0xFF0E223D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                    ),
                   ),
                   const SizedBox(height: 10.0),
                   Row(
@@ -1350,10 +1618,16 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                         child: TextField(
                           controller: serialCtrl,
                           style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                          decoration: const InputDecoration(labelText: 'Serial / SKU', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
+                          decoration: const InputDecoration(
+                            labelText: 'Serial Number / SKU (Separate field)',
+                            labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                            filled: true,
+                            fillColor: Color(0xFF0E223D),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12.0),
+                      const SizedBox(width: 10.0),
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
@@ -1364,11 +1638,11 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: _categories.contains(category) ? category : _categories.firstWhere((c) => c != 'All'),
+                              value: _categories.contains(category) ? category : _categories.first,
                               dropdownColor: const Color(0xFF1C3351),
-                              style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                              style: const TextStyle(color: Colors.white, fontSize: 12.0),
                               isExpanded: true,
-                              items: _categories.where((c) => c != 'All').map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                              items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
                               onChanged: (v) {
                                 if (v != null) setDlgState(() => category = v);
                               },
@@ -1379,34 +1653,85 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     ],
                   ),
                   const SizedBox(height: 10.0),
-                  TextField(
-                    controller: quantityCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                    decoration: InputDecoration(
-                      labelText: 'Quantity in Stock ($unit)',
-                      labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                      suffixIcon: const Icon(Icons.inventory_2_outlined, color: Color(0xFF06B6D4), size: 18),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: quantityCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                          decoration: InputDecoration(
+                            labelText: 'Current Stock ($unit)',
+                            labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                            filled: true,
+                            fillColor: const Color(0xFF0E223D),
+                            border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10.0),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0E223D),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _units.contains(unit) ? unit : _units.first,
+                              dropdownColor: const Color(0xFF1C3351),
+                              style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                              isExpanded: true,
+                              items: _units.map((u) => DropdownMenuItem(value: u, child: Text('Unit: $u'))).toList(),
+                              onChanged: (v) {
+                                if (v != null) setDlgState(() => unit = v);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10.0),
                   TextField(
                     controller: minSafeCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                    decoration: const InputDecoration(labelText: 'Safe Min Alert Threshold', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
+                    decoration: const InputDecoration(
+                      labelText: 'Safe Minimum Stock Alert Threshold',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      helperText: 'System generates low stock alert when quantity <= threshold',
+                      helperStyle: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0),
+                      filled: true,
+                      fillColor: Color(0xFF0E223D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                    ),
                   ),
                   const SizedBox(height: 10.0),
                   TextField(
                     controller: supplierCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                    decoration: const InputDecoration(labelText: 'Supplier', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
+                    decoration: const InputDecoration(
+                      labelText: 'Supplier',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      filled: true,
+                      fillColor: Color(0xFF0E223D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                    ),
                   ),
                   const SizedBox(height: 10.0),
                   TextField(
                     controller: locationCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                    decoration: const InputDecoration(labelText: 'Location', labelStyle: TextStyle(color: Color(0xFF94A3B8))),
+                    decoration: const InputDecoration(
+                      labelText: 'Location',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      filled: true,
+                      fillColor: Color(0xFF0E223D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                    ),
                   ),
                   const SizedBox(height: 14.0),
                   // Picture Section
@@ -1509,6 +1834,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   item['name'] = nameCtrl.text.trim();
                   item['serial'] = serialCtrl.text.trim();
                   item['category'] = category;
+                  item['unit'] = unit;
                   item['quantity'] = newQty;
                   item['imageBase64'] = currentImageBase64;
                   item['minSafeThreshold'] = num.tryParse(minSafeCtrl.text.trim()) ?? item['minSafeThreshold'];
@@ -1537,6 +1863,115 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
         ),
       ),
     );
+  }
+
+  // 5. Add New Category Dialog (Admin can add new category)
+  void _openAddCategoryDialog() {
+    final catCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C3351),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Row(
+          children: [
+            Icon(Icons.create_new_folder_outlined, color: Color(0xFF0D9488)),
+            SizedBox(width: 8.0),
+            Text('Add New Consumable Category', style: TextStyle(color: Colors.white, fontSize: 16.0)),
+          ],
+        ),
+        content: SizedBox(
+          width: 400.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter the name of the new inventory category:',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5),
+              ),
+              const SizedBox(height: 12.0),
+              TextField(
+                controller: catCtrl,
+                style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                decoration: InputDecoration(
+                  labelText: 'Category Name',
+                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                  filled: true,
+                  fillColor: const Color(0xFF0E223D),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D9488)),
+            onPressed: () async {
+              final newCat = catCtrl.text.trim();
+              if (newCat.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Category name cannot be empty.'), backgroundColor: Colors.red),
+                );
+                return;
+              }
+              if (_categories.contains(newCat)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Category already exists.'), backgroundColor: Colors.orange),
+                );
+                return;
+              }
+
+              setState(() {
+                _categories.add(newCat);
+                _selectedCategory = newCat;
+              });
+
+              await _storageService.saveConsumableCategories(_categories);
+              Navigator.pop(ctx);
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Category "$newCat" created successfully.'),
+                    backgroundColor: const Color(0xFF0D9488),
+                  ),
+                );
+              }
+            },
+            child: const Text('Add Category', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Generic Consume Trigger Button
+  void _openConsumeDialog() {
+    if (_items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No items in inventory to consume.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+    _openItemConsumeModal(_items.first);
+  }
+
+  // Generic Receive Shipment Trigger Button
+  void _openReceiveShipmentDialog() {
+    if (_items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No items registered. Please register an item first.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+    _openItemRestockModal(_items.first);
   }
 
   // Confirm Delete

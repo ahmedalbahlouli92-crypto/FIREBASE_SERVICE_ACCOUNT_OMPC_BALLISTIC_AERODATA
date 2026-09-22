@@ -135,10 +135,14 @@ class _EntryTabState extends State<EntryTab> {
   final _primerInsertionDepthController = TextEditingController();
   final _primerLotController = TextEditingController();
   final _propellantLotController = TextEditingController();
+  final _propellantChargeController = TextEditingController();
+  final _propellantCodeController = TextEditingController(text: 'D-073.4');
   String _primerSupplier = 'CBC';
   String _propellantSupplier = 'Explosia';
-  String _propellantCode = 'D-073.4';
   String? _selectedComponentPrimerLot;
+  final List<String> _localAddedPrimerSuppliers = [];
+  final List<String> _localAddedPropellantSuppliers = [];
+  bool get _isAdmin => widget.userRole.toLowerCase() == 'admin';
 
   bool get _isCaliber9mm => _caliber.toLowerCase().contains('9mm') || _caliber.toLowerCase().contains('9x19');
   bool get _isCaliberSingleTempOnly {
@@ -519,26 +523,126 @@ class _EntryTabState extends State<EntryTab> {
 
   List<String> get _primerSuppliers {
     final list = widget.adminRules['primer_suppliers'];
+    final base = <String>[];
     if (list is List && list.isNotEmpty) {
-      return list.map((e) => e.toString()).toList();
+      base.addAll(list.map((e) => e.toString()));
+    } else {
+      base.addAll(['CBC', 'UNIS "GINIX"', 'S&B', 'MD']);
     }
-    return ['CBC', 'UNIS "GINIX"', 'S&B', 'MD'];
+    for (final s in _localAddedPrimerSuppliers) {
+      if (!base.contains(s)) base.add(s);
+    }
+    return base;
   }
 
   List<String> get _propellantSuppliers {
     final list = widget.adminRules['propellant_suppliers'];
+    final base = <String>[];
     if (list is List && list.isNotEmpty) {
-      return list.map((e) => e.toString()).toList();
+      base.addAll(list.map((e) => e.toString()));
+    } else {
+      base.addAll(['Explosia', 'Gold Force', 'PB Clermont', 'Milan']);
     }
-    return ['Explosia', 'Gold Force', 'PB Clermont', 'Milan'];
+    for (final s in _localAddedPropellantSuppliers) {
+      if (!base.contains(s)) base.add(s);
+    }
+    return base;
   }
 
-  List<String> get _propellantCodes {
-    final list = widget.adminRules['propellant_codes'];
-    if (list is List && list.isNotEmpty) {
-      return list.map((e) => e.toString()).toList();
-    }
-    return ['D-073.4', 'S-060', 'P-30', 'PB-540'];
+  void _showAddPrimerSupplierDialog() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C3351),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Text('Add Primer Supplier', style: TextStyle(color: Colors.white, fontSize: 16.0)),
+        content: TextField(
+          controller: ctrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Supplier Name',
+            labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+            filled: true,
+            fillColor: Color(0xFF0E223D),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEC4899)),
+            onPressed: () {
+              final val = ctrl.text.trim();
+              if (val.isEmpty) return;
+              setState(() {
+                if (!_localAddedPrimerSuppliers.contains(val)) {
+                  _localAddedPrimerSuppliers.add(val);
+                }
+                final currentList = List<String>.from(_primerSuppliers);
+                if (!currentList.contains(val)) currentList.add(val);
+                widget.adminRules['primer_suppliers'] = currentList;
+                _primerSupplier = val;
+              });
+              StorageService().saveRules(widget.adminRules);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Add Supplier', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddPropellantSupplierDialog() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C3351),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Text('Add Propellant Supplier', style: TextStyle(color: Colors.white, fontSize: 16.0)),
+        content: TextField(
+          controller: ctrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Supplier Name',
+            labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+            filled: true,
+            fillColor: Color(0xFF0E223D),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+            onPressed: () {
+              final val = ctrl.text.trim();
+              if (val.isEmpty) return;
+              setState(() {
+                if (!_localAddedPropellantSuppliers.contains(val)) {
+                  _localAddedPropellantSuppliers.add(val);
+                }
+                final currentList = List<String>.from(_propellantSuppliers);
+                if (!currentList.contains(val)) currentList.add(val);
+                widget.adminRules['propellant_suppliers'] = currentList;
+                _propellantSupplier = val;
+              });
+              StorageService().saveRules(widget.adminRules);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Add Supplier', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   List<String> get _weaponsList {
@@ -880,12 +984,28 @@ class _EntryTabState extends State<EntryTab> {
           notifyMissing('Propellant Supplier');
           return false;
         }
-        if (_propellantCode.isEmpty) {
-          notifyMissing('Propellant Code');
+        if (_propellantCodeController.text.trim().isEmpty) {
+          notifyMissing('Powder Code');
+          return false;
+        }
+        if (_propellantChargeController.text.trim().isEmpty) {
+          notifyMissing('Powder Charge in Gram');
+          return false;
+        }
+        if (double.tryParse(_propellantChargeController.text.trim()) == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Powder Charge must be a valid number in grams.'), backgroundColor: Colors.red),
+          );
           return false;
         }
         if (_propellantLotController.text.trim().isEmpty) {
           notifyMissing('Propellant Lot Number');
+          return false;
+        }
+        if (int.tryParse(_propellantLotController.text.trim()) == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Propellant Lot Number must be a number only.'), backgroundColor: Colors.red),
+          );
           return false;
         }
       }
@@ -1016,6 +1136,22 @@ class _EntryTabState extends State<EntryTab> {
         }
         if (_primerInsertionDepthController.text.trim().isEmpty) {
           notifyMissing('Average Insertion Depth');
+          return false;
+        }
+        final depthVal = double.tryParse(_primerInsertionDepthController.text.trim());
+        if (depthVal == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Average Insertion Depth must be a valid number.'), backgroundColor: Colors.red),
+          );
+          return false;
+        }
+        if (depthVal < 0.05 || depthVal > 0.20) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Average Insertion Depth is out of specification! Allowed limits: 0.05 mm to 0.20 mm. Current: ${depthVal.toStringAsFixed(3)} mm'),
+              backgroundColor: Colors.red,
+            ),
+          );
           return false;
         }
       }
@@ -1219,6 +1355,11 @@ class _EntryTabState extends State<EntryTab> {
 
   // Caliber-specific test matrix and sample sizing
   bool _isTestAllowedForCaliber(String test, String cal) {
+    if (widget.currentModule == 'Component Test') {
+      return test == 'Propellant Test' || test == 'Primer Sensitivity Test';
+    }
+    if (test == 'Propellant Test') return false;
+
     final c = cal.toLowerCase();
     if (test == 'Waterproof Test') {
       if (c.contains('.223') || c.contains('69 grain') || c.contains('55 grain') || c.contains('77 grain') ||
@@ -1239,8 +1380,6 @@ class _EntryTabState extends State<EntryTab> {
       if (!c.contains('ss109')) return false;
     } else if (test == 'Firing Rate Cycle Test') {
       if (!(c.contains('m82') || c.contains('m200'))) return false;
-    } else if (test == 'Propellant Test') {
-      if (widget.currentModule != 'Component Test') return false;
     }
     return true;
   }
@@ -1742,6 +1881,11 @@ class _EntryTabState extends State<EntryTab> {
     super.initState();
     _caliber = widget.initialCaliber;
     _testName = widget.initialTestName;
+    if (widget.currentModule == 'Component Test') {
+      if (_testName != 'Propellant Test' && _testName != 'Primer Sensitivity Test') {
+        _testName = 'Propellant Test';
+      }
+    }
     _operatorsController.text = widget.loggedInUser;
     
     if (_barrelSNController.text.isEmpty && _accuracyBarrels.isNotEmpty) {
@@ -1940,6 +2084,8 @@ class _EntryTabState extends State<EntryTab> {
     _primerInsertionDepthController.dispose();
     _primerLotController.dispose();
     _propellantLotController.dispose();
+    _propellantChargeController.dispose();
+    _propellantCodeController.dispose();
     _lotThreeDigitsController.dispose();
     _lotYearController.dispose();
     _producedController.dispose();
@@ -2319,8 +2465,9 @@ class _EntryTabState extends State<EntryTab> {
           primerSupplier: '',
           primerInsertionDepth: '',
           propellantSupplier: _testName == 'Propellant Test' ? _propellantSupplier : '',
-          propellantCode: _testName == 'Propellant Test' ? _propellantCode : '',
+          propellantCode: _testName == 'Propellant Test' ? _propellantCodeController.text.trim() : '',
           propellantLot: _testName == 'Propellant Test' ? _propellantLotController.text.trim() : '',
+          propellantCharge: _testName == 'Propellant Test' ? _propellantChargeController.text.trim() : '',
         );
         await widget.onSubmit(record);
       } else if (_testName == 'Function Test' && _functionTempMode == 'All') {
@@ -2542,8 +2689,9 @@ class _EntryTabState extends State<EntryTab> {
               ? _primerInsertionDepthController.text.trim()
               : '',
           propellantSupplier: _testName == 'Propellant Test' ? _propellantSupplier : '',
-          propellantCode: _testName == 'Propellant Test' ? _propellantCode : '',
+          propellantCode: _testName == 'Propellant Test' ? _propellantCodeController.text.trim() : '',
           propellantLot: _testName == 'Propellant Test' ? _propellantLotController.text.trim() : '',
+          propellantCharge: _testName == 'Propellant Test' ? _propellantChargeController.text.trim() : '',
         );
         await widget.onSubmit(record);
       }
@@ -2566,6 +2714,8 @@ class _EntryTabState extends State<EntryTab> {
       _primerInsertionDepthController.clear();
       _primerLotController.clear();
       _propellantLotController.clear();
+      _propellantChargeController.clear();
+      _propellantCodeController.text = 'D-073.4';
       _defectsController.text = '0';
       _functionLevel1Controller.text = '0';
       _functionLevel2Controller.text = '0';
@@ -2947,153 +3097,10 @@ class _EntryTabState extends State<EntryTab> {
                         },
                       ),
                     ),
-                  ]),
+                  ], lockSingleRow: true),
                   const SizedBox(height: 20.0),
                   _buildComponentAndPrimerFieldsCard(),
                   _buildAdminInstructionsCard(),
-
-                  // Accuracy / EPVAT / Propellant Test Setup Card (Dynamic) - Rendered above Quantity Tested
-                  if (_testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test') ...[
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon((_testName == 'EPVAT test' || _testName == 'Propellant Test') ? Icons.compress_outlined : Icons.gps_fixed_outlined, color: const Color(0xFF06B6D4), size: 18.0),
-                              const SizedBox(width: 8.0),
-                              Text(
-                                (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? 'EPVAT Test Setup' : 'Accuracy Test Setup',
-                                style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16.0),
-                          _buildFormRow([
-                            _buildFlexibleField(
-                              key: _barrelFieldKey,
-                              flex: 1,
-                              label: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? 'EPVAT Barrel Test Serial' : 'Accuracy Barrel Test Serial',
-                              isRequired: true,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildDropdownField(
-                                    focusNode: _barrelFocusNode,
-                                    value: ((_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _epvatBarrels : _accuracyBarrels).contains(_barrelSNController.text)
-                                        ? _barrelSNController.text
-                                        : (((_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _epvatBarrels : _accuracyBarrels).isNotEmpty ? ((_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _epvatBarrels : _accuracyBarrels).first : ''),
-                                    items: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _epvatBarrels : _accuracyBarrels,
-                                    onChanged: (v) {
-                                      if (v != null) {
-                                        setState(() => _barrelSNController.text = v);
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(height: 4.0),
-                                  Text(
-                                    '${_getAssetRounds(_barrelSNController.text)} cumulative rounds fired',
-                                    style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              key: _distanceFieldKey,
-                              flex: 1,
-                              label: 'Distance of Velocity (m)',
-                              isRequired: true,
-                              child: _buildTextField(
-                                controller: _distanceController,
-                                focusNode: _distanceFocusNode,
-                                hint: 'e.g., 25',
-                              ),
-                            ),
-                          ]),
-                          // Sensor inputs (EPVAT and Propellant only)
-                          if (_testName == 'EPVAT test' || _testName == 'Propellant Test') ...[
-                            const SizedBox(height: 14.0),
-                            _buildFormRow([
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'GP1 (chamber)',
-                                isRequired: true,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _manualGP1Entry
-                                          ? _buildTextField(
-                                              controller: _epvatSensor1Controller,
-                                              hint: 'e.g., GP1-001 (PCB 119B)',
-                                            )
-                                          : _buildDropdownField(
-                                              value: _gp1Transducers.contains(_epvatSensor1Controller.text)
-                                                  ? _epvatSensor1Controller.text
-                                                  : (_gp1Transducers.isNotEmpty ? _gp1Transducers.first : ''),
-                                              items: _gp1Transducers,
-                                              onChanged: (v) {
-                                                if (v != null) {
-                                                  setState(() => _epvatSensor1Controller.text = v);
-                                                }
-                                              },
-                                            ),
-                                    ),
-                                    const SizedBox(width: 4.0),
-                                    IconButton(
-                                      icon: Icon(_manualGP1Entry ? Icons.list : Icons.edit_note, size: 18, color: const Color(0xFF06B6D4)),
-                                      tooltip: _manualGP1Entry ? 'Select from registered list' : 'Type custom transducer',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                      onPressed: () => setState(() => _manualGP1Entry = !_manualGP1Entry),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (!_isCaliber9mm)
-                                _buildFlexibleField(
-                                  key: _gp6FieldKey,
-                                  flex: 1,
-                                  label: 'GP2 (Port)',
-                                  isRequired: true,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildDropdownField(
-                                        focusNode: _gp6FocusNode,
-                                        value: _gp6Serials.contains(_gp6SerialController.text)
-                                            ? _gp6SerialController.text
-                                            : (_gp6Serials.isNotEmpty ? _gp6Serials.first : ''),
-                                        items: _gp6Serials,
-                                        onChanged: (v) {
-                                          if (v != null) {
-                                            setState(() {
-                                              _gp6SerialController.text = v;
-                                              _epvatSensor2Controller.text = v;
-                                            });
-                                          }
-                                        },
-                                      ),
-                                      const SizedBox(height: 4.0),
-                                      Text(
-                                        '${_getAssetRounds(_gp6SerialController.text)} cumulative rounds fired',
-                                        style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ]),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20.0),
-                  ],
 
                   // Function Test Specifications Sub-Card (Dynamic)
                   if (_testName == 'Function Test') ...[
@@ -3101,362 +3108,8 @@ class _EntryTabState extends State<EntryTab> {
                     const SizedBox(height: 20.0),
                   ],
 
-                  // Waterproof Test Specifications Sub-Card (Dynamic)
-                  if (_testName == 'Waterproof Test') ...[
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.15)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.water_drop_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text(
-                                'Waterproof Test Specifications',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16.0),
-                           _buildFormRow([
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Pressure (Bar) - Fixed by Caliber',
-                              child: _buildTextField(
-                                controller: _pressureController,
-                                readOnly: true,
-                                hint: (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5',
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Viscosity (seconds)',
-                              child: _buildTextField(
-                                controller: _viscosityController,
-                                hint: 'e.g., 40',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                                validator: null,
-                              ),
-                            ),
-                          ]),
-                          _buildFormRow([
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Sampling Location',
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildDropdownField(
-                                      value: _locationController.text.isNotEmpty && _allSampleLocations.contains(_locationController.text)
-                                          ? _locationController.text
-                                          : _allSampleLocations.first,
-                                      items: _allSampleLocations,
-                                      onChanged: (v) {
-                                        if (v != null) {
-                                          setState(() => _locationController.text = v);
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6.0),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0284C7).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6.0),
-                                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
-                                      tooltip: 'Admin: Add new sample location',
-                                      padding: const EdgeInsets.all(8),
-                                      constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
-                                      onPressed: _showAddLocationDialog,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ]),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20.0),
-                  ],
-
-                  // Consolidated Execution Row: Tested, Temperature Mode, Selected Temp, Defects & Status
-                  _buildFormRow([
-                    _buildFlexibleField(
-                      key: _producedFieldKey,
-                      flex: 3,
-                      label: 'Quantity Tested (Rounds)',
-                      isRequired: true,
-                      child: _buildTextField(
-                        controller: _producedController,
-                        focusNode: _producedFocusNode,
-                        hint: '0',
-                        readOnly: false,
-                        keyboardType: TextInputType.number,
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Required';
-                          if (int.tryParse(v) == null) return 'Must be integer';
-                          if (int.parse(v) < 0) return 'Cannot be negative';
-                          return null;
-                        },
-                      ),
-                    ),
-                    if (_testHasTemperatureEvaluation) ...[
-                      _buildFlexibleField(
-                        flex: 4,
-                        label: 'Temperature Evaluation Mode',
-                        child: _buildDropdownField(
-                          value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
-                              ? 'Single Temperature'
-                              : 'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
-                          items: _isCaliberSingleTempOnly
-                              ? const ['Single Temperature']
-                              : [
-                                  'Single Temperature',
-                                  'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
-                                ],
-                          onChanged: (v) {
-                            if (v != null) _onTemperatureModeChanged(v);
-                          },
-                        ),
-                      ),
-                      if (!_isThreeTemperatureMode)
-                        _buildFlexibleField(
-                          flex: 3,
-                          label: 'Selected Temperature',
-                          child: _buildDropdownField(
-                            value: _selectedTemperatureDisplay,
-                            items: _testName == 'Function Test'
-                                ? ['+21 °C', '+52 °C', _functionColdTempLabel]
-                                : const ['+21 °C', '+52 °C', '-54 °C'],
-                            onChanged: (v) {
-                              if (v != null) _onSelectedTemperatureChanged(v);
-                            },
-                          ),
-                        ),
-                    ],
-                    if (_testName == 'Function Test')
-                      _buildFlexibleField(
-                        flex: 2,
-                        label: 'Total Defects',
-                        child: _buildTextField(
-                          controller: _defectsController,
-                          hint: '0',
-                          readOnly: true,
-                          keyboardType: TextInputType.number,
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Required';
-                            if (int.tryParse(v) == null) return 'Must be integer';
-                            if (int.parse(v) < 0) return 'Cannot be negative';
-                            return null;
-                          },
-                        ),
-                      ),
-                    Builder(
-                      builder: (context) {
-                        String? autoStatus;
-                        
-                        if (_testName == 'Waterproof Test') {
-                          final wpRules = _getWaterproofRulesForCaliber();
-                          final int retestLimit = wpRules['retest_limit'] ?? 4;
-                          final int rejectLimit = wpRules['reject_limit'] ?? 7;
-
-                          final ms = int.tryParse(_mouthSlowController.text) ?? 0;
-                          final mf = int.tryParse(_mouthFastController.text) ?? 0;
-                          final ps = int.tryParse(_primerSlowController.text) ?? 0;
-                          final pf = int.tryParse(_primerFastController.text) ?? 0;
-                          final totalLeaks = ms + mf + ps + pf;
-
-                          if (totalLeaks >= rejectLimit) {
-                            autoStatus = 'Rejected';
-                          } else if (totalLeaks >= retestLimit) {
-                            autoStatus = 'Retest';
-                          } else {
-                            autoStatus = 'Approved';
-                          }
-                        } else if (_testName == 'Residual Stress Test') {
-                          final rsRules = _getResidualStressRulesForCaliber();
-                          final int retestLimit = rsRules['retest_limit'] ?? 1;
-                          final int rejectLimit = rsRules['reject_limit'] ?? 3;
-
-                          final ns = int.tryParse(_neckSlowController.text) ?? 0;
-                          final nf = int.tryParse(_neckFastController.text) ?? 0;
-                          final ss = int.tryParse(_shoulderSlowController.text) ?? 0;
-                          final sf = int.tryParse(_shoulderFastController.text) ?? 0;
-                          final bs = int.tryParse(_bodySlowController.text) ?? 0;
-                          final bf = int.tryParse(_bodyFastController.text) ?? 0;
-                          final hs = int.tryParse(_headSlowController.text) ?? 0;
-                          final hf = int.tryParse(_headFastController.text) ?? 0;
-                          final totalSplits = ns + nf + ss + sf + bs + bf + hs + hf;
-
-                          if (totalSplits >= rejectLimit) {
-                            autoStatus = 'Rejected';
-                          } else if (totalSplits >= retestLimit) {
-                            autoStatus = 'Retest';
-                          } else {
-                            autoStatus = 'Approved';
-                          }
-                        } else if (_testName == 'Accuracy Test') {
-                          final accRules = _getAccuracyRulesForCaliber();
-                          final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
-                          final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
-                          final double condSD = (accRules['cond_sd'] ?? 170.0).toDouble();
-                          final double velMin = (accRules['vel_min'] ?? 700.0).toDouble();
-                          final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
-
-                          final double? meanVel = double.tryParse(_meanVelController.text.trim());
-                          bool isVelReject = false;
-                          if (meanVel != null) {
-                            isVelReject = meanVel < velMin || meanVel > velMax;
-                          }
-
-                          if (isVelReject) {
-                            autoStatus = 'Rejected';
-                          } else {
-                            final double meanRadius = double.tryParse(_meanRadiusController.text.trim()) ?? 0.0;
-                            final double sdx = double.tryParse(_sdXController.text.trim()) ?? 0.0;
-                            final double sdy = double.tryParse(_sdYController.text.trim()) ?? 0.0;
-
-                            if (meanRadius > maxMeanRadius || sdx > maxSD || sdy > maxSD) {
-                              autoStatus = 'Rejected';
-                            } else if (sdx >= condSD || sdy >= condSD) {
-                              autoStatus = 'Approved with condition';
-                            } else {
-                              autoStatus = 'Approved';
-                            }
-                          }
-                        } else if (_testName == 'Extraction Force Test') {
-                          final double? minForce = double.tryParse(_minXController.text.trim());
-                          if (minForce != null) {
-                            final extRules = _getExtractionRulesForCaliber();
-                            final double limit = (extRules['min_force'] ?? 200.0).toDouble();
-                            autoStatus = minForce < limit ? 'Rejected' : 'Approved';
-                          } else {
-                            autoStatus = 'Approved';
-                          }
-                        } else if (_testName == 'Function Test') {
-                          final l1 = int.tryParse(_functionLevel1Controller.text.trim()) ?? 0;
-                          final l2 = int.tryParse(_functionLevel2Controller.text.trim()) ?? 0;
-                          final l3 = int.tryParse(_functionLevel3Controller.text.trim()) ?? 0;
-                          final l4 = int.tryParse(_functionLevel4Controller.text.trim()) ?? 0;
-                          autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
-                        } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
-                          final epv = widget.adminRules['epvat'] ?? {};
-                          final bool threeSigmaEnabled = epv['enable_three_sigma_pressure'] == true;
-                          final bool tempDeltaEnabled = epv['enable_temp_velocity_delta'] == true;
-                          final double maxTempDelta = ((epv['temp_velocity_delta_max'] ?? 30.0) as num).toDouble();
-                          
-                          // Determine status based on active EPVAT type (Individual or Overall)
-                          if (_epvatPressureType == 'Overall') {
-                            // EPVAT Overall: check active temp status
-                            final temps = ['+21', '+52', '-54'];
-                            final activeTemp = temps[_activeEpvatTempTabIndex];
-                            final activeEpv = _getEpvatRulesForCaliber(activeTemp);
-                            
-                            final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
-                            final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
-                            final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
-                            final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
-                            
-                            final double? vMean = double.tryParse(_overallEpvatControllers[activeTemp]!['vel_mean']!.text.trim());
-                            final double? p1MaxVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_max']!.text.trim());
-                            final double? p2MinVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p2_min']!.text.trim());
-                            final double? p1MeanVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_mean']!.text.trim());
-                            final double? p1SdVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_sd']!.text.trim());
-                            
-                            bool rejected = false;
-                            
-                            // Standard velocity and pressure limits
-                            if ((vMean != null && (vMean < velMin || vMean > velMax)) ||
-                                (p1MaxVal != null && p1MaxVal > p1Max) ||
-                                (p2MinVal != null && p2MinVal < p2Min)) {
-                              rejected = true;
-                            }
-                            
-                            // 3-Sigma P1 check: Mean + 3×SD > P1_max → Reject
-                            if (!rejected && threeSigmaEnabled && p1MeanVal != null && p1SdVal != null) {
-                              if ((p1MeanVal + 3.0 * p1SdVal) > p1Max) {
-                                rejected = true;
-                              }
-                            }
-                            
-                            // Temperature velocity delta check: V(+52) − V(−54) > maxTempDelta → Reject
-                            if (!rejected && tempDeltaEnabled) {
-                              final double? v52 = double.tryParse(_overallEpvatControllers['+52']!['vel_mean']!.text.trim());
-                              final double? v54 = double.tryParse(_overallEpvatControllers['-54']!['vel_mean']!.text.trim());
-                              if (v52 != null && v54 != null && (v52 - v54).abs() > maxTempDelta) {
-                                rejected = true;
-                              }
-                            }
-                            
-                            autoStatus = rejected ? 'Rejected' : 'Approved';
-                          } else {
-                            // EPVAT Individual: check cartridge temp limit
-                            final tempKey = _cartridgeTempController.text.trim();
-                            final activeEpv = _getEpvatRulesForCaliber(tempKey);
-                            
-                            final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
-                            final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
-                            final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
-                            final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
-                            
-                            final double? vMean = double.tryParse(_meanVelController.text.trim());
-                            final double? p1MaxVal = double.tryParse(_epvatMaxPressureController.text.trim());
-                            final double? p2MinVal = double.tryParse(_epvatP2MinPressureController.text.trim());
-                            final double? p1MeanVal = double.tryParse(_epvatMeanPressureController.text.trim());
-                            final double? p1SdVal = double.tryParse(_epvatSDPressureController.text.trim());
-                            
-                            bool rejected = false;
-                            
-                            if ((vMean != null && (vMean < velMin || vMean > velMax)) ||
-                                (p1MaxVal != null && p1MaxVal > p1Max) ||
-                                (p2MinVal != null && p2MinVal < p2Min)) {
-                              rejected = true;
-                            }
-                            
-                            // 3-Sigma P1 check
-                            if (!rejected && threeSigmaEnabled && p1MeanVal != null && p1SdVal != null) {
-                              if ((p1MeanVal + 3.0 * p1SdVal) > p1Max) {
-                                rejected = true;
-                              }
-                            }
-                            
-                            autoStatus = rejected ? 'Rejected' : 'Approved';
-                          }
-                        }
-
-                        if (autoStatus != null && _status != autoStatus) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            setState(() {
-                              _status = autoStatus!;
-                            });
-                          });
-                        }
-
-                        return _buildFlexibleField(
-                          flex: 3,
-                          label: 'Quality Status',
-                          child: _buildDropdownField(
-                            value: _status,
-                            items: const ['Approved', 'Pending Review', 'Rejected', 'Retest', 'Approved with condition'],
-                            onChanged: (autoStatus != null && autoStatus != 'Approved') 
-                                ? null 
-                                : (v) => setState(() => _status = v!),
-                          ),
-                        );
-                      }
-                    ),
-                  ]),
+                  // Consolidated Row 2 (Viscosity, Sampling Location, Quality Status, Quantity Tested, Barrel Number, Transducers in 1 or max 2 rows)
+                  _buildConsolidatedRow2(),
                   const SizedBox(height: 20.0),
 
                   // Function Test 4-Level Defects Section (Dynamic)
@@ -5414,14 +5067,40 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
-  Widget _buildFormRow(List<Widget> children, {double spacing = 12.0}) {
+  Widget _buildFormRow(List<Widget> children, {double spacing = 12.0, bool lockSingleRow = false}) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final count = children.length;
 
-        // Desktop single row if wide enough for all fields (min 150px per field, or >= 1050px)
-        if (width >= (count * 150.0).clamp(650.0, 1920.0)) {
+        if (lockSingleRow) {
+          final rowWidget = Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < count; i++) ...[
+                if (i > 0) SizedBox(width: spacing),
+                Expanded(
+                  flex: children[i] is FormRowField ? (children[i] as FormRowField).flex : 1,
+                  child: children[i],
+                ),
+              ],
+            ],
+          );
+
+          if (width < 960) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: 980.0,
+                child: rowWidget,
+              ),
+            );
+          }
+          return rowWidget;
+        }
+
+        // Desktop single row if wide enough for all fields (min 130px per field, or >= 750px)
+        if (width >= (count * 130.0).clamp(550.0, 1920.0)) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -7828,30 +7507,712 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  Widget _buildQualityStatusField({int flex = 3}) {
+    return Builder(
+      builder: (context) {
+        String? autoStatus;
+        
+        if (_testName == 'Waterproof Test') {
+          final wpRules = _getWaterproofRulesForCaliber();
+          final int retestLimit = wpRules['retest_limit'] ?? 4;
+          final int rejectLimit = wpRules['reject_limit'] ?? 7;
+
+          final ms = int.tryParse(_mouthSlowController.text) ?? 0;
+          final mf = int.tryParse(_mouthFastController.text) ?? 0;
+          final ps = int.tryParse(_primerSlowController.text) ?? 0;
+          final pf = int.tryParse(_primerFastController.text) ?? 0;
+          final totalLeaks = ms + mf + ps + pf;
+
+          if (totalLeaks >= rejectLimit) {
+            autoStatus = 'Rejected';
+          } else if (totalLeaks >= retestLimit) {
+            autoStatus = 'Retest';
+          } else {
+            autoStatus = 'Approved';
+          }
+        } else if (_testName == 'Residual Stress Test') {
+          final rsRules = _getResidualStressRulesForCaliber();
+          final int retestLimit = rsRules['retest_limit'] ?? 1;
+          final int rejectLimit = rsRules['reject_limit'] ?? 3;
+
+          final ns = int.tryParse(_neckSlowController.text) ?? 0;
+          final nf = int.tryParse(_neckFastController.text) ?? 0;
+          final ss = int.tryParse(_shoulderSlowController.text) ?? 0;
+          final sf = int.tryParse(_shoulderFastController.text) ?? 0;
+          final bs = int.tryParse(_bodySlowController.text) ?? 0;
+          final bf = int.tryParse(_bodyFastController.text) ?? 0;
+          final hs = int.tryParse(_headSlowController.text) ?? 0;
+          final hf = int.tryParse(_headFastController.text) ?? 0;
+          final totalSplits = ns + nf + ss + sf + bs + bf + hs + hf;
+
+          if (totalSplits >= rejectLimit) {
+            autoStatus = 'Rejected';
+          } else if (totalSplits >= retestLimit) {
+            autoStatus = 'Retest';
+          } else {
+            autoStatus = 'Approved';
+          }
+        } else if (_testName == 'Accuracy Test') {
+          final accRules = _getAccuracyRulesForCaliber();
+          final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
+          final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
+          final double condSD = (accRules['cond_sd'] ?? 170.0).toDouble();
+          final double velMin = (accRules['vel_min'] ?? 700.0).toDouble();
+          final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
+
+          final double? meanVel = double.tryParse(_meanVelController.text.trim());
+          bool isVelReject = false;
+          if (meanVel != null) {
+            isVelReject = meanVel < velMin || meanVel > velMax;
+          }
+
+          if (isVelReject) {
+            autoStatus = 'Rejected';
+          } else {
+            final double meanRadius = double.tryParse(_meanRadiusController.text.trim()) ?? 0.0;
+            final double sdx = double.tryParse(_sdXController.text.trim()) ?? 0.0;
+            final double sdy = double.tryParse(_sdYController.text.trim()) ?? 0.0;
+
+            if (meanRadius > maxMeanRadius || sdx > maxSD || sdy > maxSD) {
+              autoStatus = 'Rejected';
+            } else if (sdx >= condSD || sdy >= condSD) {
+              autoStatus = 'Approved with condition';
+            } else {
+              autoStatus = 'Approved';
+            }
+          }
+        } else if (_testName == 'Extraction Force Test') {
+          final double? minForce = double.tryParse(_minXController.text.trim());
+          if (minForce != null) {
+            final extRules = _getExtractionRulesForCaliber();
+            final double limit = (extRules['min_force'] ?? 200.0).toDouble();
+            autoStatus = minForce < limit ? 'Rejected' : 'Approved';
+          } else {
+            autoStatus = 'Approved';
+          }
+        } else if (_testName == 'Function Test') {
+          final l1 = int.tryParse(_functionLevel1Controller.text.trim()) ?? 0;
+          final l2 = int.tryParse(_functionLevel2Controller.text.trim()) ?? 0;
+          final l3 = int.tryParse(_functionLevel3Controller.text.trim()) ?? 0;
+          final l4 = int.tryParse(_functionLevel4Controller.text.trim()) ?? 0;
+          autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
+        } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+          final epv = widget.adminRules['epvat'] ?? {};
+          final bool threeSigmaEnabled = epv['enable_three_sigma_pressure'] == true;
+          final bool tempDeltaEnabled = epv['enable_temp_velocity_delta'] == true;
+          final double maxTempDelta = ((epv['temp_velocity_delta_max'] ?? 30.0) as num).toDouble();
+          
+          if (_epvatPressureType == 'Overall') {
+            final temps = ['+21', '+52', '-54'];
+            final activeTemp = temps[_activeEpvatTempTabIndex];
+            final activeEpv = _getEpvatRulesForCaliber(activeTemp);
+            
+            final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
+            final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
+            final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
+            final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
+            
+            final double? vMean = double.tryParse(_overallEpvatControllers[activeTemp]!['vel_mean']!.text.trim());
+            final double? p1MaxVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_max']!.text.trim());
+            final double? p2MinVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p2_min']!.text.trim());
+            final double? p1MeanVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_mean']!.text.trim());
+            final double? p1SdVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_sd']!.text.trim());
+            
+            bool rejected = false;
+            
+            if ((vMean != null && (vMean < velMin || vMean > velMax)) ||
+                (p1MaxVal != null && p1MaxVal > p1Max) ||
+                (p2MinVal != null && p2MinVal < p2Min)) {
+              rejected = true;
+            }
+            
+            if (!rejected && threeSigmaEnabled && p1MeanVal != null && p1SdVal != null) {
+              if ((p1MeanVal + 3.0 * p1SdVal) > p1Max) {
+                rejected = true;
+              }
+            }
+            
+            if (!rejected && tempDeltaEnabled) {
+              final double? v52 = double.tryParse(_overallEpvatControllers['+52']!['vel_mean']!.text.trim());
+              final double? v54 = double.tryParse(_overallEpvatControllers['-54']!['vel_mean']!.text.trim());
+              if (v52 != null && v54 != null && (v52 - v54).abs() > maxTempDelta) {
+                rejected = true;
+              }
+            }
+            
+            autoStatus = rejected ? 'Rejected' : 'Approved';
+          } else {
+            final tempKey = _cartridgeTempController.text.trim();
+            final activeEpv = _getEpvatRulesForCaliber(tempKey);
+            
+            final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
+            final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
+            final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
+            final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
+            
+            final double? vMean = double.tryParse(_meanVelController.text.trim());
+            final double? p1MaxVal = double.tryParse(_epvatMaxPressureController.text.trim());
+            final double? p2MinVal = double.tryParse(_epvatP2MinPressureController.text.trim());
+            final double? p1MeanVal = double.tryParse(_epvatMeanPressureController.text.trim());
+            final double? p1SdVal = double.tryParse(_epvatSDPressureController.text.trim());
+            
+            bool rejected = false;
+            
+            if ((vMean != null && (vMean < velMin || vMean > velMax)) ||
+                (p1MaxVal != null && p1MaxVal > p1Max) ||
+                (p2MinVal != null && p2MinVal < p2Min)) {
+              rejected = true;
+            }
+            
+            if (!rejected && threeSigmaEnabled && p1MeanVal != null && p1SdVal != null) {
+              if ((p1MeanVal + 3.0 * p1SdVal) > p1Max) {
+                rejected = true;
+              }
+            }
+            
+            autoStatus = rejected ? 'Rejected' : 'Approved';
+          }
+        }
+
+        if (autoStatus != null && _status != autoStatus) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _status = autoStatus!;
+              });
+            }
+          });
+        }
+
+        return _buildFlexibleField(
+          flex: flex,
+          label: 'Quality Status',
+          child: _buildDropdownField(
+            value: _status,
+            items: const ['Approved', 'Pending Review', 'Rejected', 'Retest', 'Approved with condition'],
+            onChanged: (autoStatus != null && autoStatus != 'Approved') 
+                ? null 
+                : (v) => setState(() => _status = v!),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildConsolidatedRow2() {
+    if (_testName == 'Waterproof Test') {
+      return _buildFormRow([
+        _buildFlexibleField(
+          key: _producedFieldKey,
+          flex: 3,
+          label: 'Quantity Tested (Rounds)',
+          isRequired: true,
+          child: _buildTextField(
+            controller: _producedController,
+            focusNode: _producedFocusNode,
+            hint: '0',
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              if (int.tryParse(v) == null) return 'Must be integer';
+              if (int.parse(v) < 0) return 'Cannot be negative';
+              return null;
+            },
+          ),
+        ),
+        _buildFlexibleField(
+          flex: 3,
+          label: 'Viscosity (seconds)',
+          child: _buildTextField(
+            controller: _viscosityController,
+            hint: 'e.g., 40',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+          ),
+        ),
+        _buildFlexibleField(
+          flex: 4,
+          label: 'Sampling Location',
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildDropdownField(
+                  value: _locationController.text.isNotEmpty && _allSampleLocations.contains(_locationController.text)
+                      ? _locationController.text
+                      : _allSampleLocations.first,
+                  items: _allSampleLocations,
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _locationController.text = v);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 6.0),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
+                  tooltip: 'Admin: Add new sample location',
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                  onPressed: _showAddLocationDialog,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildFlexibleField(
+          flex: 3,
+          label: 'Pressure (Bar) - Caliber Fixed',
+          child: _buildTextField(
+            controller: _pressureController,
+            readOnly: true,
+            hint: (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5',
+          ),
+        ),
+        _buildQualityStatusField(flex: 3),
+      ], lockSingleRow: true);
+    }
+
+    if (_testName == 'Accuracy Test') {
+      return _buildFormRow([
+        _buildFlexibleField(
+          key: _producedFieldKey,
+          flex: 3,
+          label: 'Quantity Tested (Rounds)',
+          isRequired: true,
+          child: _buildTextField(
+            controller: _producedController,
+            focusNode: _producedFocusNode,
+            hint: '0',
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              if (int.tryParse(v) == null) return 'Must be integer';
+              if (int.parse(v) < 0) return 'Cannot be negative';
+              return null;
+            },
+          ),
+        ),
+        _buildFlexibleField(
+          key: _barrelFieldKey,
+          flex: 4,
+          label: 'Accuracy Barrel Test Serial',
+          isRequired: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDropdownField(
+                focusNode: _barrelFocusNode,
+                value: _accuracyBarrels.contains(_barrelSNController.text)
+                    ? _barrelSNController.text
+                    : (_accuracyBarrels.isNotEmpty ? _accuracyBarrels.first : ''),
+                items: _accuracyBarrels,
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() => _barrelSNController.text = v);
+                  }
+                },
+              ),
+              const SizedBox(height: 4.0),
+              Text(
+                '${_getAssetRounds(_barrelSNController.text)} cumulative rounds fired',
+                style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        _buildFlexibleField(
+          key: _distanceFieldKey,
+          flex: 2,
+          label: 'Distance of Velocity (m)',
+          isRequired: true,
+          child: _buildTextField(
+            controller: _distanceController,
+            focusNode: _distanceFocusNode,
+            hint: 'e.g., 25',
+          ),
+        ),
+        _buildQualityStatusField(flex: 3),
+      ], lockSingleRow: true);
+    }
+
+    if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFormRow([
+            _buildFlexibleField(
+              key: _producedFieldKey,
+              flex: 3,
+              label: 'Quantity Tested (Rounds)',
+              isRequired: true,
+              child: _buildTextField(
+                controller: _producedController,
+                focusNode: _producedFocusNode,
+                hint: '0',
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (int.tryParse(v) == null) return 'Must be integer';
+                  if (int.parse(v) < 0) return 'Cannot be negative';
+                  return null;
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              key: _barrelFieldKey,
+              flex: 4,
+              label: 'EPVAT Barrel Test Serial',
+              isRequired: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDropdownField(
+                    focusNode: _barrelFocusNode,
+                    value: _epvatBarrels.contains(_barrelSNController.text)
+                        ? _barrelSNController.text
+                        : (_epvatBarrels.isNotEmpty ? _epvatBarrels.first : ''),
+                    items: _epvatBarrels,
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() => _barrelSNController.text = v);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    '${_getAssetRounds(_barrelSNController.text)} cumulative rounds fired',
+                    style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            _buildFlexibleField(
+              key: _distanceFieldKey,
+              flex: 2,
+              label: 'Distance of Velocity (m)',
+              isRequired: true,
+              child: _buildTextField(
+                controller: _distanceController,
+                focusNode: _distanceFocusNode,
+                hint: 'e.g., 25',
+              ),
+            ),
+            _buildQualityStatusField(flex: 3),
+          ], lockSingleRow: true),
+          const SizedBox(height: 14.0),
+          _buildFormRow([
+            if (_testHasTemperatureEvaluation) ...[
+              _buildFlexibleField(
+                flex: 4,
+                label: 'Temperature Evaluation Mode',
+                child: _buildDropdownField(
+                  value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
+                      ? 'Single Temperature'
+                      : 'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
+                  items: _isCaliberSingleTempOnly
+                      ? const ['Single Temperature']
+                      : [
+                          'Single Temperature',
+                          'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
+                        ],
+                  onChanged: (v) {
+                    if (v != null) _onTemperatureModeChanged(v);
+                  },
+                ),
+              ),
+              if (!_isThreeTemperatureMode)
+                _buildFlexibleField(
+                  flex: 3,
+                  label: 'Selected Temperature',
+                  child: _buildDropdownField(
+                    value: _selectedTemperatureDisplay,
+                    items: _testName == 'Function Test'
+                        ? ['+21 °C', '+52 °C', _functionColdTempLabel]
+                        : const ['+21 °C', '+52 °C', '-54 °C'],
+                    onChanged: (v) {
+                      if (v != null) _onSelectedTemperatureChanged(v);
+                    },
+                  ),
+                ),
+            ],
+            _buildFlexibleField(
+              flex: 4,
+              label: 'GP1 (chamber)',
+              isRequired: true,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _manualGP1Entry
+                        ? _buildTextField(
+                            controller: _epvatSensor1Controller,
+                            hint: 'e.g., GP1-001 (PCB 119B)',
+                          )
+                        : _buildDropdownField(
+                            value: _gp1Transducers.contains(_epvatSensor1Controller.text)
+                                ? _epvatSensor1Controller.text
+                                : (_gp1Transducers.isNotEmpty ? _gp1Transducers.first : ''),
+                            items: _gp1Transducers,
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _epvatSensor1Controller.text = v);
+                              }
+                            },
+                          ),
+                  ),
+                  const SizedBox(width: 4.0),
+                  IconButton(
+                    icon: Icon(_manualGP1Entry ? Icons.list : Icons.edit_note, size: 18, color: const Color(0xFF06B6D4)),
+                    tooltip: _manualGP1Entry ? 'Select from registered list' : 'Type custom transducer',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    onPressed: () => setState(() => _manualGP1Entry = !_manualGP1Entry),
+                  ),
+                ],
+              ),
+            ),
+            if (!_isCaliber9mm)
+              _buildFlexibleField(
+                key: _gp6FieldKey,
+                flex: 4,
+                label: 'GP2 (Port)',
+                isRequired: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDropdownField(
+                      focusNode: _gp6FocusNode,
+                      value: _gp6Serials.contains(_gp6SerialController.text)
+                          ? _gp6SerialController.text
+                          : (_gp6Serials.isNotEmpty ? _gp6Serials.first : ''),
+                      items: _gp6Serials,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _gp6SerialController.text = v;
+                            _epvatSensor2Controller.text = v;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 4.0),
+                    Text(
+                      '${_getAssetRounds(_gp6SerialController.text)} cumulative rounds fired',
+                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+          ], lockSingleRow: true),
+        ],
+      );
+    }
+
+    if (_testName == 'Function Test') {
+      return _buildFormRow([
+        _buildFlexibleField(
+          key: _producedFieldKey,
+          flex: 3,
+          label: 'Quantity Tested (Rounds)',
+          isRequired: true,
+          child: _buildTextField(
+            controller: _producedController,
+            focusNode: _producedFocusNode,
+            hint: '0',
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              if (int.tryParse(v) == null) return 'Must be integer';
+              if (int.parse(v) < 0) return 'Cannot be negative';
+              return null;
+            },
+          ),
+        ),
+        _buildFlexibleField(
+          flex: 2,
+          label: 'Total Defects',
+          child: _buildTextField(
+            controller: _defectsController,
+            hint: '0',
+            readOnly: true,
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              if (int.tryParse(v) == null) return 'Must be integer';
+              if (int.parse(v) < 0) return 'Cannot be negative';
+              return null;
+            },
+          ),
+        ),
+        _buildFlexibleField(
+          flex: 4,
+          label: 'Temperature Evaluation Mode',
+          child: _buildDropdownField(
+            value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
+                ? 'Single Temperature'
+                : 'All 3 Temperatures (+21, +52, $_functionColdTempLabel)',
+            items: _isCaliberSingleTempOnly
+                ? const ['Single Temperature']
+                : [
+                    'Single Temperature',
+                    'All 3 Temperatures (+21, +52, $_functionColdTempLabel)',
+                  ],
+            onChanged: (v) {
+              if (v != null) _onTemperatureModeChanged(v);
+            },
+          ),
+        ),
+        if (!_isThreeTemperatureMode)
+          _buildFlexibleField(
+            flex: 3,
+            label: 'Selected Temperature',
+            child: _buildDropdownField(
+              value: _selectedTemperatureDisplay,
+              items: ['+21 °C', '+52 °C', _functionColdTempLabel],
+              onChanged: (v) {
+                if (v != null) _onSelectedTemperatureChanged(v);
+              },
+            ),
+          ),
+        _buildQualityStatusField(flex: 3),
+      ], lockSingleRow: true);
+    }
+
+    // Default row for Primer Sensitivity Test, Residual Stress Test, Extraction Force Test, etc.
+    return _buildFormRow([
+      _buildFlexibleField(
+        key: _producedFieldKey,
+        flex: 3,
+        label: 'Quantity Tested (Rounds)',
+        isRequired: true,
+        child: _buildTextField(
+          controller: _producedController,
+          focusNode: _producedFocusNode,
+          hint: '0',
+          keyboardType: TextInputType.number,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return 'Required';
+            if (int.tryParse(v) == null) return 'Must be integer';
+            if (int.parse(v) < 0) return 'Cannot be negative';
+            return null;
+          },
+        ),
+      ),
+      if (_testHasTemperatureEvaluation) ...[
+        _buildFlexibleField(
+          flex: 4,
+          label: 'Temperature Evaluation Mode',
+          child: _buildDropdownField(
+            value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
+                ? 'Single Temperature'
+                : 'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
+            items: _isCaliberSingleTempOnly
+                ? const ['Single Temperature']
+                : [
+                    'Single Temperature',
+                    'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
+                  ],
+            onChanged: (v) {
+              if (v != null) _onTemperatureModeChanged(v);
+            },
+          ),
+        ),
+        if (!_isThreeTemperatureMode)
+          _buildFlexibleField(
+            flex: 3,
+            label: 'Selected Temperature',
+            child: _buildDropdownField(
+              value: _selectedTemperatureDisplay,
+              items: const ['+21 °C', '+52 °C', '-54 °C'],
+              onChanged: (v) {
+                if (v != null) _onSelectedTemperatureChanged(v);
+              },
+            ),
+          ),
+      ],
+      _buildQualityStatusField(flex: 3),
+    ], lockSingleRow: true);
+  }
+
   Widget _buildComponentAndPrimerFieldsCard() {
     final bool isComponent = widget.currentModule == 'Component Test';
     final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
 
     if (isComponent && _testName == 'Primer Sensitivity Test') {
+      final depthText = _primerInsertionDepthController.text.trim();
+      final depthNum = double.tryParse(depthText);
+      final bool isOutOfSpec = depthText.isNotEmpty && (depthNum == null || depthNum < 0.05 || depthNum > 0.20);
+      final bool isInSpec = depthText.isNotEmpty && depthNum != null && depthNum >= 0.05 && depthNum <= 0.20;
+
       return Container(
         margin: const EdgeInsets.only(bottom: 20.0),
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: const Color(0xFF23364F),
           borderRadius: BorderRadius.circular(10.0),
-          border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.3)),
+          border: Border.all(
+            color: isOutOfSpec ? const Color(0xFFEF4444) : const Color(0xFFEC4899).withOpacity(0.3),
+            width: isOutOfSpec ? 1.5 : 1.0,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.grain_rounded, color: Color(0xFFEC4899), size: 18.0),
-                SizedBox(width: 8.0),
-                Text(
+                const Icon(Icons.grain_rounded, color: Color(0xFFEC4899), size: 18.0),
+                const SizedBox(width: 8.0),
+                const Text(
                   'Component Primer Specifications',
                   style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
                 ),
+                const Spacer(),
+                if (isOutOfSpec)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4.0),
+                      border: Border.all(color: const Color(0xFFEF4444)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 14.0),
+                        SizedBox(width: 4.0),
+                        Text(
+                          'OUT OF SPECIFICATION (Limit: 0.05 - 0.20 mm)',
+                          style: TextStyle(color: Color(0xFFEF4444), fontSize: 10.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (isInSpec)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4.0),
+                      border: Border.all(color: const Color(0xFF10B981)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 14.0),
+                        SizedBox(width: 4.0),
+                        Text(
+                          'IN SPECIFICATION (0.05 - 0.20 mm)',
+                          style: TextStyle(color: Color(0xFF10B981), fontSize: 10.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 14.0),
@@ -7860,24 +8221,65 @@ class _EntryTabState extends State<EntryTab> {
                 flex: 1,
                 label: 'Primer Supplier',
                 isRequired: true,
-                child: _buildDropdownField(
-                  value: _primerSuppliers.contains(_primerSupplier)
-                      ? _primerSupplier
-                      : (_primerSuppliers.isNotEmpty ? _primerSuppliers.first : ''),
-                  items: _primerSuppliers,
-                  onChanged: (v) {
-                    if (v != null) setState(() => _primerSupplier = v);
-                  },
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildDropdownField(
+                        value: _primerSuppliers.contains(_primerSupplier)
+                            ? _primerSupplier
+                            : (_primerSuppliers.isNotEmpty ? _primerSuppliers.first : ''),
+                        items: _primerSuppliers,
+                        onChanged: (v) {
+                          if (v != null) setState(() => _primerSupplier = v);
+                        },
+                      ),
+                    ),
+                    if (_isAdmin) ...[
+                      const SizedBox(width: 6.0),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEC4899).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(color: const Color(0xFFEC4899).withOpacity(0.4)),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.add, size: 18, color: Color(0xFFEC4899)),
+                          tooltip: 'Admin: Add Primer Supplier',
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                          onPressed: _showAddPrimerSupplierDialog,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               _buildFlexibleField(
                 flex: 1,
-                label: 'Average Insertion Depth (mm)',
+                label: 'Average Insertion Depth (mm) [0.05 - 0.20 mm]',
                 isRequired: true,
-                child: _buildTextField(
-                  controller: _primerInsertionDepthController,
-                  hint: 'e.g., 0.18',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTextField(
+                      controller: _primerInsertionDepthController,
+                      hint: 'e.g., 0.15 (0.05 - 0.20)',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                      onChanged: (_) {
+                        setState(() {});
+                        _scheduleAutoSave();
+                      },
+                    ),
+                    if (isOutOfSpec)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          '⚠️ Out of specification (Allowed limit: 0.05 mm to 0.20 mm)',
+                          style: TextStyle(color: Color(0xFFEF4444), fontSize: 11.0, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               _buildFlexibleField(
@@ -7886,7 +8288,7 @@ class _EntryTabState extends State<EntryTab> {
                 isRequired: true,
                 child: _buildTextField(
                   controller: _primerLotController,
-                  hint: 'e.g., PR-2026-01',
+                  hint: 'Type primer lot number (e.g., PR-2026-01)',
                   onChanged: (_) => _scheduleAutoSave(),
                 ),
               ),
@@ -7924,37 +8326,70 @@ class _EntryTabState extends State<EntryTab> {
                 flex: 1,
                 label: 'Propellant Supplier',
                 isRequired: true,
-                child: _buildDropdownField(
-                  value: _propellantSuppliers.contains(_propellantSupplier)
-                      ? _propellantSupplier
-                      : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
-                  items: _propellantSuppliers,
-                  onChanged: (v) {
-                    if (v != null) setState(() => _propellantSupplier = v);
-                  },
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildDropdownField(
+                        value: _propellantSuppliers.contains(_propellantSupplier)
+                            ? _propellantSupplier
+                            : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
+                        items: _propellantSuppliers,
+                        onChanged: (v) {
+                          if (v != null) setState(() => _propellantSupplier = v);
+                        },
+                      ),
+                    ),
+                    if (_isAdmin) ...[
+                      const SizedBox(width: 6.0),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF97316).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(color: const Color(0xFFF97316).withOpacity(0.4)),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.add, size: 18, color: Color(0xFFF97316)),
+                          tooltip: 'Admin: Add Propellant Supplier',
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                          onPressed: _showAddPropellantSupplierDialog,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               _buildFlexibleField(
                 flex: 1,
-                label: 'Propellant Code',
+                label: 'Powder Code',
                 isRequired: true,
-                child: _buildDropdownField(
-                  value: _propellantCodes.contains(_propellantCode)
-                      ? _propellantCode
-                      : (_propellantCodes.isNotEmpty ? _propellantCodes.first : ''),
-                  items: _propellantCodes,
-                  onChanged: (v) {
-                    if (v != null) setState(() => _propellantCode = v);
-                  },
+                child: _buildTextField(
+                  controller: _propellantCodeController,
+                  hint: 'Type powder code (e.g. D-073.4 or PB-540)',
+                  onChanged: (_) => _scheduleAutoSave(),
                 ),
               ),
               _buildFlexibleField(
                 flex: 1,
-                label: 'Propellant Lot Number',
+                label: 'Powder Charge in Gram (number only)',
+                isRequired: true,
+                child: _buildTextField(
+                  controller: _propellantChargeController,
+                  hint: 'e.g., 1.62',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                  onChanged: (_) => _scheduleAutoSave(),
+                ),
+              ),
+              _buildFlexibleField(
+                flex: 1,
+                label: 'Propellant Lot Number (number only)',
                 isRequired: true,
                 child: _buildTextField(
                   controller: _propellantLotController,
-                  hint: 'e.g., PROP-LOT-901',
+                  hint: 'e.g., 90124',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   onChanged: (_) => _scheduleAutoSave(),
                 ),
               ),

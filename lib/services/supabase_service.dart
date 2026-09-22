@@ -75,10 +75,13 @@ class SupabaseService {
 
   /// Map Module + Test Name to its dedicated Supabase table name
   static String getTableName({String module = 'Lot Acceptance Test', String testName = ''}) {
+    final bool isComponent = module == 'Component Test';
     final bool isLot = module == 'Lot Acceptance Test';
-    final String prefix = isLot ? 'lot_acceptance' : 'daily';
+    final String prefix = isComponent ? 'component' : (isLot ? 'lot_acceptance' : 'daily');
 
     switch (testName) {
+      case 'Propellant Test':
+        return 'component_propellant_test';
       case 'Waterproof Test':
         return '${prefix}_waterproof_test';
       case 'Extraction Force Test':
@@ -96,7 +99,7 @@ class SupabaseService {
       case 'Firing Rate Cycle Test':
         return '${prefix}_firing_rate_cycle_test';
       case 'Primer Sensitivity Test':
-        return '${prefix}_primer_sensitivity_test';
+        return isComponent ? 'component_primer_sensitivity_test' : '${prefix}_primer_sensitivity_test';
       default:
         return tableName;
     }
@@ -286,6 +289,7 @@ class SupabaseService {
     'terminal_effect_test',
     'firing_rate_cycle_test',
     'primer_sensitivity_test',
+    'propellant_test',
   ];
 
   /// Clear records from Supabase for a specific module or all
@@ -297,15 +301,18 @@ class SupabaseService {
     try {
       final isDaily = module == 'Daily Test' || module == 'Daily Test Report';
       final isLot = module == 'Lot Acceptance Test';
+      final isComponent = module == 'Component Test';
 
       // 1. Delete from dedicated tables
       final prefixes = <String>[];
       if (module == null || module == 'all') {
-        prefixes.addAll(['daily', 'lot_acceptance']);
+        prefixes.addAll(['daily', 'lot_acceptance', 'component']);
       } else if (isDaily) {
         prefixes.add('daily');
       } else if (isLot) {
         prefixes.add('lot_acceptance');
+      } else if (isComponent) {
+        prefixes.add('component');
       }
 
       for (var prefix in prefixes) {
@@ -429,6 +436,23 @@ class SupabaseService {
       final ok = await ensureInitialized();
       if (!ok) return null;
     }
+    // 1. Try dedicated admin_control table
+    try {
+      final ctrlRes = await client
+          .from('admin_control')
+          .select('config_value')
+          .eq('config_key', 'ADMIN_RULES')
+          .limit(1);
+      if (ctrlRes.isNotEmpty && ctrlRes[0]['config_value'] != null) {
+        final val = ctrlRes[0]['config_value'];
+        if (val is Map) return Map<String, dynamic>.from(val);
+        if (val is String && val.isNotEmpty) {
+          return jsonDecode(val) as Map<String, dynamic>;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback to master ballistic_records (SYSTEM_CONFIG)
     try {
       final res = await client
           .from(tableName)
@@ -458,6 +482,18 @@ class SupabaseService {
       if (!ok) return false;
     }
     try {
+      // 1. Save to dedicated admin_control table if available
+      try {
+        await client.from('admin_control').upsert({
+          'config_key': 'ADMIN_RULES',
+          'config_value': rules,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (e) {
+        debugPrint('admin_control upsert note: $e');
+      }
+
+      // 2. Always sync with master ballistic_records (SYSTEM_CONFIG)
       final jsonString = jsonEncode(rules);
       final existing = await client
           .from(tableName)
@@ -495,6 +531,21 @@ class SupabaseService {
       final ok = await ensureInitialized();
       if (!ok) return null;
     }
+    // 1. Try dedicated consumables_inventory table
+    try {
+      final invRes = await client.from('consumables_inventory').select();
+      if (invRes.isNotEmpty) {
+        return (invRes as List<dynamic>).map((e) {
+          final m = Map<String, dynamic>.from(e as Map);
+          if (m.containsKey('min_safe_threshold')) {
+            m['minSafeThreshold'] = m['min_safe_threshold'];
+          }
+          return m;
+        }).toList();
+      }
+    } catch (_) {}
+
+    // 2. Fallback to master ballistic_records (SYSTEM_CONFIG)
     try {
       final res = await client
           .from(tableName)
@@ -525,6 +576,26 @@ class SupabaseService {
       if (!ok) return false;
     }
     try {
+      // 1. Save to dedicated consumables_inventory table if available
+      try {
+        final rows = items.map((it) => {
+          'id': it['id']?.toString() ?? '',
+          'name': it['name']?.toString() ?? '',
+          'serial': it['serial']?.toString() ?? '',
+          'category': it['category']?.toString() ?? '',
+          'quantity': it['quantity'] ?? 0,
+          'unit': it['unit']?.toString() ?? 'pcs',
+          'min_safe_threshold': it['minSafeThreshold'] ?? 0,
+          'supplier': it['supplier']?.toString() ?? '',
+          'location': it['location']?.toString() ?? '',
+          'updated_at': DateTime.now().toIso8601String(),
+        }).toList();
+        await client.from('consumables_inventory').upsert(rows);
+      } catch (e) {
+        debugPrint('consumables_inventory upsert note: $e');
+      }
+
+      // 2. Always sync with master ballistic_records (SYSTEM_CONFIG)
       final jsonString = jsonEncode(items);
       final existing = await client
           .from(tableName)

@@ -135,6 +135,7 @@ class BallisticRecord {
   final String propellantSupplier;
   final String propellantCode;
   final String propellantLot;
+  final String propellantCharge;
  
   BallisticRecord({
     this.id,
@@ -245,6 +246,7 @@ class BallisticRecord {
     this.propellantSupplier = '',
     this.propellantCode = '',
     this.propellantLot = '',
+    this.propellantCharge = '',
   });
 
   // Backward compatibility getter
@@ -346,8 +348,9 @@ class BallisticRecord {
     final cleanPropSupplier = propellantSupplier.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanPropCode = propellantCode.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanPropLot = propellantLot.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPropCharge = propellantCharge.replaceAll('"', '""').replaceAll(',', ' ');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -510,6 +513,7 @@ class BallisticRecord {
     final String propellantSupplier = fields.length > 104 ? fields[104].replaceAll('"', '').trim() : '';
     final String propellantCode = fields.length > 105 ? fields[105].replaceAll('"', '').trim() : '';
     final String propellantLot = fields.length > 106 ? fields[106].replaceAll('"', '').trim() : '';
+    final String propellantCharge = fields.length > 107 ? fields[107].replaceAll('"', '').trim() : '';
  
     return BallisticRecord(
       timestamp: timestamp,
@@ -619,6 +623,7 @@ class BallisticRecord {
       propellantSupplier: propellantSupplier,
       propellantCode: propellantCode,
       propellantLot: propellantLot,
+      propellantCharge: propellantCharge,
     );
   }
 
@@ -731,6 +736,7 @@ class BallisticRecord {
       'propellant_supplier': propellantSupplier,
       'propellant_code': propellantCode,
       'propellant_lot': propellantLot,
+      'propellant_charge': propellantCharge,
     };
     if (id != null && id!.isNotEmpty) {
       map['id'] = id;
@@ -861,6 +867,7 @@ class BallisticRecord {
       propellantSupplier: toStr(map['propellant_supplier']),
       propellantCode: toStr(map['propellant_code']),
       propellantLot: toStr(map['propellant_lot']),
+      propellantCharge: toStr(map['propellant_charge']),
     );
   }
 
@@ -974,6 +981,7 @@ class BallisticRecord {
     String? propellantSupplier,
     String? propellantCode,
     String? propellantLot,
+    String? propellantCharge,
   }) {
     return BallisticRecord(
       id: id ?? this.id,
@@ -1084,6 +1092,7 @@ class BallisticRecord {
       propellantSupplier: propellantSupplier ?? this.propellantSupplier,
       propellantCode: propellantCode ?? this.propellantCode,
       propellantLot: propellantLot ?? this.propellantLot,
+      propellantCharge: propellantCharge ?? this.propellantCharge,
     );
   }
 
