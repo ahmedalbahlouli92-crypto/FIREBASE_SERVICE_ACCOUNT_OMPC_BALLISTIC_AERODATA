@@ -17,7 +17,8 @@ try {
         Remove-Item -Force $webBundleZip -ErrorAction SilentlyContinue
     }
     $tempWebDir = Join-Path $env:TEMP "ompc_web_bundle_$(Get-Random)"
-    Copy-Item -Path "build\web" -Destination $tempWebDir -Recurse -Force
+    New-Item -ItemType Directory -Path $tempWebDir -Force | Out-Null
+    Copy-Item -Path "build\web\*" -Destination $tempWebDir -Recurse -Force
     Compress-Archive -Path "$tempWebDir\*" -DestinationPath $webBundleZip -CompressionLevel Optimal -Force
     Remove-Item -Recurse -Force $tempWebDir -ErrorAction SilentlyContinue
 
@@ -76,6 +77,12 @@ try {
             Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "$localProgramsDir\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
             Write-Host "  [OK] Synchronized executable to Local Programs folder for desktop shortcut."
         }
+
+        # Clear old cached host and web_app folders in LocalAppData so the new bundle unpacks fresh
+        $localAppData = "$env:LOCALAPPDATA\OMPC_Ballistic_AeroData"
+        if (Test-Path "$localAppData\host") { Remove-Item -Recurse -Force "$localAppData\host" -ErrorAction SilentlyContinue }
+        if (Test-Path "$localAppData\web_app") { Remove-Item -Recurse -Force "$localAppData\web_app" -ErrorAction SilentlyContinue }
+        if (Test-Path "$localAppData\profiles") { Remove-Item -Recurse -Force "$localAppData\profiles" -ErrorAction SilentlyContinue }
     } catch {
         Write-Host "Note: Desktop folder partially locked by active session; files updated where possible."
     }

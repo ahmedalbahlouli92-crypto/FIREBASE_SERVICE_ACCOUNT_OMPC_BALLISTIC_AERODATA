@@ -293,37 +293,36 @@ namespace OmpcBallisticAeroData
 
                 Log("Starting OMPC Ballistic AeroData Host at " + DateTime.Now);
 
-                // Resolve web directory relative to executable
+                // Prioritize the self-contained embedded web bundle carried by the executable
                 string baseDirHost = AppDomain.CurrentDomain.BaseDirectory;
-                _webRoot = Path.Combine(baseDirHost, "build", "web");
-                Log("baseDirHost: " + baseDirHost + "\r\n_webRoot: " + _webRoot);
+                string unpackedDir = null;
+                bool extracted = TryExtractEmbeddedWebBundle(out unpackedDir);
 
-                if (!Directory.Exists(_webRoot) || !File.Exists(Path.Combine(_webRoot, "index.html")))
+                if (extracted && !string.IsNullOrEmpty(unpackedDir) && Directory.Exists(unpackedDir) && File.Exists(Path.Combine(unpackedDir, "index.html")))
                 {
-                    if (File.Exists(Path.Combine(baseDirHost, "index.html")))
-                    {
-                        _webRoot = baseDirHost;
-                    }
-                    else
-                    {
-                        string unpackedDir;
-                        bool extracted = TryExtractEmbeddedWebBundle(out unpackedDir);
-                        if (extracted && Directory.Exists(unpackedDir) && File.Exists(Path.Combine(unpackedDir, "index.html")))
-                        {
-                            _webRoot = unpackedDir;
-                        }
-                        else
-                        {
-                            Log("ERROR: Web assets not found!");
-                            System.Windows.Forms.MessageBox.Show(
-                                "Cannot find the web application assets in 'build/web' or current folder.\n" +
-                                "Please ensure the application folder is intact.",
-                                "OMPC Ballistic AeroData - Error",
-                                System.Windows.Forms.MessageBoxButtons.OK,
-                                System.Windows.Forms.MessageBoxIcon.Error);
-                            return;
-                        }
-                    }
+                    _webRoot = unpackedDir;
+                    Log("Resolved _webRoot (embedded bundle): " + _webRoot);
+                }
+                else if (Directory.Exists(Path.Combine(baseDirHost, "build", "web")) && File.Exists(Path.Combine(baseDirHost, "build", "web", "index.html")))
+                {
+                    _webRoot = Path.Combine(baseDirHost, "build", "web");
+                    Log("Resolved _webRoot (local build/web): " + _webRoot);
+                }
+                else if (File.Exists(Path.Combine(baseDirHost, "index.html")))
+                {
+                    _webRoot = baseDirHost;
+                    Log("Resolved _webRoot (baseDir): " + _webRoot);
+                }
+                else
+                {
+                    Log("ERROR: Web assets not found!");
+                    System.Windows.Forms.MessageBox.Show(
+                        "Cannot find the web application assets in the application package.\n" +
+                        "Please ensure the application file is intact.",
+                        "OMPC Ballistic AeroData - Error",
+                        System.Windows.Forms.MessageBoxButtons.OK,
+                        System.Windows.Forms.MessageBoxIcon.Error);
+                    return;
                 }
                 Log("Resolved _webRoot: " + _webRoot);
 
@@ -405,11 +404,16 @@ namespace OmpcBallisticAeroData
                     {
                         File.WriteAllText(prefFile, "{\"sync\":{\"has_setup_completed\":false,\"suppress_start\":true},\"edge\":{\"show_sync_notice\":false,\"sync_prompt_state\":2},\"profile\":{\"password_manager_enabled\":false}}");
                     }
+                    // Clean old cache to ensure updated Flutter JS is always loaded fresh
+                    string cacheDir = Path.Combine(defaultProfileDir, "Cache");
+                    if (Directory.Exists(cacheDir)) { try { Directory.Delete(cacheDir, true); } catch { } }
+                    string codeCacheDir = Path.Combine(defaultProfileDir, "Code Cache");
+                    if (Directory.Exists(codeCacheDir)) { try { Directory.Delete(codeCacheDir, true); } catch { } }
                 } 
                 catch { }
 
-                // Launch local application URL
-                string appUrl = "http://127.0.0.1:" + _port + "/";
+                // Launch local application URL with timestamp cache buster
+                string appUrl = "http://127.0.0.1:" + _port + "/?t=" + DateTime.UtcNow.Ticks;
                 Log("App URL: " + appUrl);
 
                 string browserExe = FindChromiumBrowser();
@@ -420,7 +424,7 @@ namespace OmpcBallisticAeroData
                     try
                     {
                         string browserArgs = string.Format(
-                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check --disable-features=msEdgeSyncNotice,msEdgeSyncNoticeDialog,msEdgeProfilePicker,msEdgeShowSyncNotice,msFirstRunExperience --disable-sync --disable-fre --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"",
+                            "--app=\"{0}\" --start-maximized --user-data-dir=\"{1}\" --no-first-run --no-default-browser-check --disable-cache --disk-cache-size=1 --disable-features=msEdgeSyncNotice,msEdgeSyncNoticeDialog,msEdgeProfilePicker,msEdgeShowSyncNotice,msFirstRunExperience --disable-sync --disable-fre --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"",
                             appUrl, _userProfileDir);
 
                         ProcessStartInfo psi = new ProcessStartInfo
@@ -640,7 +644,9 @@ namespace OmpcBallisticAeroData
                     ctx.Response.StatusCode = 200;
                     ctx.Response.ContentType = GetMimeType(Path.GetExtension(fullPath));
                     ctx.Response.ContentLength64 = bytes.Length;
-                    ctx.Response.Headers.Add("Cache-Control", "no-cache");
+                    ctx.Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                    ctx.Response.Headers.Add("Pragma", "no-cache");
+                    ctx.Response.Headers.Add("Expires", "0");
                     ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
                 }
                 else
@@ -729,7 +735,9 @@ namespace OmpcBallisticAeroData
                             "HTTP/1.1 200 OK\r\n" +
                             "Content-Type: {0}\r\n" +
                             "Content-Length: {1}\r\n" +
-                            "Cache-Control: no-cache\r\n" +
+                            "Cache-Control: no-cache, no-store, must-revalidate\r\n" +
+                            "Pragma: no-cache\r\n" +
+                            "Expires: 0\r\n" +
                             "Access-Control-Allow-Origin: *\r\n" +
                             "Connection: close\r\n\r\n",
                             mime, bytes.Length);
