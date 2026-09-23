@@ -19,32 +19,48 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.4.3';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.4.3 (Android Log Sizing, Mobile Dialog Bounding, Responsive Stacking & In-Place APK Update)';
-const BODY = `## OMPC Ballistic AeroData v1.4.3
+const TAG_NAME = 'v1.5.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.1 (22 Laboratory Enhancements, Executive Reports Tab & Retest Protocol)';
+const BODY = `## OMPC Ballistic AeroData v1.5.1
 
-### Key Updates & Enhancements:
-1. **Android Log Sizing & Responsive Mobile Layout**:
-   - **Log Entry Tab**: Implemented dynamic responsive rows that stack fields cleanly on mobile screens (< 620px), arrange in balanced chunks on tablets, and preserve full single rows on desktop. Removed horizontal margin waste to allow full touch target widths.
-   - **Inspection History Filters**: Rewrote the filter panel to adapt to mobile (< 750px) by wrapping search, calibers, test names, lot, hopper, and status into readable, spacious rows instead of squeezed 3-column rows.
-2. **Quality & Individual Report Generator Dialog Fixes**:
-   - Added bounded height constraints (\`math.min(850.0, screenHeight * 0.90)\`) to resolve Flutter's unbounded flex crash on Android when previewing reports.
-   - Stacked test type selector and summary statistics vertically on mobile dialog widths (< 650px).
-   - Replaced rigid horizontal button row with a responsive \`Wrap\` widget so "Export Excel", "Export Word", and "Download / Print PDF" buttons never overflow or get clipped on Android screens.
-3. **Inspection Log Edit Dialog Mobile Responsiveness**:
-   - Added bounded height constraints (\`maxHeight: screenHeight * 0.85\`) with internal scrolling.
-   - Stacks inspector, shift, caliber, lot, quantity, defect, and test-specific fields (Waterproof, Propellant, Primer Sensitivity) into ergonomic 1-column or 2-column mobile layouts on screens < 600px.
-4. **Mobile Navigation & Component Test Support**:
-   - Added full mobile tab navigation and bottom bar support for the "Component Test" module, ensuring feature parity with Lot Acceptance Test and Daily Test.
-5. **Zero-Reinstall Seamless In-Place APK Updates**:
-   - Android Package Installer automatically performs in-place upgrades preserving all local databases and caches without requiring uninstall/reinstall.
-   - Live GitHub Release APK auto-updater verifies v1.4.3 and prompts direct download.
+Comprehensive release incorporating 22 laboratory quality, testing, traceability, and reporting enhancements:
 
-### Binaries & Deployments:
-- **Android APK**: \`OMPC_Ballistic_AeroData_v1.4.3.apk\`
-- **Windows Setup**: \`OMPC_Ballistic_AeroData_Setup.exe\`
-- **Windows Standalone**: \`OMPC_Ballistic_AeroData.exe\`
-- **Windows Portable**: \`OMPC_Ballistic_AeroData_Portable.zip\`
+### Key Highlights & Features:
+1. **Admin Control & User Management**:
+   - Fixed admin user modification and deletion with real-time Supabase cloud synchronization.
+2. **Deduplication & Data Integrity**:
+   - Eliminated duplicate submission entries in the inspection log by enforcing unique record UUIDs.
+3. **Component Test Caliber & Test Type Isolation**:
+   - Restricted Component Test calibers strictly to primed cases: \`5.56\`, \`7.62\`, and \`9mm\` (without military designation prefixes).
+   - Component test types strictly limited to \`Primer Sensitivity\` and \`Propellant\`.
+   - Entry log dynamically changes lot prompt to \`Primer Lot No.\` or \`Propellant Lot No.\`.
+4. **2-Digit Hopper Number Specification**:
+   - Standardized Hopper Number year prefix to exactly 2 digits (e.g., \`26\`).
+5. **Primer Sensitivity Workflow Optimization**:
+   - Streamlined Primer Sensitivity test by eliminating progressive round trials.
+   - Added direct summary inputs: Total Rounds, Total Fire, H_Bar, Sensitivity S.D., H+3S (All Fire), and H-3S (No Fire) with automatic calculation.
+6. **Inspection Log Reordering & Timestamp Accuracy**:
+   - Time in inspection log reflects selected inspection time or exact submission time.
+   - Column sequence standardized: \`TIME\`, \`INSPECTOR\`, \`TEST NAME\`, \`CALIBER\`, \`HOPPER NO.\` / \`LOT NO.\` / \`COMPONENT LOT\`, \`STATUS\`, \`SAMPLE SIZE\`, \`RESULTS\`, \`REMARKS\`, \`ACTIONS\`.
+7. **Consumables Management (4-Column Layout)**:
+   - Restructured consumable items table into 4 clean columns: \`ITEM NAME\`, \`SERIAL NUMBER\`, \`AVAILABLE STOCK\`, and \`CONSUMPTION ACTION\` (with caliber selector, quantity input, remark, and submit action).
+   - Added "Received Shipment Log" dialog for receiving incoming inventory stock.
+8. **QC Retest Protocol**:
+   - Failed or rejected inspection log entries feature a dedicated **Retest** action.
+   - Retest dialog prompts for inspector, shift, and retest remarks, linking retests back to the original test record.
+9. **EPVAT Row Sequencing & Visual Quality Badge**:
+   - Standardized EPVAT input rows (Row 1: Sample Size, Chamber Pressure P1, Case Mouth Pressure P2, Velocity; Row 2: Barrel Serial, Action Time).
+   - Added prominent live colored Quality Status badge (Accepted / Rejected / Pending) above the test form.
+10. **Analytics & SPC Enhancements**:
+    - Box & Whisker plot filtered strictly to EPVAT records with metrics limited to \`Velocity SD\` and \`Pressure SD\`, plus temperature filter.
+    - SPC Trend Chart equipped with dynamic time-range filter (All Time, Today, Last 7 Days, Last 30 Days, This Month, This Year).
+11. **Executive Reports Module**:
+    - Dedicated executive dashboard with Daily, Monthly, and Yearly aggregation periods.
+    - Multi-module selection checkboxes (Daily Test, Lot Acceptance, Component Test, Consumables).
+    - Summary KPI cards, interactive table previews, and instant CSV / PDF print export.
+12. **Supabase Cloud Schema & Synchronization**:
+    - Extended database schema in \`supabase_tables_setup.sql\` with retest tracking columns across master and dedicated tables.
+    - Resilient schema fallback in \`SupabaseService\` ensuring uninterrupted cloud logging.
 `;
 
 function request(options, postData) {
@@ -154,8 +170,9 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.4.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.4.3.apk' },
-    { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' }
+    { name: 'OMPC_Ballistic_AeroData_v1.5.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
+    { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
+    { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
 
   for (const asset of assets) {
