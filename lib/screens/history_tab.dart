@@ -23,6 +23,7 @@ class HistoryTab extends StatefulWidget {
   final String base64Logo;
   final Map<String, dynamic> adminRules;
   final VoidCallback? onClearDailyTestLogs;
+  final String loggedInUser;
 
   const HistoryTab({
     Key? key,
@@ -38,6 +39,7 @@ class HistoryTab extends StatefulWidget {
     required this.base64Logo,
     this.adminRules = const {},
     this.onClearDailyTestLogs,
+    this.loggedInUser = '',
   }) : super(key: key);
 
   @override
@@ -89,6 +91,286 @@ class _HistoryTabState extends State<HistoryTab> {
     _verticalScrollController.dispose();
     _horizontalScrollController.dispose();
     super.dispose();
+  }
+
+  void _showRetestDialog(BallisticRecord r) {
+    final bool canPerformRetest = widget.isAdmin ||
+        widget.loggedInUser.isEmpty ||
+        r.operators.toLowerCase().contains(widget.loggedInUser.toLowerCase()) ||
+        widget.loggedInUser.toLowerCase().contains(r.operators.toLowerCase());
+
+    if (!canPerformRetest) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Access restricted: Only the original submitter (${r.operators}) or an Admin can perform this retest.'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final retestOpCtrl = TextEditingController(text: widget.loggedInUser.isNotEmpty ? widget.loggedInUser : r.operators);
+    final retestNotesCtrl = TextEditingController();
+    final retestProducedCtrl = TextEditingController(text: '${r.produced}');
+    String selectedOutcome = 'Approved';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+                side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: const Icon(Icons.replay_circle_filled_rounded, color: Color(0xFFF59E0B), size: 24.0),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Execute Retest Verification',
+                          style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Original Test: ${r.testName} | ${r.caliber} | Lot: ${r.lotNo}',
+                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 580.0,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(color: const Color(0xFF334155)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Color(0xFF38BDF8), size: 16.0),
+                                SizedBox(width: 6.0),
+                                Text(
+                                  'ORIGINAL INSPECTION SUMMARY',
+                                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8.0),
+                            Row(
+                              children: [
+                                Expanded(child: Text('Submitter: ${r.operators}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
+                                Expanded(child: Text('Date: ${r.timestamp}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
+                              ],
+                            ),
+                            const SizedBox(height: 4.0),
+                            Row(
+                              children: [
+                                Expanded(child: Text('Sample Size: ${r.produced} rounds', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
+                                Expanded(child: Text('Defects/Leaks: ${r.defects}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
+                              ],
+                            ),
+                            if (r.notes.isNotEmpty) ...[
+                              const SizedBox(height: 4.0),
+                              Text('Original Remarks: ${r.notes}', style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11.5)),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18.0),
+                      const Text(
+                        'RETEST RESULTS & FINDINGS',
+                        style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                      ),
+                      const SizedBox(height: 10.0),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TextFormField(
+                              controller: retestOpCtrl,
+                              style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                              decoration: InputDecoration(
+                                labelText: 'Retest Inspector',
+                                labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                                filled: true,
+                                fillColor: const Color(0xFF0F172A),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 2,
+                            child: TextFormField(
+                              controller: retestProducedCtrl,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                              decoration: InputDecoration(
+                                labelText: 'Retest Sample Qty',
+                                labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                                filled: true,
+                                fillColor: const Color(0xFF0F172A),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12.0),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F172A),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(color: selectedOutcome == 'Approved' ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedOutcome,
+                                  isExpanded: true,
+                                  dropdownColor: const Color(0xFF1E293B),
+                                  style: TextStyle(
+                                    color: selectedOutcome == 'Approved' ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Approved',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18.0),
+                                          SizedBox(width: 8.0),
+                                          Text('Approved (Retest Passed)', style: TextStyle(color: Color(0xFF10B981))),
+                                        ],
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Rejected',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.cancel_rounded, color: Color(0xFFEF4444), size: 18.0),
+                                          SizedBox(width: 8.0),
+                                          Text('Rejected (Retest Failed)', style: TextStyle(color: Color(0xFFEF4444))),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setDialogState(() => selectedOutcome = v);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12.0),
+                      TextFormField(
+                        controller: retestNotesCtrl,
+                        maxLines: 3,
+                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                        decoration: InputDecoration(
+                          labelText: 'Retest Findings & Remarks',
+                          labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                          hintText: 'Describe rounds tested, condition observed, and reason for outcome...',
+                          hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0),
+                          filled: true,
+                          fillColor: const Color(0xFF0F172A),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final op = retestOpCtrl.text.trim().isNotEmpty ? retestOpCtrl.text.trim() : r.operators;
+                    final notes = retestNotesCtrl.text.trim();
+                    final timestamp = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+                    final finalStatus = selectedOutcome == 'Approved' ? 'Approved (Retest Passed)' : 'Rejected (Retest Failed)';
+                    final updatedNotes = r.notes.isNotEmpty
+                        ? '${r.notes}\n[RETEST by $op on $timestamp]: $notes (Outcome: $finalStatus)'
+                        : '[RETEST by $op on $timestamp]: $notes (Outcome: $finalStatus)';
+
+                    final updatedRecord = r.copyWith(
+                      isRetest: true,
+                      retestTimestamp: timestamp,
+                      retestOperator: op,
+                      retestNotes: notes,
+                      retestStatus: selectedOutcome,
+                      originalStatus: r.originalStatus.isNotEmpty ? r.originalStatus : r.status,
+                      status: finalStatus,
+                      notes: updatedNotes,
+                    );
+
+                    Navigator.of(ctx).pop();
+
+                    if (widget.onEditRecord != null) {
+                      await widget.onEditRecord!(r, updatedRecord);
+                    }
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Retest submitted successfully for lot "${r.lotNo}". Final status: $finalStatus'),
+                          backgroundColor: selectedOutcome == 'Approved' ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check, size: 16.0),
+                  label: const Text('Save Retest Report', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showAiAnalysisDialog(BallisticRecord r) {
@@ -1279,38 +1561,46 @@ class _HistoryTabState extends State<HistoryTab> {
                                   columns: [
                                     const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('SHIFT TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     DataColumn(
                                       label: Text(
-                                        widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PROD DATE' : 'LOT NO. (H/B)',
+                                        widget.currentModule == 'Daily Test'
+                                            ? 'HOPPER NO.'
+                                            : (widget.currentModule == 'Component Test' ? 'COMPONENT LOT' : 'LOT NO.'),
                                         style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                     const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     const DataColumn(label: Text('SAMPLE SIZE', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     const DataColumn(label: Text('RESULTS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                   ],
                                   rows: displayRecords.map((r) {
                                     return DataRow(
+                                      color: MaterialStateProperty.resolveWith((states) {
+                                        final st = r.status.toLowerCase();
+                                        if (st.contains('approved')) {
+                                          return const Color(0xFF10B981).withOpacity(0.08);
+                                        } else if (st.contains('reject')) {
+                                          return const Color(0xFFEF4444).withOpacity(0.12);
+                                        } else if (st.contains('retest') || st.contains('pending')) {
+                                          return const Color(0xFFF59E0B).withOpacity(0.12);
+                                        }
+                                        return null;
+                                      }),
                                       cells: [
-                                        DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF94A3B8)))),
-                                        DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.white))),
-                                        DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8)))),
+                                        DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF94A3B8)))),
                                         DataCell(
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF2C415E),
-                                              borderRadius: BorderRadius.circular(4.0),
-                                              border: Border.all(color: const Color(0xFF1E3A8A)),
-                                            ),
-                                            child: Text(
-                                              r.caliber,
-                                              style: const TextStyle(color: Colors.white, fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
-                                            ),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.0, color: Colors.white)),
+                                              if (r.shift.isNotEmpty)
+                                                Text('Shift: ${r.shift}', style: const TextStyle(fontSize: 10.0, color: Color(0xFF94A3B8))),
+                                            ],
                                           ),
                                         ),
                                         DataCell(
@@ -1328,10 +1618,26 @@ class _HistoryTabState extends State<HistoryTab> {
                                           ),
                                         ),
                                         DataCell(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF2C415E),
+                                              borderRadius: BorderRadius.circular(4.0),
+                                              border: Border.all(color: const Color(0xFF1E3A8A)),
+                                            ),
+                                            child: Text(
+                                              r.caliber,
+                                              style: const TextStyle(color: Colors.white, fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                        DataCell(
                                           Text(
-                                            r.hopperNo.isEmpty && r.boxNo.isEmpty
+                                            widget.currentModule == 'Daily Test'
                                                 ? r.lotNo
-                                                : '${r.lotNo} (H:${r.hopperNo}, B:${r.boxNo})',
+                                                : (widget.currentModule == 'Component Test'
+                                                    ? (r.primerLot.isNotEmpty ? r.primerLot : (r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo))
+                                                    : (r.hopperNo.isEmpty && r.boxNo.isEmpty ? r.lotNo : '${r.lotNo} (H:${r.hopperNo}, B:${r.boxNo})')),
                                             style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w600),
                                           ),
                                         ),
@@ -1357,9 +1663,30 @@ class _HistoryTabState extends State<HistoryTab> {
                                         ),
                                         DataCell(_buildResultCell(r)),
                                         DataCell(
+                                          Container(
+                                            constraints: const BoxConstraints(maxWidth: 160.0),
+                                            child: Text(
+                                              r.notes.isNotEmpty ? r.notes : '-',
+                                              style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                        DataCell(
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
+                                              if (r.status.toLowerCase().contains('retest')) ...[
+                                                IconButton(
+                                                  icon: const Icon(Icons.replay_circle_filled_rounded, color: Color(0xFFF59E0B), size: 20.0),
+                                                  onPressed: () => _showRetestDialog(r),
+                                                  tooltip: 'Perform Retest Inspection',
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                ),
+                                                const SizedBox(width: 8.0),
+                                              ],
                                               IconButton(
                                                 icon: const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 18.0),
                                                 onPressed: () => _showAiAnalysisDialog(r),

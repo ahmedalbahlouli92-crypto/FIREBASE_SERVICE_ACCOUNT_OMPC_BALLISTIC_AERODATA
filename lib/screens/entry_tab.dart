@@ -40,6 +40,7 @@ class EntryTab extends StatefulWidget {
   final Map<String, dynamic> adminRules;
   final List<BallisticRecord> records;
   final List<BallisticRecord> componentPrimerRecords;
+  final List<BallisticRecord> componentPropellantRecords;
   final String userRole;
 
   const EntryTab({
@@ -49,6 +50,7 @@ class EntryTab extends StatefulWidget {
     this.loggedInUser = '',
     this.records = const [],
     this.componentPrimerRecords = const [],
+    this.componentPropellantRecords = const [],
     this.userRole = 'Operator',
     required this.initialCaliber,
     required this.initialTestName,
@@ -123,7 +125,7 @@ class _EntryTabState extends State<EntryTab> {
   final _lotThreeDigitsController = TextEditingController();
   late final TextEditingController _lotYearController = TextEditingController(text: (DateTime.now().year % 100).toString().padLeft(2, '0'));
   final _hopperThreeDigitsController = TextEditingController();
-  late final TextEditingController _hopperYearController = TextEditingController(text: DateTime.now().year.toString());
+  late final TextEditingController _hopperYearController = TextEditingController(text: (DateTime.now().year % 100).toString().padLeft(2, '0'));
   final _producedController = TextEditingController();
   final _defectsController = TextEditingController(text: '0');
   final _notesController = TextEditingController();
@@ -140,6 +142,17 @@ class _EntryTabState extends State<EntryTab> {
   String _primerSupplier = 'CBC';
   String _propellantSupplier = 'Explosia';
   String? _selectedComponentPrimerLot;
+  String? _selectedComponentPropellantLot;
+  final List<String> _propellantCodes = const [
+    'D-073.4',
+    'D-073.5',
+    'D-073.6',
+    'PB-540',
+    'S060',
+    'S062',
+    'S070',
+    'Other',
+  ];
   final List<String> _localAddedPrimerSuppliers = [];
   final List<String> _localAddedPropellantSuppliers = [];
   bool get _isAdmin => widget.userRole.toLowerCase() == 'admin';
@@ -1350,7 +1363,12 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   // calibers and testNames are now on EntryTab widget class
-  List<String> get calibers => EntryTab.calibers;
+  List<String> get calibers {
+    if (widget.currentModule == 'Component Test') {
+      return const ['5.56', '7.62', '9mm'];
+    }
+    return EntryTab.calibers;
+  }
   List<String> get testNames => EntryTab.testNames;
 
   // Caliber-specific test matrix and sample sizing
@@ -1882,8 +1900,11 @@ class _EntryTabState extends State<EntryTab> {
     _caliber = widget.initialCaliber;
     _testName = widget.initialTestName;
     if (widget.currentModule == 'Component Test') {
+      if (!const ['5.56', '7.62', '9mm'].contains(_caliber)) {
+        _caliber = '5.56';
+      }
       if (_testName != 'Propellant Test' && _testName != 'Primer Sensitivity Test') {
-        _testName = 'Propellant Test';
+        _testName = 'Primer Sensitivity Test';
       }
     }
     _operatorsController.text = widget.loggedInUser;
@@ -1918,7 +1939,7 @@ class _EntryTabState extends State<EntryTab> {
     }
     final currentYearSuffix = (DateTime.now().year % 100).toString().padLeft(2, '0');
     _lotYearController.text = currentYearSuffix;
-    _hopperYearController.text = DateTime.now().year.toString();
+    _hopperYearController.text = currentYearSuffix;
     _producedController.text = '20';
 
     // Range Auto-Calculation Listeners
@@ -2461,13 +2482,15 @@ class _EntryTabState extends State<EntryTab> {
           headFast: 0,
           attachmentName: _attachmentName,
           attachmentBase64: _attachmentBase64,
-          primerLot: '',
-          primerSupplier: '',
+          primerLot: (_testName == 'EPVAT test' || _testName == 'Propellant Test')
+              ? (_selectedComponentPrimerLot ?? _primerLotController.text.trim())
+              : '',
+          primerSupplier: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _primerSupplier : '',
           primerInsertionDepth: '',
-          propellantSupplier: _testName == 'Propellant Test' ? _propellantSupplier : '',
-          propellantCode: _testName == 'Propellant Test' ? _propellantCodeController.text.trim() : '',
-          propellantLot: _testName == 'Propellant Test' ? _propellantLotController.text.trim() : '',
-          propellantCharge: _testName == 'Propellant Test' ? _propellantChargeController.text.trim() : '',
+          propellantSupplier: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _propellantSupplier : '',
+          propellantCode: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _propellantCodeController.text.trim() : '',
+          propellantLot: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? (_selectedComponentPropellantLot ?? _propellantLotController.text.trim()) : '',
+          propellantCharge: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _propellantChargeController.text.trim() : '',
         );
         await widget.onSubmit(record);
       } else if (_testName == 'Function Test' && _functionTempMode == 'All') {
@@ -2677,21 +2700,19 @@ class _EntryTabState extends State<EntryTab> {
           attachmentName: _attachmentName,
           attachmentBase64: _attachmentBase64,
           functionDefectDetails: _testName == 'Function Test' ? _functionDefectDetails : '',
-          primerLot: _testName == 'Primer Sensitivity Test'
-              ? (widget.currentModule == 'Lot Acceptance Test'
-                  ? (_selectedComponentPrimerLot ?? _primerLotController.text.trim())
-                  : _primerLotController.text.trim())
+          primerLot: (_testName == 'Primer Sensitivity Test' || _testName == 'EPVAT test')
+              ? (_selectedComponentPrimerLot ?? _primerLotController.text.trim())
               : '',
-          primerSupplier: _testName == 'Primer Sensitivity Test'
+          primerSupplier: (_testName == 'Primer Sensitivity Test' || _testName == 'EPVAT test')
               ? _primerSupplier
               : '',
           primerInsertionDepth: _testName == 'Primer Sensitivity Test'
               ? _primerInsertionDepthController.text.trim()
               : '',
-          propellantSupplier: _testName == 'Propellant Test' ? _propellantSupplier : '',
-          propellantCode: _testName == 'Propellant Test' ? _propellantCodeController.text.trim() : '',
-          propellantLot: _testName == 'Propellant Test' ? _propellantLotController.text.trim() : '',
-          propellantCharge: _testName == 'Propellant Test' ? _propellantChargeController.text.trim() : '',
+          propellantSupplier: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantSupplier : '',
+          propellantCode: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantCodeController.text.trim() : '',
+          propellantLot: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? (_selectedComponentPropellantLot ?? _propellantLotController.text.trim()) : '',
+          propellantCharge: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantChargeController.text.trim() : '',
         );
         await widget.onSubmit(record);
       }
@@ -3081,7 +3102,9 @@ class _EntryTabState extends State<EntryTab> {
                       flex: 3,
                       label: widget.currentModule == 'Lot Acceptance Test'
                           ? 'Lot Number'
-                          : (widget.currentModule == 'Component Test' ? 'Lot Number' : 'Hopper No. / Date'),
+                          : (widget.currentModule == 'Component Test'
+                              ? (_testName == 'Primer Sensitivity Test' ? 'Primer Lot No.' : 'Propellant Lot No.')
+                              : 'Hopper No.'),
                       isRequired: true,
                       child: _buildLotNoField(focusNode: _lotFocusNode),
                     ),
@@ -6182,6 +6205,38 @@ class _EntryTabState extends State<EntryTab> {
           ),
         ],
       );
+    } else if (widget.currentModule == 'Component Test') {
+      final isPrimer = _testName == 'Primer Sensitivity Test';
+      final ctrl = isPrimer ? _primerLotController : _propellantLotController;
+      return TextFormField(
+        controller: ctrl,
+        focusNode: focusNode,
+        style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
+        decoration: InputDecoration(
+          hintText: isPrimer ? 'Enter Primer Lot (e.g. CBC-26-01)' : 'Enter Propellant Lot (e.g. 90124)',
+          hintStyle: const TextStyle(color: Color(0xFF6495BF)),
+          filled: true,
+          fillColor: const Color(0xFFE0F2FE),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
+          ),
+        ),
+        onChanged: (val) {
+          _lotController.text = val.trim();
+        },
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) {
+            return isPrimer ? 'Please enter Primer Lot' : 'Please enter Propellant Lot';
+          }
+          return null;
+        },
+      );
     } else {
       return Row(
         children: [
@@ -6237,10 +6292,10 @@ class _EntryTabState extends State<EntryTab> {
           Expanded(
             flex: 2,
             child: _buildDropdownField(
-              value: _yearList.contains(_hopperYearController.text.trim())
+              value: _shortYearList.contains(_hopperYearController.text.trim())
                   ? _hopperYearController.text.trim()
-                  : _yearList.last,
-              items: _yearList,
+                  : _shortYearList.last,
+              items: _shortYearList,
               onChanged: (val) {
                 if (val != null) {
                   setState(() {
@@ -7267,6 +7322,7 @@ class _EntryTabState extends State<EntryTab> {
             ],
           ),
           const SizedBox(height: 16.0),
+          const SizedBox(height: 16.0),
           _buildFormRow([
             _buildFlexibleField(
               flex: 1,
@@ -7284,184 +7340,33 @@ class _EntryTabState extends State<EntryTab> {
             _buildFlexibleField(
               flex: 1,
               label: 'Total Test Rounds Recorded',
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.02),
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: Colors.white.withOpacity(0.06)),
-                ),
-                child: Text(
-                  '${_primerDropHeightControllers.where((c) => c.text.trim().isNotEmpty).length} Rounds with Data (${_primerDropHeightControllers.length} Total Rows)',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13.0, fontWeight: FontWeight.w500),
-                ),
+              child: _buildTextField(
+                controller: _producedController,
+                hint: '50',
+                keyboardType: TextInputType.number,
+                onChanged: (val) {
+                  _scheduleAutoSave();
+                  setState(() {});
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Misfires Count',
+              child: _buildTextField(
+                controller: _primerMisfiresCountController,
+                hint: '0',
+                keyboardType: TextInputType.number,
+                onChanged: (val) {
+                  _scheduleAutoSave();
+                  setState(() {});
+                },
               ),
             ),
           ]),
           const SizedBox(height: 16.0),
           const Text(
-            'Progressive Round Trials (Drop Height & Result)',
-            style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.5, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8.0),
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: const [
-                    SizedBox(width: 50.0, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                    SizedBox(width: 12.0),
-                    Expanded(flex: 3, child: Text('Drop Height (mm)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                    SizedBox(width: 16.0),
-                    Expanded(flex: 4, child: Text('Outcome Result', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                  ],
-                ),
-                const SizedBox(height: 8.0),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _primerDropHeightControllers.length,
-                  itemBuilder: (context, index) {
-                    final isFire = index < _primerFireResults.length ? _primerFireResults[index] == 'Fire' : true;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 50.0,
-                            child: Text(
-                              '#${index + 1}',
-                              style: const TextStyle(color: Colors.white70, fontSize: 12.0, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(width: 12.0),
-                          Expanded(
-                            flex: 3,
-                            child: _buildTextField(
-                              controller: _primerDropHeightControllers[index],
-                              hint: 'Drop Height (mm)',
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              onChanged: (val) {
-                                if (index == _primerDropHeightControllers.length - 1 && val.trim().isNotEmpty) {
-                                  setState(() {
-                                    _primerDropHeightControllers.add(TextEditingController());
-                                    _primerFireResults.add('Fire');
-                                  });
-                                }
-                                _recalculatePrimerStats();
-                                _scheduleAutoSave();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16.0),
-                          Expanded(
-                            flex: 4,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (index < _primerFireResults.length) {
-                                          _primerFireResults[index] = 'Fire';
-                                        }
-                                        if (index == _primerDropHeightControllers.length - 1 && _primerDropHeightControllers[index].text.trim().isNotEmpty) {
-                                          _primerDropHeightControllers.add(TextEditingController());
-                                          _primerFireResults.add('Fire');
-                                        }
-                                      });
-                                      _recalculatePrimerStats();
-                                      _scheduleAutoSave();
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                      decoration: BoxDecoration(
-                                        color: isFire ? const Color(0xFF10B981) : Colors.white.withOpacity(0.05),
-                                        borderRadius: BorderRadius.circular(6.0),
-                                        border: Border.all(color: isFire ? const Color(0xFF10B981) : Colors.white12),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        '✓ Fire',
-                                        style: TextStyle(
-                                          color: isFire ? Colors.white : Colors.white60,
-                                          fontSize: 12.0,
-                                          fontWeight: isFire ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8.0),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (index < _primerFireResults.length) {
-                                          _primerFireResults[index] = 'Misfire';
-                                        }
-                                        if (index == _primerDropHeightControllers.length - 1 && _primerDropHeightControllers[index].text.trim().isNotEmpty) {
-                                          _primerDropHeightControllers.add(TextEditingController());
-                                          _primerFireResults.add('Fire');
-                                        }
-                                      });
-                                      _recalculatePrimerStats();
-                                      _scheduleAutoSave();
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                      decoration: BoxDecoration(
-                                        color: !isFire ? const Color(0xFFEF4444) : Colors.white.withOpacity(0.05),
-                                        borderRadius: BorderRadius.circular(6.0),
-                                        border: Border.all(color: !isFire ? const Color(0xFFEF4444) : Colors.white12),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        '✗ Misfire',
-                                        style: TextStyle(
-                                          color: !isFire ? Colors.white : Colors.white60,
-                                          fontSize: 12.0,
-                                          fontWeight: !isFire ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8.0),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _primerDropHeightControllers.add(TextEditingController());
-                        _primerFireResults.add('Fire');
-                      });
-                      _scheduleAutoSave();
-                    },
-                    icon: const Icon(Icons.add, color: Color(0xFF06B6D4), size: 16.0),
-                    label: const Text('Add Round Row', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20.0),
-          const Text(
-            'Auto-Calculated Statistics (Bruceton Method)',
+            'Primer Sensitivity Metrics & Auto-Calculated Limits',
             style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.5, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8.0),
@@ -7471,9 +7376,19 @@ class _EntryTabState extends State<EntryTab> {
               label: 'Mean Height H̄ / HM (mm)',
               child: _buildTextField(
                 controller: _primerHbarController,
-                hint: '0.0',
+                hint: 'e.g. 350.0',
                 readOnly: false,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) {
+                  final h = double.tryParse(_primerHbarController.text.trim());
+                  final s = double.tryParse(_primerSDController.text.trim());
+                  if (h != null && s != null) {
+                    _primerHbarPlus5SController.text = (h + 5 * s).toStringAsFixed(2);
+                    _primerHbarMinus2SController.text = (h - 2 * s).toStringAsFixed(2);
+                  }
+                  setState(() {});
+                  _scheduleAutoSave();
+                },
               ),
             ),
             _buildFlexibleField(
@@ -7481,25 +7396,30 @@ class _EntryTabState extends State<EntryTab> {
               label: 'Std Deviation S / SD (mm)',
               child: _buildTextField(
                 controller: _primerSDController,
-                hint: '0.0',
+                hint: 'e.g. 30.0',
                 readOnly: false,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) {
+                  final h = double.tryParse(_primerHbarController.text.trim());
+                  final s = double.tryParse(_primerSDController.text.trim());
+                  if (h != null && s != null) {
+                    _primerHbarPlus5SController.text = (h + 5 * s).toStringAsFixed(2);
+                    _primerHbarMinus2SController.text = (h - 2 * s).toStringAsFixed(2);
+                  }
+                  setState(() {});
+                  _scheduleAutoSave();
+                },
               ),
             ),
             _buildFlexibleField(
               flex: 1,
               label: 'All Fire H̄ + 5S (mm)',
-              child: _buildTextField(controller: _primerHbarPlus5SController, hint: '0.0', readOnly: true),
+              child: _buildTextField(controller: _primerHbarPlus5SController, hint: 'Auto', readOnly: true),
             ),
             _buildFlexibleField(
               flex: 1,
               label: 'No Fire H̄ - 2S (mm)',
-              child: _buildTextField(controller: _primerHbarMinus2SController, hint: '0.0', readOnly: true),
-            ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Misfires Count',
-              child: _buildTextField(controller: _primerMisfiresCountController, hint: '0', readOnly: true),
+              child: _buildTextField(controller: _primerHbarMinus2SController, hint: 'Auto', readOnly: true),
             ),
           ]),
         ],
@@ -7684,12 +7604,61 @@ class _EntryTabState extends State<EntryTab> {
           });
         }
 
+        Color statusBgColor;
+        Color statusBorderColor;
+        Color statusTextColor = Colors.white;
+        
+        if (_status == 'Approved' || _status == 'Approved with condition') {
+          statusBgColor = const Color(0xFF10B981); // Full Green
+          statusBorderColor = const Color(0xFF059669);
+        } else if (_status == 'Rejected') {
+          statusBgColor = const Color(0xFFEF4444); // Full Red
+          statusBorderColor = const Color(0xFFDC2626);
+        } else if (_status == 'Retest' || _status == 'Pending Review') {
+          statusBgColor = const Color(0xFFF59E0B); // Full Yellow
+          statusBorderColor = const Color(0xFFD97706);
+        } else {
+          statusBgColor = const Color(0xFFE0F2FE);
+          statusBorderColor = const Color(0xFF7DD3FC);
+          statusTextColor = const Color(0xFF0C2A4D);
+        }
+
         return _buildFlexibleField(
           flex: flex,
           label: 'Quality Status',
-          child: _buildDropdownField(
+          child: DropdownButtonFormField<String>(
             value: _status,
-            items: const ['Approved', 'Pending Review', 'Rejected', 'Retest', 'Approved with condition'],
+            isExpanded: true,
+            dropdownColor: const Color(0xFF1E293B),
+            icon: Icon(Icons.arrow_drop_down, color: statusTextColor),
+            style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: statusBgColor,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide(color: statusBorderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide(color: statusBorderColor, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide(color: statusBorderColor, width: 2.0),
+              ),
+            ),
+            items: const ['Approved', 'Pending Review', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
+              Color itemColor = Colors.white;
+              if (s == 'Approved') itemColor = const Color(0xFF34D399);
+              if (s == 'Rejected') itemColor = const Color(0xFFF87171);
+              if (s == 'Retest') itemColor = const Color(0xFFFBBF24);
+              return DropdownMenuItem<String>(
+                value: s,
+                child: Text(s, style: TextStyle(color: itemColor, fontWeight: FontWeight.bold)),
+              );
+            }).toList(),
             onChanged: (autoStatus != null && autoStatus != 'Approved') 
                 ? null 
                 : (v) => setState(() => _status = v!),
@@ -7843,14 +7812,69 @@ class _EntryTabState extends State<EntryTab> {
     }
 
     if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+      final matchingPropellantRecords = widget.componentPropellantRecords.where((r) {
+        final c = r.caliber.toLowerCase();
+        final curr = _caliber.toLowerCase();
+        return c == curr || c.contains(curr) || curr.contains(c);
+      }).toList();
+      final propellantLotOptions = matchingPropellantRecords
+          .map((r) => r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNumber)
+          .where((l) => l.isNotEmpty)
+          .toSet()
+          .toList();
+
+      final matchingPrimerRecords = widget.componentPrimerRecords.where((r) {
+        final c = r.caliber.toLowerCase();
+        final curr = _caliber.toLowerCase();
+        return c == curr || c.contains(curr) || curr.contains(c);
+      }).toList();
+      final primerLotOptions = matchingPrimerRecords
+          .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
+          .where((l) => l.isNotEmpty)
+          .toSet()
+          .toList();
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // EPVAT ROW 1: Temp eval mode, Quantity tested, Propellant (dropdown), Propellant code (dropdown), Propellant lot (dropdown), Primer supplier (dropdown), Primer lot (dropdown)
           _buildFormRow([
             _buildFlexibleField(
-              key: _producedFieldKey,
               flex: 3,
-              label: 'Quantity Tested (Rounds)',
+              label: 'Temp Evaluation Mode',
+              child: Column(
+                children: [
+                  _buildDropdownField(
+                    value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
+                        ? 'Single Temperature'
+                        : 'All 3 Temperatures (+21, +52, -54 °C)',
+                    items: _isCaliberSingleTempOnly
+                        ? const ['Single Temperature']
+                        : const [
+                            'Single Temperature',
+                            'All 3 Temperatures (+21, +52, -54 °C)',
+                          ],
+                    onChanged: (v) {
+                      if (v != null) _onTemperatureModeChanged(v);
+                    },
+                  ),
+                  if (!_isThreeTemperatureMode) ...[
+                    const SizedBox(height: 4.0),
+                    _buildDropdownField(
+                      value: _selectedTemperatureDisplay,
+                      items: const ['+21 °C', '+52 °C', '-54 °C'],
+                      onChanged: (v) {
+                        if (v != null) _onSelectedTemperatureChanged(v);
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            _buildFlexibleField(
+              key: _producedFieldKey,
+              flex: 2,
+              label: 'Quantity Tested',
               isRequired: true,
               child: _buildTextField(
                 controller: _producedController,
@@ -7859,16 +7883,133 @@ class _EntryTabState extends State<EntryTab> {
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Required';
-                  if (int.tryParse(v) == null) return 'Must be integer';
-                  if (int.parse(v) < 0) return 'Cannot be negative';
+                  if (int.tryParse(v) == null) return 'Integer';
                   return null;
                 },
               ),
             ),
             _buildFlexibleField(
+              flex: 2,
+              label: 'Propellant',
+              isRequired: true,
+              child: _buildDropdownField(
+                value: _propellantSuppliers.contains(_propellantSupplier)
+                    ? _propellantSupplier
+                    : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
+                items: _propellantSuppliers,
+                onChanged: (v) {
+                  if (v != null) setState(() => _propellantSupplier = v);
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 2,
+              label: 'Propellant Code',
+              isRequired: true,
+              child: _buildDropdownField(
+                value: _propellantCodes.contains(_propellantCodeController.text.trim())
+                    ? _propellantCodeController.text.trim()
+                    : _propellantCodes.first,
+                items: _propellantCodes,
+                onChanged: (v) {
+                  if (v != null && v != 'Other') {
+                    setState(() => _propellantCodeController.text = v);
+                  }
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 3,
+              label: 'Propellant Lot No.',
+              isRequired: true,
+              child: propellantLotOptions.isNotEmpty
+                  ? DropdownButtonFormField<String>(
+                      value: propellantLotOptions.contains(_propellantLotController.text.trim())
+                          ? _propellantLotController.text.trim()
+                          : propellantLotOptions.first,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFFE0F2FE),
+                      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFE0F2FE),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                      ),
+                      items: propellantLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _selectedComponentPropellantLot = v;
+                            _propellantLotController.text = v;
+                          });
+                        }
+                      },
+                    )
+                  : _buildTextField(
+                      controller: _propellantLotController,
+                      hint: 'e.g. 90124',
+                      keyboardType: TextInputType.text,
+                    ),
+            ),
+            _buildFlexibleField(
+              flex: 2,
+              label: 'Primer Supplier',
+              isRequired: true,
+              child: _buildDropdownField(
+                value: _primerSuppliers.contains(_primerSupplier)
+                    ? _primerSupplier
+                    : (_primerSuppliers.isNotEmpty ? _primerSuppliers.first : ''),
+                items: _primerSuppliers,
+                onChanged: (v) {
+                  if (v != null) setState(() => _primerSupplier = v);
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 3,
+              label: 'Primer Lot',
+              isRequired: true,
+              child: primerLotOptions.isNotEmpty
+                  ? DropdownButtonFormField<String>(
+                      value: primerLotOptions.contains(_primerLotController.text.trim())
+                          ? _primerLotController.text.trim()
+                          : primerLotOptions.first,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFFE0F2FE),
+                      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFE0F2FE),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                      ),
+                      items: primerLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _selectedComponentPrimerLot = v;
+                            _primerLotController.text = v;
+                          });
+                        }
+                      },
+                    )
+                  : _buildTextField(
+                      controller: _primerLotController,
+                      hint: 'e.g. CBC-2026-01',
+                    ),
+            ),
+          ], lockSingleRow: true),
+          const SizedBox(height: 14.0),
+
+          // EPVAT ROW 2: Barrel Serial No., GP6 (1) Chamber, GP6 (2) Port, Velocity distance, Quality status
+          _buildFormRow([
+            _buildFlexibleField(
               key: _barrelFieldKey,
-              flex: 4,
-              label: 'EPVAT Barrel Test Serial',
+              flex: 3,
+              label: 'Barrel Serial No.',
               isRequired: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -7887,64 +8028,15 @@ class _EntryTabState extends State<EntryTab> {
                   ),
                   const SizedBox(height: 4.0),
                   Text(
-                    '${_getAssetRounds(_barrelSNController.text)} cumulative rounds fired',
-                    style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
+                    '${_getAssetRounds(_barrelSNController.text)} rounds fired',
+                    style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
             ),
             _buildFlexibleField(
-              key: _distanceFieldKey,
-              flex: 2,
-              label: 'Distance of Velocity (m)',
-              isRequired: true,
-              child: _buildTextField(
-                controller: _distanceController,
-                focusNode: _distanceFocusNode,
-                hint: 'e.g., 25',
-              ),
-            ),
-            _buildQualityStatusField(flex: 3),
-          ], lockSingleRow: true),
-          const SizedBox(height: 14.0),
-          _buildFormRow([
-            if (_testHasTemperatureEvaluation) ...[
-              _buildFlexibleField(
-                flex: 4,
-                label: 'Temperature Evaluation Mode',
-                child: _buildDropdownField(
-                  value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
-                      ? 'Single Temperature'
-                      : 'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
-                  items: _isCaliberSingleTempOnly
-                      ? const ['Single Temperature']
-                      : [
-                          'Single Temperature',
-                          'All 3 Temperatures (+21, +52, ${_testName == 'Function Test' ? _functionColdTempLabel : '-54 °C'})',
-                        ],
-                  onChanged: (v) {
-                    if (v != null) _onTemperatureModeChanged(v);
-                  },
-                ),
-              ),
-              if (!_isThreeTemperatureMode)
-                _buildFlexibleField(
-                  flex: 3,
-                  label: 'Selected Temperature',
-                  child: _buildDropdownField(
-                    value: _selectedTemperatureDisplay,
-                    items: _testName == 'Function Test'
-                        ? ['+21 °C', '+52 °C', _functionColdTempLabel]
-                        : const ['+21 °C', '+52 °C', '-54 °C'],
-                    onChanged: (v) {
-                      if (v != null) _onSelectedTemperatureChanged(v);
-                    },
-                  ),
-                ),
-            ],
-            _buildFlexibleField(
-              flex: 4,
-              label: 'GP1 (chamber)',
+              flex: 3,
+              label: 'GP6 (1) Chamber',
               isRequired: true,
               child: Row(
                 children: [
@@ -7980,8 +8072,8 @@ class _EntryTabState extends State<EntryTab> {
             if (!_isCaliber9mm)
               _buildFlexibleField(
                 key: _gp6FieldKey,
-                flex: 4,
-                label: 'GP2 (Port)',
+                flex: 3,
+                label: 'GP6 (2) Port',
                 isRequired: true,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -8003,12 +8095,24 @@ class _EntryTabState extends State<EntryTab> {
                     ),
                     const SizedBox(height: 4.0),
                     Text(
-                      '${_getAssetRounds(_gp6SerialController.text)} cumulative rounds fired',
-                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.w600),
+                      '${_getAssetRounds(_gp6SerialController.text)} rounds fired',
+                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
+            _buildFlexibleField(
+              key: _distanceFieldKey,
+              flex: 2,
+              label: 'Velocity distance (m)',
+              isRequired: true,
+              child: _buildTextField(
+                controller: _distanceController,
+                focusNode: _distanceFocusNode,
+                hint: 'e.g., 25',
+              ),
+            ),
+            _buildQualityStatusField(flex: 3),
           ], lockSingleRow: true),
         ],
       );

@@ -178,6 +178,8 @@ class SupabaseService {
       if (module != null && module.isNotEmpty && targetTable == tableName) {
         if (module == 'Daily Test' || module == 'Daily Test Report') {
           query = query.eq('module', 'Daily Test');
+        } else if (module == 'Component Test') {
+          query = query.eq('module', 'Component Test');
         } else {
           query = query.or('module.eq.Lot Acceptance Test,module.is.null');
         }
@@ -458,6 +460,106 @@ class SupabaseService {
       return true;
     } catch (e) {
       debugPrint('Error saving operators to Supabase: $e');
+      return false;
+    }
+  }
+
+  /// Delete operator from Supabase cloud configuration (admin_users table & SYSTEM_CONFIG)
+  static Future<bool> deleteOperatorFromCloud(String username) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    try {
+      // 1. Delete from admin_users table
+      try {
+        await client.from('admin_users').delete().eq('username', username);
+      } catch (e) {
+        debugPrint('admin_users delete note: $e');
+      }
+
+      // 2. Update SYSTEM_CONFIG
+      final existing = await client
+          .from(tableName)
+          .select('id, notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'OPERATORS_REGISTRY')
+          .limit(1);
+
+      if (existing.isNotEmpty && existing[0]['notes'] != null) {
+        final existingId = existing[0]['id'];
+        final notesStr = existing[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          final List<dynamic> decoded = jsonDecode(notesStr);
+          final updated = decoded
+              .where((item) => ((item['email'] ?? item['username'] ?? '') as String).toLowerCase() != username.toLowerCase())
+              .toList();
+          await client.from(tableName).update({
+            'notes': jsonEncode(updated),
+            'timestamp': DateTime.now().toIso8601String(),
+          }).eq('id', existingId);
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting operator from Supabase: $e');
+      return false;
+    }
+  }
+
+  /// Update an existing operator in Supabase cloud configuration
+  static Future<bool> updateOperatorInCloud(String oldUsername, Map<String, String> updatedOp) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    try {
+      final newUsername = updatedOp['email'] ?? oldUsername;
+      // 1. Update admin_users
+      try {
+        if (oldUsername.toLowerCase() != newUsername.toLowerCase()) {
+          await client.from('admin_users').delete().eq('username', oldUsername);
+        }
+        await client.from('admin_users').upsert({
+          'username': newUsername,
+          'password_hash': updatedOp['password'] ?? '',
+          'role': updatedOp['role'] ?? 'operator',
+          'name': updatedOp['name'] ?? newUsername,
+          'is_active': true,
+        }, onConflict: 'username');
+      } catch (e) {
+        debugPrint('admin_users update note: $e');
+      }
+
+      // 2. Update SYSTEM_CONFIG
+      final existing = await client
+          .from(tableName)
+          .select('id, notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'OPERATORS_REGISTRY')
+          .limit(1);
+
+      if (existing.isNotEmpty && existing[0]['notes'] != null) {
+        final existingId = existing[0]['id'];
+        final notesStr = existing[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          final List<dynamic> decoded = jsonDecode(notesStr);
+          final list = decoded.map((i) => Map<String, String>.from((i as Map).map((k, v) => MapEntry(k.toString(), v.toString())))).toList();
+          final idx = list.indexWhere((i) => (i['email'] ?? '').toLowerCase() == oldUsername.toLowerCase());
+          if (idx >= 0) {
+            list[idx] = updatedOp;
+          } else {
+            list.add(updatedOp);
+          }
+          await client.from(tableName).update({
+            'notes': jsonEncode(list),
+            'timestamp': DateTime.now().toIso8601String(),
+          }).eq('id', existingId);
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error updating operator in Supabase: $e');
       return false;
     }
   }

@@ -24,11 +24,21 @@ class _TrendLineChartState extends State<TrendLineChart> {
   String _selectedTestType = 'All';
   String _selectedGroupBy = 'By Lot Number'; // 'By Lot Number' | 'By Hopper No.' | 'By Individual Test'
   String _selectedParam = 'Mean Velocity (m/s)';
+  String _selectedTimeRange = 'All Time';
 
   bool _showMean = true;
   bool _showMax = true;
   bool _showMin = true;
   bool _showSD = true;
+
+  static const List<String> _timeRangeOptions = [
+    'All Time',
+    'Today',
+    'Last 7 Days',
+    'Last 30 Days',
+    'This Month',
+    'This Year',
+  ];
 
   static const List<String> _groupByOptions = [
     'By Lot Number',
@@ -373,11 +383,45 @@ class _TrendLineChartState extends State<TrendLineChart> {
       _selectedParam = paramOptions.first;
     }
 
-    // Filter by caliber AND test type
+    // Filter by caliber, test type, and time range
     final filtered = widget.records.where((r) {
       final matchesCal = _selectedCaliber == 'All' || r.caliber == _selectedCaliber;
       final matchesTest = _selectedTestType == 'All' || r.testName == _selectedTestType;
-      return matchesCal && matchesTest;
+
+      bool matchesTime = true;
+      if (_selectedTimeRange != 'All Time') {
+        final now = DateTime.now();
+        DateTime? recordDate;
+        try {
+          final raw = r.timestamp.trim();
+          if (raw.isNotEmpty) {
+            recordDate = DateTime.tryParse(raw.split(' ')[0]);
+          }
+        } catch (_) {}
+
+        if (recordDate != null) {
+          switch (_selectedTimeRange) {
+            case 'Today':
+              matchesTime = recordDate.year == now.year && recordDate.month == now.month && recordDate.day == now.day;
+              break;
+            case 'Last 7 Days':
+              final diff = now.difference(recordDate).inDays;
+              matchesTime = diff >= 0 && diff <= 7;
+              break;
+            case 'Last 30 Days':
+              final diff = now.difference(recordDate).inDays;
+              matchesTime = diff >= 0 && diff <= 30;
+              break;
+            case 'This Month':
+              matchesTime = recordDate.year == now.year && recordDate.month == now.month;
+              break;
+            case 'This Year':
+              matchesTime = recordDate.year == now.year;
+              break;
+          }
+        }
+      }
+      return matchesCal && matchesTest && matchesTime;
     }).toList();
 
     final points = _buildGroupPoints(filtered);
@@ -475,6 +519,12 @@ class _TrendLineChartState extends State<TrendLineChart> {
               value: _selectedParam,
               items: paramOptions,
               onChanged: (v) => setState(() => _selectedParam = v!),
+            ),
+            _buildDropdown(
+              label: 'TIME RANGE',
+              value: _selectedTimeRange,
+              items: _timeRangeOptions,
+              onChanged: (v) => setState(() => _selectedTimeRange = v!),
             ),
             // Metric toggle pills
             Padding(

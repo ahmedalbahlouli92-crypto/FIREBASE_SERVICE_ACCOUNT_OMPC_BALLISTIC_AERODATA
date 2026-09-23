@@ -176,6 +176,12 @@ ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS propellant_supplie
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS propellant_code TEXT;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS propellant_lot TEXT;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS propellant_charge TEXT;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS is_retest BOOLEAN DEFAULT false;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_timestamp TEXT;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_operator TEXT;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_notes TEXT;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_status TEXT;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS original_status TEXT;
 
 -- 2. Create the 20 Dedicated Tables across Daily Report, Lot Acceptance, and Component Test
 DO $$
@@ -321,7 +327,13 @@ BEGIN
                 propellant_supplier TEXT,
                 propellant_code TEXT,
                 propellant_lot TEXT,
-                propellant_charge TEXT
+                propellant_charge TEXT,
+                is_retest BOOLEAN DEFAULT false,
+                retest_timestamp TEXT,
+                retest_operator TEXT,
+                retest_notes TEXT,
+                retest_status TEXT,
+                original_status TEXT
             );
             
             -- Ensure newest columns exist if table was previously created
@@ -332,6 +344,12 @@ BEGIN
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS propellant_code TEXT;
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS propellant_lot TEXT;
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS propellant_charge TEXT;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS is_retest BOOLEAN DEFAULT false;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_timestamp TEXT;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_operator TEXT;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_notes TEXT;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_status TEXT;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS original_status TEXT;
 
             -- Enable Row Level Security (RLS)
             ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;

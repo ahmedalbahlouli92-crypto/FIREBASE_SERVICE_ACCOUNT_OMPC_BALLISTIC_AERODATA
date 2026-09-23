@@ -79,7 +79,8 @@ class StorageService {
     final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
         ? 'Daily Test'
         : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
-    BallisticRecord recordToSave = record.copyWith(module: cleanModule);
+    final String assignedId = (record.id != null && record.id!.isNotEmpty) ? record.id! : BallisticRecord.generateUuid();
+    BallisticRecord recordToSave = record.copyWith(id: assignedId, module: cleanModule);
 
     // 1. Immediate local persistence (guarantees record is saved even if offline)
     if (kIsWeb) {
@@ -203,7 +204,12 @@ class StorageService {
         for (final local in localRecords) {
           final exists = combined.any((c) =>
             (c.id != null && c.id!.isNotEmpty && local.id != null && local.id!.isNotEmpty && c.id == local.id) ||
-            (c.timestamp == local.timestamp && c.lotNo == local.lotNo && c.testName == local.testName)
+            (c.lotNo.trim() == local.lotNo.trim() &&
+             c.testName.trim() == local.testName.trim() &&
+             c.caliber.trim() == local.caliber.trim() &&
+             c.produced == local.produced &&
+             (c.timestamp == local.timestamp ||
+              c.timestamp.replaceAll('T', ' ').split('.').first.trim() == local.timestamp.replaceAll('T', ' ').split('.').first.trim()))
           );
           if (!exists) {
             combined.add(local);
@@ -501,7 +507,45 @@ class StorageService {
     await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
+        await SupabaseService.deleteOperatorFromCloud(identifier);
         await SupabaseService.saveOperatorsToCloud(operators);
+      } catch (_) {}
+    }
+  }
+
+  // Edit user credentials (updates local and cloud)
+  Future<void> editOperator(
+    String oldIdentifier, {
+    required String newEmail,
+    required String newPassword,
+    required String newRole,
+    required String newName,
+  }) async {
+    final operators = await loadOperators();
+    operators.removeWhere((op) => (op['email'] ?? '').toLowerCase() == oldIdentifier.toLowerCase());
+    final updatedOp = {
+      'email': newEmail,
+      'password': newPassword,
+      'role': newRole,
+      'name': newName.isNotEmpty ? newName : newEmail,
+    };
+    operators.add(updatedOp);
+
+    if (kIsWeb) {
+      deleteWebOperator(oldIdentifier);
+      saveWebOperator(newEmail, newPassword, role: newRole, name: newName);
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/operators.json');
+        await file.writeAsString(jsonEncode(operators), mode: FileMode.write, flush: true);
+      } catch (_) {}
+    }
+
+    await SupabaseService.ensureInitialized();
+    if (SupabaseService.isInitialized) {
+      try {
+        await SupabaseService.updateOperatorInCloud(oldIdentifier, updatedOp);
       } catch (_) {}
     }
   }

@@ -56,6 +56,38 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     'packs',
   ];
 
+  // Inline consumption controllers and state per item
+  final Map<String, String> _inlineCaliber = {};
+  final Map<String, TextEditingController> _inlineQtyCtrl = {};
+  final Map<String, TextEditingController> _inlineRemarkCtrl = {};
+
+  String _getItemKey(Map<String, dynamic> item) {
+    return item['id']?.toString() ?? '${item['name']}_${item['serial']}';
+  }
+
+  TextEditingController _getQtyController(String key) {
+    return _inlineQtyCtrl.putIfAbsent(key, () => TextEditingController());
+  }
+
+  TextEditingController _getRemarkController(String key) {
+    return _inlineRemarkCtrl.putIfAbsent(key, () => TextEditingController());
+  }
+
+  String _getCaliber(String key) {
+    return _inlineCaliber[key] ?? '5.56';
+  }
+
+  @override
+  void dispose() {
+    for (final c in _inlineQtyCtrl.values) {
+      c.dispose();
+    }
+    for (final c in _inlineRemarkCtrl.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -361,6 +393,17 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   label: const Text('Receive Shipment', style: TextStyle(fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _openReceivedShipmentLogDialog,
+                  icon: const Icon(Icons.receipt_long, size: 16.0),
+                  label: const Text('Received Shipment Log', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F766E),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
@@ -753,30 +796,554 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
             ),
           ],
         ),
-        const SizedBox(height: 10.0),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount = constraints.maxWidth > 1100 ? 3 : (constraints.maxWidth > 700 ? 2 : 1);
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 16.0,
-                mainAxisSpacing: 16.0,
-                mainAxisExtent: 280.0,
-              ),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                return _buildItemCard(filtered[index]);
-              },
-            );
-          },
-        ),
+        _build4ColumnItemsTable(filtered),
       ],
     );
   }
 
+  Widget _build4ColumnItemsTable(List<Map<String, dynamic>> items) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C3351),
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.25)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12.0),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 960.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Table Header with 4 defined columns
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  color: const Color(0xFF0E223D),
+                  child: const Row(
+                    children: [
+                      SizedBox(
+                        width: 250.0,
+                        child: Text(
+                          'ITEM NAME',
+                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                        ),
+                      ),
+                      SizedBox(width: 12.0),
+                      SizedBox(
+                        width: 150.0,
+                        child: Text(
+                          'SERIAL NUMBER',
+                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                        ),
+                      ),
+                      SizedBox(width: 12.0),
+                      SizedBox(
+                        width: 160.0,
+                        child: Text(
+                          'AVAILABLE STOCK',
+                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                        ),
+                      ),
+                      SizedBox(width: 12.0),
+                      SizedBox(
+                        width: 440.0,
+                        child: Text(
+                          'CONSUMPTION ACTION (Caliber | Quantity | Remark | Submit)',
+                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1.0, color: Color(0xFF1E3A8A)),
+                // Item Rows
+                ...items.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return _buildItemRow(item, index);
+                }).toList(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemRow(Map<String, dynamic> item, int index) {
+    final key = _getItemKey(item);
+    final qtyCtrl = _getQtyController(key);
+    final remarkCtrl = _getRemarkController(key);
+    final selectedCaliber = _getCaliber(key);
+
+    final qty = (item['quantity'] ?? 0) as num;
+    final minSafe = (item['minSafeThreshold'] ?? 0) as num;
+    final unit = item['unit'] ?? 'pcs';
+    final isLowStock = qty <= minSafe;
+    final isCritical = qty == 0;
+
+    Color stockColor = const Color(0xFF10B981);
+    String stockStatus = 'In Stock';
+    if (isCritical) {
+      stockColor = const Color(0xFFEF4444);
+      stockStatus = 'Out of Stock';
+    } else if (isLowStock) {
+      stockColor = const Color(0xFFF59E0B);
+      stockStatus = 'Low Stock';
+    }
+
+    final isEven = index % 2 == 0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      decoration: BoxDecoration(
+        color: isEven ? Colors.transparent : const Color(0xFF0E223D).withOpacity(0.35),
+        border: Border(bottom: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.1), width: 1.0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Column 1: Item Name
+          SizedBox(
+            width: 250.0,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7.0),
+                  decoration: BoxDecoration(
+                    color: stockColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Icon(_getCategoryIcon(item['category']), color: stockColor, size: 18.0),
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        item['name'] ?? '',
+                        style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        'Min: $minSafe $unit',
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12.0),
+
+          // Column 2: Serial Number
+          SizedBox(
+            width: 150.0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0E223D),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
+              ),
+              child: Text(
+                (item['serial'] ?? '').toString().isNotEmpty ? item['serial'].toString() : 'N/A',
+                style: const TextStyle(color: Color(0xFFBAE6FD), fontSize: 11.5, fontFamily: 'monospace'),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12.0),
+
+          // Column 3: Available Stock
+          SizedBox(
+            width: 160.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8.0,
+                      height: 8.0,
+                      decoration: BoxDecoration(
+                        color: stockColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6.0),
+                    Text(
+                      '$qty $unit',
+                      style: TextStyle(color: stockColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2.0),
+                Text(
+                  stockStatus,
+                  style: TextStyle(color: stockColor.withOpacity(0.8), fontSize: 10.0, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12.0),
+
+          // Column 4: Consumption Action (Caliber, Qty, Remark, Submit + More Menu)
+          SizedBox(
+            width: 440.0,
+            child: Row(
+              children: [
+                // Caliber Dropdown (5.56, 7.62, 9mm)
+                Container(
+                  width: 82.0,
+                  height: 36.0,
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0E223D),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: ['5.56', '7.62', '9mm'].contains(selectedCaliber) ? selectedCaliber : '5.56',
+                      dropdownColor: const Color(0xFF1C3351),
+                      style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                      isExpanded: true,
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _inlineCaliber[key] = val;
+                          });
+                        }
+                      },
+                      items: const [
+                        DropdownMenuItem(value: '5.56', child: Text('5.56')),
+                        DropdownMenuItem(value: '7.62', child: Text('7.62')),
+                        DropdownMenuItem(value: '9mm', child: Text('9mm')),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6.0),
+
+                // Quantity Input
+                SizedBox(
+                  width: 70.0,
+                  height: 36.0,
+                  child: TextField(
+                    controller: qtyCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                    decoration: InputDecoration(
+                      hintText: 'Qty',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11.0),
+                      filled: true,
+                      fillColor: const Color(0xFF0E223D),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6.0),
+                        borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6.0),
+                        borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6.0),
+
+                // Remark Input
+                Expanded(
+                  child: SizedBox(
+                    height: 36.0,
+                    child: TextField(
+                      controller: remarkCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                      decoration: InputDecoration(
+                        hintText: 'Remark / Lot',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11.0),
+                        filled: true,
+                        fillColor: const Color(0xFF0E223D),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6.0),
+                          borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6.0),
+                          borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6.0),
+
+                // Submit Button
+                ElevatedButton(
+                  onPressed: () => _submitInlineConsumption(item),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                    minimumSize: Size.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 14.0),
+                      SizedBox(width: 4.0),
+                      Text('Submit', style: TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4.0),
+
+                // More Options Menu
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Color(0xFF94A3B8), size: 18.0),
+                  color: const Color(0xFF2C415E),
+                  onSelected: (val) {
+                    if (val == 'restock') {
+                      _openItemRestockModal(item);
+                    } else if (val == 'history') {
+                      _showHistoryDialog(item);
+                    } else if (val == 'edit') {
+                      _openEditItemDialog(item);
+                    } else if (val == 'delete') {
+                      _confirmDeleteItem(item);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    if (_isAdmin)
+                      const PopupMenuItem(
+                        value: 'restock',
+                        child: Row(
+                          children: [
+                            Icon(Icons.add_shopping_cart, color: Color(0xFF10B981), size: 16.0),
+                            SizedBox(width: 8.0),
+                            Text('Receive Shipment', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'history',
+                      child: Row(
+                        children: [
+                          Icon(Icons.history, color: Color(0xFF06B6D4), size: 16.0),
+                          SizedBox(width: 8.0),
+                          Text('Transaction History', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                        ],
+                      ),
+                    ),
+                    if (_isAdmin) ...[
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 16.0),
+                            SizedBox(width: 8.0),
+                            Text('Edit Item', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16.0),
+                            SizedBox(width: 8.0),
+                            Text('Delete', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12.0)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitInlineConsumption(Map<String, dynamic> item) async {
+    final key = _getItemKey(item);
+    final qtyCtrl = _getQtyController(key);
+    final remarkCtrl = _getRemarkController(key);
+    final caliber = _getCaliber(key);
+
+    final qtyVal = num.tryParse(qtyCtrl.text.trim());
+    if (qtyVal == null || qtyVal <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid positive quantity to consume.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final currentQty = (item['quantity'] ?? 0) as num;
+    if (qtyVal > currentQty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot consume $qtyVal ${item['unit']}. Only $currentQty available in stock!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final newQty = currentQty - qtyVal;
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+    final remarkText = remarkCtrl.text.trim();
+
+    final historyList = List<dynamic>.from(item['history'] ?? []);
+    historyList.insert(0, {
+      'type': 'CONSUMED',
+      'quantity': qtyVal,
+      'date': now,
+      'user': widget.loggedInUser,
+      'caliber': caliber,
+      'purpose': 'Caliber: $caliber | ${remarkText.isNotEmpty ? remarkText : 'Routine consumption'}',
+      'remark': remarkText,
+      'remaining': newQty,
+    });
+
+    setState(() {
+      item['quantity'] = newQty;
+      item['history'] = historyList;
+    });
+
+    await _saveData();
+    qtyCtrl.clear();
+    remarkCtrl.clear();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Consumed $qtyVal ${item['unit']} of "${item['name']}" for $caliber caliber. New stock: $newQty'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    }
+  }
+
+  void _openReceivedShipmentLogDialog() {
+    final allShipments = <Map<String, dynamic>>[];
+    for (final item in _items) {
+      final history = List<dynamic>.from(item['history'] ?? []);
+      for (final h in history) {
+        if (h is Map) {
+          final type = (h['type'] ?? '').toString();
+          if (type == 'RECEIVED') {
+            allShipments.add({
+              'itemName': item['name'] ?? '',
+              'serial': item['serial'] ?? 'N/A',
+              'unit': item['unit'] ?? 'pcs',
+              'quantity': h['quantity'] ?? 0,
+              'date': h['date'] ?? '',
+              'user': h['user'] ?? '',
+              'purpose': h['purpose'] ?? '',
+              'remaining': h['remaining'] ?? '',
+            });
+          }
+        }
+      }
+    }
+
+    allShipments.sort((a, b) => (b['date'] as String).compareTo(a['date'] as String));
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C3351),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: const Icon(Icons.receipt_long, color: Color(0xFF10B981), size: 22.0),
+            ),
+            const SizedBox(width: 12.0),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Received Shipments Log', style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold)),
+                  Text('Total ${allShipments.length} incoming shipment records', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white70),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 850.0,
+          height: 500.0,
+          child: allShipments.isEmpty
+              ? const Center(
+                  child: Text('No received shipments logged yet.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14.0)),
+                )
+              : SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      headingRowColor: MaterialStateProperty.all(const Color(0xFF0E223D)),
+                      headingTextStyle: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 12.0),
+                      dataTextStyle: const TextStyle(color: Colors.white, fontSize: 12.0),
+                      columns: const [
+                        DataColumn(label: Text('DATE & TIME')),
+                        DataColumn(label: Text('ITEM NAME')),
+                        DataColumn(label: Text('SERIAL NO.')),
+                        DataColumn(label: Text('QTY RECEIVED')),
+                        DataColumn(label: Text('BATCH / DETAILS')),
+                        DataColumn(label: Text('LOGGED BY')),
+                        DataColumn(label: Text('STOCK AFTER')),
+                      ],
+                      rows: allShipments.map((s) {
+                        return DataRow(cells: [
+                          DataCell(Text(s['date']?.toString() ?? '')),
+                          DataCell(Text(s['itemName']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataCell(Text(s['serial']?.toString() ?? '')),
+                          DataCell(Text('+${s['quantity']} ${s['unit']}', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold))),
+                          DataCell(Text(s['purpose']?.toString() ?? '')),
+                          DataCell(Text(s['user']?.toString() ?? '')),
+                          DataCell(Text('${s['remaining']} ${s['unit']}')),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Widget _buildItemCard(Map<String, dynamic> item) {
     final qty = (item['quantity'] ?? 0) as num;
     final minSafe = (item['minSafeThreshold'] ?? 0) as num;

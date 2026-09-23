@@ -13,6 +13,7 @@ import 'screens/entry_tab.dart';
 import 'screens/history_tab.dart';
 import 'screens/analysis_recommendation_tab.dart';
 import 'screens/consumables_tab.dart';
+import 'screens/executive_reports_tab.dart';
 import 'services/epvat_formula_helper.dart';
 import 'services/supabase_service.dart';
 import 'services/app_exit_helper.dart';
@@ -2065,6 +2066,198 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
+  void _confirmDeleteOperator(String identifier, String displayName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
+            SizedBox(width: 10),
+            Text('Confirm Deletion', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete user "$displayName" (@$identifier)? This user will no longer be able to log in.',
+          style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _handleDeleteOperator(identifier);
+            },
+            child: const Text('Delete User', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openEditOperatorDialog(Map<String, dynamic> op) {
+    final oldUsername = op['email'] ?? '';
+    final usernameCtrl = TextEditingController(text: oldUsername);
+    final passwordCtrl = TextEditingController(text: op['password'] ?? '');
+    final nameCtrl = TextEditingController(text: op['name'] ?? '');
+    String selectedRole = (op['role'] ?? 'operator').toString().toLowerCase();
+
+    final roles = ['admin', 'manager', 'supervisor', 'technician', 'operator'];
+    if (!roles.contains(selectedRole)) selectedRole = 'operator';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: Color(0xFF38BDF8), width: 1.2),
+            ),
+            title: Row(
+              children: const [
+                Icon(Icons.manage_accounts_rounded, color: Color(0xFF38BDF8), size: 24),
+                SizedBox(width: 10),
+                Text('Edit User Credentials', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: SizedBox(
+              width: 440,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: usernameCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'Username / Email',
+                        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                        filled: true,
+                        fillColor: const Color(0xFF0F172A),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'Full Name',
+                        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                        filled: true,
+                        fillColor: const Color(0xFF0F172A),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                        filled: true,
+                        fillColor: const Color(0xFF0F172A),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Assigned Role', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF334155)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedRole,
+                          isExpanded: true,
+                          dropdownColor: const Color(0xFF1E293B),
+                          items: roles.map((r) => DropdownMenuItem(
+                            value: r,
+                            child: Text(r.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold)),
+                          )).toList(),
+                          onChanged: (val) {
+                            if (val != null) setDlgState(() => selectedRole = val);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+                icon: const Icon(Icons.save_rounded, size: 16),
+                label: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () async {
+                  final newEmail = usernameCtrl.text.trim();
+                  final newPassword = passwordCtrl.text.trim();
+                  final newName = nameCtrl.text.trim();
+                  if (newEmail.isEmpty || newPassword.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Username and password cannot be empty.'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop();
+                  try {
+                    await _storageService.editOperator(
+                      oldUsername,
+                      newEmail: newEmail,
+                      newPassword: newPassword,
+                      newRole: selectedRole,
+                      newName: newName,
+                    );
+                    final updated = await _storageService.loadOperators();
+                    setState(() {
+                      _operators = updated;
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('User "$newEmail" updated successfully.'),
+                          backgroundColor: const Color(0xFF10B981),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to update user: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _handleDeleteRecord(BallisticRecord record) async {
     setState(() {
       if (_currentModule == 'Lot Acceptance Test') {
@@ -3077,11 +3270,19 @@ class _MainShellState extends State<MainShell> {
                             ),
                           ),
                           IconButton(
+                            icon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 16.0),
+                            tooltip: 'Edit User',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _openEditOperatorDialog(op),
+                          ),
+                          const SizedBox(width: 8.0),
+                          IconButton(
                             icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16.0),
                             tooltip: 'Delete User',
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            onPressed: () => _handleDeleteOperator(opEmail),
+                            onPressed: () => _confirmDeleteOperator(opEmail, opName),
                           ),
                         ],
                       );
@@ -5998,6 +6199,7 @@ class _MainShellState extends State<MainShell> {
         onTestNameChanged: (val) => setState(() => _selectedEntryTestName = val),
         adminRules: _adminRules,
         componentPrimerRecords: _componentTestRecords.where((r) => r.testName == 'Primer Sensitivity Test').toList(),
+        componentPropellantRecords: _componentTestRecords.where((r) => r.testName == 'Propellant Test').toList(),
       ),
       HistoryTab(
         currentModule: _currentModule,
@@ -6011,6 +6213,7 @@ class _MainShellState extends State<MainShell> {
         onEditRecord: _handleEditRecord,
         base64Logo: _base64Logo,
         adminRules: _adminRules,
+        loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
         onClearDailyTestLogs: (_currentUserRole == UserRole.admin || _hasPermission('can_clear_logs')) ? _handleClearDailyTestLogs : null,
       ),
       AnalysisRecommendationTab(
@@ -6032,6 +6235,14 @@ class _MainShellState extends State<MainShell> {
       );
     } else if (_currentModule == 'Equipment Report') {
       mainContent = _buildModulePlaceholder('Equipment Report', Icons.construction_outlined, const Color(0xFFF59E0B));
+    } else if (_currentModule == 'Executive Reports') {
+      mainContent = ExecutiveReportsTab(
+        lotAcceptanceRecords: _records,
+        dailyTestRecords: _dailyTestRecords,
+        componentTestRecords: _componentTestRecords,
+        base64Logo: _base64Logo,
+        loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
+      );
     } else {
       mainContent = ConsumablesTab(
         loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
@@ -6233,6 +6444,8 @@ class _MainShellState extends State<MainShell> {
                               _buildModuleButton(label: 'Equipment Report', icon: Icons.construction_outlined, activeColor: const Color(0xFFF59E0B)),
                               const SizedBox(height: 8.0),
                               _buildModuleButton(label: 'Consumable Items', icon: Icons.inventory_2_outlined, activeColor: const Color(0xFFEC4899)),
+                              const SizedBox(height: 8.0),
+                              _buildModuleButton(label: 'Executive Reports', icon: Icons.summarize_outlined, activeColor: const Color(0xFF8B5CF6)),
                             ],
                           ),
                         ),
@@ -6348,7 +6561,8 @@ class _MainShellState extends State<MainShell> {
                     'Daily Test',
                     'Component Test',
                     'Equipment Report',
-                    'Consumable Items'
+                    'Consumable Items',
+                    'Executive Reports',
                   ].map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,

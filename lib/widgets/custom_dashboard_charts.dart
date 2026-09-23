@@ -1336,14 +1336,19 @@ class BoxPlotChart extends StatefulWidget {
 }
 
 class _BoxPlotChartState extends State<BoxPlotChart> {
-  String _selectedMetric = 'Velocity (m/s)';
+  String _selectedMetric = 'Velocity SD (m/s)';
+  String _selectedTemperature = 'All Temperatures';
 
   static const List<String> _metricOptions = [
-    'Velocity (m/s)',
-    'EPVAT Chamber Pressure',
-    'Action Time (ms)',
-    'Bullet Pull / Extraction Force (N)',
-    'Accuracy (mm)',
+    'Velocity SD (m/s)',
+    'Pressure SD (bar)',
+  ];
+
+  static const List<String> _temperatureOptions = [
+    'All Temperatures',
+    '+21 °C',
+    '+52 °C',
+    '-54 °C',
   ];
 
   @override
@@ -1373,38 +1378,65 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0F2FE),
-                borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: const Color(0xFF7DD3FC)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedMetric,
-                  dropdownColor: const Color(0xFFE0F2FE),
-                  style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0, fontWeight: FontWeight.bold),
-                  items: _metricOptions.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Color(0xFF0C2A4D))))).toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedMetric = v);
-                  },
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 6.0,
+              children: [
+                // Metric Dropdown: Velocity SD or Pressure SD
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2FE),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF7DD3FC)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedMetric,
+                      dropdownColor: const Color(0xFFE0F2FE),
+                      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0, fontWeight: FontWeight.bold),
+                      items: _metricOptions.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Color(0xFF0C2A4D))))).toList(),
+                      onChanged: (v) {
+                        if (v != null) setState(() => _selectedMetric = v);
+                      },
+                    ),
+                  ),
                 ),
-              ),
+                // Temperature Filter Dropdown: All, +21 °C, +52 °C, -54 °C
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedTemperature,
+                      dropdownColor: const Color(0xFFF8FAFC),
+                      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
+                      items: _temperatureOptions.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(color: Color(0xFF0F172A))))).toList(),
+                      onChanged: (v) {
+                        if (v != null) setState(() => _selectedTemperature = v);
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
         const SizedBox(height: 6.0),
-        const Text(
-          'Displays Min, 1st Quartile (Q1), Median, 3rd Quartile (Q3), and Max distribution variance across production lots.',
-          style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
+        Text(
+          'EPVAT Test Only: Distribution of $_selectedMetric across evaluated lots ($_selectedTemperature).',
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
         ),
         const SizedBox(height: 16.0),
         Expanded(
           child: statsList.isEmpty
               ? Center(
                   child: Text(
-                    'No data available for $_selectedMetric across evaluated lots.',
+                    'No EPVAT data available for $_selectedMetric at $_selectedTemperature.',
                     style: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5),
                   ),
                 )
@@ -1420,80 +1452,61 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
   List<BoxPlotStats> _computeStats() {
     final Map<String, List<double>> lotValues = {};
 
-    for (var r in widget.records) {
-      final lot = r.lotNo.trim().isEmpty ? 'General' : r.lotNo.trim();
+    // Filter strictly to EPVAT test records
+    final epvatRecords = widget.records.where((r) {
+      final name = r.testName.toLowerCase().trim();
+      final isEpvat = name == 'epvat test' || name.contains('epvat');
+      if (!isEpvat) return false;
+
+      // Filter by single temperature choice
+      if (_selectedTemperature != 'All Temperatures') {
+        final tCond = r.cartridgeTemp.trim();
+        final tVal = r.roomTemp.trim();
+        final cleanFilter = _selectedTemperature.replaceAll('°C', '').trim();
+        final matches = tCond.contains(cleanFilter) || tVal.contains(cleanFilter) || tCond == _selectedTemperature || tVal == _selectedTemperature;
+        if (!matches) return false;
+      }
+      return true;
+    }).toList();
+
+    for (var r in epvatRecords) {
+      final lot = (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? 'Hopper ${r.hopperNo.trim()}' : 'General'));
       final List<double> vals = [];
 
-      switch (_selectedMetric) {
-        case 'Velocity (m/s)':
-          if (r.epvatVelRounds.isNotEmpty) {
-            final parts = r.epvatVelRounds.split(RegExp(r'[,;\s]+'));
-            for (var p in parts) {
-              final d = double.tryParse(p.trim());
-              if (d != null && d > 0) vals.add(d);
-            }
+      if (_selectedMetric == 'Velocity SD (m/s)') {
+        final sd = double.tryParse(r.velSD);
+        if (sd != null && sd > 0) {
+          vals.add(sd);
+        } else if (r.epvatVelRounds.isNotEmpty) {
+          final parts = r.epvatVelRounds.split(RegExp(r'[,;\s]+'));
+          final rounds = <double>[];
+          for (var p in parts) {
+            final d = double.tryParse(p.trim());
+            if (d != null && d > 0) rounds.add(d);
           }
-          if (vals.isEmpty) {
-            final min = double.tryParse(r.velMin);
-            final mean = double.tryParse(r.velMean);
-            final max = double.tryParse(r.velMax);
-            if (mean != null && mean > 0) {
-              vals.addAll([min ?? mean, mean, max ?? mean]);
-            }
+          if (rounds.length > 1) {
+            final mean = rounds.reduce((a, b) => a + b) / rounds.length;
+            final variance = rounds.map((x) => math.pow(x - mean, 2)).reduce((a, b) => a + b) / (rounds.length - 1);
+            vals.add(math.sqrt(variance));
           }
-          break;
-
-        case 'EPVAT Chamber Pressure':
-          if (r.epvatPressureRounds.isNotEmpty) {
-            final parts = r.epvatPressureRounds.split(RegExp(r'[,;\s]+'));
-            for (var p in parts) {
-              final d = double.tryParse(p.trim());
-              if (d != null && d > 0) vals.add(d);
-            }
+        }
+      } else if (_selectedMetric == 'Pressure SD (bar)') {
+        final sd = double.tryParse(r.epvatSDPressure);
+        if (sd != null && sd > 0) {
+          vals.add(sd);
+        } else if (r.epvatPressureRounds.isNotEmpty) {
+          final parts = r.epvatPressureRounds.split(RegExp(r'[,;\s]+'));
+          final rounds = <double>[];
+          for (var p in parts) {
+            final d = double.tryParse(p.trim());
+            if (d != null && d > 0) rounds.add(d);
           }
-          if (vals.isEmpty) {
-            final min = double.tryParse(r.epvatMinPressure);
-            final mean = double.tryParse(r.epvatMeanPressure);
-            final max = double.tryParse(r.epvatMaxPressure);
-            if (mean != null && mean > 0) {
-              vals.addAll([min ?? mean, mean, max ?? mean]);
-            }
+          if (rounds.length > 1) {
+            final mean = rounds.reduce((a, b) => a + b) / rounds.length;
+            final variance = rounds.map((x) => math.pow(x - mean, 2)).reduce((a, b) => a + b) / (rounds.length - 1);
+            vals.add(math.sqrt(variance));
           }
-          break;
-
-        case 'Action Time (ms)':
-          final min = double.tryParse(r.actionTimeMin);
-          final mean = double.tryParse(r.actionTimeMean);
-          final max = double.tryParse(r.actionTimeMax);
-          if (mean != null && mean > 0) {
-            vals.addAll([min ?? mean, mean, max ?? mean]);
-          }
-          break;
-
-        case 'Bullet Pull / Extraction Force (N)':
-          if (r.extractionForceRounds.isNotEmpty) {
-            final parts = r.extractionForceRounds.split(RegExp(r'[,;\s]+'));
-            for (var p in parts) {
-              final d = double.tryParse(p.trim());
-              if (d != null && d > 0) vals.add(d);
-            }
-          }
-          break;
-
-        case 'Accuracy (mm)':
-          final minX = double.tryParse(r.accMinX);
-          final meanX = double.tryParse(r.accMeanX);
-          final maxX = double.tryParse(r.accMaxX);
-          if (meanX != null && meanX > 0) {
-            vals.addAll([minX ?? meanX, meanX, maxX ?? meanX]);
-          }
-          final minY = double.tryParse(r.accMinY);
-          final meanY = double.tryParse(r.accMeanY);
-          final maxY = double.tryParse(r.accMaxY);
-          if (meanY != null && meanY > 0) {
-            vals.addAll([minY ?? meanY, meanY, maxY ?? meanY]);
-          }
-          break;
+        }
       }
 
       if (vals.isNotEmpty) {

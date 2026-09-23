@@ -1,4 +1,20 @@
+import 'dart:math' as math;
+
 class BallisticRecord {
+  static String generateUuid() {
+    final random = math.Random();
+    final values = List<int>.generate(16, (i) => random.nextInt(256));
+    values[6] = (values[6] & 0x0f) | 0x40; // Version 4
+    values[8] = (values[8] & 0x3f) | 0x80; // Variant 10
+    return [
+      values.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      values.sublist(4, 6).map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      values.sublist(6, 8).map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      values.sublist(8, 10).map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      values.sublist(10, 16).map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+    ].join('-');
+  }
+
   final String? id;
   final String timestamp;
   final String operators;
@@ -136,9 +152,17 @@ class BallisticRecord {
   final String propellantCode;
   final String propellantLot;
   final String propellantCharge;
+
+  // Retest tracking fields
+  final bool isRetest;
+  final String retestTimestamp;
+  final String retestOperator;
+  final String retestNotes;
+  final String retestStatus;
+  final String originalStatus;
  
   BallisticRecord({
-    this.id,
+    String? id,
     required this.timestamp,
     required this.operators,
     required this.shift,
@@ -247,7 +271,13 @@ class BallisticRecord {
     this.propellantCode = '',
     this.propellantLot = '',
     this.propellantCharge = '',
-  });
+    this.isRetest = false,
+    this.retestTimestamp = '',
+    this.retestOperator = '',
+    this.retestNotes = '',
+    this.retestStatus = '',
+    this.originalStatus = '',
+  }) : id = (id != null && id.isNotEmpty) ? id : generateUuid();
 
   // Backward compatibility getter
   String get lotNumber => lotNo;
@@ -349,8 +379,15 @@ class BallisticRecord {
     final cleanPropCode = propellantCode.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanPropLot = propellantLot.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanPropCharge = propellantCharge.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanIsRetest = isRetest ? '1' : '0';
+    final cleanRetestTs = retestTimestamp.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanRetestOp = retestOperator.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanRetestNotes = retestNotes.replaceAll('"', '""').replaceAll(',', ' ').replaceAll('\n', ' ');
+    final cleanRetestStatus = retestStatus.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanOrigStatus = originalStatus.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanId = (id ?? '').replaceAll('"', '""').replaceAll(',', ' ');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge","$cleanIsRetest","$cleanRetestTs","$cleanRetestOp","$cleanRetestNotes","$cleanRetestStatus","$cleanOrigStatus","$cleanId"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -514,8 +551,16 @@ class BallisticRecord {
     final String propellantCode = fields.length > 105 ? fields[105].replaceAll('"', '').trim() : '';
     final String propellantLot = fields.length > 106 ? fields[106].replaceAll('"', '').trim() : '';
     final String propellantCharge = fields.length > 107 ? fields[107].replaceAll('"', '').trim() : '';
+    final bool isRetest = fields.length > 108 ? fields[108].replaceAll('"', '').trim() == '1' || fields[108].toLowerCase().contains('true') : false;
+    final String retestTimestamp = fields.length > 109 ? fields[109].replaceAll('"', '').trim() : '';
+    final String retestOperator = fields.length > 110 ? fields[110].replaceAll('"', '').trim() : '';
+    final String retestNotes = fields.length > 111 ? fields[111].replaceAll('"', '').trim() : '';
+    final String retestStatus = fields.length > 112 ? fields[112].replaceAll('"', '').trim() : '';
+    final String originalStatus = fields.length > 113 ? fields[113].replaceAll('"', '').trim() : '';
+    final String rowId = fields.length > 114 ? fields[114].replaceAll('"', '').trim() : '';
  
     return BallisticRecord(
+      id: rowId.isNotEmpty ? rowId : null,
       timestamp: timestamp,
       operators: operators,
       shift: shift,
@@ -624,6 +669,12 @@ class BallisticRecord {
       propellantCode: propellantCode,
       propellantLot: propellantLot,
       propellantCharge: propellantCharge,
+      isRetest: isRetest,
+      retestTimestamp: retestTimestamp,
+      retestOperator: retestOperator,
+      retestNotes: retestNotes,
+      retestStatus: retestStatus,
+      originalStatus: originalStatus,
     );
   }
 
@@ -737,6 +788,12 @@ class BallisticRecord {
       'propellant_code': propellantCode,
       'propellant_lot': propellantLot,
       'propellant_charge': propellantCharge,
+      'is_retest': isRetest,
+      'retest_timestamp': retestTimestamp,
+      'retest_operator': retestOperator,
+      'retest_notes': retestNotes,
+      'retest_status': retestStatus,
+      'original_status': originalStatus,
     };
     if (id != null && id!.isNotEmpty) {
       map['id'] = id;
@@ -868,6 +925,12 @@ class BallisticRecord {
       propellantCode: toStr(map['propellant_code']),
       propellantLot: toStr(map['propellant_lot']),
       propellantCharge: toStr(map['propellant_charge']),
+      isRetest: map['is_retest'] == true || map['is_retest']?.toString() == '1',
+      retestTimestamp: toStr(map['retest_timestamp']),
+      retestOperator: toStr(map['retest_operator']),
+      retestNotes: toStr(map['retest_notes']),
+      retestStatus: toStr(map['retest_status']),
+      originalStatus: toStr(map['original_status']),
     );
   }
 
@@ -982,6 +1045,12 @@ class BallisticRecord {
     String? propellantCode,
     String? propellantLot,
     String? propellantCharge,
+    bool? isRetest,
+    String? retestTimestamp,
+    String? retestOperator,
+    String? retestNotes,
+    String? retestStatus,
+    String? originalStatus,
   }) {
     return BallisticRecord(
       id: id ?? this.id,
@@ -1093,6 +1162,12 @@ class BallisticRecord {
       propellantCode: propellantCode ?? this.propellantCode,
       propellantLot: propellantLot ?? this.propellantLot,
       propellantCharge: propellantCharge ?? this.propellantCharge,
+      isRetest: isRetest ?? this.isRetest,
+      retestTimestamp: retestTimestamp ?? this.retestTimestamp,
+      retestOperator: retestOperator ?? this.retestOperator,
+      retestNotes: retestNotes ?? this.retestNotes,
+      retestStatus: retestStatus ?? this.retestStatus,
+      originalStatus: originalStatus ?? this.originalStatus,
     );
   }
 
@@ -1103,6 +1178,7 @@ class BallisticRecord {
     final List<BallisticRecord> result = [];
     final Map<String, List<BallisticRecord>> epvatGroups = {};
     final Map<String, List<BallisticRecord>> funcGroups = {};
+    final Map<String, BallisticRecord> seenGeneral = {};
 
     for (final r in records) {
       final isEpvat = r.testName.contains('EPVAT');
@@ -1112,22 +1188,43 @@ class BallisticRecord {
       final dateKey = r.timestamp.length >= 10 ? r.timestamp.substring(0, 10) : r.timestamp;
 
       if (isEpvat && (r.notes.contains('Multi-Temperature Consolidated') || r.cartridgeTemp.contains(','))) {
-        // Already unified
-        result.add(r);
+        // Already unified EPVAT - deduplicate using seenGeneral
+        final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
+        final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : 'EPVAT_${r.module}_${r.lotNo}_${r.caliber}_$cleanTs';
+        if (!seenGeneral.containsKey(key)) {
+          seenGeneral[key] = r;
+        }
       } else if (isEpvat && r.cartridgeTemp.isNotEmpty) {
         // Individual temp record to consolidate
         final key = '${r.lotNo}_${r.caliber}_$dateKey';
         epvatGroups.putIfAbsent(key, () => []).add(r);
       } else if (isFunc && (r.notes.contains('Consolidated Multi-Temperature') || r.cartridgeTemp.contains(','))) {
-        // Already unified
-        result.add(r);
+        // Already unified Function - deduplicate using seenGeneral
+        final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
+        final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : 'FUNC_${r.module}_${r.lotNo}_${r.caliber}_$cleanTs';
+        if (!seenGeneral.containsKey(key)) {
+          seenGeneral[key] = r;
+        }
       } else if (isFunc && r.cartridgeTemp.isNotEmpty) {
         final key = '${r.lotNo}_${r.caliber}_$dateKey';
         funcGroups.putIfAbsent(key, () => []).add(r);
       } else {
-        result.add(r);
+        // Deduplicate general test records (Accuracy, Waterproof, Component, etc.)
+        final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
+        final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : '${r.module}_${r.testName}_${r.lotNo}_${r.caliber}_$cleanTs';
+        if (!seenGeneral.containsKey(key)) {
+          seenGeneral[key] = r;
+        } else {
+          // If existing record lacks UUID and new one has it, replace with new one
+          final existing = seenGeneral[key]!;
+          if ((existing.id == null || existing.id!.isEmpty) && (r.id != null && r.id!.isNotEmpty)) {
+            seenGeneral[key] = r;
+          }
+        }
       }
     }
+
+    result.addAll(seenGeneral.values);
 
     // Merge EPVAT groups
     epvatGroups.forEach((key, group) {
@@ -1184,9 +1281,27 @@ class BallisticRecord {
       }
     });
 
+    // Final robust deduplication by ID or composite key
+    final Map<String, BallisticRecord> finalMap = {};
+    for (var r in result) {
+      final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
+      final key = (r.id != null && r.id!.isNotEmpty)
+          ? r.id!
+          : '${r.module}_${r.testName}_${r.lotNo}_${r.caliber}_$cleanTs';
+      if (!finalMap.containsKey(key)) {
+        finalMap[key] = r;
+      } else {
+        final existing = finalMap[key]!;
+        if ((existing.id == null || existing.id!.isEmpty) && (r.id != null && r.id!.isNotEmpty)) {
+          finalMap[key] = r;
+        }
+      }
+    }
+
+    final deduplicated = finalMap.values.toList();
     // Sort by timestamp desc
-    result.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    return result;
+    deduplicated.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return deduplicated;
   }
 }
 
