@@ -16,7 +16,10 @@ try {
     if (Test-Path $webBundleZip) {
         Remove-Item -Force $webBundleZip -ErrorAction SilentlyContinue
     }
-    Compress-Archive -Path "build\web\*" -DestinationPath $webBundleZip -CompressionLevel Optimal -Force
+    $tempWebDir = Join-Path $env:TEMP "ompc_web_bundle_$(Get-Random)"
+    Copy-Item -Path "build\web" -Destination $tempWebDir -Recurse -Force
+    Compress-Archive -Path "$tempWebDir\*" -DestinationPath $webBundleZip -CompressionLevel Optimal -Force
+    Remove-Item -Recurse -Force $tempWebDir -ErrorAction SilentlyContinue
 
     Write-Host "2. Compiling self-contained executable with embedded web resource and icon..."
     $iconArg = ""
@@ -61,12 +64,18 @@ try {
     Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
     Get-Item $zipPath | Select-Object Name, Length, LastWriteTime
 
-    # Update extracted desktop folder and standalone executable on Desktop
+    # Update extracted desktop folder, standalone executable on Desktop, and Local Programs folder (for Desktop Shortcut)
     try {
         New-Item -ItemType Directory -Path "$destDesktopFolder\build\web" -Force -ErrorAction SilentlyContinue | Out-Null
         Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "$destDesktopFolder\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
         Copy-Item -Recurse "build\web\*" -Destination "$destDesktopFolder\build\web" -Force -ErrorAction SilentlyContinue
         Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "C:\Users\user\Desktop\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
+
+        $localProgramsDir = "$env:LOCALAPPDATA\Programs\OMPC_Ballistic_AeroData"
+        if (Test-Path $localProgramsDir) {
+            Copy-Item "OMPC_Ballistic_AeroData.exe" -Destination "$localProgramsDir\OMPC_Ballistic_AeroData.exe" -Force -ErrorAction SilentlyContinue
+            Write-Host "  [OK] Synchronized executable to Local Programs folder for desktop shortcut."
+        }
     } catch {
         Write-Host "Note: Desktop folder partially locked by active session; files updated where possible."
     }
