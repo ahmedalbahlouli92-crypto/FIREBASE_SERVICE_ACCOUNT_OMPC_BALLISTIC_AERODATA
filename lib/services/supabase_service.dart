@@ -121,6 +121,18 @@ class SupabaseService {
       }
       map.remove('acc_largest_distance');
 
+      // Helper to strip retest columns if remote schema does not have them yet
+      Map<String, dynamic> stripMissingRetestColumns(Map<String, dynamic> source) {
+        final sanitized = Map<String, dynamic>.from(source);
+        sanitized.remove('is_retest');
+        sanitized.remove('retest_timestamp');
+        sanitized.remove('retest_operator');
+        sanitized.remove('retest_notes');
+        sanitized.remove('retest_status');
+        sanitized.remove('original_status');
+        return sanitized;
+      }
+
       final dedicatedTable = getTableName(module: effectiveModule, testName: record.testName);
 
       // 1. Attempt insert into dedicated test table
@@ -128,18 +140,37 @@ class SupabaseService {
         try {
           await client.from(dedicatedTable).insert(map);
         } catch (e) {
-          debugPrint('Note: dedicated table $dedicatedTable insert skipped (may not be created yet): $e');
+          if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
+            try {
+              await client.from(dedicatedTable).insert(stripMissingRetestColumns(map));
+            } catch (_) {}
+          } else {
+            debugPrint('Note: dedicated table $dedicatedTable insert skipped (may not be created yet): $e');
+          }
         }
       }
 
       // 2. Insert into consolidated master table
-      final response = await client
-          .from(tableName)
-          .insert(map)
-          .select()
-          .single();
+      try {
+        final response = await client
+            .from(tableName)
+            .insert(map)
+            .select()
+            .single();
 
-      return BallisticRecord.fromSupabaseMap(response);
+        return BallisticRecord.fromSupabaseMap(response);
+      } catch (e) {
+        if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
+          final response = await client
+              .from(tableName)
+              .insert(stripMissingRetestColumns(map))
+              .select()
+              .single();
+
+          return BallisticRecord.fromSupabaseMap(response);
+        }
+        rethrow;
+      }
     } catch (e) {
       debugPrint('Error inserting record into Supabase: $e');
       return null;
@@ -223,18 +254,46 @@ class SupabaseService {
       map.remove('id'); // Don't overwrite primary key
       map.remove('acc_largest_distance');
 
+      Map<String, dynamic> stripMissingRetestColumns(Map<String, dynamic> source) {
+        final sanitized = Map<String, dynamic>.from(source);
+        sanitized.remove('is_retest');
+        sanitized.remove('retest_timestamp');
+        sanitized.remove('retest_operator');
+        sanitized.remove('retest_notes');
+        sanitized.remove('retest_status');
+        sanitized.remove('original_status');
+        return sanitized;
+      }
+
       final dedicatedTable = getTableName(module: module, testName: record.testName);
       if (dedicatedTable != tableName) {
         try {
           await client.from(dedicatedTable).update(map).eq('id', id);
-        } catch (_) {}
+        } catch (e) {
+          if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
+            try {
+              await client.from(dedicatedTable).update(stripMissingRetestColumns(map)).eq('id', id);
+            } catch (_) {}
+          }
+        }
       }
 
-      await client
-          .from(tableName)
-          .update(map)
-          .eq('id', id);
-      return true;
+      try {
+        await client
+            .from(tableName)
+            .update(map)
+            .eq('id', id);
+        return true;
+      } catch (e) {
+        if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
+          await client
+              .from(tableName)
+              .update(stripMissingRetestColumns(map))
+              .eq('id', id);
+          return true;
+        }
+        rethrow;
+      }
     } catch (e) {
       debugPrint('Error updating record in Supabase: $e');
       return false;
