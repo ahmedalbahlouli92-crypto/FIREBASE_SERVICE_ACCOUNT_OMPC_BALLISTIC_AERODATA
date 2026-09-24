@@ -19,27 +19,27 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.2';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.2 (Unified Weapon, Transducer & Barrel Fleet Integration & Full Cross-Platform Sync)';
-const BODY = `## OMPC Ballistic AeroData v1.5.2
+const TAG_NAME = 'v1.5.3';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.3 (Caliber-Filtered 3-Tier Weapon Fleet Selection: Category -> Model -> Serial)';
+const BODY = `## OMPC Ballistic AeroData v1.5.3
 
-Release addressing complete equipment fleet synchronization across Lot Acceptance Test and Daily Test:
+Release featuring advanced caliber-filtered 3-tier weapon fleet selection across Entry Log & Function Test:
 
 ### Key Highlights & Enhancements:
-1. **Registered Weapon Fleet Alignment**:
-   - Resolved weapon selection field mismatch in Function Test and Firing Rate Cycle Test across both Lot Acceptance Module and Daily Test.
-   - Entry Log now directly connects to all weapons registered by Admin in the Control Module (with model, variant, category, and serial numbers).
-   - Added direct "Registered Fleet Weapon" selection with live cumulative round counts badge (\`X rounds tracked\`) and interactive multi-weapon chips.
-   - Firing Rate Cycle Test now supports registered fleet weapons with intelligent automatic category matching (Rifle / Loose vs. Machine Gun / Linked).
-2. **Complete Transducer Fleet Aggregation**:
-   - GP1 (Chamber) and GP2/GP6 (Port) transducers registered in either the Equipment Registration card or the Rules tab are aggregated and matched.
-   - Purged obsolete legacy sensors and ensured 100% telemetry matching for EPVAT tests.
-3. **Accuracy, EPVAT & General Barrel Synchronization**:
-   - Unified barrel registries so that Accuracy Test, EPVAT Test, and Terminal Effect Test share all registered barrels with round tracking.
-4. **Automatic Fleet Self-Healing & Cross-Population**:
-   - Automatic background cross-population ensures that older database rules and client stores automatically heal and synchronize all equipment keys.
-5. **Real-Time Cross-Platform Synchronization**:
-   - Test record additions, edits, and deletions synchronized in real-time across Windows Desktop, Android APK, and Web via Supabase Realtime & WebSockets.
+1. **Caliber-Driven Weapon Filtering**:
+   - **5.56mm & 7.62mm Calibers**: Weapon types are automatically restricted strictly to **Rifle** and **Machine Gun** (Pistols completely excluded).
+   - **9mm Calibers**: Weapon types are locked strictly to **Pistols** per standard ballistic inspection protocol (Rifles and Machine Guns completely excluded).
+2. **Cascading 3-Tier Weapon Selection**:
+   - **Tier 1 (Weapon Type)**: Category selector dynamically filtered by active caliber.
+   - **Tier 2 (Weapon Model)**: Lists fleet weapon models registered in Admin Control Module for that category (e.g., Steyr AUG A3, M16A4, M4A1 under Rifle; Beretta 92FS under Pistol).
+   - **Tier 3 (Serial Number)**: Directly populates the registered serial number(s) for that model (e.g., choosing Steyr immediately reveals and selects its registered serial).
+3. **Live Cumulative Round Tracking**:
+   - Instant badge displaying round count for the chosen serial.
+   - Interactive chips for multi-weapon tests with individual round counts and quick deletion.
+4. **Control Module Registration Enhancements**:
+   - Registered weapons preserve model, variant, category, manufacturer, and serial numbers.
+5. **Real-Time Database Pre-Population**:
+   - 15 fully categorized fleet weapons pre-populated and synchronized across Supabase Cloud DB.
 `;
 
 function request(options, postData) {
@@ -149,7 +149,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.5.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

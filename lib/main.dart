@@ -3947,22 +3947,30 @@ class _MainShellState extends State<MainShell> {
                           final model = _newWeaponTypeInputCtrl.text.trim();
                           final mfg = _selectedAdminWeaponManufacturer;
                           final weaponType = _selectedAdminWeaponType;
-                          final type = model.isNotEmpty ? '$mfg $model ($weaponType)' : '$mfg $weaponType';
+                          final cleanModel = model.isNotEmpty
+                              ? (model.toLowerCase().startsWith(mfg.toLowerCase()) ? model : (mfg != 'Other' ? '$mfg $model' : model))
+                              : (mfg != 'Other' ? '$mfg $weaponType' : weaponType);
                           final serial = _newWeaponSerialInputCtrl.text.trim();
-                          if (type.isEmpty) return;
+                          if (cleanModel.isEmpty) return;
                           final list = List<Map<String, dynamic>>.from(
                             (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
                               if (e is Map) return Map<String, dynamic>.from(e);
                               return {'type': e.toString(), 'serial': ''};
                             }),
                           );
-                          list.add({'type': type, 'serial': serial, 'category': weaponType, 'manufacturer': mfg});
+                          list.add({
+                            'type': cleanModel,
+                            'serial': serial,
+                            'category': weaponType,
+                            'manufacturer': mfg,
+                            'model': model.isNotEmpty ? model : cleanModel,
+                          });
                           _adminRules['weapons'] = list;
 
                           // Also add to function_test weapons list if not present
                           final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
                           final funcWeapons = List<String>.from(func['weapons'] ?? []);
-                          final fullLabel = serial.isNotEmpty ? '$type (SN: $serial)' : type;
+                          final fullLabel = serial.isNotEmpty ? '$cleanModel (SN: $serial)' : cleanModel;
                           if (!funcWeapons.contains(fullLabel)) {
                             funcWeapons.add(fullLabel);
                             func['weapons'] = funcWeapons;

@@ -262,6 +262,13 @@ class _EntryTabState extends State<EntryTab> {
   final _customWeaponTypeController = TextEditingController();
   final _customWeaponSNController = TextEditingController();
 
+  // Function Test 3-tier weapon selection: Category -> Model -> Serial
+  String _functionSelectedCategory = 'Rifle';
+  String _functionSelectedModel = '';
+  String _functionSelectedSerial = '';
+  final _functionCustomModelController = TextEditingController();
+  final _functionCustomSerialController = TextEditingController();
+
   String _shift = 'Day';
   late String _caliber;
   late String _testName;
@@ -736,8 +743,65 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
-  List<String> get _weaponsList {
-    final Set<String> result = {};
+  List<String> get _allowedWeaponCategoriesForCaliber {
+    final c = _caliber.toLowerCase();
+    if (c.contains('9mm') || c.contains('9x19')) {
+      return ['Pistol'];
+    }
+    if (c.contains('5.56') || c.contains('.223') || c.contains('7.62') || c.contains('.308') || c.contains('12.7')) {
+      return ['Rifle', 'Machine Gun'];
+    }
+    return ['Rifle', 'Machine Gun', 'Pistol'];
+  }
+
+  List<Map<String, String>> get _fleetWeaponsDetailed {
+    final List<Map<String, String>> items = [];
+    final Set<String> seen = {};
+
+    void addWeaponItem({
+      required String category,
+      required String model,
+      required String serial,
+      required String raw,
+    }) {
+      String cleanModel = model
+          .replaceAll(RegExp(r'\s*\((Rifle|Machine Gun|Pistol|Carbine|Submachine Gun|Other)\)', caseSensitive: false), '')
+          .replaceAll(RegExp(r'\(SN:[^\)]+\)', caseSensitive: false), '')
+          .trim();
+      if (cleanModel.toLowerCase().startsWith('styer')) {
+        cleanModel = cleanModel.replaceFirst(RegExp('styer', caseSensitive: false), 'Steyr');
+      }
+      if (cleanModel.isEmpty) return;
+
+      String cleanSerial = serial.trim();
+      if (cleanSerial.isEmpty) {
+        final snMatch = RegExp(r'SN[:\s]+([^\s\),]+)', caseSensitive: false).firstMatch(raw);
+        if (snMatch != null) cleanSerial = snMatch.group(1)!.trim();
+      }
+
+      String cleanCat = category.trim();
+      final checkCat = cleanCat.toLowerCase();
+      final checkText = '$cleanModel $cleanCat $raw'.toLowerCase();
+
+      if (checkCat == 'pistol' || checkText.contains('pistol') || checkText.contains('92fs') || checkText.contains('glock') || checkText.contains('browning hp') || checkText.contains('m9') || checkText.contains('beretta')) {
+        cleanCat = 'Pistol';
+      } else if (checkCat == 'machine gun' || checkCat == 'linked' || checkText.contains('machine gun') || checkText.contains('saw') || checkText.contains('m249') || checkText.contains('m60') || checkText.contains('m240')) {
+        cleanCat = 'Machine Gun';
+      } else {
+        cleanCat = 'Rifle';
+      }
+
+      final key = '$cleanCat|$cleanModel|$cleanSerial'.toLowerCase();
+      if (!seen.contains(key)) {
+        seen.add(key);
+        items.add({
+          'category': cleanCat,
+          'model': cleanModel,
+          'serial': cleanSerial,
+          'raw': cleanSerial.isNotEmpty ? '$cleanModel (SN: $cleanSerial)' : cleanModel,
+        });
+      }
+    }
 
     // 1. widget.adminRules['weapons']
     final list = widget.adminRules['weapons'];
@@ -745,18 +809,17 @@ class _EntryTabState extends State<EntryTab> {
       for (final e in list) {
         if (e is Map) {
           final t = (e['type'] ?? '').toString().trim();
+          final m = (e['model'] ?? '').toString().trim();
           final s = (e['serial'] ?? '').toString().trim();
-          if (t.isNotEmpty && s.isNotEmpty) {
-            if (t.toLowerCase().contains('sn:')) {
-              result.add(t);
-            } else {
-              result.add('$t (SN: $s)');
-            }
-          } else if (t.isNotEmpty) {
-            result.add(t);
+          final c = (e['category'] ?? '').toString().trim();
+          final mfg = (e['manufacturer'] ?? '').toString().trim();
+          String modelName = m.isNotEmpty ? m : t;
+          if (mfg.isNotEmpty && mfg != 'Other' && !modelName.toLowerCase().startsWith(mfg.toLowerCase())) {
+            modelName = '$mfg $modelName';
           }
+          addWeaponItem(category: c, model: modelName, serial: s, raw: t.isNotEmpty ? t : modelName);
         } else if (e != null && e.toString().trim().isNotEmpty) {
-          result.add(e.toString().trim());
+          addWeaponItem(category: '', model: e.toString().trim(), serial: '', raw: e.toString().trim());
         }
       }
     }
@@ -766,7 +829,7 @@ class _EntryTabState extends State<EntryTab> {
     if (fWeapons is List) {
       for (final e in fWeapons) {
         if (e != null && e.toString().trim().isNotEmpty) {
-          result.add(e.toString().trim());
+          addWeaponItem(category: '', model: e.toString().trim(), serial: '', raw: e.toString().trim());
         }
       }
     }
@@ -777,23 +840,93 @@ class _EntryTabState extends State<EntryTab> {
       for (final e in cyclicWeapons) {
         if (e is Map) {
           final n = (e['name'] ?? '').toString().trim();
-          if (n.isNotEmpty) result.add(n);
+          final t = (e['type'] ?? '').toString().trim();
+          if (n.isNotEmpty) {
+            addWeaponItem(category: t, model: n, serial: '', raw: n);
+          }
         } else if (e != null && e.toString().trim().isNotEmpty) {
-          result.add(e.toString().trim());
+          addWeaponItem(category: '', model: e.toString().trim(), serial: '', raw: e.toString().trim());
         }
       }
     }
 
-    if (result.isEmpty) {
-      return [
-        'Beretta M9 Pistol (SN: W-1102)',
-        'M4A1 Carbine (SN: W-9012)',
-        'M16A4 Rifle (SN: W-9015)',
-        'M249 SAW (SN: W-4401)',
-        'G3A3 Rifle (SN: W-7721)',
-      ];
+    // Default fleet weapons if none registered
+    if (items.isEmpty) {
+      addWeaponItem(category: 'Rifle', model: 'Steyr AUG A3', serial: 'ST-556-01', raw: 'Steyr AUG A3 (SN: ST-556-01)');
+      addWeaponItem(category: 'Rifle', model: 'M4A1 Carbine', serial: 'W-9012', raw: 'M4A1 Carbine (SN: W-9012)');
+      addWeaponItem(category: 'Rifle', model: 'M16A4 Rifle', serial: 'W-9015', raw: 'M16A4 Rifle (SN: W-9015)');
+      addWeaponItem(category: 'Rifle', model: 'G3A3 Rifle', serial: 'W-7721', raw: 'G3A3 Rifle (SN: W-7721)');
+      addWeaponItem(category: 'Machine Gun', model: 'M249 SAW', serial: 'W-4401', raw: 'M249 SAW (SN: W-4401)');
+      addWeaponItem(category: 'Pistol', model: 'Beretta M9 Pistol', serial: 'W-1102', raw: 'Beretta M9 Pistol (SN: W-1102)');
+      addWeaponItem(category: 'Pistol', model: 'Beretta 92FS', serial: 'B-9201', raw: 'Beretta 92FS (SN: B-9201)');
+      addWeaponItem(category: 'Pistol', model: 'Glock 17', serial: 'G-1701', raw: 'Glock 17 (SN: G-1701)');
     }
-    return result.toList();
+
+    return items;
+  }
+
+  List<String> get _weaponsList {
+    return _fleetWeaponsDetailed.map((w) => w['raw']!).toSet().toList();
+  }
+
+  List<String> _getModelsForCategory(String category) {
+    final models = _fleetWeaponsDetailed
+        .where((w) => w['category'] == category)
+        .map((w) => w['model']!)
+        .where((m) => m.isNotEmpty)
+        .toSet()
+        .toList();
+    if (models.isEmpty) {
+      if (category == 'Pistol') return ['Beretta 92FS', 'Glock 17', 'Browning HP'];
+      if (category == 'Machine Gun') return ['M249 SAW', 'M60', 'M240'];
+      return ['Steyr AUG A3', 'M16A4 Rifle', 'M4A1 Carbine', 'G3A3 Rifle'];
+    }
+    return models;
+  }
+
+  List<String> _getSerialsForModel(String category, String model) {
+    if (model.isEmpty || model == '[+ Custom Model]') return [];
+    return _fleetWeaponsDetailed
+        .where((w) => w['category'] == category && w['model'] == model && w['serial']!.isNotEmpty)
+        .map((w) => w['serial']!)
+        .toSet()
+        .toList();
+  }
+
+  void _syncFunctionWeaponState({bool resetSelections = false}) {
+    final allowedCats = _allowedWeaponCategoriesForCaliber;
+    if (!allowedCats.contains(_functionSelectedCategory)) {
+      _functionSelectedCategory = allowedCats.first;
+      resetSelections = true;
+    }
+
+    final models = _getModelsForCategory(_functionSelectedCategory);
+    if (resetSelections || _functionSelectedModel.isEmpty || (!models.contains(_functionSelectedModel) && _functionSelectedModel != '[+ Custom Model]')) {
+      _functionSelectedModel = models.isNotEmpty ? models.first : '[+ Custom Model]';
+    }
+
+    final serials = _getSerialsForModel(_functionSelectedCategory, _functionSelectedModel);
+    if (resetSelections || _functionSelectedSerial.isEmpty || (!serials.contains(_functionSelectedSerial) && _functionSelectedSerial != '[+ Enter Custom Serial]')) {
+      _functionSelectedSerial = serials.isNotEmpty ? serials.first : '';
+    }
+
+    final activeModel = _functionSelectedModel == '[+ Custom Model]'
+        ? _functionCustomModelController.text.trim()
+        : _functionSelectedModel;
+    final activeSerial = _functionSelectedSerial == '[+ Enter Custom Serial]'
+        ? _functionCustomSerialController.text.trim()
+        : _functionSelectedSerial;
+
+    final composed = activeSerial.isNotEmpty
+        ? '$activeModel (SN: $activeSerial)'
+        : activeModel;
+
+    if (composed.isNotEmpty) {
+      _functionWeapon = composed;
+      if (_selectedFunctionWeapons.isEmpty || (_selectedFunctionWeapons.length == 1 && resetSelections)) {
+        _selectedFunctionWeapons = [composed];
+      }
+    }
   }
 
   int _getAssetRounds(String serial) {
@@ -1706,6 +1839,7 @@ class _EntryTabState extends State<EntryTab> {
       if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
         _recalculateEpvatStats();
       }
+      _syncFunctionWeaponState(resetSelections: true);
     });
     widget.onCaliberChanged(newCaliber);
     _scheduleAutoSave();
@@ -2067,6 +2201,7 @@ class _EntryTabState extends State<EntryTab> {
         _selectedFunctionWeapons = [_weaponsList.first];
       }
     }
+    _syncFunctionWeaponState(resetSelections: true);
     
     // Initialize test date and time locked to opening time (allows manual edit or defaults to submission time)
     _autoGenerateTime(force: true);
@@ -2239,6 +2374,7 @@ class _EntryTabState extends State<EntryTab> {
       _operatorsController.text = widget.loggedInUser;
     }
     if (oldWidget.adminRules != widget.adminRules) {
+      _syncFunctionWeaponState();
       if (_weaponsList.isNotEmpty && (_selectedRegisteredWeapon.isEmpty || !_weaponsList.contains(_selectedRegisteredWeapon))) {
         _selectedRegisteredWeapon = _weaponsList.first;
         if (_selectedFunctionWeapons.isEmpty) {
@@ -2419,6 +2555,8 @@ class _EntryTabState extends State<EntryTab> {
     _barrelFocusNode.dispose();
     _gp6FocusNode.dispose();
     _weaponFocusNode.dispose();
+    _functionCustomModelController.dispose();
+    _functionCustomSerialController.dispose();
     _autoSaveDebounce?.cancel();
 
     super.dispose();
@@ -5403,7 +5541,13 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   Future<void> _showMultiWeaponSelectDialog() async {
-    final allWeapons = _weaponsList;
+    final allowedCats = _allowedWeaponCategoriesForCaliber;
+    final weaponsInCaliber = _fleetWeaponsDetailed
+        .where((w) => allowedCats.contains(w['category']))
+        .map((w) => w['raw']!)
+        .toSet()
+        .toList();
+    final allWeapons = weaponsInCaliber.isNotEmpty ? weaponsInCaliber : _weaponsList;
     final List<String> tempSelected = List<String>.from(_selectedFunctionWeapons);
     final customCtrl = TextEditingController();
 
@@ -5419,12 +5563,15 @@ class _EntryTabState extends State<EntryTab> {
                 side: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
               ),
               title: Row(
-                children: const [
-                  Icon(Icons.military_tech_outlined, color: Color(0xFF38BDF8), size: 22.0),
-                  SizedBox(width: 8.0),
-                  Text(
-                    'Select Weapons for Function Test',
-                    style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+                children: [
+                  const Icon(Icons.military_tech_outlined, color: Color(0xFF38BDF8), size: 22.0),
+                  const SizedBox(width: 8.0),
+                  Expanded(
+                    child: Text(
+                      'Select Weapons for Function Test ($_caliber)',
+                      style: const TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -5435,9 +5582,9 @@ class _EntryTabState extends State<EntryTab> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Select multiple weapons or rifles to be tested during this inspection. Selected weapons will be included in the report.',
-                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                      Text(
+                        'Showing fleet weapons for $_caliber (${allowedCats.join(" / ")}):',
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
                       ),
                       const SizedBox(height: 12.0),
                       if (allWeapons.isNotEmpty) ...[
@@ -5460,6 +5607,8 @@ class _EntryTabState extends State<EntryTab> {
                             itemBuilder: (c, idx) {
                               final w = allWeapons[idx];
                               final isChecked = tempSelected.contains(w);
+                              final sn = _extractWeaponSerial(w);
+                              final rds = _getAssetRounds(sn);
                               return CheckboxListTile(
                                 dense: true,
                                 activeColor: const Color(0xFF0284C7),
@@ -5473,10 +5622,9 @@ class _EntryTabState extends State<EntryTab> {
                                     fontFamily: 'JetBrainsMono',
                                   ),
                                 ),
-                                subtitle: Text(
-                                  '${_getAssetRounds(_extractWeaponSerial(w))} cumulative rounds fired',
-                                  style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontFamily: 'JetBrainsMono'),
-                                ),
+                                subtitle: sn.isNotEmpty
+                                    ? Text('$rds cumulative rounds fired', style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontFamily: 'JetBrainsMono'))
+                                    : null,
                                 value: isChecked,
                                 onChanged: (val) {
                                   setDialogState(() {
@@ -5505,7 +5653,7 @@ class _EntryTabState extends State<EntryTab> {
                               controller: customCtrl,
                               style: const TextStyle(color: Colors.white, fontSize: 12.5),
                               decoration: InputDecoration(
-                                hintText: 'e.g., M4A1 (SN: W-999)',
+                                hintText: 'e.g., Steyr AUG (SN: ST-998)',
                                 hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0),
                                 filled: true,
                                 fillColor: const Color(0xFF0F172A),
@@ -5536,6 +5684,29 @@ class _EntryTabState extends State<EntryTab> {
                           ),
                         ],
                       ),
+                      if (tempSelected.isNotEmpty) ...[
+                        const SizedBox(height: 14.0),
+                        Text(
+                          'Selected Weapons (${tempSelected.length}):',
+                          style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6.0),
+                        Wrap(
+                          spacing: 6.0,
+                          runSpacing: 6.0,
+                          children: tempSelected.map((w) {
+                            return Chip(
+                              label: Text(w, style: const TextStyle(color: Colors.white, fontSize: 11.5)),
+                              backgroundColor: const Color(0xFF0284C7).withOpacity(0.3),
+                              deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white70),
+                              onDeleted: () {
+                                setDialogState(() => tempSelected.remove(w));
+                              },
+                              side: const BorderSide(color: Color(0xFF0284C7)),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -5569,27 +5740,45 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   Widget _buildFunctionTestSpecsCard() {
-    final weapons = _weaponsList;
-    if (_selectedRegisteredWeapon.isEmpty && weapons.isNotEmpty) {
-      _selectedRegisteredWeapon = weapons.first;
-    }
-    if (_functionWeapon.isEmpty && weapons.isNotEmpty) {
-      _functionWeapon = weapons.first;
-      if (_selectedFunctionWeapons.isEmpty) {
-        _selectedFunctionWeapons = [weapons.first];
-      }
-    } else if (_functionWeapon.isNotEmpty && _selectedFunctionWeapons.isEmpty) {
-      _selectedFunctionWeapons = _functionWeapon.split(', ').where((s) => s.trim().isNotEmpty).toList();
-    }
+    _syncFunctionWeaponState();
 
-    final dropdownItems = <String>[
-      ...weapons,
-      '[+ Custom / Other Weapon]',
+    final allowedCats = _allowedWeaponCategoriesForCaliber;
+    final currentCat = allowedCats.contains(_functionSelectedCategory)
+        ? _functionSelectedCategory
+        : allowedCats.first;
+
+    final modelsInCat = _getModelsForCategory(currentCat);
+    final modelDropdownItems = <String>[
+      ...modelsInCat,
+      '[+ Custom Model]',
+    ];
+    final currentModel = modelDropdownItems.contains(_functionSelectedModel)
+        ? _functionSelectedModel
+        : (modelDropdownItems.isNotEmpty ? modelDropdownItems.first : '[+ Custom Model]');
+
+    final registeredSerials = _getSerialsForModel(currentCat, currentModel);
+    final hasRegisteredSerials = registeredSerials.isNotEmpty;
+    final serialDropdownItems = <String>[
+      ...registeredSerials,
+      '[+ Enter Custom Serial]',
     ];
 
-    final currentSelected = dropdownItems.contains(_selectedRegisteredWeapon)
-        ? _selectedRegisteredWeapon
-        : (weapons.isNotEmpty ? weapons.first : '[+ Custom / Other Weapon]');
+    String activeSerial = '';
+    if (hasRegisteredSerials && _functionSelectedSerial != '[+ Enter Custom Serial]') {
+      activeSerial = serialDropdownItems.contains(_functionSelectedSerial)
+          ? _functionSelectedSerial
+          : registeredSerials.first;
+    } else {
+      activeSerial = _functionCustomSerialController.text.trim();
+    }
+
+    final activeModelName = currentModel == '[+ Custom Model]'
+        ? _functionCustomModelController.text.trim()
+        : currentModel;
+
+    final String previewLabel = activeSerial.isNotEmpty
+        ? '$activeModelName (SN: $activeSerial)'
+        : activeModelName;
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -5612,11 +5801,13 @@ class _EntryTabState extends State<EntryTab> {
             children: [
               const Icon(Icons.military_tech_outlined, color: Color(0xFF0284C7), size: 18.0),
               const SizedBox(width: 8.0),
-              const Text(
-                'Function Test Specifications & Weapon Selection',
-                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+              Expanded(
+                child: Text(
+                  'Function Test Specifications & Weapon Selection ($_caliber)',
+                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const Spacer(),
               ElevatedButton.icon(
                 onPressed: _showMultiWeaponSelectDialog,
                 icon: const Icon(Icons.checklist_rtl_rounded, size: 16.0),
@@ -5630,35 +5821,97 @@ class _EntryTabState extends State<EntryTab> {
               ),
             ],
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 4.0),
+          Text(
+            _isCaliber9mm
+                ? 'Caliber is 9mm: Weapon Type locked to Pistols per standard protocol.'
+                : 'Caliber is $_caliber: Weapon Type restricted to Rifles and Machine Guns.',
+            style: TextStyle(
+              color: const Color(0xFF0284C7).withOpacity(0.85),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 14.0),
           _buildFormRow([
+            // 1. Weapon Category / Type
             _buildFlexibleField(
               key: _weaponFieldKey,
+              flex: 2,
+              label: 'Weapon Type',
+              isRequired: true,
+              child: _buildDropdownField(
+                focusNode: _weaponFocusNode,
+                value: currentCat,
+                items: allowedCats,
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      _functionSelectedCategory = v;
+                      final models = _getModelsForCategory(_functionSelectedCategory);
+                      _functionSelectedModel = models.isNotEmpty ? models.first : '[+ Custom Model]';
+                      final serials = _getSerialsForModel(_functionSelectedCategory, _functionSelectedModel);
+                      _functionSelectedSerial = serials.isNotEmpty ? serials.first : '';
+                      _syncFunctionWeaponState();
+                    });
+                  }
+                },
+              ),
+            ),
+            // 2. Weapon Model
+            _buildFlexibleField(
               flex: 3,
-              label: 'Registered Fleet Weapon (From Control Module)',
+              label: '$currentCat Model (Fleet)',
+              isRequired: true,
+              child: _buildDropdownField(
+                value: currentModel,
+                items: modelDropdownItems,
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      _functionSelectedModel = v;
+                      final serials = _getSerialsForModel(_functionSelectedCategory, _functionSelectedModel);
+                      _functionSelectedSerial = serials.isNotEmpty ? serials.first : '';
+                      _syncFunctionWeaponState();
+                    });
+                  }
+                },
+              ),
+            ),
+            // 3. Serial Number
+            _buildFlexibleField(
+              flex: 2,
+              label: 'Serial Number',
               isRequired: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDropdownField(
-                    focusNode: _weaponFocusNode,
-                    value: currentSelected,
-                    items: dropdownItems,
-                    onChanged: (v) {
-                      if (v != null) {
+                  if (hasRegisteredSerials && _functionSelectedSerial != '[+ Enter Custom Serial]')
+                    _buildDropdownField(
+                      value: serialDropdownItems.contains(_functionSelectedSerial)
+                          ? _functionSelectedSerial
+                          : serialDropdownItems.first,
+                      items: serialDropdownItems,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _functionSelectedSerial = v;
+                            _syncFunctionWeaponState();
+                          });
+                        }
+                      },
+                    )
+                  else
+                    _buildTextField(
+                      controller: _functionCustomSerialController,
+                      hint: hasRegisteredSerials ? 'Enter custom SN' : 'e.g., SN-001',
+                      onChanged: (val) {
                         setState(() {
-                          _selectedRegisteredWeapon = v;
-                          if (v != '[+ Custom / Other Weapon]') {
-                            _functionWeapon = v;
-                            if (_selectedFunctionWeapons.isEmpty || _selectedFunctionWeapons.length == 1) {
-                              _selectedFunctionWeapons = [v];
-                            }
-                          }
+                          _syncFunctionWeaponState();
                         });
-                      }
-                    },
-                  ),
-                  if (currentSelected != '[+ Custom / Other Weapon]') ...[
+                      },
+                    ),
+                  if (activeSerial.isNotEmpty) ...[
                     const SizedBox(height: 4.0),
                     Padding(
                       padding: const EdgeInsets.only(left: 2.0),
@@ -5667,8 +5920,8 @@ class _EntryTabState extends State<EntryTab> {
                           const Icon(Icons.history_rounded, size: 13, color: Color(0xFF0284C7)),
                           const SizedBox(width: 4.0),
                           Text(
-                            '${_getAssetRounds(_extractWeaponSerial(currentSelected))} cumulative rounds tracked',
-                            style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontWeight: FontWeight.bold),
+                            '${_getAssetRounds(activeSerial)} cumulative rounds tracked',
+                            style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -5677,55 +5930,15 @@ class _EntryTabState extends State<EntryTab> {
                 ],
               ),
             ),
-            if (currentSelected == '[+ Custom / Other Weapon]') ...[
-              _buildFlexibleField(
-                flex: 2,
-                label: 'Custom Weapon Type / Name',
-                isRequired: true,
-                child: _buildTextField(
-                  controller: _customWeaponTypeController,
-                  hint: 'e.g., Sig P226',
-                  onChanged: (val) {
-                    setState(() {
-                      final sn = _customWeaponSNController.text.trim();
-                      _functionWeapon = sn.isNotEmpty ? '$val (SN: $sn)' : val;
-                    });
-                  },
-                ),
-              ),
-              _buildFlexibleField(
-                flex: 2,
-                label: 'Custom Serial No.',
-                isRequired: true,
-                child: _buildTextField(
-                  controller: _customWeaponSNController,
-                  hint: 'e.g., SN-8801',
-                  onChanged: (val) {
-                    setState(() {
-                      final name = _customWeaponTypeController.text.trim();
-                      _functionWeapon = val.isNotEmpty ? '$name (SN: $val)' : name;
-                    });
-                  },
-                ),
-              ),
-            ],
+            // 4. Add to Tested Weapons
             _buildFlexibleField(
               flex: 2,
-              label: 'Add to Tested Weapons',
+              label: 'Add to Test',
               child: Padding(
                 padding: const EdgeInsets.only(top: 2.0),
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    String toAdd = '';
-                    if (_selectedRegisteredWeapon == '[+ Custom / Other Weapon]') {
-                      final name = _customWeaponTypeController.text.trim();
-                      final sn = _customWeaponSNController.text.trim();
-                      if (name.isNotEmpty) {
-                        toAdd = sn.isNotEmpty ? '$name (SN: $sn)' : name;
-                      }
-                    } else if (_selectedRegisteredWeapon.isNotEmpty) {
-                      toAdd = _selectedRegisteredWeapon;
-                    }
+                    final toAdd = previewLabel.trim();
                     if (toAdd.isNotEmpty) {
                       setState(() {
                         if (!_selectedFunctionWeapons.contains(toAdd)) {
@@ -5736,7 +5949,7 @@ class _EntryTabState extends State<EntryTab> {
                     }
                   },
                   icon: const Icon(Icons.add, size: 16.0),
-                  label: const Text('Add This Weapon', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold)),
+                  label: const Text('Add Weapon', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0F172A),
                     foregroundColor: Colors.white,
@@ -5747,6 +5960,54 @@ class _EntryTabState extends State<EntryTab> {
               ),
             ),
           ]),
+
+          if (currentModel == '[+ Custom Model]') ...[
+            const SizedBox(height: 10.0),
+            _buildFormRow([
+              _buildFlexibleField(
+                flex: 3,
+                label: 'Custom $currentCat Model Name',
+                isRequired: true,
+                child: _buildTextField(
+                  controller: _functionCustomModelController,
+                  hint: 'e.g., Steyr AUG A3 CQB',
+                  onChanged: (val) {
+                    setState(() => _syncFunctionWeaponState());
+                  },
+                ),
+              ),
+              _buildFlexibleField(
+                flex: 2,
+                label: 'Serial Number',
+                isRequired: true,
+                child: _buildTextField(
+                  controller: _functionCustomSerialController,
+                  hint: 'e.g., ST-8801',
+                  onChanged: (val) {
+                    setState(() => _syncFunctionWeaponState());
+                  },
+                ),
+              ),
+            ]),
+          ],
+
+          if (hasRegisteredSerials && _functionSelectedSerial == '[+ Enter Custom Serial]') ...[
+            const SizedBox(height: 10.0),
+            _buildFormRow([
+              _buildFlexibleField(
+                flex: 3,
+                label: 'Enter Custom Serial for $currentModel',
+                isRequired: true,
+                child: _buildTextField(
+                  controller: _functionCustomSerialController,
+                  hint: 'e.g., SN-Custom-9901',
+                  onChanged: (val) {
+                    setState(() => _syncFunctionWeaponState());
+                  },
+                ),
+              ),
+            ]),
+          ],
 
           // Selected weapons interactive chips
           if (_selectedFunctionWeapons.isNotEmpty) ...[
@@ -5783,6 +6044,7 @@ class _EntryTabState extends State<EntryTab> {
               }).toList(),
             ),
           ],
+
           if (_isFunctionBlankAmmo) ...[
             const SizedBox(height: 10.0),
             Container(
