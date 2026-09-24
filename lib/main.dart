@@ -1292,13 +1292,13 @@ class _MainShellState extends State<MainShell> {
     try {
       final recordsList = await _storageService.loadRecords(module: 'Lot Acceptance Test');
       final dailyList = await _storageService.loadRecords(module: 'Daily Test');
+      final componentList = await _storageService.loadRecords(module: 'Component Test');
       if (mounted) {
-        if (_records.length != recordsList.length || _dailyTestRecords.length != dailyList.length) {
-          setState(() {
-            _records = recordsList;
-            _dailyTestRecords = dailyList;
-          });
-        }
+        setState(() {
+          _records = recordsList;
+          _dailyTestRecords = dailyList;
+          _componentTestRecords = componentList;
+        });
       }
     } catch (_) {}
   }
@@ -1522,9 +1522,12 @@ class _MainShellState extends State<MainShell> {
       final recordsList = await _storageService.loadRecords(module: 'Lot Acceptance Test');
       final dailyList = await _storageService.loadRecords(module: 'Daily Test');
       final componentList = await _storageService.loadRecords(module: 'Component Test');
-      final path = await _storageService.getDirectoryPath();
+      final savedModule = _storageService.loadActiveModule();
 
       setState(() {
+        if (savedModule != null && savedModule.isNotEmpty) {
+          _currentModule = savedModule;
+        }
         _records = recordsList;
         _dailyTestRecords = dailyList;
         _componentTestRecords = componentList;
@@ -1614,6 +1617,20 @@ class _MainShellState extends State<MainShell> {
                   ],
                 ),
               ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  setState(() => _activeTabIndex = 2);
+                },
+                icon: const Icon(Icons.table_chart_outlined, size: 14.0, color: Colors.white),
+                label: const Text('View in Logs', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  minimumSize: Size.zero,
+                ),
+              ),
+              const SizedBox(width: 4.0),
               TextButton(
                 onPressed: () {
                   setState(() {
@@ -1623,7 +1640,7 @@ class _MainShellState extends State<MainShell> {
                   _storageService.saveRules(_adminRules);
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 },
-                child: const Text('Mute Alerts', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0)),
+                child: const Text('Mute', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0)),
               ),
             ],
           ),
@@ -6554,6 +6571,7 @@ class _MainShellState extends State<MainShell> {
                         _currentModule = val;
                         _activeTabIndex = 0;
                       });
+                      _storageService.saveActiveModule(val);
                     }
                   },
                   items: [
@@ -6734,6 +6752,7 @@ class _MainShellState extends State<MainShell> {
         onPressed: () => setState(() {
           _currentModule = label;
           _activeTabIndex = 0; // Reset sub-tab
+          _storageService.saveActiveModule(label);
         }),
         icon: Icon(icon, color: isActive ? activeColor : const Color(0xFF38BDF8), size: 18.0),
         label: Text(

@@ -202,7 +202,7 @@ class StorageService {
         final unsynced = <BallisticRecord>[];
 
         for (final local in localRecords) {
-          final exists = combined.any((c) =>
+          final idx = combined.indexWhere((c) =>
             (c.id != null && c.id!.isNotEmpty && local.id != null && local.id!.isNotEmpty && c.id == local.id) ||
             (c.lotNo.trim() == local.lotNo.trim() &&
              c.testName.trim() == local.testName.trim() &&
@@ -211,18 +211,35 @@ class StorageService {
              (c.timestamp == local.timestamp ||
               c.timestamp.replaceAll('T', ' ').split('.').first.trim() == local.timestamp.replaceAll('T', ' ').split('.').first.trim()))
           );
-          if (!exists) {
+          if (idx == -1) {
             combined.add(local);
             unsynced.add(local);
+          } else {
+            // Local record has updates not yet reflected in cloud; keep local version
+            final c = combined[idx];
+            if ((local.isRetest && !c.isRetest) ||
+                local.defects != c.defects ||
+                local.status != c.status ||
+                local.notes != c.notes) {
+              combined[idx] = local;
+              unsynced.add(local);
+            }
           }
         }
 
-        // Background sync: Upload unsynced local records up to Supabase
+        // Background sync: Upload unsynced or updated local records up to Supabase
         if (unsynced.isNotEmpty) {
           Future.microtask(() async {
             for (final rec in unsynced) {
               try {
-                await SupabaseService.insertRecord(rec, module: cleanModule);
+                if (rec.id != null && rec.id!.isNotEmpty) {
+                  final ok = await SupabaseService.updateRecord(rec.id!, rec, module: cleanModule);
+                  if (!ok) {
+                    await SupabaseService.insertRecord(rec, module: cleanModule);
+                  }
+                } else {
+                  await SupabaseService.insertRecord(rec, module: cleanModule);
+                }
               } catch (e) {
                 print("Background sync upload failed: $e");
               }
@@ -231,7 +248,10 @@ class StorageService {
         }
 
         if (kIsWeb) {
-          overwriteWebRecords(combined, cleanModule);
+          // Never overwrite non-empty local storage with an empty list
+          if (combined.isNotEmpty || localRecords.isEmpty) {
+            overwriteWebRecords(combined, cleanModule);
+          }
         }
 
         if (combined.isNotEmpty) {
@@ -747,6 +767,16 @@ class StorageService {
     } catch (e) {
       print("Error saving consumable categories: $e");
     }
+  }
+
+  // Persist and restore active test module across sessions
+  String? loadActiveModule() {
+    if (kIsWeb) return getWebActiveModule();
+    return null;
+  }
+
+  void saveActiveModule(String module) {
+    if (kIsWeb) saveWebActiveModule(module);
   }
 }
 

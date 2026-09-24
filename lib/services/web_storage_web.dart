@@ -140,3 +140,15 @@ void saveWebConsumables(List<Map<String, dynamic>> items) {
   _setItem('ompc_consumables_inventory', jsonEncode(items));
 }
 
+String? getWebActiveModule() {
+  final mod = _getItem('ompc_active_module');
+  if (mod == null || mod.trim().isEmpty) return null;
+  return mod.trim();
+}
+
+void saveWebActiveModule(String module) {
+  if (module.isNotEmpty) {
+    _setItem('ompc_active_module', module);
+  }
+}
+

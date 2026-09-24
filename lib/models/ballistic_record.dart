@@ -815,6 +815,32 @@ class BallisticRecord {
       return v.toString();
     }
 
+    bool isRetest = map['is_retest'] == true || map['is_retest']?.toString() == '1';
+    String retestTimestamp = toStr(map['retest_timestamp']);
+    String retestOperator = toStr(map['retest_operator']);
+    String retestNotes = toStr(map['retest_notes']);
+    String retestStatus = toStr(map['retest_status']);
+    String originalStatus = toStr(map['original_status']);
+
+    final String rawNotes = toStr(map['notes']);
+    if (!isRetest && rawNotes.contains('[RETEST|')) {
+      isRetest = true;
+      try {
+        final startIndex = rawNotes.indexOf('[RETEST|');
+        final tag = rawNotes.substring(startIndex + 8);
+        final endTag = tag.indexOf(']');
+        final content = endTag != -1 ? tag.substring(0, endTag) : tag;
+        final parts = content.split('|');
+        for (final part in parts) {
+          if (part.startsWith('op:')) retestOperator = part.substring(3);
+          else if (part.startsWith('ts:')) retestTimestamp = part.substring(3);
+          else if (part.startsWith('stat:')) retestStatus = part.substring(5);
+          else if (part.startsWith('orig:')) originalStatus = part.substring(5);
+          else if (part.startsWith('notes:')) retestNotes = part.substring(6);
+        }
+      } catch (_) {}
+    }
+
     return BallisticRecord(
       id: map['id']?.toString(),
       timestamp: toStr(map['timestamp']),
@@ -824,7 +850,7 @@ class BallisticRecord {
       lotNo: toStr(map['lot_no']),
       produced: toInt(map['produced']),
       defects: toInt(map['defects']),
-      notes: toStr(map['notes']),
+      notes: rawNotes,
       status: toStr(map['status']),
       testName: toStr(map['test_name']),
       pressureBar: toStr(map['pressure_bar']),
@@ -925,12 +951,12 @@ class BallisticRecord {
       propellantCode: toStr(map['propellant_code']),
       propellantLot: toStr(map['propellant_lot']),
       propellantCharge: toStr(map['propellant_charge']),
-      isRetest: map['is_retest'] == true || map['is_retest']?.toString() == '1',
-      retestTimestamp: toStr(map['retest_timestamp']),
-      retestOperator: toStr(map['retest_operator']),
-      retestNotes: toStr(map['retest_notes']),
-      retestStatus: toStr(map['retest_status']),
-      originalStatus: toStr(map['original_status']),
+      isRetest: isRetest,
+      retestTimestamp: retestTimestamp,
+      retestOperator: retestOperator,
+      retestNotes: retestNotes,
+      retestStatus: retestStatus,
+      originalStatus: originalStatus,
     );
   }
 

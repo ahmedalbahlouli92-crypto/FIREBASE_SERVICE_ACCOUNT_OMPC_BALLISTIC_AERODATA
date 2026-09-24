@@ -15,5 +15,7 @@ Map<String, dynamic>? getWebFormDraft() => null;
 void clearWebFormDraft() {}
 List<Map<String, dynamic>> getWebConsumables() => [];
 void saveWebConsumables(List<Map<String, dynamic>> items) {}
+String? getWebActiveModule() => null;
+void saveWebActiveModule(String module) {}
 
 

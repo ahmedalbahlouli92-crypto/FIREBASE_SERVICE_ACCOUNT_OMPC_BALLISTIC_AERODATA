@@ -121,36 +121,22 @@ class SupabaseService {
       }
       map.remove('acc_largest_distance');
 
-      // Helper to strip retest columns if remote schema does not have them yet
-      Map<String, dynamic> stripMissingRetestColumns(Map<String, dynamic> source) {
-        final sanitized = Map<String, dynamic>.from(source);
-        sanitized.remove('is_retest');
-        sanitized.remove('retest_timestamp');
-        sanitized.remove('retest_operator');
-        sanitized.remove('retest_notes');
-        sanitized.remove('retest_status');
-        sanitized.remove('original_status');
-        return sanitized;
-      }
-
       final dedicatedTable = getTableName(module: effectiveModule, testName: record.testName);
 
-      // 1. Attempt insert into dedicated test table
+      // 1. Attempt insert into dedicated test table (optional / non-blocking)
       if (dedicatedTable != tableName) {
         try {
           await client.from(dedicatedTable).insert(map);
-        } catch (e) {
-          if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
-            try {
-              await client.from(dedicatedTable).insert(stripMissingRetestColumns(map));
-            } catch (_) {}
-          } else {
-            debugPrint('Note: dedicated table $dedicatedTable insert skipped (may not be created yet): $e');
+        } catch (_) {
+          try {
+            await client.from(dedicatedTable).insert(sanitizeForSupabase(map));
+          } catch (e) {
+            debugPrint('Note: dedicated table $dedicatedTable insert skipped: $e');
           }
         }
       }
 
-      // 2. Insert into consolidated master table
+      // 2. Insert into consolidated master table with automatic fallback
       try {
         final response = await client
             .from(tableName)
@@ -160,21 +146,54 @@ class SupabaseService {
 
         return BallisticRecord.fromSupabaseMap(response);
       } catch (e) {
-        if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
+        debugPrint('Master table insert failed with full schema ($e), retrying with sanitized payload...');
+        try {
+          final sanitized = sanitizeForSupabase(map);
           final response = await client
               .from(tableName)
-              .insert(stripMissingRetestColumns(map))
+              .insert(sanitized)
               .select()
               .single();
 
           return BallisticRecord.fromSupabaseMap(response);
+        } catch (innerError) {
+          debugPrint('Error inserting sanitized record into Supabase: $innerError');
+          return null;
         }
-        rethrow;
       }
     } catch (e) {
       debugPrint('Error inserting record into Supabase: $e');
       return null;
     }
+  }
+
+  /// Sanitize record map for Supabase master table schema
+  /// Strips any client-only columns not in remote schema and embeds retest metadata safely in notes
+  static Map<String, dynamic> sanitizeForSupabase(Map<String, dynamic> source) {
+    final sanitized = Map<String, dynamic>.from(source);
+    sanitized.remove('acc_largest_distance');
+
+    final bool isRetest = source['is_retest'] == true || source['is_retest']?.toString() == '1';
+    if (isRetest) {
+      final origNotes = (sanitized['notes'] ?? '').toString();
+      final op = source['retest_operator'] ?? '';
+      final ts = source['retest_timestamp'] ?? '';
+      final stat = source['retest_status'] ?? '';
+      final origStat = source['original_status'] ?? '';
+      final rNotes = source['retest_notes'] ?? '';
+      final tag = '[RETEST|op:$op|ts:$ts|stat:$stat|orig:$origStat|notes:$rNotes]';
+      if (!origNotes.contains('[RETEST|')) {
+        sanitized['notes'] = origNotes.isEmpty ? tag : '$origNotes $tag';
+      }
+    }
+
+    sanitized.remove('is_retest');
+    sanitized.remove('retest_timestamp');
+    sanitized.remove('retest_operator');
+    sanitized.remove('retest_notes');
+    sanitized.remove('retest_status');
+    sanitized.remove('original_status');
+    return sanitized;
   }
 
   /// Fetch all ballistic records from Supabase
@@ -254,27 +273,14 @@ class SupabaseService {
       map.remove('id'); // Don't overwrite primary key
       map.remove('acc_largest_distance');
 
-      Map<String, dynamic> stripMissingRetestColumns(Map<String, dynamic> source) {
-        final sanitized = Map<String, dynamic>.from(source);
-        sanitized.remove('is_retest');
-        sanitized.remove('retest_timestamp');
-        sanitized.remove('retest_operator');
-        sanitized.remove('retest_notes');
-        sanitized.remove('retest_status');
-        sanitized.remove('original_status');
-        return sanitized;
-      }
-
       final dedicatedTable = getTableName(module: module, testName: record.testName);
       if (dedicatedTable != tableName) {
         try {
           await client.from(dedicatedTable).update(map).eq('id', id);
-        } catch (e) {
-          if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
-            try {
-              await client.from(dedicatedTable).update(stripMissingRetestColumns(map)).eq('id', id);
-            } catch (_) {}
-          }
+        } catch (_) {
+          try {
+            await client.from(dedicatedTable).update(sanitizeForSupabase(map)).eq('id', id);
+          } catch (_) {}
         }
       }
 
@@ -285,14 +291,18 @@ class SupabaseService {
             .eq('id', id);
         return true;
       } catch (e) {
-        if (e.toString().contains('does not exist') || e.toString().contains('42703')) {
+        debugPrint('Master table update failed with full schema ($e), retrying with sanitized payload...');
+        try {
+          final sanitized = sanitizeForSupabase(map);
           await client
               .from(tableName)
-              .update(stripMissingRetestColumns(map))
+              .update(sanitized)
               .eq('id', id);
           return true;
+        } catch (innerError) {
+          debugPrint('Error updating sanitized record in Supabase: $innerError');
+          return false;
         }
-        rethrow;
       }
     } catch (e) {
       debugPrint('Error updating record in Supabase: $e');
