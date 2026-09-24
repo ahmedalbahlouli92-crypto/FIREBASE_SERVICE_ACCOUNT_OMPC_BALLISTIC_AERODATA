@@ -19,27 +19,27 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.3';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.3 (Caliber-Filtered 3-Tier Weapon Fleet Selection: Category -> Model -> Serial)';
-const BODY = `## OMPC Ballistic AeroData v1.5.3
+const TAG_NAME = 'v1.5.4';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.4 (Supabase Cloud Fleet & Form Persistence Fix, Realtime Sync)';
+const BODY = `## OMPC Ballistic AeroData v1.5.4
 
-Release featuring advanced caliber-filtered 3-tier weapon fleet selection across Entry Log & Function Test:
+Critical update resolving Supabase Cloud Database persistence, cross-device fleet synchronization, and form submission reliability:
 
-### Key Highlights & Enhancements:
-1. **Caliber-Driven Weapon Filtering**:
-   - **5.56mm & 7.62mm Calibers**: Weapon types are automatically restricted strictly to **Rifle** and **Machine Gun** (Pistols completely excluded).
-   - **9mm Calibers**: Weapon types are locked strictly to **Pistols** per standard ballistic inspection protocol (Rifles and Machine Guns completely excluded).
-2. **Cascading 3-Tier Weapon Selection**:
-   - **Tier 1 (Weapon Type)**: Category selector dynamically filtered by active caliber.
-   - **Tier 2 (Weapon Model)**: Lists fleet weapon models registered in Admin Control Module for that category (e.g., Steyr AUG A3, M16A4, M4A1 under Rifle; Beretta 92FS under Pistol).
-   - **Tier 3 (Serial Number)**: Directly populates the registered serial number(s) for that model (e.g., choosing Steyr immediately reveals and selects its registered serial).
-3. **Live Cumulative Round Tracking**:
-   - Instant badge displaying round count for the chosen serial.
-   - Interactive chips for multi-weapon tests with individual round counts and quick deletion.
-4. **Control Module Registration Enhancements**:
-   - Registered weapons preserve model, variant, category, manufacturer, and serial numbers.
-5. **Real-Time Database Pre-Population**:
-   - 15 fully categorized fleet weapons pre-populated and synchronized across Supabase Cloud DB.
+### Key Highlights & Root Cause Fixes:
+1. **Supabase Cloud Fleet & Rules Persistence Fix**:
+   - Resolved HTTP 409 PostgreSQL error on \`admin_control\` by enforcing \`onConflict: 'config_key'\`.
+   - Admin registrations for weapons (e.g., Steyr AUG A3), barrels, and transducers now immediately persist to Supabase \`admin_control\` and \`ballistic_records\` (\`SYSTEM_CONFIG\`).
+   - Cross-device downloads and clean installs now instantly fetch the synchronized 15-weapon fleet, all barrels, and transducers from Supabase cloud.
+2. **Realtime Multi-Device Equipment Fleet Sync**:
+   - Enhanced Realtime Postgres channel to listen to changes on both \`ballistic_records\` and \`admin_control\`.
+   - Background silent sync timer (every 8s) automatically refreshes rules and equipment across all connected machines without requiring app restarts.
+3. **Form Submission Schema Sanitization**:
+   - Sanitize record payloads upfront before inserting into Supabase tables, eliminating \`PGRST204\` schema cache errors.
+   - Guaranteed atomic persistence for both dedicated test tables and master \`ballistic_records\`.
+4. **Caliber-Filtered 3-Tier Weapon Fleet Selection**:
+   - 5.56mm & 7.62mm Calibers restricted strictly to Rifle and Machine Gun.
+   - 9mm Calibers locked strictly to Pistols.
+   - 3-tier cascade: Weapon Type -> Registered Fleet Model -> Registered Serial Number.
 `;
 
 function request(options, postData) {
@@ -149,7 +149,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.3.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.5.4.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.4.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

@@ -112,53 +112,39 @@ class SupabaseService {
     }
     try {
       final effectiveModule = record.module.isNotEmpty ? record.module : module;
-      final map = record.toSupabaseMap();
-      map['module'] = effectiveModule;
+      final rawMap = record.toSupabaseMap();
+      rawMap['module'] = effectiveModule;
       // Remove null or empty id so database generates standard UUID
-      if (map['id'] == null || map['id'] == '') {
-        map.remove('id');
+      if (rawMap['id'] == null || rawMap['id'] == '') {
+        rawMap.remove('id');
       }
-      map.remove('acc_largest_distance');
+
+      // Sanitize upfront to prevent PGRST204 schema cache errors on retest columns
+      final sanitized = sanitizeForSupabase(rawMap);
 
       final dedicatedTable = getTableName(module: effectiveModule, testName: record.testName);
 
       // 1. Attempt insert into dedicated test table (optional / non-blocking)
       if (dedicatedTable != tableName) {
         try {
-          await client.from(dedicatedTable).insert(map);
-        } catch (_) {
-          try {
-            await client.from(dedicatedTable).insert(sanitizeForSupabase(map));
-          } catch (e) {
-            debugPrint('Note: dedicated table $dedicatedTable insert skipped: $e');
-          }
+          await client.from(dedicatedTable).insert(sanitized);
+        } catch (e) {
+          debugPrint('Note: dedicated table $dedicatedTable insert note: $e');
         }
       }
 
-      // 2. Insert into consolidated master table with automatic fallback
+      // 2. Insert into consolidated master table
       try {
         final response = await client
             .from(tableName)
-            .insert(map)
+            .insert(sanitized)
             .select()
             .single();
 
         return BallisticRecord.fromSupabaseMap(response);
       } catch (e) {
-        debugPrint('Master table insert failed with full schema ($e), retrying with sanitized payload...');
-        try {
-          final sanitized = sanitizeForSupabase(map);
-          final response = await client
-              .from(tableName)
-              .insert(sanitized)
-              .select()
-              .single();
-
-          return BallisticRecord.fromSupabaseMap(response);
-        } catch (innerError) {
-          debugPrint('Error inserting sanitized record into Supabase: $innerError');
-          return null;
-        }
+        debugPrint('Master table insert error: $e');
+        return null;
       }
     } catch (e) {
       debugPrint('Error inserting record into Supabase: $e');
@@ -267,42 +253,25 @@ class SupabaseService {
     }
     if (id.isEmpty) return false;
     try {
-      final map = record.toSupabaseMap();
-      map['module'] = module;
-      map.remove('id'); // Don't overwrite primary key
-      map.remove('acc_largest_distance');
+      final rawMap = record.toSupabaseMap();
+      rawMap['module'] = module;
+      rawMap.remove('id'); // Don't overwrite primary key
+      final map = sanitizeForSupabase(rawMap);
 
       final dedicatedTable = getTableName(module: module, testName: record.testName);
       if (dedicatedTable != tableName) {
         try {
           await client.from(dedicatedTable).update(map).eq('id', id);
-        } catch (_) {
-          try {
-            await client.from(dedicatedTable).update(sanitizeForSupabase(map)).eq('id', id);
-          } catch (_) {}
+        } catch (e) {
+          debugPrint('Note: dedicated table $dedicatedTable update note: $e');
         }
       }
 
-      try {
-        await client
-            .from(tableName)
-            .update(map)
-            .eq('id', id);
-        return true;
-      } catch (e) {
-        debugPrint('Master table update failed with full schema ($e), retrying with sanitized payload...');
-        try {
-          final sanitized = sanitizeForSupabase(map);
-          await client
-              .from(tableName)
-              .update(sanitized)
-              .eq('id', id);
-          return true;
-        } catch (innerError) {
-          debugPrint('Error updating sanitized record in Supabase: $innerError');
-          return false;
-        }
-      }
+      await client
+          .from(tableName)
+          .update(map)
+          .eq('id', id);
+      return true;
     } catch (e) {
       debugPrint('Error updating record in Supabase: $e');
       return false;
@@ -437,7 +406,7 @@ class SupabaseService {
           'config_key': 'DELETED_RECORDS',
           'config_value': listToSave,
           'updated_at': DateTime.now().toIso8601String(),
-        });
+        }, onConflict: 'config_key');
       } catch (_) {}
 
       // 2. Save to SYSTEM_CONFIG in ballistic_records
@@ -772,6 +741,7 @@ class SupabaseService {
           .from('admin_control')
           .select('config_value')
           .eq('config_key', 'ADMIN_RULES')
+          .order('updated_at', ascending: false)
           .limit(1);
       if (ctrlRes.isNotEmpty && ctrlRes[0]['config_value'] != null) {
         final val = ctrlRes[0]['config_value'];
@@ -818,7 +788,7 @@ class SupabaseService {
           'config_key': 'ADMIN_RULES',
           'config_value': rules,
           'updated_at': DateTime.now().toIso8601String(),
-        });
+        }, onConflict: 'config_key');
       } catch (e) {
         debugPrint('admin_control upsert note: $e');
       }

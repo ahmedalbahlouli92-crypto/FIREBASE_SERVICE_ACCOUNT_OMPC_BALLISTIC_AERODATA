@@ -460,32 +460,63 @@ final Map<String, dynamic> _defaultRules = {
     'ACC-B-101',
     'ACC-B-102',
     'ACC-B-103',
+    'ACC-556-01',
+    'ACC-762-01',
+    'ACC-9MM-01',
+    'B1001',
+    'B1002',
+    'B1003',
   ],
   'epvat_barrels': [
     'EPVAT-B-201',
     'EPVAT-B-202',
     'EPVAT-B-203',
+    'EPV-556-01',
+    'EPV-762-01',
+    'EPV-9MM-01',
+    'B1001',
+    'B1002',
+    'B1003',
   ],
   'gp6_serials': [
-    'GP2-PCB-9901',
-    'GP2-PCB-9902',
+    'GP2-001 (PCB 119B)',
+    'GP2-002 (PCB 119B)',
+    'GP2-003 (Kistler 6215)',
+    'GP6-Kistler-8801',
+    'GP6-Kistler-8802',
+    'GP6-PCB-9901',
   ],
   'weapons': [
-    {'type': 'M4A1 Carbine', 'serial': 'W-9012'},
-    {'type': 'M16A4 Rifle', 'serial': 'W-9015'},
-    {'type': 'M249 SAW', 'serial': 'W-4401'},
-    {'type': 'G3A3 Rifle', 'serial': 'W-7721'},
+    {'type': 'Steyr AUG A3', 'model': 'Steyr AUG A3', 'serial': 'ST-556-01', 'category': 'Rifle', 'manufacturer': 'Steyr'},
+    {'type': 'M16A4 Rifle', 'model': 'M16A4 Rifle', 'serial': 'M16-001', 'category': 'Rifle', 'manufacturer': 'Colt'},
+    {'type': 'M4A1 Carbine', 'model': 'M4A1 Carbine', 'serial': 'M4-001', 'category': 'Rifle', 'manufacturer': 'Colt'},
+    {'type': 'G3A3 Rifle', 'model': 'G3A3 Rifle', 'serial': 'G3-001', 'category': 'Rifle', 'manufacturer': 'Heckler & Koch'},
+    {'type': 'FN SCAR-L', 'model': 'FN SCAR-L', 'serial': 'SCAR-556-01', 'category': 'Rifle', 'manufacturer': 'FN Herstal'},
+    {'type': 'M249 SAW', 'model': 'M249 SAW', 'serial': 'SAW-001', 'category': 'Machine Gun', 'manufacturer': 'FN Herstal'},
+    {'type': 'M240B', 'model': 'M240B', 'serial': 'M240-001', 'category': 'Machine Gun', 'manufacturer': 'FN Herstal'},
+    {'type': 'MG3 Machine Gun', 'model': 'MG3 Machine Gun', 'serial': 'MG3-001', 'category': 'Machine Gun', 'manufacturer': 'Rheinmetall'},
+    {'type': 'Beretta 92FS', 'model': 'Beretta 92FS', 'serial': 'BER-92-01', 'category': 'Pistol', 'manufacturer': 'Beretta'},
+    {'type': 'Beretta M9 Pistol', 'model': 'Beretta M9 Pistol', 'serial': 'M9-001', 'category': 'Pistol', 'manufacturer': 'Beretta'},
+    {'type': 'Glock 17 Gen 5', 'model': 'Glock 17 Gen 5', 'serial': 'GLK-17-01', 'category': 'Pistol', 'manufacturer': 'Glock'},
+    {'type': 'Glock 19X', 'model': 'Glock 19X', 'serial': 'GLK-19-01', 'category': 'Pistol', 'manufacturer': 'Glock'},
+    {'type': 'SIG Sauer P226', 'model': 'SIG Sauer P226', 'serial': 'SIG-226-01', 'category': 'Pistol', 'manufacturer': 'SIG Sauer'},
+    {'type': 'CZ 75B', 'model': 'CZ 75B', 'serial': 'CZ-75-01', 'category': 'Pistol', 'manufacturer': 'CZ'},
+    {'type': 'Smith & Wesson M&P9', 'model': 'Smith & Wesson M&P9', 'serial': 'SW-MP9-01', 'category': 'Pistol', 'manufacturer': 'Smith & Wesson'},
   ],
   'gp_transducers': {
     'gp1': [
       'GP1-001 (PCB 119B)',
       'GP1-002 (PCB 119B)',
-      'GP1-003 (PCB 119B)',
+      'GP1-003 (Kistler 6215)',
+      'GP1-004 (Kistler 6215)',
     ],
     'gp2': [
       'GP2-001 (PCB 119B)',
       'GP2-002 (PCB 119B)',
-      'GP2-003 (PCB 119B)',
+      'GP2-003 (Kistler 6215)',
+      'GP6-Kistler-8801',
+      'GP6-Kistler-8802',
+      'GP6-PCB-9901',
     ],
   },
   'primer_suppliers': [
@@ -576,12 +607,21 @@ final Map<String, dynamic> _defaultRules = {
   },
   'function_test': {
     'weapons': [
-      'M4A1 Carbine',
-      'M16A4 Rifle',
-      'G3A3 Rifle',
-      'MP5A3 Submachine Gun',
-      'Beretta M9 Pistol',
-      'M249 SAW',
+      'Steyr AUG A3 (SN: ST-556-01)',
+      'M16A4 Rifle (SN: M16-001)',
+      'M4A1 Carbine (SN: M4-001)',
+      'G3A3 Rifle (SN: G3-001)',
+      'FN SCAR-L (SN: SCAR-556-01)',
+      'M249 SAW (SN: SAW-001)',
+      'M240B (SN: M240-001)',
+      'MG3 Machine Gun (SN: MG3-001)',
+      'Beretta 92FS (SN: BER-92-01)',
+      'Beretta M9 Pistol (SN: M9-001)',
+      'Glock 17 Gen 5 (SN: GLK-17-01)',
+      'Glock 19X (SN: GLK-19-01)',
+      'SIG Sauer P226 (SN: SIG-226-01)',
+      'CZ 75B (SN: CZ-75-01)',
+      'Smith & Wesson M&P9 (SN: SW-MP9-01)',
     ],
     'classification_image': '',
     'calibers': {
@@ -1302,7 +1342,10 @@ class _MainShellState extends State<MainShell> {
     });
     // Live background data sync across all users without stopping or refreshing the app
     _autoSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (mounted) _syncRecordsSilently();
+      if (mounted) {
+        _syncRecordsSilently();
+        _syncRulesSilently();
+      }
     });
   }
 
@@ -1311,7 +1354,7 @@ class _MainShellState extends State<MainShell> {
       if (!ok || !mounted) return;
       try {
         _realtimeChannel = SupabaseService.client
-            .channel('public:ballistic_records_live')
+            .channel('public:fleet_and_records_live')
             .onPostgresChanges(
               event: PostgresChangeEvent.all,
               schema: 'public',
@@ -1319,6 +1362,17 @@ class _MainShellState extends State<MainShell> {
               callback: (payload) {
                 if (mounted) {
                   _syncRecordsSilently();
+                  _syncRulesSilently();
+                }
+              },
+            )
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'admin_control',
+              callback: (payload) {
+                if (mounted) {
+                  _syncRulesSilently();
                 }
               },
             )
@@ -1336,6 +1390,17 @@ class _MainShellState extends State<MainShell> {
         _realtimeChannel = null;
       } catch (_) {}
     }
+  }
+
+  Future<void> _syncRulesSilently() async {
+    try {
+      final cloudRules = await _storageService.loadRules();
+      if (cloudRules.isNotEmpty && mounted) {
+        setState(() {
+          _adminRules = cloudRules;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _syncRecordsSilently() async {
