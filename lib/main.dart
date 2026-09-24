@@ -1522,6 +1522,7 @@ class _MainShellState extends State<MainShell> {
       final recordsList = await _storageService.loadRecords(module: 'Lot Acceptance Test');
       final dailyList = await _storageService.loadRecords(module: 'Daily Test');
       final componentList = await _storageService.loadRecords(module: 'Component Test');
+      final path = await _storageService.getDirectoryPath();
       final savedModule = _storageService.loadActiveModule();
 
       setState(() {
@@ -1792,7 +1793,7 @@ class _MainShellState extends State<MainShell> {
       context: context,
       barrierDismissible: true,
       builder: (ctx) {
-        _welcomeDismissTimer = Timer(const Duration(milliseconds: 3200), () {
+        _welcomeDismissTimer = Timer(const Duration(seconds: 5), () {
           if (Navigator.of(ctx).canPop()) {
             Navigator.of(ctx).pop();
           }
@@ -6474,7 +6475,7 @@ class _MainShellState extends State<MainShell> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'v1.4.3',
+                              'v1.5.1',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
                               overflow: TextOverflow.ellipsis,
                             ),
