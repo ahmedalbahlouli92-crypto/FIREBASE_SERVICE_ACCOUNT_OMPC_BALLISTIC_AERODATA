@@ -16,6 +16,7 @@ import 'screens/consumables_tab.dart';
 import 'screens/executive_reports_tab.dart';
 import 'services/epvat_formula_helper.dart';
 import 'services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel, PostgresChangeEvent;
 import 'services/app_exit_helper.dart';
 import 'services/apk_update_service.dart';
 import 'services/report_helper.dart';
@@ -506,6 +507,12 @@ final Map<String, dynamic> _defaultRules = {
     'Bofors RP3',
     'PCL 507',
   ],
+  'propellant_supplier_codes': {
+    'Explosia': ['D-073.4', 'D-073.5', 'D-073.6', 'S060', 'S062', 'S070'],
+    'PB Clermont': ['PB-540', 'PCL 507', 'PCL 511'],
+    'Gold Force': ['SP9', 'GF-201', 'GF-302'],
+    'Milan': ['Bofors RP3', 'RP-15', 'RP-20'],
+  },
   'primer_sensitivity': {
     'drop_weight_grams': 55.0,
     'instructions': 'Run-Down / Bruceton Primer Sensitivity Test: Drop steel ball onto primed cases at specified heights.',
@@ -803,6 +810,7 @@ class _MainShellState extends State<MainShell> {
   Timer? _autoSyncTimer;
   Timer? _clockTimer;
   Timer? _welcomeDismissTimer;
+  RealtimeChannel? _realtimeChannel;
   DateTime _currentTime = DateTime.now();
 
   String _formatLiveClock(DateTime d) {
@@ -849,13 +857,21 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _newAccuracyBarrelCtrl = TextEditingController();
   final TextEditingController _newEpvatBarrelCtrl = TextEditingController();
   final TextEditingController _newGP6SerialCtrl = TextEditingController();
+  final TextEditingController _newGP1TransducerCtrl = TextEditingController();
   final TextEditingController _newPrimerSupplierCtrl = TextEditingController();
   final TextEditingController _newPropellantSupplierCtrl = TextEditingController();
   final TextEditingController _newPropellantCodeCtrl = TextEditingController();
   final TextEditingController _newWeaponTypeInputCtrl = TextEditingController();
   final TextEditingController _newWeaponSerialInputCtrl = TextEditingController();
+  String _selectedPropellantCodeSupplier = '';
   String _selectedAdminWeaponType = 'Pistol';
   String _selectedAdminWeaponManufacturer = 'Beretta';
+
+  // Collapsible control module sections
+  bool _isPersonnelCardExpanded = true;
+  bool _isPermissionsCardExpanded = true;
+  bool _isEquipmentCardExpanded = true;
+  bool _isRulesCardExpanded = true;
   final Map<String, List<String>> _adminWeaponManufacturers = {
     'Pistol': ['Beretta', 'Glock', 'SIG Sauer', 'CZ', 'Smith & Wesson', 'Colt', 'Browning', 'Other'],
     'Rifle': ['Colt', 'FN Herstal', 'Heckler & Koch', 'Steyr', 'Kalashnikov', 'Remington', 'Other'],
@@ -1002,6 +1018,7 @@ class _MainShellState extends State<MainShell> {
     _autoSyncTimer?.cancel();
     _clockTimer?.cancel();
     _welcomeDismissTimer?.cancel();
+    _cancelRealtimeSubscription();
     _passwordController.dispose();
     _opEmailController.dispose();
     _opPasswordController.dispose();
@@ -1274,6 +1291,7 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _loadInitialData();
+    _setupRealtimeSubscription();
     // Live ticking digital clock timer (Instruction 19)
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
@@ -1283,9 +1301,41 @@ class _MainShellState extends State<MainShell> {
       }
     });
     // Live background data sync across all users without stopping or refreshing the app
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       if (mounted) _syncRecordsSilently();
     });
+  }
+
+  void _setupRealtimeSubscription() {
+    SupabaseService.ensureInitialized().then((ok) {
+      if (!ok || !mounted) return;
+      try {
+        _realtimeChannel = SupabaseService.client
+            .channel('public:ballistic_records_live')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: SupabaseService.tableName,
+              callback: (payload) {
+                if (mounted) {
+                  _syncRecordsSilently();
+                }
+              },
+            )
+            .subscribe();
+      } catch (e) {
+        debugPrint("Notice: Realtime sync fallback to polling: $e");
+      }
+    });
+  }
+
+  void _cancelRealtimeSubscription() {
+    if (_realtimeChannel != null) {
+      try {
+        SupabaseService.client.removeChannel(_realtimeChannel!);
+        _realtimeChannel = null;
+      } catch (_) {}
+    }
   }
 
   Future<void> _syncRecordsSilently() async {
@@ -1514,6 +1564,21 @@ class _MainShellState extends State<MainShell> {
         activeRules['propellant_codes'] = List<String>.from(_defaultRules['propellant_codes']);
       } else {
         activeRules['propellant_codes'] = List<String>.from(activeRules['propellant_codes'] as List);
+      }
+      if (activeRules['propellant_supplier_codes'] == null) {
+        activeRules['propellant_supplier_codes'] = Map<String, dynamic>.from(_defaultRules['propellant_supplier_codes']);
+      } else {
+        activeRules['propellant_supplier_codes'] = Map<String, dynamic>.from(activeRules['propellant_supplier_codes'] as Map);
+      }
+      if (activeRules['gp1_transducers'] == null) {
+        final gp1List = activeRules['gp_transducers']?['gp1'];
+        if (gp1List is List && gp1List.isNotEmpty) {
+          activeRules['gp1_transducers'] = List<String>.from(gp1List);
+        } else {
+          activeRules['gp1_transducers'] = ['GP1-001 (PCB 119B)', 'GP1-002 (PCB 119B)', 'GP1-003', 'GP1-004'];
+        }
+      } else {
+        activeRules['gp1_transducers'] = List<String>.from(activeRules['gp1_transducers'] as List);
       }
 
       // Save rules back to write out any migrated schemas
@@ -2298,7 +2363,7 @@ class _MainShellState extends State<MainShell> {
         _dailyTestRecords.removeWhere((r) => 
           (record.id != null && record.id!.isNotEmpty && r.id == record.id) ||
           (r.timestamp == record.timestamp && 
-          r.lotNumber == record.lotNumber && 
+          (r.lotNumber == record.lotNumber || (record.hopperNo.isNotEmpty && r.hopperNo == record.hopperNo)) && 
           r.produced == record.produced &&
           r.defects == record.defects)
         );
@@ -2310,7 +2375,7 @@ class _MainShellState extends State<MainShell> {
       await _storageService.overwriteRecords(recordsToSave, module: _currentModule);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Quality entry deleted successfully.'),
+          content: Text('Quality entry deleted and synchronized across all platforms.'),
           backgroundColor: Color(0xFF10B981),
         ),
       );
@@ -3058,27 +3123,36 @@ class _MainShellState extends State<MainShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: const Color(0xFF38BDF8)),
+          InkWell(
+            onTap: () => setState(() => _isPersonnelCardExpanded = !_isPersonnelCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF38BDF8)),
+                  ),
+                  child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF38BDF8), size: 20.0),
                 ),
-                child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF38BDF8), size: 20.0),
-              ),
-              const SizedBox(width: 12.0),
-              const Expanded(
-                child: Text(
-                  'Personnel & Role Management (4 Tiers)',
-                  style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Personnel & Role Management (4 Tiers)',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
                 ),
-              ),
-            ],
+                IconButton(
+                  icon: Icon(_isPersonnelCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF38BDF8)),
+                  onPressed: () => setState(() => _isPersonnelCardExpanded = !_isPersonnelCardExpanded),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12.0),
+          if (_isPersonnelCardExpanded) ...[
+            const SizedBox(height: 12.0),
           const Text(
             'Admin defines authorized lab personnel across 4 operational levels: Manager, Supervisor, Technician, and Operator. Personnel log in with their credentials to access the laboratory workspace.',
             style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
@@ -3307,6 +3381,7 @@ class _MainShellState extends State<MainShell> {
                     },
                   ),
           ),
+          ],
         ],
       ),
     );
@@ -3390,27 +3465,36 @@ class _MainShellState extends State<MainShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: const Color(0xFF38BDF8)),
+          InkWell(
+            onTap: () => setState(() => _isPermissionsCardExpanded = !_isPermissionsCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF38BDF8)),
+                  ),
+                  child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF38BDF8), size: 20.0),
                 ),
-                child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF38BDF8), size: 20.0),
-              ),
-              const SizedBox(width: 12.0),
-              const Expanded(
-                child: Text(
-                  'Role Permissions & Access Matrix',
-                  style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Role Permissions & Access Matrix',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
                 ),
-              ),
-            ],
+                IconButton(
+                  icon: Icon(_isPermissionsCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF38BDF8)),
+                  onPressed: () => setState(() => _isPermissionsCardExpanded = !_isPermissionsCardExpanded),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12.0),
+          if (_isPermissionsCardExpanded) ...[
+            const SizedBox(height: 12.0),
           const Text(
             'Admin can grant permissions to specific roles (e.g., Supervisor can edit the data on the report if there is some mistake, delete records, or manage rules). Toggle permissions below; changes are saved and applied immediately.',
             style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
@@ -3554,6 +3638,7 @@ class _MainShellState extends State<MainShell> {
               ),
             );
           }).toList(),
+          ],
         ],
       ),
     );
@@ -3568,12 +3653,14 @@ class _MainShellState extends State<MainShell> {
         return {'type': e.toString(), 'serial': ''};
       }),
     );
+    final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
     final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
     final epvatBarrels = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
     final accBarrels = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
     final primerSuppliers = List<String>.from(_adminRules['primer_suppliers'] as List<dynamic>? ?? []);
     final propellantSuppliers = List<String>.from(_adminRules['propellant_suppliers'] as List<dynamic>? ?? []);
     final propellantCodes = List<String>.from(_adminRules['propellant_codes'] as List<dynamic>? ?? []);
+    final propellantSupplierCodes = Map<String, dynamic>.from(_adminRules['propellant_supplier_codes'] as Map<dynamic, dynamic>? ?? {});
 
     return Container(
       width: width,
@@ -3593,97 +3680,66 @@ class _MainShellState extends State<MainShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: const Color(0xFF38BDF8)),
-                ),
-                child: const Icon(Icons.precision_manufacturing_rounded, color: Color(0xFF38BDF8), size: 20.0),
-              ),
-              const SizedBox(width: 12.0),
-              const Expanded(
-                child: Text(
-                  'Equipment Fleet & Cumulative Round Tracking',
-                  style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12.0),
-          const Text(
-            'Admin enters Weapon Types & Serials, GP6 Serial Numbers, EPVAT Barrel Serials, and Accuracy Barrel Serials. The system automatically tracks cumulative rounds fired through each asset.',
-            style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
-          ),
-          const SizedBox(height: 20.0),
-
-          // 1. WEAPONS SECTION (Type & Serial)
-          _buildAssetCategoryHeader('Weapons Registration (Type, Manufacturer & Serial)', Icons.military_tech_rounded, const Color(0xFF38BDF8)),
-          const SizedBox(height: 10.0),
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF23364F),
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          InkWell(
+            onTap: () => setState(() => _isEquipmentCardExpanded = !_isEquipmentCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Weapon Category', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4.0),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2C415E),
-                              borderRadius: BorderRadius.circular(6.0),
-                              border: Border.all(color: const Color(0xFF1E3A8A)),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _adminWeaponManufacturers.containsKey(_selectedAdminWeaponType) ? _selectedAdminWeaponType : 'Pistol',
-                                isExpanded: true,
-                                dropdownColor: const Color(0xFF2C415E),
-                                icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
-                                style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() {
-                                      _selectedAdminWeaponType = val;
-                                      final mfgList = _adminWeaponManufacturers[val] ?? ['Other'];
-                                      _selectedAdminWeaponManufacturer = mfgList.first;
-                                    });
-                                  }
-                                },
-                                items: _adminWeaponManufacturers.keys.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10.0),
-                    Expanded(
-                      flex: 1,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Manufacturer (Cascaded)', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4.0),
-                          Builder(builder: (ctx) {
-                            final mfgList = _adminWeaponManufacturers[_selectedAdminWeaponType] ?? ['Other'];
-                            final currentMfg = mfgList.contains(_selectedAdminWeaponManufacturer) ? _selectedAdminWeaponManufacturer : mfgList.first;
-                            return Container(
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF38BDF8)),
+                  ),
+                  child: const Icon(Icons.precision_manufacturing_rounded, color: Color(0xFF38BDF8), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Equipment Fleet & Cumulative Round Tracking',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+                Icon(
+                  _isEquipmentCardExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: const Color(0xFF38BDF8),
+                  size: 24.0,
+                ),
+              ],
+            ),
+          ),
+          if (_isEquipmentCardExpanded) ...[
+            const SizedBox(height: 12.0),
+            const Text(
+              'Admin enters Weapon Types & Serials, GP1/GP2 Transducers, EPVAT & Accuracy Barrels, and Component Suppliers. The system automatically tracks cumulative rounds fired through each asset.',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
+            ),
+            const SizedBox(height: 20.0),
+
+            // 1. WEAPONS SECTION (Type & Serial)
+            _buildAssetCategoryHeader('Weapons Registration (Type, Manufacturer & Serial)', Icons.military_tech_rounded, const Color(0xFF38BDF8)),
+            const SizedBox(height: 10.0),
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF23364F),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Weapon Category', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4.0),
+                            Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10.0),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF2C415E),
@@ -3692,7 +3748,7 @@ class _MainShellState extends State<MainShell> {
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
-                                  value: currentMfg,
+                                  value: _adminWeaponManufacturers.containsKey(_selectedAdminWeaponType) ? _selectedAdminWeaponType : 'Pistol',
                                   isExpanded: true,
                                   dropdownColor: const Color(0xFF2C415E),
                                   icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
@@ -3700,518 +3756,770 @@ class _MainShellState extends State<MainShell> {
                                   onChanged: (val) {
                                     if (val != null) {
                                       setState(() {
-                                        _selectedAdminWeaponManufacturer = val;
+                                        _selectedAdminWeaponType = val;
+                                        final mfgList = _adminWeaponManufacturers[val] ?? ['Other'];
+                                        _selectedAdminWeaponManufacturer = mfgList.first;
                                       });
                                     }
                                   },
-                                  items: mfgList.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                                  items: _adminWeaponManufacturers.keys.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                                 ),
                               ),
-                            );
-                          }),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 10.0),
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Manufacturer (Cascaded)', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4.0),
+                            Builder(builder: (ctx) {
+                              final mfgList = _adminWeaponManufacturers[_selectedAdminWeaponType] ?? ['Other'];
+                              final currentMfg = mfgList.contains(_selectedAdminWeaponManufacturer) ? _selectedAdminWeaponManufacturer : mfgList.first;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2C415E),
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  border: Border.all(color: const Color(0xFF1E3A8A)),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: currentMfg,
+                                    isExpanded: true,
+                                    dropdownColor: const Color(0xFF2C415E),
+                                    icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() {
+                                          _selectedAdminWeaponManufacturer = val;
+                                        });
+                                      }
+                                    },
+                                    items: mfgList.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          controller: _newWeaponTypeInputCtrl,
+                          style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                          decoration: InputDecoration(
+                            hintText: 'Model / Variant (e.g., M9, M4A1, MP5)',
+                            hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                            filled: true,
+                            fillColor: const Color(0xFF2C415E),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8.0),
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: _newWeaponSerialInputCtrl,
+                          style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                          decoration: InputDecoration(
+                            hintText: 'Serial No. (e.g., W-9012)',
+                            hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                            filled: true,
+                            fillColor: const Color(0xFF2C415E),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8.0),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final model = _newWeaponTypeInputCtrl.text.trim();
+                          final mfg = _selectedAdminWeaponManufacturer;
+                          final weaponType = _selectedAdminWeaponType;
+                          final type = model.isNotEmpty ? '$mfg $model ($weaponType)' : '$mfg $weaponType';
+                          final serial = _newWeaponSerialInputCtrl.text.trim();
+                          if (type.isEmpty) return;
+                          final list = List<Map<String, dynamic>>.from(
+                            (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
+                              if (e is Map) return Map<String, dynamic>.from(e);
+                              return {'type': e.toString(), 'serial': ''};
+                            }),
+                          );
+                          list.add({'type': type, 'serial': serial, 'category': weaponType, 'manufacturer': mfg});
+                          _adminRules['weapons'] = list;
+
+                          // Also add to function_test weapons list if not present
+                          final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
+                          final funcWeapons = List<String>.from(func['weapons'] ?? []);
+                          final fullLabel = serial.isNotEmpty ? '$type (SN: $serial)' : type;
+                          if (!funcWeapons.contains(fullLabel)) {
+                            funcWeapons.add(fullLabel);
+                            func['weapons'] = funcWeapons;
+                            _adminRules['function_test'] = func;
+                          }
+
+                          // Also add to cyclic_rate weapons if not present
+                          final cyclic = Map<String, dynamic>.from(_adminRules['cyclic_rate'] ?? {});
+                          final cyclicWeapons = List<Map<String, dynamic>>.from(
+                            (cyclic['weapons'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
+                          );
+                          if (!cyclicWeapons.any((w) => w['name'] == fullLabel)) {
+                            cyclicWeapons.add({
+                              'name': fullLabel,
+                              'type': weaponType == 'Machine Gun' ? 'Linked' : 'Loose',
+                              'min': 600,
+                              'max': 950,
+                            });
+                            cyclic['weapons'] = cyclicWeapons;
+                            _adminRules['cyclic_rate'] = cyclic;
+                          }
+
+                          await _storageService.saveRules(_adminRules);
+                          setState(() {
+                            _adminRules = Map<String, dynamic>.from(_adminRules);
+                            _newWeaponTypeInputCtrl.clear();
+                            _newWeaponSerialInputCtrl.clear();
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                        ),
+                        icon: const Icon(Icons.add, size: 16.0),
+                        label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: weaponsList.map((w) {
+                final type = w['type'] ?? '';
+                final serial = w['serial'] ?? '';
+                final label = serial.isNotEmpty ? '$type (SN: $serial)' : '$type';
+                final rounds = _storageService.calculateAssetRounds(allRecords, serial.isNotEmpty ? serial : type);
+                return {
+                  'label': label,
+                  'serial': serial.isNotEmpty ? serial : type,
+                  'rounds': rounds,
+                  'category': 'Weapon',
+                };
+              }).toList(),
+              accentColor: const Color(0xFF6366F1),
+              onDelete: (item) async {
+                weaponsList.removeWhere((w) {
+                  final serial = w['serial'] ?? '';
+                  final type = w['type'] ?? '';
+                  final key = serial.isNotEmpty ? serial : type;
+                  return key == item['serial'];
+                });
+                _adminRules['weapons'] = weaponsList;
+
+                final fullLabel = item['label'] as String? ?? '';
+                final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
+                final funcWeapons = List<String>.from(func['weapons'] ?? []);
+                funcWeapons.remove(fullLabel);
+                func['weapons'] = funcWeapons;
+                _adminRules['function_test'] = func;
+
+                final cyclic = Map<String, dynamic>.from(_adminRules['cyclic_rate'] ?? {});
+                final cyclicWeapons = List<Map<String, dynamic>>.from(
+                  (cyclic['weapons'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
+                );
+                cyclicWeapons.removeWhere((w) => w['name'] == fullLabel);
+                cyclic['weapons'] = cyclicWeapons;
+                _adminRules['cyclic_rate'] = cyclic;
+
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
+
+            // 2. GP1 (CHAMBER) TRANSDUCER SERIAL NUMBERS
+            _buildAssetCategoryHeader('GP1 (Chamber) Transducer Serial Numbers (EPVAT)', Icons.speed_rounded, const Color(0xFF06B6D4)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newGP1TransducerCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                    decoration: InputDecoration(
+                      hintText: 'GP1 Serial (e.g., GP1-PCB-119B)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 10.0),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: TextField(
-                        controller: _newWeaponTypeInputCtrl,
-                        style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                        decoration: InputDecoration(
-                          hintText: 'Model / Variant (e.g., M9, M4A1, MP5)',
-                          hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                          filled: true,
-                          fillColor: const Color(0xFF2C415E),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8.0),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: _newWeaponSerialInputCtrl,
-                        style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
-                        decoration: InputDecoration(
-                          hintText: 'Serial No. (e.g., W-9012)',
-                          hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                          filled: true,
-                          fillColor: const Color(0xFF2C415E),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8.0),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        final model = _newWeaponTypeInputCtrl.text.trim();
-                        final mfg = _selectedAdminWeaponManufacturer;
-                        final weaponType = _selectedAdminWeaponType;
-                        final type = model.isNotEmpty ? '$mfg $model ($weaponType)' : '$mfg $weaponType';
-                        final serial = _newWeaponSerialInputCtrl.text.trim();
-                        if (type.isEmpty) return;
-                        final list = List<Map<String, dynamic>>.from(
-                          (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
-                            if (e is Map) return Map<String, dynamic>.from(e);
-                            return {'type': e.toString(), 'serial': ''};
-                          }),
-                        );
-                        list.add({'type': type, 'serial': serial, 'category': weaponType, 'manufacturer': mfg});
-                        _adminRules['weapons'] = list;
-
-                        // Also add to function_test weapons list if not present
-                        final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
-                        final funcWeapons = List<String>.from(func['weapons'] ?? []);
-                        final fullLabel = serial.isNotEmpty ? '$type (SN: $serial)' : type;
-                        if (!funcWeapons.contains(fullLabel)) {
-                          funcWeapons.add(fullLabel);
-                          func['weapons'] = funcWeapons;
-                          _adminRules['function_test'] = func;
-                        }
-
-                        await _storageService.saveRules(_adminRules);
-                        setState(() {
-                          _adminRules = Map<String, dynamic>.from(_adminRules);
-                          _newWeaponTypeInputCtrl.clear();
-                          _newWeaponSerialInputCtrl.clear();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6366F1),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                      ),
-                      icon: const Icon(Icons.add, size: 16.0),
-                      label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final serial = _newGP1TransducerCtrl.text.trim();
+                    if (serial.isEmpty) return;
+                    final list = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
+                    if (!list.contains(serial)) {
+                      list.add(serial);
+                      _adminRules['gp1_transducers'] = list;
+                    }
+                    final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
+                    final gp1Internal = List<String>.from(gpMap['gp1'] as List<dynamic>? ?? []);
+                    if (!gp1Internal.contains(serial)) {
+                      gp1Internal.add(serial);
+                      gpMap['gp1'] = gp1Internal;
+                      _adminRules['gp_transducers'] = gpMap;
+                    }
+                    await _storageService.saveRules(_adminRules);
+                    setState(() {
+                      _adminRules = Map<String, dynamic>.from(_adminRules);
+                      _newGP1TransducerCtrl.clear();
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF06B6D4),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 8.0),
-          _buildAssetItemList(
-            items: weaponsList.map((w) {
-              final type = w['type'] ?? '';
-              final serial = w['serial'] ?? '';
-              final label = serial.isNotEmpty ? '$type (SN: $serial)' : '$type';
-              final rounds = _storageService.calculateAssetRounds(allRecords, serial.isNotEmpty ? serial : type);
-              return {
-                'label': label,
-                'serial': serial.isNotEmpty ? serial : type,
-                'rounds': rounds,
-                'category': 'Weapon',
-              };
-            }).toList(),
-            accentColor: const Color(0xFF6366F1),
-            onDelete: (item) async {
-              weaponsList.removeWhere((w) {
-                final serial = w['serial'] ?? '';
-                final type = w['type'] ?? '';
-                final key = serial.isNotEmpty ? serial : type;
-                return key == item['serial'];
-              });
-              _adminRules['weapons'] = weaponsList;
-              await _storageService.saveRules(_adminRules);
-              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-            },
-          ),
-          const SizedBox(height: 18.0),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: gp1List.map((sn) {
+                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                return {
+                  'label': sn,
+                  'serial': sn,
+                  'rounds': rounds,
+                  'category': 'GP1 (Chamber)',
+                };
+              }).toList(),
+              accentColor: const Color(0xFF06B6D4),
+              onDelete: (item) async {
+                final sn = item['serial'] as String;
+                gp1List.remove(sn);
+                _adminRules['gp1_transducers'] = gp1List;
+                final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
+                final gp1Internal = List<String>.from(gpMap['gp1'] as List<dynamic>? ?? []);
+                gp1Internal.remove(sn);
+                gpMap['gp1'] = gp1Internal;
+                _adminRules['gp_transducers'] = gpMap;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
 
-          // 2. GP2 (PORT) TRANSDUCER SERIAL NUMBERS
-          _buildAssetCategoryHeader('GP2 (Port) Transducer Serial Numbers (EPVAT)', Icons.sensors_rounded, const Color(0xFF10B981)),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newGP6SerialCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
-                  decoration: InputDecoration(
-                    hintText: 'GP2 Serial (e.g., GP2-PCB-9901)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF10B981))),
+            // 3. GP2 (PORT) TRANSDUCER SERIAL NUMBERS
+            _buildAssetCategoryHeader('GP2 (Port) Transducer Serial Numbers (EPVAT)', Icons.sensors_rounded, const Color(0xFF10B981)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newGP6SerialCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                    decoration: InputDecoration(
+                      hintText: 'GP2 Serial (e.g., GP2-PCB-9901)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF10B981))),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8.0),
-              ElevatedButton(
-                onPressed: () async {
-                  final serial = _newGP6SerialCtrl.text.trim();
-                  if (serial.isEmpty) return;
-                  final list = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
-                  if (!list.contains(serial)) {
-                    list.add(serial);
-                    _adminRules['gp6_serials'] = list;
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final serial = _newGP6SerialCtrl.text.trim();
+                    if (serial.isEmpty) return;
+                    final list = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
+                    if (!list.contains(serial)) {
+                      list.add(serial);
+                      _adminRules['gp6_serials'] = list;
+                    }
+                    final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
+                    final gp2Internal = List<String>.from(gpMap['gp2'] as List<dynamic>? ?? []);
+                    if (!gp2Internal.contains(serial)) {
+                      gp2Internal.add(serial);
+                      gpMap['gp2'] = gp2Internal;
+                      _adminRules['gp_transducers'] = gpMap;
+                    }
                     await _storageService.saveRules(_adminRules);
                     setState(() {
                       _adminRules = Map<String, dynamic>.from(_adminRules);
                       _newGP6SerialCtrl.clear();
                     });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          _buildAssetItemList(
-            items: gp6List.map((sn) {
-              final rounds = _storageService.calculateAssetRounds(allRecords, sn);
-              return {
-                'label': sn,
-                'serial': sn,
-                'rounds': rounds,
-                'category': 'GP2 (Port)',
-              };
-            }).toList(),
-            accentColor: const Color(0xFF10B981),
-            onDelete: (item) async {
-              gp6List.remove(item['serial']);
-              _adminRules['gp6_serials'] = gp6List;
-              await _storageService.saveRules(_adminRules);
-              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-            },
-          ),
-          const SizedBox(height: 18.0),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: gp6List.map((sn) {
+                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                return {
+                  'label': sn,
+                  'serial': sn,
+                  'rounds': rounds,
+                  'category': 'GP2 (Port)',
+                };
+              }).toList(),
+              accentColor: const Color(0xFF10B981),
+              onDelete: (item) async {
+                final sn = item['serial'] as String;
+                gp6List.remove(sn);
+                _adminRules['gp6_serials'] = gp6List;
+                final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
+                final gp2Internal = List<String>.from(gpMap['gp2'] as List<dynamic>? ?? []);
+                gp2Internal.remove(sn);
+                gpMap['gp2'] = gp2Internal;
+                _adminRules['gp_transducers'] = gpMap;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
 
-          // 3. EPVAT BARREL TEST SERIALS
-          _buildAssetCategoryHeader('EPVAT Barrel Test Serial Numbers', Icons.adjust_rounded, const Color(0xFF06B6D4)),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newEpvatBarrelCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
-                  decoration: InputDecoration(
-                    hintText: 'EPVAT Barrel Serial (e.g., EPVAT-B-201)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
+            // 4. EPVAT BARREL TEST SERIALS
+            _buildAssetCategoryHeader('EPVAT Barrel Test Serial Numbers', Icons.adjust_rounded, const Color(0xFF06B6D4)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newEpvatBarrelCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                    decoration: InputDecoration(
+                      hintText: 'EPVAT Barrel Serial (e.g., EPVAT-B-201)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8.0),
-              ElevatedButton(
-                onPressed: () async {
-                  final serial = _newEpvatBarrelCtrl.text.trim();
-                  if (serial.isEmpty) return;
-                  final list = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
-                  if (!list.contains(serial)) {
-                    list.add(serial);
-                    _adminRules['epvat_barrels'] = list;
-                    await _storageService.saveRules(_adminRules);
-                    setState(() {
-                      _adminRules = Map<String, dynamic>.from(_adminRules);
-                      _newEpvatBarrelCtrl.clear();
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF06B6D4),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final serial = _newEpvatBarrelCtrl.text.trim();
+                    if (serial.isEmpty) return;
+                    final list = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
+                    if (!list.contains(serial)) {
+                      list.add(serial);
+                      _adminRules['epvat_barrels'] = list;
+                      final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
+                      if (!bList.contains(serial)) {
+                        bList.add(serial);
+                        _adminRules['barrel_serial_numbers'] = bList;
+                      }
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _newEpvatBarrelCtrl.clear();
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF06B6D4),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          _buildAssetItemList(
-            items: epvatBarrels.map((sn) {
-              final rounds = _storageService.calculateAssetRounds(allRecords, sn);
-              return {
-                'label': sn,
-                'serial': sn,
-                'rounds': rounds,
-                'category': 'EPVAT Barrel',
-              };
-            }).toList(),
-            accentColor: const Color(0xFF06B6D4),
-            onDelete: (item) async {
-              epvatBarrels.remove(item['serial']);
-              _adminRules['epvat_barrels'] = epvatBarrels;
-              await _storageService.saveRules(_adminRules);
-              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-            },
-          ),
-          const SizedBox(height: 18.0),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: epvatBarrels.map((sn) {
+                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                return {
+                  'label': sn,
+                  'serial': sn,
+                  'rounds': rounds,
+                  'category': 'EPVAT Barrel',
+                };
+              }).toList(),
+              accentColor: const Color(0xFF06B6D4),
+              onDelete: (item) async {
+                epvatBarrels.remove(item['serial']);
+                _adminRules['epvat_barrels'] = epvatBarrels;
+                final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
+                bList.remove(item['serial']);
+                _adminRules['barrel_serial_numbers'] = bList;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
 
-          // 4. ACCURACY BARREL TEST SERIALS
-          _buildAssetCategoryHeader('Accuracy Barrel Test Serial Numbers', Icons.radar_rounded, const Color(0xFFF59E0B)),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newAccuracyBarrelCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
-                  decoration: InputDecoration(
-                    hintText: 'Accuracy Barrel Serial (e.g., ACC-B-101)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF59E0B))),
+            // 5. ACCURACY BARREL TEST SERIALS
+            _buildAssetCategoryHeader('Accuracy Barrel Test Serial Numbers', Icons.radar_rounded, const Color(0xFFF59E0B)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newAccuracyBarrelCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                    decoration: InputDecoration(
+                      hintText: 'Accuracy Barrel Serial (e.g., ACC-B-101)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF59E0B))),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8.0),
-              ElevatedButton(
-                onPressed: () async {
-                  final serial = _newAccuracyBarrelCtrl.text.trim();
-                  if (serial.isEmpty) return;
-                  final list = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
-                  if (!list.contains(serial)) {
-                    list.add(serial);
-                    _adminRules['accuracy_barrels'] = list;
-                    await _storageService.saveRules(_adminRules);
-                    setState(() {
-                      _adminRules = Map<String, dynamic>.from(_adminRules);
-                      _newAccuracyBarrelCtrl.clear();
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF59E0B),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final serial = _newAccuracyBarrelCtrl.text.trim();
+                    if (serial.isEmpty) return;
+                    final list = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
+                    if (!list.contains(serial)) {
+                      list.add(serial);
+                      _adminRules['accuracy_barrels'] = list;
+                      final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
+                      if (!bList.contains(serial)) {
+                        bList.add(serial);
+                        _adminRules['barrel_serial_numbers'] = bList;
+                      }
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _newAccuracyBarrelCtrl.clear();
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          _buildAssetItemList(
-            items: accBarrels.map((sn) {
-              final rounds = _storageService.calculateAssetRounds(allRecords, sn);
-              return {
-                'label': sn,
-                'serial': sn,
-                'rounds': rounds,
-                'category': 'Accuracy Barrel',
-              };
-            }).toList(),
-            accentColor: const Color(0xFFF59E0B),
-            onDelete: (item) async {
-              accBarrels.remove(item['serial']);
-              _adminRules['accuracy_barrels'] = accBarrels;
-              await _storageService.saveRules(_adminRules);
-              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-            },
-          ),
-          const SizedBox(height: 18.0),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: accBarrels.map((sn) {
+                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                return {
+                  'label': sn,
+                  'serial': sn,
+                  'rounds': rounds,
+                  'category': 'Accuracy Barrel',
+                };
+              }).toList(),
+              accentColor: const Color(0xFFF59E0B),
+              onDelete: (item) async {
+                accBarrels.remove(item['serial']);
+                _adminRules['accuracy_barrels'] = accBarrels;
+                final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
+                bList.remove(item['serial']);
+                _adminRules['barrel_serial_numbers'] = bList;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
 
-          // 5. PRIMER SUPPLIERS
-          _buildAssetCategoryHeader('Primer Suppliers (Component & Lot Acceptance Tests)', Icons.grain_rounded, const Color(0xFFEC4899)),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newPrimerSupplierCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                  decoration: InputDecoration(
-                    hintText: 'Supplier Name (e.g., CBC, UNIS "GINIX", S&B, MD)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFEC4899))),
+            // 6. PRIMER SUPPLIERS
+            _buildAssetCategoryHeader('Primer Suppliers (Component & Lot Acceptance Tests)', Icons.grain_rounded, const Color(0xFFEC4899)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newPrimerSupplierCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                    decoration: InputDecoration(
+                      hintText: 'Supplier Name (e.g., CBC, UNIS "GINIX", S&B, MD)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFEC4899))),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8.0),
-              ElevatedButton(
-                onPressed: () async {
-                  final sup = _newPrimerSupplierCtrl.text.trim();
-                  if (sup.isEmpty) return;
-                  final list = List<String>.from(_adminRules['primer_suppliers'] as List<dynamic>? ?? []);
-                  if (!list.contains(sup)) {
-                    list.add(sup);
-                    _adminRules['primer_suppliers'] = list;
-                    await _storageService.saveRules(_adminRules);
-                    setState(() {
-                      _adminRules = Map<String, dynamic>.from(_adminRules);
-                      _newPrimerSupplierCtrl.clear();
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEC4899),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final sup = _newPrimerSupplierCtrl.text.trim();
+                    if (sup.isEmpty) return;
+                    final list = List<String>.from(_adminRules['primer_suppliers'] as List<dynamic>? ?? []);
+                    if (!list.contains(sup)) {
+                      list.add(sup);
+                      _adminRules['primer_suppliers'] = list;
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _newPrimerSupplierCtrl.clear();
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEC4899),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          _buildAssetItemList(
-            items: primerSuppliers.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Primer Supplier'}).toList(),
-            accentColor: const Color(0xFFEC4899),
-            onDelete: (item) async {
-              primerSuppliers.remove(item['serial']);
-              _adminRules['primer_suppliers'] = primerSuppliers;
-              await _storageService.saveRules(_adminRules);
-              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-            },
-          ),
-          const SizedBox(height: 18.0),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: primerSuppliers.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Primer Supplier'}).toList(),
+              accentColor: const Color(0xFFEC4899),
+              onDelete: (item) async {
+                primerSuppliers.remove(item['serial']);
+                _adminRules['primer_suppliers'] = primerSuppliers;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
 
-          // 6. PROPELLANT SUPPLIERS
-          _buildAssetCategoryHeader('Propellant Suppliers (Component Test)', Icons.local_fire_department_rounded, const Color(0xFFF97316)),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newPropellantSupplierCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                  decoration: InputDecoration(
-                    hintText: 'Propellant Supplier (e.g., Explosia, Gold Force, PB Clermont, Milan)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF97316))),
+            // 7. PROPELLANT SUPPLIERS
+            _buildAssetCategoryHeader('Propellant Suppliers (Component Test)', Icons.local_fire_department_rounded, const Color(0xFFF97316)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newPropellantSupplierCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                    decoration: InputDecoration(
+                      hintText: 'Propellant Supplier (e.g., Explosia, Gold Force, PB Clermont, Milan)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8.0),
-              ElevatedButton(
-                onPressed: () async {
-                  final sup = _newPropellantSupplierCtrl.text.trim();
-                  if (sup.isEmpty) return;
-                  final list = List<String>.from(_adminRules['propellant_suppliers'] as List<dynamic>? ?? []);
-                  if (!list.contains(sup)) {
-                    list.add(sup);
-                    _adminRules['propellant_suppliers'] = list;
-                    await _storageService.saveRules(_adminRules);
-                    setState(() {
-                      _adminRules = Map<String, dynamic>.from(_adminRules);
-                      _newPropellantSupplierCtrl.clear();
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF97316),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final sup = _newPropellantSupplierCtrl.text.trim();
+                    if (sup.isEmpty) return;
+                    final list = List<String>.from(_adminRules['propellant_suppliers'] as List<dynamic>? ?? []);
+                    if (!list.contains(sup)) {
+                      list.add(sup);
+                      _adminRules['propellant_suppliers'] = list;
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _newPropellantSupplierCtrl.clear();
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF97316),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          _buildAssetItemList(
-            items: propellantSuppliers.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Propellant Supplier'}).toList(),
-            accentColor: const Color(0xFFF97316),
-            onDelete: (item) async {
-              propellantSuppliers.remove(item['serial']);
-              _adminRules['propellant_suppliers'] = propellantSuppliers;
-              await _storageService.saveRules(_adminRules);
-              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-            },
-          ),
-          const SizedBox(height: 18.0),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: propellantSuppliers.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Propellant Supplier'}).toList(),
+              accentColor: const Color(0xFFF97316),
+              onDelete: (item) async {
+                final sup = item['serial'] as String;
+                propellantSuppliers.remove(sup);
+                _adminRules['propellant_suppliers'] = propellantSuppliers;
+                final supCodesMap = Map<String, dynamic>.from(_adminRules['propellant_supplier_codes'] as Map<dynamic, dynamic>? ?? {});
+                supCodesMap.remove(sup);
+                _adminRules['propellant_supplier_codes'] = supCodesMap;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
 
-          // 7. PROPELLANT CODES
-          _buildAssetCategoryHeader('Propellant Codes (Component Test)', Icons.qr_code_rounded, const Color(0xFFA855F7)),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newPropellantCodeCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                  decoration: InputDecoration(
-                    hintText: 'Propellant Code (e.g., D-073.4, S-060, P-30, PB-540)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                    filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFA855F7))),
+            // 8. PROPELLANT CODES LINKED WITH SUPPLIER
+            _buildAssetCategoryHeader('Propellant Codes linked with Supplier (Component & EPVAT)', Icons.qr_code_rounded, const Color(0xFFA855F7)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                if (propellantSuppliers.isNotEmpty) ...[
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C415E),
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(color: const Color(0xFF1E3A8A)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: propellantSuppliers.contains(_selectedPropellantCodeSupplier)
+                              ? _selectedPropellantCodeSupplier
+                              : propellantSuppliers.first,
+                          isExpanded: true,
+                          dropdownColor: const Color(0xFF2C415E),
+                          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFA855F7)),
+                          style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _selectedPropellantCodeSupplier = val);
+                            }
+                          },
+                          items: propellantSuppliers.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8.0),
+                ],
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _newPropellantCodeCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                    decoration: InputDecoration(
+                      hintText: 'Propellant Code (e.g., D-073.4, S-060, P-30, PB-540)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFA855F7))),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8.0),
-              ElevatedButton(
-                onPressed: () async {
-                  final code = _newPropellantCodeCtrl.text.trim();
-                  if (code.isEmpty) return;
-                  final list = List<String>.from(_adminRules['propellant_codes'] as List<dynamic>? ?? []);
-                  if (!list.contains(code)) {
-                    list.add(code);
-                    _adminRules['propellant_codes'] = list;
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final code = _newPropellantCodeCtrl.text.trim();
+                    if (code.isEmpty) return;
+                    final list = List<String>.from(_adminRules['propellant_codes'] as List<dynamic>? ?? []);
+                    if (!list.contains(code)) {
+                      list.add(code);
+                      _adminRules['propellant_codes'] = list;
+                    }
+                    final currentSup = propellantSuppliers.contains(_selectedPropellantCodeSupplier)
+                        ? _selectedPropellantCodeSupplier
+                        : (propellantSuppliers.isNotEmpty ? propellantSuppliers.first : '');
+                    if (currentSup.isNotEmpty) {
+                      final supCodesMap = Map<String, dynamic>.from(_adminRules['propellant_supplier_codes'] as Map<dynamic, dynamic>? ?? {});
+                      final codesForSup = List<String>.from(supCodesMap[currentSup] as List<dynamic>? ?? []);
+                      if (!codesForSup.contains(code)) {
+                        codesForSup.add(code);
+                        supCodesMap[currentSup] = codesForSup;
+                        _adminRules['propellant_supplier_codes'] = supCodesMap;
+                      }
+                    }
                     await _storageService.saveRules(_adminRules);
                     setState(() {
                       _adminRules = Map<String, dynamic>.from(_adminRules);
                       _newPropellantCodeCtrl.clear();
                     });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFA855F7),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFA855F7),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          _buildAssetItemList(
-            items: propellantCodes.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Propellant Code'}).toList(),
-            accentColor: const Color(0xFFA855F7),
-            onDelete: (item) async {
-              propellantCodes.remove(item['serial']);
-              _adminRules['propellant_codes'] = propellantCodes;
-              await _storageService.saveRules(_adminRules);
-              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-            },
-          ),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: propellantCodes.map((c) {
+                String supLabel = '';
+                for (final entry in propellantSupplierCodes.entries) {
+                  final cList = List<String>.from(entry.value as List<dynamic>? ?? []);
+                  if (cList.contains(c)) {
+                    supLabel = entry.key;
+                    break;
+                  }
+                }
+                final display = supLabel.isNotEmpty ? '$c  ($supLabel)' : c;
+                return {'label': display, 'serial': c, 'rounds': 0, 'category': 'Propellant Code'};
+              }).toList(),
+              accentColor: const Color(0xFFA855F7),
+              onDelete: (item) async {
+                final code = item['serial'] as String;
+                propellantCodes.remove(code);
+                _adminRules['propellant_codes'] = propellantCodes;
+                final supCodesMap = Map<String, dynamic>.from(_adminRules['propellant_supplier_codes'] as Map<dynamic, dynamic>? ?? {});
+                for (final k in supCodesMap.keys) {
+                  final list = List<String>.from(supCodesMap[k] as List<dynamic>? ?? []);
+                  if (list.remove(code)) {
+                    supCodesMap[k] = list;
+                  }
+                }
+                _adminRules['propellant_supplier_codes'] = supCodesMap;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -4340,54 +4648,83 @@ class _MainShellState extends State<MainShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Evaluation Rules & Requirements',
-            style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 8.0),
-          const Text(
-            'Configure specifications and instructions. These rules auto-sentence operator entries.',
-            style: TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8), height: 1.4),
-          ),
-          const SizedBox(height: 16.0),
-          
-          // Test selector Dropdown
-          const Text('Select Test to Configure', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6.0),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C415E),
-              borderRadius: BorderRadius.circular(6.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
-            ),
-            child: DropdownButton<String>(
-              value: _selectedRuleTest,
-              isExpanded: true,
-              dropdownColor: const Color(0xFF344D6E),
-              underline: const SizedBox(),
-              style: const TextStyle(color: Colors.white, fontSize: 13.0),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() {
-                    _selectedRuleTest = val;
-                  });
-                  _syncRulesControllers();
-                }
-              },
-              items: [
-                'Waterproof Test',
-                'Residual Stress Test',
-                'Extraction Force Test',
-                'Accuracy Test',
-                'EPVAT Test',
-                'Primer Sensitivity Test',
-                'Function Test',
-                'Firing Rate Cycle Test',
-              ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+          InkWell(
+            onTap: () => setState(() => _isRulesCardExpanded = !_isRulesCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF6366F1)),
+                  ),
+                  child: const Icon(Icons.gavel_rounded, color: Color(0xFF6366F1), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Evaluation Rules & Requirements',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+                Icon(
+                  _isRulesCardExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: const Color(0xFF6366F1),
+                  size: 24.0,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12.0),
+          if (_isRulesCardExpanded) ...[
+            const SizedBox(height: 12.0),
+            const Text(
+              'Configure specifications and instructions. These rules auto-sentence operator entries.',
+              style: TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8), height: 1.4),
+            ),
+            const SizedBox(height: 16.0),
+            
+            // Test selector Dropdown
+            const Text('Select Test to Configure', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6.0),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C415E),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
+              ),
+              child: DropdownButton<String>(
+                value: _selectedRuleTest,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF344D6E),
+                underline: const SizedBox(),
+                style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedRuleTest = val;
+                    });
+                    _syncRulesControllers();
+                  }
+                },
+                items: [
+                  'Waterproof Test',
+                  'Residual Stress Test',
+                  'Extraction Force Test',
+                  'Accuracy Test',
+                  'EPVAT Test',
+                  'Primer Sensitivity Test',
+                  'Function Test',
+                  'Firing Rate Cycle Test',
+                  'GP Transducers (GP1 & GP2)',
+                  'Barrels',
+                  'Weapons',
+                ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              ),
+            ),
+            const SizedBox(height: 12.0),
 
           // Caliber selector for tests that have caliber-specific specifications
           Builder(builder: (context) {
@@ -5105,7 +5442,7 @@ class _MainShellState extends State<MainShell> {
                                   isExpanded: true,
                                   dropdownColor: const Color(0xFF344D6E),
                                   style: const TextStyle(color: Colors.white, fontSize: 12.0),
-                                  onChanged: (val) {
+                                  onChanged: (val) async {
                                     setState(() {
                                       final list = List<dynamic>.from(_adminRules['cyclic_rate']?['weapons'] ?? []);
                                       final map = Map<String, dynamic>.from(list[i] as Map);
@@ -5113,6 +5450,7 @@ class _MainShellState extends State<MainShell> {
                                       list[i] = map;
                                       _adminRules['cyclic_rate'] = {'weapons': list};
                                     });
+                                    await _storageService.saveRules(_adminRules);
                                   },
                                   items: ['Rifle', 'Machine Gun'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                                 ),
@@ -5125,12 +5463,13 @@ class _MainShellState extends State<MainShell> {
                           Expanded(flex: 2, child: _buildCyclicRuleMiniField(weapons, i, 'max')),
                           const SizedBox(width: 6),
                           GestureDetector(
-                            onTap: () {
+                            onTap: () async {
                               setState(() {
                                 final list = List<dynamic>.from(_adminRules['cyclic_rate']?['weapons'] ?? []);
                                 list.removeAt(i);
                                 _adminRules['cyclic_rate'] = {'weapons': list};
                               });
+                              await _storageService.saveRules(_adminRules);
                             },
                             child: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
                           ),
@@ -5142,12 +5481,13 @@ class _MainShellState extends State<MainShell> {
                   SizedBox(
                     height: 36,
                     child: OutlinedButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
                         setState(() {
                           final list = List<dynamic>.from(_adminRules['cyclic_rate']?['weapons'] ?? []);
                           list.add({'name': 'New Weapon', 'type': 'Rifle', 'min': 550, 'max': 920});
                           _adminRules['cyclic_rate'] = {'weapons': list};
                         });
+                        await _storageService.saveRules(_adminRules);
                       },
                       icon: const Icon(Icons.add, size: 14),
                       label: const Text('Add Weapon', style: TextStyle(fontSize: 12)),
@@ -5262,7 +5602,7 @@ class _MainShellState extends State<MainShell> {
                 ),
                 const SizedBox(width: 8.0),
                 ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     final text = _ruleNewGPTransducerCtrl.text.trim();
                     if (text.isNotEmpty) {
                       final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] ?? {});
@@ -5271,11 +5611,26 @@ class _MainShellState extends State<MainShell> {
                       if (!list.contains(text)) {
                         list.add(text);
                         gpMap[key] = list;
-                        setState(() {
-                          _adminRules['gp_transducers'] = gpMap;
-                          _ruleNewGPTransducerCtrl.clear();
-                        });
+                        _adminRules['gp_transducers'] = gpMap;
                       }
+                      if (key == 'gp1') {
+                        final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
+                        if (!gp1List.contains(text)) {
+                          gp1List.add(text);
+                          _adminRules['gp1_transducers'] = gp1List;
+                        }
+                      } else {
+                        final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
+                        if (!gp6List.contains(text)) {
+                          gp6List.add(text);
+                          _adminRules['gp6_serials'] = gp6List;
+                        }
+                      }
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _ruleNewGPTransducerCtrl.clear();
+                      });
                     }
                   },
                   icon: const Icon(Icons.add, size: 16),
@@ -5341,13 +5696,18 @@ class _MainShellState extends State<MainShell> {
                                       icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16),
                                       constraints: const BoxConstraints(),
                                       padding: EdgeInsets.zero,
-                                      onPressed: () {
+                                      onPressed: () async {
                                         final updatedGp = Map<String, dynamic>.from(_adminRules['gp_transducers'] ?? {});
                                         final updated = List<String>.from(updatedGp['gp1'] ?? []);
-                                        updated.removeAt(idx);
+                                        final removed = updated.removeAt(idx);
                                         updatedGp['gp1'] = updated;
+                                        _adminRules['gp_transducers'] = updatedGp;
+                                        final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
+                                        gp1List.remove(removed);
+                                        _adminRules['gp1_transducers'] = gp1List;
+                                        await _storageService.saveRules(_adminRules);
                                         setState(() {
-                                          _adminRules['gp_transducers'] = updatedGp;
+                                          _adminRules = Map<String, dynamic>.from(_adminRules);
                                         });
                                       },
                                     ),
@@ -5409,13 +5769,18 @@ class _MainShellState extends State<MainShell> {
                                       icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16),
                                       constraints: const BoxConstraints(),
                                       padding: EdgeInsets.zero,
-                                      onPressed: () {
+                                      onPressed: () async {
                                         final updatedGp = Map<String, dynamic>.from(_adminRules['gp_transducers'] ?? {});
                                         final updated = List<String>.from(updatedGp['gp2'] ?? []);
-                                        updated.removeAt(idx);
+                                        final removed = updated.removeAt(idx);
                                         updatedGp['gp2'] = updated;
+                                        _adminRules['gp_transducers'] = updatedGp;
+                                        final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
+                                        gp6List.remove(removed);
+                                        _adminRules['gp6_serials'] = gp6List;
+                                        await _storageService.saveRules(_adminRules);
                                         setState(() {
-                                          _adminRules['gp_transducers'] = updatedGp;
+                                          _adminRules = Map<String, dynamic>.from(_adminRules);
                                         });
                                       },
                                     ),
@@ -5457,17 +5822,29 @@ class _MainShellState extends State<MainShell> {
                 ),
                 const SizedBox(width: 8.0),
                 ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     final sn = _ruleNewBarrelSNCtrl.text.trim();
                     if (sn.isNotEmpty) {
                       final list = List<String>.from(_adminRules['barrel_serial_numbers'] ?? []);
                       if (!list.contains(sn)) {
                         list.add(sn);
-                        setState(() {
-                          _adminRules['barrel_serial_numbers'] = list;
-                          _ruleNewBarrelSNCtrl.clear();
-                        });
+                        _adminRules['barrel_serial_numbers'] = list;
                       }
+                      final epvatB = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
+                      if (!epvatB.contains(sn)) {
+                        epvatB.add(sn);
+                        _adminRules['epvat_barrels'] = epvatB;
+                      }
+                      final accB = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
+                      if (!accB.contains(sn)) {
+                        accB.add(sn);
+                        _adminRules['accuracy_barrels'] = accB;
+                      }
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _ruleNewBarrelSNCtrl.clear();
+                      });
                     }
                   },
                   icon: const Icon(Icons.add, size: 16),
@@ -5520,11 +5897,19 @@ class _MainShellState extends State<MainShell> {
                             icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
-                            onPressed: () {
+                            onPressed: () async {
                               final updated = List<String>.from(_adminRules['barrel_serial_numbers'] ?? []);
-                              updated.removeAt(idx);
+                              final removedSn = updated.removeAt(idx);
+                              _adminRules['barrel_serial_numbers'] = updated;
+                              final epvatB = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
+                              epvatB.remove(removedSn);
+                              _adminRules['epvat_barrels'] = epvatB;
+                              final accB = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
+                              accB.remove(removedSn);
+                              _adminRules['accuracy_barrels'] = accB;
+                              await _storageService.saveRules(_adminRules);
                               setState(() {
-                                _adminRules['barrel_serial_numbers'] = updated;
+                                _adminRules = Map<String, dynamic>.from(_adminRules);
                               });
                             },
                           ),
@@ -5633,7 +6018,7 @@ class _MainShellState extends State<MainShell> {
                       ),
                       const SizedBox(width: 8.0),
                       ElevatedButton.icon(
-                        onPressed: () {
+                        onPressed: () async {
                           final wpName = _ruleNewWeaponNameCtrl.text.trim();
                           if (wpName.isNotEmpty) {
                             // 1. Add to function_test weapons list
@@ -5663,6 +6048,19 @@ class _MainShellState extends State<MainShell> {
                               _adminRules['cyclic_rate'] = cyclic;
                             }
 
+                            // 3. Add to fleet weapons
+                            final fleetWeapons = List<Map<String, dynamic>>.from(
+                              (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
+                                if (e is Map) return Map<String, dynamic>.from(e);
+                                return {'type': e.toString(), 'serial': ''};
+                              }),
+                            );
+                            if (!fleetWeapons.any((w) => (w['type'] ?? '') == wpName)) {
+                              fleetWeapons.add({'type': wpName, 'serial': '', 'category': _ruleNewWeaponType, 'manufacturer': 'Generic'});
+                              _adminRules['weapons'] = fleetWeapons;
+                            }
+
+                            await _storageService.saveRules(_adminRules);
                             setState(() {
                               _adminRules = Map<String, dynamic>.from(_adminRules);
                               _ruleNewWeaponNameCtrl.clear();
@@ -5748,7 +6146,7 @@ class _MainShellState extends State<MainShell> {
                             icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
-                            onPressed: () {
+                            onPressed: () async {
                               final updatedFunc = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
                               final updatedFuncList = List<String>.from(updatedFunc['weapons'] ?? []);
                               updatedFuncList.remove(wpName);
@@ -5761,9 +6159,20 @@ class _MainShellState extends State<MainShell> {
                               updatedCyclicList.removeWhere((w) => w['name'] == wpName);
                               updatedCyclic['weapons'] = updatedCyclicList;
 
+                              final fleetWeapons = List<Map<String, dynamic>>.from(
+                                (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
+                                  if (e is Map) return Map<String, dynamic>.from(e);
+                                  return {'type': e.toString(), 'serial': ''};
+                                }),
+                              );
+                              fleetWeapons.removeWhere((w) => (w['type'] ?? '') == wpName || '${w['type']} (SN: ${w['serial']})' == wpName);
+                              _adminRules['weapons'] = fleetWeapons;
+
+                              _adminRules['function_test'] = updatedFunc;
+                              _adminRules['cyclic_rate'] = updatedCyclic;
+                              await _storageService.saveRules(_adminRules);
                               setState(() {
-                                _adminRules['function_test'] = updatedFunc;
-                                _adminRules['cyclic_rate'] = updatedCyclic;
+                                _adminRules = Map<String, dynamic>.from(_adminRules);
                               });
                             },
                           ),
@@ -5888,7 +6297,7 @@ class _MainShellState extends State<MainShell> {
                 ),
                 const SizedBox(width: 8.0),
                 ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     final wpName = _ruleNewFuncWeaponCtrl.text.trim();
                     if (wpName.isNotEmpty) {
                       final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
@@ -5896,8 +6305,21 @@ class _MainShellState extends State<MainShell> {
                       if (!list.contains(wpName)) {
                         list.add(wpName);
                         func['weapons'] = list;
+                        _adminRules['function_test'] = func;
+
+                        final fleetWeapons = List<Map<String, dynamic>>.from(
+                          (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
+                            if (e is Map) return Map<String, dynamic>.from(e);
+                            return {'type': e.toString(), 'serial': ''};
+                          }),
+                        );
+                        if (!fleetWeapons.any((w) => (w['type'] ?? '') == wpName)) {
+                          fleetWeapons.add({'type': wpName, 'serial': '', 'category': 'Rifle', 'manufacturer': 'Generic'});
+                          _adminRules['weapons'] = fleetWeapons;
+                        }
+                        await _storageService.saveRules(_adminRules);
                         setState(() {
-                          _adminRules['function_test'] = func;
+                          _adminRules = Map<String, dynamic>.from(_adminRules);
                           _ruleNewFuncWeaponCtrl.clear();
                         });
                       }
@@ -5954,13 +6376,25 @@ class _MainShellState extends State<MainShell> {
                             icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
                             constraints: const BoxConstraints(),
                             padding: EdgeInsets.zero,
-                            onPressed: () {
+                            onPressed: () async {
                               final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
                               final updated = List<String>.from(func['weapons'] ?? []);
-                              updated.removeAt(idx);
+                              final wp = updated.removeAt(idx);
                               func['weapons'] = updated;
+                              _adminRules['function_test'] = func;
+
+                              final fleetWeapons = List<Map<String, dynamic>>.from(
+                                (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
+                                  if (e is Map) return Map<String, dynamic>.from(e);
+                                  return {'type': e.toString(), 'serial': ''};
+                                }),
+                              );
+                              fleetWeapons.removeWhere((w) => (w['type'] ?? '') == wp);
+                              _adminRules['weapons'] = fleetWeapons;
+
+                              await _storageService.saveRules(_adminRules);
                               setState(() {
-                                _adminRules['function_test'] = func;
+                                _adminRules = Map<String, dynamic>.from(_adminRules);
                               });
                             },
                           ),
@@ -5989,6 +6423,7 @@ class _MainShellState extends State<MainShell> {
               ),
             ),
           ),
+          ],
         ],
       ),
     );
@@ -6155,6 +6590,7 @@ class _MainShellState extends State<MainShell> {
         }
         list[index] = weaponMap;
         _adminRules['cyclic_rate'] = {'weapons': list};
+        _storageService.saveRules(_adminRules);
       },
     );
   }

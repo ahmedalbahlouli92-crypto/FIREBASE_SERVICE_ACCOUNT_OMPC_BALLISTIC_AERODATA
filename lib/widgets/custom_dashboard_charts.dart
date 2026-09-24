@@ -1336,13 +1336,41 @@ class BoxPlotChart extends StatefulWidget {
 }
 
 class _BoxPlotChartState extends State<BoxPlotChart> {
-  String _selectedMetric = 'Velocity SD (m/s)';
+  String _selectedMetric = '';
   String _selectedTemperature = 'All Temperatures';
 
-  static const List<String> _metricOptions = [
-    'Velocity SD (m/s)',
-    'Pressure SD (bar)',
-  ];
+  List<String> _getMetricOptions() {
+    final hasPrimer = widget.records.any((r) => r.testName == 'Primer Sensitivity Test');
+    final hasPropellant = widget.records.any((r) => r.testName == 'Propellant Test');
+    final hasEpvat = widget.records.any((r) => r.testName.contains('EPVAT'));
+
+    final options = <String>[];
+    if (hasPrimer) {
+      options.addAll([
+        'Primer Mean Height H̄ (mm)',
+        'Primer Std Dev S (mm)',
+        'Primer All-Fire Height (mm)',
+      ]);
+    }
+    if (hasPropellant) {
+      options.addAll([
+        'Propellant Mean Pressure (bar)',
+        'Propellant Velocity (m/s)',
+      ]);
+    }
+    if (hasEpvat || (!hasPrimer && !hasPropellant)) {
+      options.addAll([
+        'Velocity SD (m/s)',
+        'Pressure SD (bar)',
+        'Mean Velocity (m/s)',
+        'Mean Chamber Pressure (bar)',
+      ]);
+    }
+    if (options.isEmpty) {
+      options.addAll(['Velocity SD (m/s)', 'Pressure SD (bar)']);
+    }
+    return options;
+  }
 
   static const List<String> _temperatureOptions = [
     'All Temperatures',
@@ -1353,6 +1381,10 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
 
   @override
   Widget build(BuildContext context) {
+    final metricOptions = _getMetricOptions();
+    if (!metricOptions.contains(_selectedMetric)) {
+      _selectedMetric = metricOptions.first;
+    }
     final statsList = _computeStats();
 
     return Column(
@@ -1382,7 +1414,7 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
               spacing: 8.0,
               runSpacing: 6.0,
               children: [
-                // Metric Dropdown: Velocity SD or Pressure SD
+                // Metric Dropdown
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
                   decoration: BoxDecoration(
@@ -1395,7 +1427,7 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
                       value: _selectedMetric,
                       dropdownColor: const Color(0xFFE0F2FE),
                       style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0, fontWeight: FontWeight.bold),
-                      items: _metricOptions.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Color(0xFF0C2A4D))))).toList(),
+                      items: metricOptions.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Color(0xFF0C2A4D))))).toList(),
                       onChanged: (v) {
                         if (v != null) setState(() => _selectedMetric = v);
                       },
@@ -1403,32 +1435,33 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
                   ),
                 ),
                 // Temperature Filter Dropdown: All, +21 °C, +52 °C, -54 °C
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8.0),
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedTemperature,
-                      dropdownColor: const Color(0xFFF8FAFC),
-                      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
-                      items: _temperatureOptions.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(color: Color(0xFF0F172A))))).toList(),
-                      onChanged: (v) {
-                        if (v != null) setState(() => _selectedTemperature = v);
-                      },
+                if (!_selectedMetric.startsWith('Primer'))
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8.0),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedTemperature,
+                        dropdownColor: const Color(0xFFF8FAFC),
+                        style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
+                        items: _temperatureOptions.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(color: Color(0xFF0F172A))))).toList(),
+                        onChanged: (v) {
+                          if (v != null) setState(() => _selectedTemperature = v);
+                        },
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ],
         ),
         const SizedBox(height: 6.0),
         Text(
-          'EPVAT Test Only: Distribution of $_selectedMetric across evaluated lots ($_selectedTemperature).',
+          'Distribution of $_selectedMetric across evaluated lots based on inspection logs.',
           style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
         ),
         const SizedBox(height: 16.0),
@@ -1436,7 +1469,7 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
           child: statsList.isEmpty
               ? Center(
                   child: Text(
-                    'No EPVAT data available for $_selectedMetric at $_selectedTemperature.',
+                    'No data available for $_selectedMetric at $_selectedTemperature.',
                     style: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5),
                   ),
                 )
@@ -1452,11 +1485,19 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
   List<BoxPlotStats> _computeStats() {
     final Map<String, List<double>> lotValues = {};
 
-    // Filter strictly to EPVAT test records
-    final epvatRecords = widget.records.where((r) {
+    final isPrimerMetric = _selectedMetric.startsWith('Primer');
+    final isPropellantMetric = _selectedMetric.startsWith('Propellant');
+
+    final relevantRecords = widget.records.where((r) {
+      if (isPrimerMetric) {
+        return r.testName == 'Primer Sensitivity Test';
+      }
+      if (isPropellantMetric) {
+        return r.testName == 'Propellant Test';
+      }
       final name = r.testName.toLowerCase().trim();
       final isEpvat = name == 'epvat test' || name.contains('epvat');
-      if (!isEpvat) return false;
+      if (!isEpvat && !r.testName.contains('Propellant')) return false;
 
       // Filter by single temperature choice
       if (_selectedTemperature != 'All Temperatures') {
@@ -1469,11 +1510,30 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
       return true;
     }).toList();
 
-    for (var r in epvatRecords) {
-      final lot = (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? 'Hopper ${r.hopperNo.trim()}' : 'General'));
+    for (var r in relevantRecords) {
+      final lot = (r.primerLot.trim().isNotEmpty
+          ? r.primerLot.trim()
+          : (r.propellantLot.trim().isNotEmpty
+              ? r.propellantLot.trim()
+              : (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? 'Hopper ${r.hopperNo.trim()}' : 'General'))));
       final List<double> vals = [];
 
-      if (_selectedMetric == 'Velocity SD (m/s)') {
+      if (_selectedMetric == 'Primer Mean Height H̄ (mm)') {
+        final h = double.tryParse(r.primerHbar);
+        if (h != null && h > 0) vals.add(h);
+      } else if (_selectedMetric == 'Primer Std Dev S (mm)') {
+        final s = double.tryParse(r.primerSD);
+        if (s != null && s > 0) vals.add(s);
+      } else if (_selectedMetric == 'Primer All-Fire Height (mm)') {
+        final af = double.tryParse(r.primerAllFireH);
+        if (af != null && af > 0) vals.add(af);
+      } else if (_selectedMetric == 'Propellant Mean Pressure (bar)' || _selectedMetric == 'Mean Chamber Pressure (bar)') {
+        final p = double.tryParse(r.epvatMeanPressure);
+        if (p != null && p > 0) vals.add(p);
+      } else if (_selectedMetric == 'Propellant Velocity (m/s)' || _selectedMetric == 'Mean Velocity (m/s)') {
+        final v = double.tryParse(r.velMean);
+        if (v != null && v > 0) vals.add(v);
+      } else if (_selectedMetric == 'Velocity SD (m/s)') {
         final sd = double.tryParse(r.velSD);
         if (sd != null && sd > 0) {
           vals.add(sd);

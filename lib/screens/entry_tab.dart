@@ -153,6 +153,27 @@ class _EntryTabState extends State<EntryTab> {
     'S070',
     'Other',
   ];
+
+  List<String> get _currentSupplierPropellantCodes {
+    final supplierCodesMap = widget.adminRules['propellant_supplier_codes'];
+    if (supplierCodesMap is Map && supplierCodesMap.containsKey(_propellantSupplier)) {
+      final list = List<String>.from(supplierCodesMap[_propellantSupplier] ?? []);
+      if (list.isNotEmpty) {
+        if (!list.contains('Other')) return [...list, 'Other'];
+        return list;
+      }
+    }
+    if (_propellantSupplier == 'Explosia') {
+      return ['D-073.4', 'D-073.5', 'D-073.6', 'S060', 'S062', 'S070', 'Other'];
+    } else if (_propellantSupplier == 'PB Clermont') {
+      return ['PB-540', 'PCL 507', 'PCL 511', 'Other'];
+    } else if (_propellantSupplier == 'Gold Force') {
+      return ['SP9', 'GF-201', 'GF-302', 'Other'];
+    } else if (_propellantSupplier == 'Milan') {
+      return ['Bofors RP3', 'RP-15', 'RP-20', 'Other'];
+    }
+    return _propellantCodes;
+  }
   final List<String> _localAddedPrimerSuppliers = [];
   final List<String> _localAddedPropellantSuppliers = [];
   bool get _isAdmin => widget.userRole.toLowerCase() == 'admin';
@@ -346,6 +367,7 @@ class _EntryTabState extends State<EntryTab> {
 
   // Function Test state (Weapon, Temperature, 4-Level Defect Classification)
   String _functionWeapon = '';
+  List<String> _selectedFunctionWeapons = [];
   String _functionTempMode = 'Single'; // 'Single' or 'All'
   String _functionSingleTemp = '+21'; // '+21', '+52', '-54', or '-32'
   int _activeFunctionTempTabIndex = 0; // 0: +21, 1: +52, 2: -54 or -32
@@ -1662,7 +1684,13 @@ class _EntryTabState extends State<EntryTab> {
         'operators': _operatorsController.text,
         'lotThreeDigits': _lotThreeDigitsController.text,
         'lotYear': _lotYearController.text,
+        'hopperThreeDigits': _hopperThreeDigitsController.text,
+        'hopperYear': _hopperYearController.text,
         'lot': _lotController.text,
+        'propellantSupplier': _propellantSupplier,
+        'primerSupplier': _primerSupplier,
+        'selectedComponentPrimerLot': _selectedComponentPrimerLot,
+        'selectedFunctionWeapons': _selectedFunctionWeapons,
         'produced': _producedController.text,
         'defects': _defectsController.text,
         'notes': _notesController.text,
@@ -1777,7 +1805,16 @@ class _EntryTabState extends State<EntryTab> {
         }
         if (draft['lotThreeDigits'] != null) _lotThreeDigitsController.text = draft['lotThreeDigits'];
         if (draft['lotYear'] != null) _lotYearController.text = draft['lotYear'];
+        if (draft['hopperThreeDigits'] != null) _hopperThreeDigitsController.text = draft['hopperThreeDigits'];
+        if (draft['hopperYear'] != null) _hopperYearController.text = draft['hopperYear'];
         if (draft['lot'] != null) _lotController.text = draft['lot'];
+        if (draft['propellantSupplier'] != null) _propellantSupplier = draft['propellantSupplier'];
+        if (draft['primerSupplier'] != null) _primerSupplier = draft['primerSupplier'];
+        if (draft['selectedComponentPrimerLot'] != null) _selectedComponentPrimerLot = draft['selectedComponentPrimerLot'];
+        if (draft['selectedFunctionWeapons'] is List) {
+          _selectedFunctionWeapons = List<String>.from(draft['selectedFunctionWeapons']);
+          _functionWeapon = _selectedFunctionWeapons.join(', ');
+        }
         if (draft['produced'] != null) _producedController.text = draft['produced'];
         if (draft['defects'] != null) _defectsController.text = draft['defects'];
         if (draft['notes'] != null) _notesController.text = draft['notes'];
@@ -2433,12 +2470,12 @@ class _EntryTabState extends State<EntryTab> {
           testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
           gp6Serial: _gp6SerialController.text.trim(),
           userRole: widget.userRole,
-          samplingLocation: _locationController.text.trim(),
+          samplingLocation: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : ''),
           mouthSlow: 0,
           mouthFast: 0,
           primerSlow: 0,
           primerFast: 0,
-          hopperNo: '',
+          hopperNo: (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') ? finalLotNo : '',
           boxNo: '',
           requirement: _requirementController.text.trim(),
           barrelSN: _barrelSNController.text.trim(),
@@ -2553,16 +2590,17 @@ class _EntryTabState extends State<EntryTab> {
           testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
           gp6Serial: '',
           userRole: widget.userRole,
-          samplingLocation: _locationController.text.trim(),
+          samplingLocation: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : ''),
           mouthSlow: 0,
           mouthFast: 0,
           primerSlow: 0,
           primerFast: 0,
-          hopperNo: '',
+          hopperNo: (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') ? finalLotNo : '',
           boxNo: '',
           requirement: _requirementController.text.trim(),
           cartridgeTemp: tempsToSave.map((t) => '$t °C').join(', '),
-          cyclicRateWeaponType: _functionWeapon,
+          cyclicRateWeaponType: _selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join(', ') : _functionWeapon,
+          barrelSN: _selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join(', ') : _functionWeapon,
           functionLevel1: sumL1,
           functionLevel2: sumL2,
           functionLevel3: sumL3,
@@ -2602,15 +2640,17 @@ class _EntryTabState extends State<EntryTab> {
           testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
           gp6Serial: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _gp6SerialController.text.trim() : '',
           userRole: widget.userRole,
-          samplingLocation: (_testName == 'Waterproof Test' || _testName == 'Residual Stress Test') ? _locationController.text.trim() : '',
+          samplingLocation: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : ''),
           mouthSlow: _testName == 'Waterproof Test' ? (int.tryParse(_mouthSlowController.text.trim()) ?? 0) : 0,
           mouthFast: _testName == 'Waterproof Test' ? (int.tryParse(_mouthFastController.text.trim()) ?? 0) : 0,
           primerSlow: _testName == 'Waterproof Test' ? (int.tryParse(_primerSlowController.text.trim()) ?? 0) : 0,
           primerFast: _testName == 'Waterproof Test' ? (int.tryParse(_primerFastController.text.trim()) ?? 0) : 0,
-          hopperNo: '',
+          hopperNo: (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') ? finalLotNo : '',
           boxNo: '',
           requirement: _requirementController.text.trim(),
-          barrelSN: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _barrelSNController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalBarrelSNController.text.trim() : ''),
+          barrelSN: _testName == 'Function Test'
+              ? (_selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join(', ') : _functionWeapon)
+              : (_testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _barrelSNController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalBarrelSNController.text.trim() : '')),
           barrelType: '',
           velocityDistance: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _distanceController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalDistanceController.text.trim() : ''),
           accMeanX: (_testName == 'Accuracy Test' && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _meanXController.text.trim() : '',
@@ -5181,12 +5221,177 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  Future<void> _showMultiWeaponSelectDialog() async {
+    final allWeapons = _weaponsList;
+    final List<String> tempSelected = List<String>.from(_selectedFunctionWeapons);
+    final customCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                side: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
+              ),
+              title: Row(
+                children: const [
+                  Icon(Icons.military_tech_outlined, color: Color(0xFF38BDF8), size: 22.0),
+                  SizedBox(width: 8.0),
+                  Text(
+                    'Select Weapons for Function Test',
+                    style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 480,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select multiple weapons or rifles to be tested during this inspection. Selected weapons will be included in the report.',
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                      ),
+                      const SizedBox(height: 12.0),
+                      if (allWeapons.isNotEmpty) ...[
+                        const Text(
+                          'Available Fleet Weapons:',
+                          style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12.5, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6.0),
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 220),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFF334155)),
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: allWeapons.length,
+                            separatorBuilder: (_, __) => const Divider(color: Color(0xFF1E3A8A), height: 1),
+                            itemBuilder: (c, idx) {
+                              final w = allWeapons[idx];
+                              final isChecked = tempSelected.contains(w);
+                              return CheckboxListTile(
+                                dense: true,
+                                activeColor: const Color(0xFF0284C7),
+                                checkColor: Colors.white,
+                                title: Text(
+                                  w,
+                                  style: TextStyle(
+                                    color: isChecked ? Colors.white : const Color(0xFFCBD5E1),
+                                    fontSize: 12.5,
+                                    fontWeight: isChecked ? FontWeight.bold : FontWeight.normal,
+                                    fontFamily: 'JetBrainsMono',
+                                  ),
+                                ),
+                                value: isChecked,
+                                onChanged: (val) {
+                                  setDialogState(() {
+                                    if (val == true) {
+                                      if (!tempSelected.contains(w)) tempSelected.add(w);
+                                    } else {
+                                      tempSelected.remove(w);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14.0),
+                      const Text(
+                        'Add Custom Weapon:',
+                        style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12.5, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6.0),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: customCtrl,
+                              style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                              decoration: InputDecoration(
+                                hintText: 'e.g., M4A1 (SN: W-999)',
+                                hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0),
+                                filled: true,
+                                fillColor: const Color(0xFF0F172A),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8.0),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0284C7),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                            ),
+                            icon: const Icon(Icons.add, size: 16.0),
+                            label: const Text('Add', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              final text = customCtrl.text.trim();
+                              if (text.isNotEmpty && !tempSelected.contains(text)) {
+                                setDialogState(() {
+                                  tempSelected.add(text);
+                                  customCtrl.clear();
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _selectedFunctionWeapons = List<String>.from(tempSelected);
+                      _functionWeapon = _selectedFunctionWeapons.join(', ');
+                    });
+                    Navigator.pop(dialogCtx);
+                  },
+                  child: const Text('Confirm Selection', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildFunctionTestSpecsCard() {
     final weapons = _weaponsList;
     if (_functionWeapon.isEmpty && weapons.isNotEmpty) {
       _functionWeapon = weapons.first;
-    } else if (_functionWeapon.isNotEmpty && !weapons.contains(_functionWeapon)) {
-      _functionWeapon = weapons.isNotEmpty ? weapons.first : '';
+      if (_selectedFunctionWeapons.isEmpty) {
+        _selectedFunctionWeapons = [weapons.first];
+      }
+    } else if (_functionWeapon.isNotEmpty && _selectedFunctionWeapons.isEmpty) {
+      _selectedFunctionWeapons = _functionWeapon.split(', ').where((s) => s.trim().isNotEmpty).toList();
     }
 
     return Container(
@@ -5207,12 +5412,24 @@ class _EntryTabState extends State<EntryTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.military_tech_outlined, color: Color(0xFF0284C7), size: 18.0),
-              SizedBox(width: 8.0),
-              Text(
-                'Function Test Specifications & Setup',
+            children: [
+              const Icon(Icons.military_tech_outlined, color: Color(0xFF0284C7), size: 18.0),
+              const SizedBox(width: 8.0),
+              const Text(
+                'Function Test Specifications & Weapon Selection',
                 style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: _showMultiWeaponSelectDialog,
+                icon: const Icon(Icons.checklist_rtl_rounded, size: 16.0),
+                label: const Text('Select Multiple Weapons', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                ),
               ),
             ],
           ),
@@ -5299,7 +5516,70 @@ class _EntryTabState extends State<EntryTab> {
                 },
               ),
             ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Add to Selected',
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2.0),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final wName = _selectedWeaponType == 'Other' ? _customWeaponTypeController.text.trim() : _selectedWeaponType;
+                    final sVal = _selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN;
+                    final wEntry = sVal.isNotEmpty ? '$wName (SN: $sVal)' : wName;
+                    if (wEntry.isNotEmpty && !_selectedFunctionWeapons.contains(wEntry)) {
+                      setState(() {
+                        _selectedFunctionWeapons.add(wEntry);
+                        _functionWeapon = _selectedFunctionWeapons.join(', ');
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 16.0),
+                  label: const Text('Add This Weapon', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  ),
+                ),
+              ),
+            ),
           ]),
+
+          // Selected weapons interactive chips
+          if (_selectedFunctionWeapons.isNotEmpty) ...[
+            const SizedBox(height: 14.0),
+            Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Color(0xFF0284C7), size: 16.0),
+                const SizedBox(width: 6.0),
+                Text(
+                  'Selected Tested Weapons (${_selectedFunctionWeapons.length}):',
+                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: _selectedFunctionWeapons.map((weapon) {
+                return Chip(
+                  avatar: const Icon(Icons.military_tech_rounded, size: 16.0, color: Color(0xFF0284C7)),
+                  label: Text(weapon, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 12.0)),
+                  backgroundColor: const Color(0xFFE0F2FE),
+                  deleteIcon: const Icon(Icons.close, size: 16, color: Color(0xFF0284C7)),
+                  onDeleted: () {
+                    setState(() {
+                      _selectedFunctionWeapons.remove(weapon);
+                      _functionWeapon = _selectedFunctionWeapons.join(', ');
+                    });
+                  },
+                  side: const BorderSide(color: Color(0xFFBAE6FD)),
+                );
+              }).toList(),
+            ),
+          ],
           if (_isFunctionBlankAmmo) ...[
             const SizedBox(height: 10.0),
             Container(
@@ -7279,6 +7559,7 @@ class _EntryTabState extends State<EntryTab> {
   Widget _buildPrimerSensitivityCard() {
     final prRules = _getPrimerRulesForCaliber();
     final double defaultDropWeight = ((prRules['drop_weight'] ?? 55.0) as num).toDouble();
+    final bool isLotPrimerLocked = widget.currentModule == 'Lot Acceptance Test';
 
     if (_primerDropWeightController.text.isEmpty) {
       _primerDropWeightController.text = defaultDropWeight.toStringAsFixed(1);
@@ -7322,13 +7603,36 @@ class _EntryTabState extends State<EntryTab> {
             ],
           ),
           const SizedBox(height: 16.0),
-          const SizedBox(height: 16.0),
+          if (isLotPrimerLocked) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 14.0),
+              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0284C7).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFF38BDF8), width: 1.2),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_rounded, color: Color(0xFF38BDF8), size: 20.0),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child: Text(
+                      'Lot Acceptance Module: Primer Sensitivity metrics are synchronized automatically from Component Primer Lot (${_selectedComponentPrimerLot ?? _primerLotController.text}) and locked against manual changes.',
+                      style: const TextStyle(color: Color(0xFFE0F2FE), fontSize: 12.0, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           _buildFormRow([
             _buildFlexibleField(
               flex: 1,
               label: 'Drop Ball Weight (grams)',
               child: _buildTextField(
                 controller: _primerDropWeightController,
+                readOnly: isLotPrimerLocked,
                 hint: 'e.g. 55.0 or 111.86',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (val) {
@@ -7342,6 +7646,7 @@ class _EntryTabState extends State<EntryTab> {
               label: 'Total Test Rounds Recorded',
               child: _buildTextField(
                 controller: _producedController,
+                readOnly: isLotPrimerLocked,
                 hint: '50',
                 keyboardType: TextInputType.number,
                 onChanged: (val) {
@@ -7355,6 +7660,7 @@ class _EntryTabState extends State<EntryTab> {
               label: 'Misfires Count',
               child: _buildTextField(
                 controller: _primerMisfiresCountController,
+                readOnly: isLotPrimerLocked,
                 hint: '0',
                 keyboardType: TextInputType.number,
                 onChanged: (val) {
@@ -7377,7 +7683,7 @@ class _EntryTabState extends State<EntryTab> {
               child: _buildTextField(
                 controller: _primerHbarController,
                 hint: 'e.g. 350.0',
-                readOnly: false,
+                readOnly: isLotPrimerLocked,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (_) {
                   final h = double.tryParse(_primerHbarController.text.trim());
@@ -7397,7 +7703,7 @@ class _EntryTabState extends State<EntryTab> {
               child: _buildTextField(
                 controller: _primerSDController,
                 hint: 'e.g. 30.0',
-                readOnly: false,
+                readOnly: isLotPrimerLocked,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (_) {
                   final h = double.tryParse(_primerHbarController.text.trim());
@@ -7668,6 +7974,45 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  Widget _buildSampleLocationField({int flex = 3}) {
+    return _buildFlexibleField(
+      flex: flex,
+      label: 'Sampling Location',
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildDropdownField(
+              value: _locationController.text.isNotEmpty && _allSampleLocations.contains(_locationController.text)
+                  ? _locationController.text
+                  : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : ''),
+              items: _allSampleLocations,
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() => _locationController.text = v);
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 6.0),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0284C7).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6.0),
+              border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
+              tooltip: 'Admin: Add new sample location',
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+              onPressed: _showAddLocationDialog,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildConsolidatedRow2() {
     if (_testName == 'Waterproof Test') {
       return _buildFormRow([
@@ -7699,42 +8044,7 @@ class _EntryTabState extends State<EntryTab> {
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
           ),
         ),
-        _buildFlexibleField(
-          flex: 4,
-          label: 'Sampling Location',
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildDropdownField(
-                  value: _locationController.text.isNotEmpty && _allSampleLocations.contains(_locationController.text)
-                      ? _locationController.text
-                      : _allSampleLocations.first,
-                  items: _allSampleLocations,
-                  onChanged: (v) {
-                    if (v != null) {
-                      setState(() => _locationController.text = v);
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 6.0),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
-                  tooltip: 'Admin: Add new sample location',
-                  padding: const EdgeInsets.all(8),
-                  constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
-                  onPressed: _showAddLocationDialog,
-                ),
-              ),
-            ],
-          ),
-        ),
+        _buildSampleLocationField(flex: 4),
         _buildFlexibleField(
           flex: 3,
           label: 'Pressure (Bar) - Caliber Fixed',
@@ -7796,6 +8106,7 @@ class _EntryTabState extends State<EntryTab> {
             ],
           ),
         ),
+        _buildSampleLocationField(flex: 3),
         _buildFlexibleField(
           key: _distanceFieldKey,
           flex: 2,
@@ -7898,7 +8209,15 @@ class _EntryTabState extends State<EntryTab> {
                     : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
                 items: _propellantSuppliers,
                 onChanged: (v) {
-                  if (v != null) setState(() => _propellantSupplier = v);
+                  if (v != null) {
+                    setState(() {
+                      _propellantSupplier = v;
+                      final codes = _currentSupplierPropellantCodes;
+                      if (codes.isNotEmpty && codes.first != 'Other') {
+                        _propellantCodeController.text = codes.first;
+                      }
+                    });
+                  }
                 },
               ),
             ),
@@ -7907,10 +8226,10 @@ class _EntryTabState extends State<EntryTab> {
               label: 'Propellant Code',
               isRequired: true,
               child: _buildDropdownField(
-                value: _propellantCodes.contains(_propellantCodeController.text.trim())
+                value: _currentSupplierPropellantCodes.contains(_propellantCodeController.text.trim())
                     ? _propellantCodeController.text.trim()
-                    : _propellantCodes.first,
-                items: _propellantCodes,
+                    : (_currentSupplierPropellantCodes.isNotEmpty ? _currentSupplierPropellantCodes.first : 'Other'),
+                items: _currentSupplierPropellantCodes,
                 onChanged: (v) {
                   if (v != null && v != 'Other') {
                     setState(() => _propellantCodeController.text = v);
@@ -8004,7 +8323,7 @@ class _EntryTabState extends State<EntryTab> {
           ], lockSingleRow: true),
           const SizedBox(height: 14.0),
 
-          // EPVAT ROW 2: Barrel Serial No., GP6 (1) Chamber, GP6 (2) Port, Velocity distance, Quality status
+          // EPVAT ROW 2: Barrel Serial No., GP6 (1) Chamber, GP6 (2) Port, Velocity distance, Sampling location, Quality status
           _buildFormRow([
             _buildFlexibleField(
               key: _barrelFieldKey,
@@ -8101,6 +8420,7 @@ class _EntryTabState extends State<EntryTab> {
                   ],
                 ),
               ),
+            _buildSampleLocationField(flex: 3),
             _buildFlexibleField(
               key: _distanceFieldKey,
               flex: 2,
@@ -8154,6 +8474,7 @@ class _EntryTabState extends State<EntryTab> {
             },
           ),
         ),
+        _buildSampleLocationField(flex: 3),
         _buildFlexibleField(
           flex: 4,
           label: 'Temperature Evaluation Mode',
@@ -8208,6 +8529,7 @@ class _EntryTabState extends State<EntryTab> {
           },
         ),
       ),
+      _buildSampleLocationField(flex: 3),
       if (_testHasTemperatureEvaluation) ...[
         _buildFlexibleField(
           flex: 4,
@@ -8242,6 +8564,36 @@ class _EntryTabState extends State<EntryTab> {
       ],
       _buildQualityStatusField(flex: 3),
     ], lockSingleRow: true);
+  }
+
+  void _syncPrimerSensitivityMetrics(BallisticRecord match) {
+    _primerLotController.text = match.primerLot.isNotEmpty ? match.primerLot : match.lotNo;
+    _primerSupplier = match.primerSupplier;
+    _primerInsertionDepthController.text = match.primerInsertionDepth;
+    if (match.primerHbar.isNotEmpty) _primerHbarController.text = match.primerHbar;
+    if (match.primerSD.isNotEmpty) _primerSDController.text = match.primerSD;
+    if (match.primerAllFireH.isNotEmpty) {
+      _primerHbarPlus5SController.text = match.primerAllFireH;
+    } else {
+      final h = double.tryParse(_primerHbarController.text.trim());
+      final s = double.tryParse(_primerSDController.text.trim());
+      if (h != null && s != null) {
+        _primerHbarPlus5SController.text = (h + 5 * s).toStringAsFixed(2);
+      }
+    }
+    if (match.primerNoFireH.isNotEmpty) {
+      _primerHbarMinus2SController.text = match.primerNoFireH;
+    } else {
+      final h = double.tryParse(_primerHbarController.text.trim());
+      final s = double.tryParse(_primerSDController.text.trim());
+      if (h != null && s != null) {
+        _primerHbarMinus2SController.text = (h - 2 * s).toStringAsFixed(2);
+      }
+    }
+    if (match.produced > 0) _producedController.text = match.produced.toString();
+    if (match.defects >= 0) _primerMisfiresCountController.text = match.defects.toString();
+    if (match.status.isNotEmpty) _status = match.status;
+    if (match.samplingLocation.isNotEmpty) _locationController.text = match.samplingLocation;
   }
 
   Widget _buildComponentAndPrimerFieldsCard() {
@@ -8439,7 +8791,16 @@ class _EntryTabState extends State<EntryTab> {
                             : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
                         items: _propellantSuppliers,
                         onChanged: (v) {
-                          if (v != null) setState(() => _propellantSupplier = v);
+                          if (v != null) {
+                            setState(() {
+                              _propellantSupplier = v;
+                              final codes = _currentSupplierPropellantCodes;
+                              if (codes.isNotEmpty && codes.first != 'Other') {
+                                _propellantCodeController.text = codes.first;
+                              }
+                            });
+                            _scheduleAutoSave();
+                          }
                         },
                       ),
                     ),
@@ -8467,10 +8828,34 @@ class _EntryTabState extends State<EntryTab> {
                 flex: 1,
                 label: 'Powder Code',
                 isRequired: true,
-                child: _buildTextField(
-                  controller: _propellantCodeController,
-                  hint: 'Type powder code (e.g. D-073.4 or PB-540)',
-                  onChanged: (_) => _scheduleAutoSave(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDropdownField(
+                      value: _currentSupplierPropellantCodes.contains(_propellantCodeController.text.trim())
+                          ? _propellantCodeController.text.trim()
+                          : (_currentSupplierPropellantCodes.isNotEmpty ? _currentSupplierPropellantCodes.first : 'Other'),
+                      items: _currentSupplierPropellantCodes,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            if (v != 'Other') {
+                              _propellantCodeController.text = v;
+                            }
+                          });
+                          _scheduleAutoSave();
+                        }
+                      },
+                    ),
+                    if (_propellantCodeController.text.trim().isEmpty || !_currentSupplierPropellantCodes.contains(_propellantCodeController.text.trim()) || _propellantCodeController.text.trim() == 'Other') ...[
+                      const SizedBox(height: 6.0),
+                      _buildTextField(
+                        controller: _propellantCodeController,
+                        hint: 'Type custom powder code',
+                        onChanged: (_) => _scheduleAutoSave(),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               _buildFlexibleField(
@@ -8511,6 +8896,23 @@ class _EntryTabState extends State<EntryTab> {
           .toSet()
           .toList();
 
+      // Auto-synchronize first available lot if not yet selected
+      if (lotOptions.isNotEmpty && (_selectedComponentPrimerLot == null || _selectedComponentPrimerLot!.isEmpty || !lotOptions.contains(_selectedComponentPrimerLot))) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && lotOptions.isNotEmpty) {
+            final defaultLot = lotOptions.first;
+            setState(() {
+              _selectedComponentPrimerLot = defaultLot;
+              final match = matchingRecords.firstWhere(
+                (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == defaultLot,
+                orElse: () => matchingRecords.first,
+              );
+              _syncPrimerSensitivityMetrics(match);
+            });
+          }
+        });
+      }
+
       return Container(
         margin: const EdgeInsets.only(bottom: 20.0),
         padding: const EdgeInsets.all(16.0),
@@ -8534,7 +8936,7 @@ class _EntryTabState extends State<EntryTab> {
             ),
             const SizedBox(height: 6.0),
             const Text(
-              'Select the verified Primer Lot from the Component module. Supplier and average insertion depth will populate automatically for ammunition lot acceptance.',
+              'Select the verified Primer Lot from the Component module. All sensitivity metrics (H̄, S, H̄+5S, H̄-2S, Drop Weight, Quantity, Misfires, Supplier, and Depth) synchronize automatically and are locked for Lot Acceptance.',
               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
             ),
             const SizedBox(height: 14.0),
@@ -8574,13 +8976,11 @@ class _EntryTabState extends State<EntryTab> {
                       if (v != null) {
                         setState(() {
                           _selectedComponentPrimerLot = v;
-                          _primerLotController.text = v;
                           final match = matchingRecords.firstWhere(
                             (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == v,
                             orElse: () => matchingRecords.first,
                           );
-                          _primerSupplier = match.primerSupplier;
-                          _primerInsertionDepthController.text = match.primerInsertionDepth;
+                          _syncPrimerSensitivityMetrics(match);
                         });
                       }
                     },
@@ -8591,7 +8991,7 @@ class _EntryTabState extends State<EntryTab> {
             _buildFormRow([
               _buildFlexibleField(
                 flex: 1,
-                label: 'Primer Lot (Read-Only)',
+                label: 'Primer Lot (Synchronized & Read-Only)',
                 child: _buildTextField(
                   controller: _primerLotController,
                   readOnly: true,

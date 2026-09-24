@@ -73,23 +73,51 @@ class _DashboardTabState extends State<DashboardTab> {
   Widget build(BuildContext context) {
     // Extract unique lots and calibers from widget.records
     final uniqueLots = widget.records
-        .map((r) => r.lotNo.trim())
+        .expand((r) => [r.lotNo.trim(), r.primerLot.trim(), r.propellantLot.trim(), r.hopperNo.trim()])
         .where((l) => l.isNotEmpty)
         .toSet()
         .toList();
     uniqueLots.sort();
 
-    final uniqueCalibers = {
-      ...widget.records.map((r) => r.caliber).where((c) => c.isNotEmpty),
-      ...allCaliberSpecifications,
-    }.toList();
+    final uniqueCalibers = widget.currentModule == 'Component Test'
+        ? widget.records.map((r) => r.caliber.trim()).where((c) => c.isNotEmpty).toSet().toList()
+        : {
+            ...widget.records.map((r) => r.caliber).where((c) => c.isNotEmpty),
+            ...allCaliberSpecifications,
+          }.toList();
+    if (widget.currentModule == 'Component Test' && uniqueCalibers.isEmpty) {
+      uniqueCalibers.addAll(['9x19 mm', '5.56x45 mm', '7.62x39 mm', '7.62x51 mm', '12.7x99 mm']);
+    }
+    uniqueCalibers.sort();
+
+    final List<String> availableTestTypes = widget.currentModule == 'Component Test'
+        ? (() {
+            final fromRecords = widget.records.map((r) => r.testName.trim()).where((t) => t.isNotEmpty).toSet().toList();
+            if (fromRecords.isNotEmpty) {
+              fromRecords.sort();
+              return fromRecords;
+            }
+            return ['Primer Sensitivity Test', 'Propellant Test'];
+          })()
+        : [
+            'EPVAT test',
+            'Accuracy Test',
+            'Function Test',
+            'Waterproof Test',
+            'Residual Stress Test',
+            'Firing Rate Cycle Test',
+            'Terminal Effect Test',
+          ];
 
     // Dynamically adjust dropdown selections if values are no longer in list
     if (_selectedLot != 'Overall' && !uniqueLots.contains(_selectedLot)) {
       _selectedLot = 'Overall';
     }
-    if (_selectedCaliber != 'All' && !allCaliberSpecifications.contains(_selectedCaliber)) {
+    if (_selectedCaliber != 'All' && !uniqueCalibers.contains(_selectedCaliber)) {
       _selectedCaliber = 'All';
+    }
+    if (_selectedTestName != 'All' && !availableTestTypes.contains(_selectedTestName)) {
+      _selectedTestName = 'All';
     }
 
     const timeOptions = [
@@ -161,11 +189,14 @@ class _DashboardTabState extends State<DashboardTab> {
       }).toList();
     }
 
-    // 3. Lot Filter (Only for Lot Acceptance)
-    if (widget.currentModule == 'Lot Acceptance Test') {
-      if (_selectedLot != 'Overall') {
-        filtered = filtered.where((r) => r.lotNo == _selectedLot).toList();
-      }
+    // 3. Lot Filter
+    if (_selectedLot != 'Overall') {
+      filtered = filtered.where((r) =>
+        r.lotNo.trim() == _selectedLot ||
+        r.primerLot.trim() == _selectedLot ||
+        r.propellantLot.trim() == _selectedLot ||
+        r.hopperNo.trim() == _selectedLot
+      ).toList();
     }
 
     // 4. Caliber Filter
@@ -260,7 +291,9 @@ class _DashboardTabState extends State<DashboardTab> {
                     Text(
                       widget.currentModule == 'Daily Test'
                           ? 'Daily Test Dashboard'
-                          : 'Lot Acceptance Dashboard',
+                          : (widget.currentModule == 'Component Test'
+                              ? 'Component Test Dashboard'
+                              : 'Lot Acceptance Dashboard'),
                       style: const TextStyle(
                         fontSize: 26.0,
                         fontWeight: FontWeight.bold,
@@ -361,15 +394,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   Wrap(
                     spacing: 8.0,
                     runSpacing: 8.0,
-                    children: [
-                      'EPVAT test',
-                      'Accuracy Test',
-                      'Function Test',
-                      'Waterproof Test',
-                      'Residual Stress Test',
-                      'Firing Rate Cycle Test',
-                      'Terminal Effect Test',
-                    ].map((t) {
+                    children: availableTestTypes.map((t) {
                       final isSelected = _selectedTestName == t;
                       return ChoiceChip(
                         label: Text(t),
@@ -538,9 +563,9 @@ class _DashboardTabState extends State<DashboardTab> {
                       ),
                     ],
                   ),
-                if (widget.currentModule == 'Lot Acceptance Test')
+                if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Component Test')
                   _buildFilterDropdown(
-                    label: 'LOT NUMBER',
+                    label: widget.currentModule == 'Component Test' ? 'COMPONENT LOT NUMBER' : 'LOT NUMBER',
                     value: _selectedLot,
                     items: ['Overall', ...uniqueLots],
                     onChanged: (val) {
@@ -552,7 +577,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 _buildFilterDropdown(
                   label: 'CALIBER SPECIFICATION',
                   value: _selectedCaliber,
-                  items: ['All', ...allCaliberSpecifications],
+                  items: ['All', ...uniqueCalibers],
                   onChanged: (val) {
                     setState(() {
                       _selectedCaliber = val!;
@@ -562,7 +587,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 _buildFilterDropdown(
                   label: 'TEST TYPE',
                   value: _selectedTestName,
-                  items: ['All', 'Waterproof Test', 'Extraction Force Test', 'Accuracy Test', 'EPVAT test', 'Function Test', 'Residual Stress Test', 'Terminal Effect Test', 'Firing Rate Cycle Test'],
+                  items: ['All', ...availableTestTypes],
                   onChanged: (val) {
                     setState(() {
                       _selectedTestName = val!;
@@ -630,9 +655,13 @@ class _DashboardTabState extends State<DashboardTab> {
                     icon: Icons.trending_up,
                   ),
                   _buildKpiCard(
-                    title: 'LOT ACCEPTANCE TESTS',
-                    value: '$lotAcceptanceTestsCount Tests',
-                    desc: '$lotAcceptanceLotsCount unique lots tested',
+                    title: widget.currentModule == 'Component Test' ? 'COMPONENT TESTS' : 'LOT ACCEPTANCE TESTS',
+                    value: widget.currentModule == 'Component Test'
+                        ? '${widget.records.length} Tests'
+                        : '$lotAcceptanceTestsCount Tests',
+                    desc: widget.currentModule == 'Component Test'
+                        ? '${uniqueLots.length} unique component lots'
+                        : '$lotAcceptanceLotsCount unique lots tested',
                     accentColor: const Color(0xFF0284C7),
                     width: cardWidth,
                     icon: Icons.fact_check_outlined,

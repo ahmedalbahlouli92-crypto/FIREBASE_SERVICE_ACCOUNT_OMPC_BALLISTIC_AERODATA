@@ -1207,37 +1207,39 @@ class BallisticRecord {
     final Map<String, BallisticRecord> seenGeneral = {};
 
     for (final r in records) {
+      final isDaily = r.module == 'Daily Test' || r.module == 'Daily Test Report';
       final isEpvat = r.testName.contains('EPVAT');
       final isFunc = r.testName.toLowerCase().contains('function');
 
       // Group key: lotNo + date (first 10 chars of timestamp) + caliber
       final dateKey = r.timestamp.length >= 10 ? r.timestamp.substring(0, 10) : r.timestamp;
 
-      if (isEpvat && (r.notes.contains('Multi-Temperature Consolidated') || r.cartridgeTemp.contains(','))) {
+      if (!isDaily && isEpvat && (r.notes.contains('Multi-Temperature Consolidated') || r.cartridgeTemp.contains(','))) {
         // Already unified EPVAT - deduplicate using seenGeneral
         final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
         final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : 'EPVAT_${r.module}_${r.lotNo}_${r.caliber}_$cleanTs';
         if (!seenGeneral.containsKey(key)) {
           seenGeneral[key] = r;
         }
-      } else if (isEpvat && r.cartridgeTemp.isNotEmpty) {
-        // Individual temp record to consolidate
+      } else if (!isDaily && isEpvat && r.cartridgeTemp.isNotEmpty) {
+        // Individual temp record to consolidate in Lot Acceptance
         final key = '${r.lotNo}_${r.caliber}_$dateKey';
         epvatGroups.putIfAbsent(key, () => []).add(r);
-      } else if (isFunc && (r.notes.contains('Consolidated Multi-Temperature') || r.cartridgeTemp.contains(','))) {
+      } else if (!isDaily && isFunc && (r.notes.contains('Consolidated Multi-Temperature') || r.cartridgeTemp.contains(','))) {
         // Already unified Function - deduplicate using seenGeneral
         final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
         final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : 'FUNC_${r.module}_${r.lotNo}_${r.caliber}_$cleanTs';
         if (!seenGeneral.containsKey(key)) {
           seenGeneral[key] = r;
         }
-      } else if (isFunc && r.cartridgeTemp.isNotEmpty) {
+      } else if (!isDaily && isFunc && r.cartridgeTemp.isNotEmpty) {
         final key = '${r.lotNo}_${r.caliber}_$dateKey';
         funcGroups.putIfAbsent(key, () => []).add(r);
       } else {
-        // Deduplicate general test records (Accuracy, Waterproof, Component, etc.)
+        // Deduplicate general test records and Daily Test records
         final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
-        final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : '${r.module}_${r.testName}_${r.lotNo}_${r.caliber}_$cleanTs';
+        final lotOrHop = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : 'NOLOT');
+        final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : '${r.module}_${r.testName}_${lotOrHop}_${r.caliber}_$cleanTs';
         if (!seenGeneral.containsKey(key)) {
           seenGeneral[key] = r;
         } else {
@@ -1311,9 +1313,10 @@ class BallisticRecord {
     final Map<String, BallisticRecord> finalMap = {};
     for (var r in result) {
       final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
+      final lotOrHop = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : 'NOLOT');
       final key = (r.id != null && r.id!.isNotEmpty)
           ? r.id!
-          : '${r.module}_${r.testName}_${r.lotNo}_${r.caliber}_$cleanTs';
+          : '${r.module}_${r.testName}_${lotOrHop}_${r.caliber}_$cleanTs';
       if (!finalMap.containsKey(key)) {
         finalMap[key] = r;
       } else {

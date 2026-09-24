@@ -311,7 +311,7 @@ class SupabaseService {
   }
 
   /// Delete a record from Supabase by its id or attributes
-  static Future<bool> deleteRecord(String id, {String? module, String? testName, String? timestamp, String? lotNo}) async {
+  static Future<bool> deleteRecord(String id, {String? module, String? testName, String? timestamp, String? lotNo, String? hopperNo}) async {
     if (!_initialized) {
       final ok = await ensureInitialized();
       if (!ok) return false;
@@ -324,8 +324,13 @@ class SupabaseService {
             if (id.isNotEmpty) {
               await client.from(dedicatedTable).delete().eq('id', id);
             }
-            if (timestamp != null && lotNo != null && timestamp.isNotEmpty && lotNo.isNotEmpty) {
-              await client.from(dedicatedTable).delete().match({'timestamp': timestamp, 'lot_no': lotNo});
+            if (timestamp != null && timestamp.isNotEmpty) {
+              if (lotNo != null && lotNo.isNotEmpty) {
+                await client.from(dedicatedTable).delete().match({'timestamp': timestamp, 'lot_no': lotNo});
+              }
+              if (hopperNo != null && hopperNo.isNotEmpty) {
+                await client.from(dedicatedTable).delete().match({'timestamp': timestamp, 'hopper_no': hopperNo});
+              }
             }
           } catch (_) {}
         }
@@ -337,16 +342,133 @@ class SupabaseService {
             .delete()
             .eq('id', id);
       }
-      if (timestamp != null && lotNo != null && timestamp.isNotEmpty && lotNo.isNotEmpty) {
-        await client
-            .from(tableName)
-            .delete()
-            .match({'timestamp': timestamp, 'lot_no': lotNo});
+      if (timestamp != null && timestamp.isNotEmpty) {
+        if (lotNo != null && lotNo.isNotEmpty) {
+          await client
+              .from(tableName)
+              .delete()
+              .match({'timestamp': timestamp, 'lot_no': lotNo});
+        }
+        if (hopperNo != null && hopperNo.isNotEmpty) {
+          await client
+              .from(tableName)
+              .delete()
+              .match({'timestamp': timestamp, 'hopper_no': hopperNo});
+        }
       }
       return true;
     } catch (e) {
       debugPrint('Error deleting record from Supabase: $e');
       return false;
+    }
+  }
+
+  /// Fetch set of deleted record IDs and signatures from cloud
+  static Future<Set<String>> fetchDeletedRecordsFromCloud() async {
+    final deleted = <String>{};
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return deleted;
+    }
+
+    // 1. Try dedicated admin_control table
+    try {
+      final res = await client
+          .from('admin_control')
+          .select('config_value')
+          .eq('config_key', 'DELETED_RECORDS')
+          .limit(1);
+      if (res.isNotEmpty && res[0]['config_value'] != null) {
+        final val = res[0]['config_value'];
+        if (val is List) {
+          deleted.addAll(val.map((e) => e.toString()));
+        } else if (val is String && val.isNotEmpty) {
+          final decoded = jsonDecode(val);
+          if (decoded is List) {
+            deleted.addAll(decoded.map((e) => e.toString()));
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Try master ballistic_records (SYSTEM_CONFIG -> DELETED_RECORDS)
+    try {
+      final res = await client
+          .from(tableName)
+          .select('notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'DELETED_RECORDS')
+          .order('created_at', ascending: false)
+          .limit(1);
+      if (res.isNotEmpty && res[0]['notes'] != null) {
+        final notesStr = res[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          final decoded = jsonDecode(notesStr);
+          if (decoded is List) {
+            deleted.addAll(decoded.map((e) => e.toString()));
+          }
+        }
+      }
+    } catch (_) {}
+
+    return deleted;
+  }
+
+  /// Record a deleted record's ID and signature to cloud so other clients never resurrect it
+  static Future<void> recordCloudDeletion({required String id, required String signature, String? signature2}) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return;
+    }
+    try {
+      final existing = await fetchDeletedRecordsFromCloud();
+      if (id.isNotEmpty) existing.add(id);
+      if (signature.isNotEmpty) existing.add(signature);
+      if (signature2 != null && signature2.isNotEmpty) existing.add(signature2);
+
+      // Keep most recent 2000 deletions to avoid unbounded growth
+      final listToSave = existing.toList();
+      if (listToSave.length > 2000) {
+        listToSave.removeRange(0, listToSave.length - 2000);
+      }
+
+      // 1. Save to admin_control table
+      try {
+        await client.from('admin_control').upsert({
+          'config_key': 'DELETED_RECORDS',
+          'config_value': listToSave,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (_) {}
+
+      // 2. Save to SYSTEM_CONFIG in ballistic_records
+      try {
+        final jsonStr = jsonEncode(listToSave);
+        final existingRow = await client
+            .from(tableName)
+            .select('id')
+            .eq('module', 'SYSTEM_CONFIG')
+            .eq('test_name', 'DELETED_RECORDS')
+            .limit(1);
+
+        if (existingRow.isNotEmpty) {
+          await client.from(tableName).update({
+            'notes': jsonStr,
+            'timestamp': DateTime.now().toIso8601String(),
+          }).eq('id', existingRow[0]['id']);
+        } else {
+          await client.from(tableName).insert({
+            'module': 'SYSTEM_CONFIG',
+            'test_name': 'DELETED_RECORDS',
+            'operators': 'System',
+            'notes': jsonStr,
+            'status': 'ACTIVE',
+            'timestamp': DateTime.now().toIso8601String(),
+          });
+        }
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('Error recording cloud deletion: $e');
     }
   }
 
@@ -404,6 +526,12 @@ class SupabaseService {
         } else if (isLot) {
           try {
             await client.from(tableName).delete().eq('module', 'Lot Acceptance Test');
+          } catch (_) {
+            await client.from(tableName).delete().neq('created_at', '1970-01-01T00:00:00Z');
+          }
+        } else if (isComponent) {
+          try {
+            await client.from(tableName).delete().eq('module', 'Component Test');
           } catch (_) {
             await client.from(tableName).delete().neq('created_at', '1970-01-01T00:00:00Z');
           }

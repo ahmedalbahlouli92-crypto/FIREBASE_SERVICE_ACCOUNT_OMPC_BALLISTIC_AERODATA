@@ -60,6 +60,8 @@ class StorageService {
     return '${prefix}_$year-$month-$day.csv';
   }
 
+  static const String fullCsvHeaders = 'Timestamp,Operators,Shift,Caliber Specification,Projectile/Lot Number,Quantity Tested,Defects Found,Remarks,Quality Status,Test Name,Pressure (Bar),Viscosity,Time of Test,Sampling Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Hopper No,Box No,Requirement,Barrel S.N,Barrel Type,Distance,Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Mean Radius,Extraction Force Type,Extraction Force Rounds,Cartridge Temp,EPVAT Pressure Type,EPVAT Pressure Unit,EPVAT Pressure Rounds,EPVAT Mean Pressure,EPVAT Max Pressure,EPVAT Min Pressure,EPVAT Range Pressure,EPVAT SD Pressure,EPVAT P2 Mean Pressure,EPVAT P2 Max Pressure,EPVAT P2 Min Pressure,EPVAT P2 Range Pressure,EPVAT P2 SD Pressure,EPVAT P2 Pressure Rounds,EPVAT Velocity Rounds,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Room Temp,Sensor 1,Sensor 2,Cyclic Weapon,Cyclic Ammo,Cyclic Val,Cyclic Min,Cyclic Max,Term Hole,Term Steel,Term Alum,Term Vel,Func L1,Func L2,Func L3,Func L4,Att Name,Att Base64,Func Defect Details,Action Time Mean,Action Time Min,Action Time Max,Action Time Range,Action Time SD,Action Time Rounds,Primer Drop Heights,Primer Fire Results,Primer Hbar,Primer SD,Primer All Fire H,Primer No Fire H,Primer Lot,Primer Supplier,Primer Insertion Depth,Propellant Supplier,Propellant Code,Propellant Lot,Propellant Charge,Is Retest,Retest Timestamp,Retest Operator,Retest Notes,Retest Status,Original Status,Record ID\n';
+
   // Ensure daily CSV file exists with standard quality control headers
   Future<dynamic> ensureDailyFileExists({String module = 'Lot Acceptance Test'}) async {
     if (kIsWeb) return null;
@@ -68,10 +70,183 @@ class StorageService {
     final file = File('$dirPath/$fileName');
     
     if (!await file.exists()) {
-      const headers = 'Timestamp,Operators,Shift,Caliber Specification,Projectile/Lot Number,Quantity Tested,Defects Found,Remarks,Quality Status,Test Name,Pressure (Bar),Viscosity,Time of Test,Sampling Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Hopper No,Box No,Requirement,Barrel S.N,Barrel Type,Distance,Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Mean Radius,Extraction Force Type,Extraction Force Rounds,Cartridge Temp,EPVAT Pressure Type,EPVAT Pressure Unit,EPVAT Pressure Rounds,EPVAT Mean Pressure,EPVAT Max Pressure,EPVAT Min Pressure,EPVAT Range Pressure,EPVAT SD Pressure,EPVAT P2 Mean Pressure,EPVAT P2 Max Pressure,EPVAT P2 Min Pressure,EPVAT P2 Range Pressure,EPVAT P2 SD Pressure,EPVAT P2 Pressure Rounds,EPVAT Velocity Rounds,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Room Temp,Sensor 1,Sensor 2,Cyclic Weapon,Cyclic Ammo,Cyclic Val,Cyclic Min,Cyclic Max,Term Hole,Term Steel,Term Alum,Term Vel,Func L1,Func L2,Func L3,Func L4,Att Name,Att Base64,Func Defect Details,Action Time Mean,Action Time Min,Action Time Max,Action Time Range,Action Time SD,Action Time Rounds,Primer Drop Heights,Primer Fire Results,Primer Hbar,Primer SD,Primer All Fire H,Primer No Fire H,Primer Lot,Primer Supplier,Primer Insertion Depth,Propellant Supplier,Propellant Code,Propellant Lot,Propellant Charge\n';
-      await file.writeAsString(headers, mode: FileMode.write, flush: true);
+      await file.writeAsString(fullCsvHeaders, mode: FileMode.write, flush: true);
     }
     return file;
+  }
+
+  // --- Offline Pending Sync & Tombstone Tracking ---
+  Future<Set<String>> _getPendingSyncIds() async {
+    if (kIsWeb) {
+      return getWebPendingSyncIds();
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/pending_sync.json');
+      if (!await file.exists()) return {};
+      final content = await file.readAsString();
+      final decoded = jsonDecode(content);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toSet();
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _addPendingSyncId(String id) async {
+    final cleanId = id.trim();
+    if (cleanId.isEmpty) return;
+    final current = await _getPendingSyncIds();
+    current.add(cleanId);
+    if (kIsWeb) {
+      saveWebPendingSyncIds(current);
+      return;
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/pending_sync.json');
+      await file.writeAsString(jsonEncode(current.toList()), mode: FileMode.write, flush: true);
+    } catch (_) {}
+  }
+
+  Future<void> _removePendingSyncId(String id) async {
+    final cleanId = id.trim();
+    if (cleanId.isEmpty) return;
+    final current = await _getPendingSyncIds();
+    if (current.remove(cleanId)) {
+      if (kIsWeb) {
+        saveWebPendingSyncIds(current);
+        return;
+      }
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/pending_sync.json');
+        await file.writeAsString(jsonEncode(current.toList()), mode: FileMode.write, flush: true);
+      } catch (_) {}
+    }
+  }
+
+  Future<Set<String>> _getAllDeletedKeys() async {
+    final Set<String> keys = {};
+    if (kIsWeb) {
+      keys.addAll(getWebDeletedRecords());
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/deleted_records.json');
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          final decoded = jsonDecode(content);
+          if (decoded is List) {
+            keys.addAll(decoded.map((e) => e.toString()));
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (SupabaseService.isInitialized) {
+      try {
+        final cloudDeleted = await SupabaseService.fetchDeletedRecordsFromCloud();
+        keys.addAll(cloudDeleted);
+        if (kIsWeb) {
+          saveWebDeletedRecords(keys);
+        } else {
+          final dirPath = await getDirectoryPath();
+          final file = File('$dirPath/deleted_records.json');
+          await file.writeAsString(jsonEncode(keys.toList()), mode: FileMode.write, flush: true);
+        }
+      } catch (_) {}
+    }
+    return keys;
+  }
+
+  Future<void> _addDeletedKeys(List<String> newKeys) async {
+    final validKeys = newKeys.map((k) => k.trim()).where((k) => k.isNotEmpty).toList();
+    if (validKeys.isEmpty) return;
+
+    final keys = await _getAllDeletedKeys();
+    keys.addAll(validKeys);
+
+    if (kIsWeb) {
+      saveWebDeletedRecords(keys);
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/deleted_records.json');
+        await file.writeAsString(jsonEncode(keys.toList()), mode: FileMode.write, flush: true);
+      } catch (_) {}
+    }
+  }
+
+  bool _isRecordDeleted(BallisticRecord r, Set<String> deletedKeys) {
+    if (deletedKeys.isEmpty) return false;
+    if (r.id != null && r.id!.isNotEmpty && deletedKeys.contains(r.id!.trim())) {
+      return true;
+    }
+    final sig1 = '${r.timestamp.trim()}|${r.lotNo.trim()}|${r.testName.trim()}';
+    if (deletedKeys.contains(sig1)) return true;
+    if (r.hopperNo.trim().isNotEmpty) {
+      final sig2 = '${r.timestamp.trim()}|${r.hopperNo.trim()}|${r.testName.trim()}';
+      if (deletedKeys.contains(sig2)) return true;
+    }
+    return false;
+  }
+
+  Future<void> _purgeRecordFromAllLocalCsvFiles(BallisticRecord record, String cleanModule) async {
+    if (kIsWeb) return;
+    try {
+      final dirPath = await getDirectoryPath();
+      final dir = Directory(dirPath);
+      if (!await dir.exists()) return;
+
+      final targetId = (record.id ?? '').trim();
+      final targetTs = record.timestamp.trim();
+      final targetLot = record.lotNo.trim();
+      final targetHop = record.hopperNo.trim();
+      final targetTest = record.testName.trim();
+      final targetCal = record.caliber.trim();
+
+      final entities = dir.listSync();
+      for (final entity in entities) {
+        if (entity is File && entity.path.endsWith('.csv')) {
+          try {
+            final lines = await entity.readAsLines();
+            if (lines.length <= 1) continue;
+            bool modified = false;
+            final newLines = <String>[lines.first];
+            for (int i = 1; i < lines.length; i++) {
+              final line = lines[i].trim();
+              if (line.isEmpty) continue;
+              try {
+                final r = BallisticRecord.fromCsvRow(line);
+                final idMatch = targetId.isNotEmpty && r.id != null && r.id!.trim() == targetId;
+                final rTs = r.timestamp.trim();
+                final rLot = r.lotNo.trim();
+                final rHop = r.hopperNo.trim();
+                final rTest = r.testName.trim();
+                final rCal = r.caliber.trim();
+                final attrMatch = rTest == targetTest &&
+                    rCal == targetCal &&
+                    (rTs == targetTs || rTs.replaceAll('T', ' ').split('.').first == targetTs.replaceAll('T', ' ').split('.').first) &&
+                    (rLot == targetLot || (targetHop.isNotEmpty && rHop == targetHop));
+                if (idMatch || attrMatch) {
+                  modified = true;
+                  continue;
+                }
+              } catch (_) {}
+              newLines.add(lines[i]);
+            }
+            if (modified) {
+              await entity.writeAsString('${newLines.join('\n')}\n', mode: FileMode.write, flush: true);
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      print("Error purging record from local CSV files: $e");
+    }
   }
 
   // Append new ballistic test log entry to Supabase and local cache
@@ -81,6 +256,9 @@ class StorageService {
         : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
     final String assignedId = (record.id != null && record.id!.isNotEmpty) ? record.id! : BallisticRecord.generateUuid();
     BallisticRecord recordToSave = record.copyWith(id: assignedId, module: cleanModule);
+
+    // Track as pending sync until confirmed by cloud
+    await _addPendingSyncId(assignedId);
 
     // 1. Immediate local persistence (guarantees record is saved even if offline)
     if (kIsWeb) {
@@ -99,23 +277,26 @@ class StorageService {
     if (SupabaseService.isInitialized) {
       try {
         final inserted = await SupabaseService.insertRecord(recordToSave, module: cleanModule);
-        if (inserted != null && inserted.id != null && inserted.id!.isNotEmpty) {
-          recordToSave = inserted;
-          if (kIsWeb) {
-            // Update the locally cached record with its assigned Supabase UUID
-            final webRecords = getWebRecords(cleanModule);
-            if (webRecords.isNotEmpty) {
-              final lastIdx = webRecords.length - 1;
-              if (webRecords[lastIdx].timestamp == recordToSave.timestamp &&
-                  webRecords[lastIdx].lotNo == recordToSave.lotNo) {
-                webRecords[lastIdx] = recordToSave;
-                overwriteWebRecords(webRecords, cleanModule);
+        if (inserted != null) {
+          // Cloud confirmed insert: remove from pending sync
+          await _removePendingSyncId(assignedId);
+          if (inserted.id != null && inserted.id!.isNotEmpty) {
+            recordToSave = inserted;
+            if (kIsWeb) {
+              final webRecords = getWebRecords(cleanModule);
+              if (webRecords.isNotEmpty) {
+                final lastIdx = webRecords.length - 1;
+                if (webRecords[lastIdx].timestamp == recordToSave.timestamp &&
+                    webRecords[lastIdx].lotNo == recordToSave.lotNo) {
+                  webRecords[lastIdx] = recordToSave;
+                  overwriteWebRecords(webRecords, cleanModule);
+                }
               }
             }
           }
         }
       } catch (e) {
-        print("Supabase save error (saved to local cache): $e");
+        print("Supabase save error (saved to local cache, will sync later): $e");
       }
     }
   }
@@ -146,10 +327,21 @@ class StorageService {
                 final line = lines[i].trim();
                 if (line.isNotEmpty) {
                   try {
-                    final r = BallisticRecord.fromCsvRow(line);
-                    if (isDaily) {
-                      if (r.module == 'Daily Test') records.add(r);
-                    } else if (isComponent) {
+                    BallisticRecord r = BallisticRecord.fromCsvRow(line);
+                    if (fileName.startsWith('daily_test_report') || isDaily) {
+                      if (r.module.isEmpty || r.module == 'Lot Acceptance Test') {
+                        r = r.copyWith(module: 'Daily Test');
+                      }
+                      if (r.module == 'Daily Test' || r.module == 'Daily Test Report') {
+                        if (r.hopperNo.isEmpty && r.lotNo.isNotEmpty) {
+                          r = r.copyWith(hopperNo: r.lotNo);
+                        }
+                        records.add(r);
+                      }
+                    } else if (fileName.startsWith('component_test_report') || isComponent) {
+                      if (r.module.isEmpty || r.module == 'Lot Acceptance Test') {
+                        r = r.copyWith(module: 'Component Test');
+                      }
                       if (r.module == 'Component Test') records.add(r);
                     } else {
                       if (r.module.isEmpty || r.module == 'Lot Acceptance Test') records.add(r);
@@ -179,41 +371,77 @@ class StorageService {
     // Ensure Supabase is initialized
     await SupabaseService.ensureInitialized();
 
+    // Retrieve active deleted keys / tombstones (cloud + local)
+    final deletedKeys = await _getAllDeletedKeys();
+
     // 1. Attempt to fetch from Supabase Cloud Database
     if (SupabaseService.isInitialized) {
       try {
         final cloudRecords = await SupabaseService.fetchRecords(module: cleanModule);
-        final filtered = cloudRecords.where((r) {
+        final filteredCloud = cloudRecords.where((r) {
+          if (_isRecordDeleted(r, deletedKeys)) return false;
           if (isDaily) {
-            return r.module == 'Daily Test';
+            return r.module == 'Daily Test' || r.module == 'Daily Test Report';
           } else if (isComponent) {
             return r.module == 'Component Test';
           } else {
             return r.module.isEmpty || r.module == 'Lot Acceptance Test';
           }
+        }).map((r) {
+          if (isDaily && r.hopperNo.isEmpty && r.lotNo.isNotEmpty) {
+            return r.copyWith(hopperNo: r.lotNo, module: 'Daily Test');
+          }
+          return r;
         }).toList();
 
-        // Merge with any locally cached records (web or desktop CSV)
-        final List<BallisticRecord> localRecords = kIsWeb
+        // Merge with locally cached records (web or desktop CSV)
+        final List<BallisticRecord> rawLocal = kIsWeb
             ? getWebRecords(cleanModule)
             : await _loadAllLocalCsvRecords(cleanModule);
 
-        final combined = <BallisticRecord>[...filtered];
+        final pendingSyncIds = await _getPendingSyncIds();
+        final combined = <BallisticRecord>[...filteredCloud];
         final unsynced = <BallisticRecord>[];
+        final recordsToPurgeLocally = <BallisticRecord>[];
 
-        for (final local in localRecords) {
-          final idx = combined.indexWhere((c) =>
-            (c.id != null && c.id!.isNotEmpty && local.id != null && local.id!.isNotEmpty && c.id == local.id) ||
-            (c.lotNo.trim() == local.lotNo.trim() &&
-             c.testName.trim() == local.testName.trim() &&
-             c.caliber.trim() == local.caliber.trim() &&
-             c.produced == local.produced &&
-             (c.timestamp == local.timestamp ||
-              c.timestamp.replaceAll('T', ' ').split('.').first.trim() == local.timestamp.replaceAll('T', ' ').split('.').first.trim()))
-          );
+        for (final local in rawLocal) {
+          if (_isRecordDeleted(local, deletedKeys)) {
+            recordsToPurgeLocally.add(local);
+            continue;
+          }
+
+          final idx = combined.indexWhere((c) {
+            if (c.id != null && c.id!.isNotEmpty && local.id != null && local.id!.isNotEmpty && c.id == local.id) {
+              return true;
+            }
+            final matchTest = c.testName.trim() == local.testName.trim();
+            final matchCal = c.caliber.trim() == local.caliber.trim();
+            final matchLot = c.lotNo.trim().isNotEmpty && local.lotNo.trim().isNotEmpty && c.lotNo.trim() == local.lotNo.trim();
+            final matchHop = c.hopperNo.trim().isNotEmpty && local.hopperNo.trim().isNotEmpty && c.hopperNo.trim() == local.hopperNo.trim();
+            final matchTs = (c.timestamp == local.timestamp ||
+              c.timestamp.replaceAll('T', ' ').split('.').first.trim() == local.timestamp.replaceAll('T', ' ').split('.').first.trim());
+            return matchTest && matchCal && matchTs && (matchLot || matchHop || (c.lotNo.trim() == local.lotNo.trim()));
+          });
+
           if (idx == -1) {
-            combined.add(local);
-            unsynced.add(local);
+            // Local record is NOT in cloud records.
+            // Check if it's an offline-created record waiting for its initial upload
+            final isOfflineCreated = (local.id != null && pendingSyncIds.contains(local.id)) ||
+                                     (local.id == null || local.id!.isEmpty);
+            if (isOfflineCreated) {
+              combined.add(local);
+              unsynced.add(local);
+            } else {
+              // The record was previously synced to the cloud and has now been deleted on another client!
+              // DO NOT resurrect it! Purge it from local cache.
+              recordsToPurgeLocally.add(local);
+              // Register tombstone so it stays deleted
+              _addDeletedKeys([
+                if (local.id != null && local.id!.isNotEmpty) local.id!,
+                '${local.timestamp.trim()}|${local.lotNo.trim()}|${local.testName.trim()}',
+                if (local.hopperNo.trim().isNotEmpty) '${local.timestamp.trim()}|${local.hopperNo.trim()}|${local.testName.trim()}',
+              ]);
+            }
           } else {
             // Local record has updates not yet reflected in cloud; keep local version
             final c = combined[idx];
@@ -227,7 +455,7 @@ class StorageService {
           }
         }
 
-        // Background sync: Upload unsynced or updated local records up to Supabase
+        // Background sync: Upload genuine unsynced offline records up to Supabase
         if (unsynced.isNotEmpty) {
           Future.microtask(() async {
             for (final rec in unsynced) {
@@ -237,8 +465,12 @@ class StorageService {
                   if (!ok) {
                     await SupabaseService.insertRecord(rec, module: cleanModule);
                   }
+                  await _removePendingSyncId(rec.id!);
                 } else {
-                  await SupabaseService.insertRecord(rec, module: cleanModule);
+                  final inserted = await SupabaseService.insertRecord(rec, module: cleanModule);
+                  if (inserted != null && inserted.id != null) {
+                    await _removePendingSyncId(inserted.id!);
+                  }
                 }
               } catch (e) {
                 print("Background sync upload failed: $e");
@@ -247,10 +479,12 @@ class StorageService {
           });
         }
 
+        // Clean local cache so deleted records never persist in localStorage or CSV
         if (kIsWeb) {
-          // Never overwrite non-empty local storage with an empty list
-          if (combined.isNotEmpty || localRecords.isEmpty) {
-            overwriteWebRecords(combined, cleanModule);
+          overwriteWebRecords(combined, cleanModule);
+        } else if (recordsToPurgeLocally.isNotEmpty) {
+          for (final purged in recordsToPurgeLocally) {
+            await _purgeRecordFromAllLocalCsvFiles(purged, cleanModule);
           }
         }
 
@@ -269,13 +503,19 @@ class StorageService {
       }
       final webList = getWebRecords(cleanModule);
       final filteredWeb = webList.where((r) {
+        if (_isRecordDeleted(r, deletedKeys)) return false;
         if (isDaily) {
-          return r.module == 'Daily Test';
+          return r.module == 'Daily Test' || r.module == 'Daily Test Report';
         } else if (isComponent) {
           return r.module == 'Component Test';
         } else {
           return r.module.isEmpty || r.module == 'Lot Acceptance Test';
         }
+      }).map((r) {
+        if (isDaily && r.hopperNo.isEmpty && r.lotNo.isNotEmpty) {
+          return r.copyWith(hopperNo: r.lotNo, module: 'Daily Test');
+        }
+        return r;
       }).toList();
       return BallisticRecord.consolidateRecords(filteredWeb);
     }
@@ -289,10 +529,22 @@ class StorageService {
         final line = lines[i].trim();
         if (line.isNotEmpty) {
           try {
-            final r = BallisticRecord.fromCsvRow(line);
+            BallisticRecord r = BallisticRecord.fromCsvRow(line);
+            if (_isRecordDeleted(r, deletedKeys)) continue;
             if (isDaily) {
-              if (r.module == 'Daily Test') records.add(r);
+              if (r.module.isEmpty || r.module == 'Lot Acceptance Test') {
+                r = r.copyWith(module: 'Daily Test');
+              }
+              if (r.module == 'Daily Test' || r.module == 'Daily Test Report') {
+                if (r.hopperNo.isEmpty && r.lotNo.isNotEmpty) {
+                  r = r.copyWith(hopperNo: r.lotNo);
+                }
+                records.add(r);
+              }
             } else if (isComponent) {
+              if (r.module.isEmpty || r.module == 'Lot Acceptance Test') {
+                r = r.copyWith(module: 'Component Test');
+              }
               if (r.module == 'Component Test') records.add(r);
             } else {
               if (r.module.isEmpty || r.module == 'Lot Acceptance Test') records.add(r);
@@ -309,17 +561,49 @@ class StorageService {
     }
   }
 
-  // Delete record from Supabase by id or attributes
+  // Delete record from Supabase and local cache with tombstone protection
   Future<void> deleteRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
+    final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
+        ? 'Daily Test'
+        : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
+
+    final recId = (record.id ?? '').trim();
+    final sig1 = '${record.timestamp.trim()}|${record.lotNo.trim()}|${record.testName.trim()}';
+    final sig2 = record.hopperNo.trim().isNotEmpty
+        ? '${record.timestamp.trim()}|${record.hopperNo.trim()}|${record.testName.trim()}'
+        : '';
+
+    // 1. Record tombstone locally and in cloud so no client ever resurrects this record
+    await _addDeletedKeys([if (recId.isNotEmpty) recId, sig1, if (sig2.isNotEmpty) sig2]);
+
+    // 2. Remove from pending sync if it was queued
+    if (recId.isNotEmpty) {
+      await _removePendingSyncId(recId);
+    }
+
+    // 3. Purge immediately from local storage
+    if (kIsWeb) {
+      deleteWebRecord(record, cleanModule);
+    } else {
+      await _purgeRecordFromAllLocalCsvFiles(record, cleanModule);
+    }
+
+    // 4. Delete from Supabase and record cloud tombstone
     await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         await SupabaseService.deleteRecord(
-          record.id ?? '',
-          module: module,
+          recId,
+          module: cleanModule,
           testName: record.testName,
           timestamp: record.timestamp,
           lotNo: record.lotNumber,
+          hopperNo: record.hopperNo,
+        );
+        await SupabaseService.recordCloudDeletion(
+          id: recId,
+          signature: sig1,
+          signature2: sig2.isNotEmpty ? sig2 : null,
         );
       } catch (e) {
         print("Supabase delete error: $e");
@@ -327,15 +611,18 @@ class StorageService {
     }
   }
 
-  // Overwrite daily CSV log with list of records (e.g. after deletion)
+  // Overwrite daily CSV log with list of records (e.g. after deletion or edit)
   Future<void> overwriteRecords(List<BallisticRecord> records, {String module = 'Lot Acceptance Test'}) async {
+    final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
+        ? 'Daily Test'
+        : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
+
     if (kIsWeb) {
-      overwriteWebRecords(records, module);
+      overwriteWebRecords(records, cleanModule);
       return;
     }
-    final file = await ensureDailyFileExists(module: module) as File;
-    const headers = 'Timestamp,Operators,Shift,Caliber Specification,Projectile/Lot Number,Quantity Tested,Defects Found,Remarks,Quality Status,Test Name,Pressure (Bar),Viscosity,Time of Test,Sampling Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Hopper No,Box No,Requirement,Barrel S.N,Barrel Type,Distance,Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Mean Radius,Extraction Force Type,Extraction Force Rounds,Cartridge Temp,EPVAT Pressure Type,EPVAT Pressure Unit,EPVAT Pressure Rounds,EPVAT Mean Pressure,EPVAT Max Pressure,EPVAT Min Pressure,EPVAT Range Pressure,EPVAT SD Pressure,EPVAT P2 Mean Pressure,EPVAT P2 Max Pressure,EPVAT P2 Min Pressure,EPVAT P2 Range Pressure,EPVAT P2 SD Pressure,EPVAT P2 Pressure Rounds,EPVAT Velocity Rounds,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Room Temp,Sensor 1,Sensor 2,Cyclic Weapon,Cyclic Ammo,Cyclic Val,Cyclic Min,Cyclic Max,Term Hole,Term Steel,Term Alum,Term Vel,Func L1,Func L2,Func L3,Func L4,Att Name,Att Base64,Func Defect Details,Action Time Mean,Action Time Min,Action Time Max,Action Time Range,Action Time SD,Action Time Rounds,Primer Drop Heights,Primer Fire Results,Primer Hbar,Primer SD,Primer All Fire H,Primer No Fire H,Primer Lot,Primer Supplier,Primer Insertion Depth,Propellant Supplier,Propellant Code,Propellant Lot\n';
-    final buffer = StringBuffer(headers);
+    final file = await ensureDailyFileExists(module: cleanModule) as File;
+    final buffer = StringBuffer(fullCsvHeaders);
     for (var r in records) {
       buffer.write(r.toCsvRow());
     }
@@ -356,19 +643,48 @@ class StorageService {
 
   // Clear all records for a specific module (e.g. Daily Test) locally and on Supabase
   Future<void> clearRecords({String module = 'Daily Test'}) async {
+    final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
+        ? 'Daily Test'
+        : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
+
     await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
-        await SupabaseService.clearAllRecords(module: module);
+        await SupabaseService.clearAllRecords(module: cleanModule);
       } catch (e) {
         print("Supabase clear records error: $e");
       }
     }
     if (kIsWeb) {
-      clearWebRecords(module);
+      clearWebRecords(cleanModule);
       return;
     }
-    await overwriteRecords([], module: module);
+
+    // On desktop/mobile: purge ALL CSV files matching this module prefix
+    try {
+      final dirPath = await getDirectoryPath();
+      final dir = Directory(dirPath);
+      if (await dir.exists()) {
+        final prefix = cleanModule == 'Lot Acceptance Test'
+            ? 'ballistic_report'
+            : (cleanModule == 'Component Test' ? 'component_test_report' : 'daily_test_report');
+        final entities = dir.listSync();
+        for (final entity in entities) {
+          if (entity is File && entity.path.endsWith('.csv')) {
+            final fileName = entity.uri.pathSegments.last;
+            if (fileName.startsWith(prefix)) {
+              try {
+                await entity.delete();
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print("Error clearing local CSV files: $e");
+    }
+
+    await ensureDailyFileExists(module: cleanModule);
   }
 
   // Open directory natively in Windows Explorer / Apple Finder

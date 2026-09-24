@@ -61,6 +61,10 @@ Comprehensive release incorporating 22 laboratory quality, testing, traceability
 12. **Supabase Cloud Schema & Synchronization**:
     - Extended database schema in \`supabase_tables_setup.sql\` with retest tracking columns across master and dedicated tables.
     - Resilient schema fallback in \`SupabaseService\` ensuring uninterrupted cloud logging.
+13. **Real-Time Cross-Platform Synchronization & Deletion Tombstones**:
+    - Synchronized test record deletions, edits, and entries seamlessly across Windows Desktop, Android APK, and Web.
+    - Cloud & local tombstone tracking (\`deleted_record_keys\`) prevents deleted records from ever resurrecting when cached clients reopen.
+    - Instant real-time WebSocket updates via Supabase Realtime (< 1s sync across all devices) with resilient polling fallback.
 `;
 
 function request(options, postData) {

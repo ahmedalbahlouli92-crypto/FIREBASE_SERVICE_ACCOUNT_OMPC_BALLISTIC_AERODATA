@@ -50,10 +50,66 @@ void overwriteWebRecords(List<BallisticRecord> records, String module) {
   _setItem(key, jsonEncode(csvRows));
 }
 
+void deleteWebRecord(BallisticRecord record, String module) {
+  final records = getWebRecords(module);
+  final targetId = (record.id ?? '').trim();
+  final targetTs = record.timestamp.trim();
+  final targetLot = record.lotNo.trim();
+  final targetHop = record.hopperNo.trim();
+  final targetTest = record.testName.trim();
+  final targetCal = record.caliber.trim();
+
+  records.removeWhere((r) {
+    final idMatch = targetId.isNotEmpty && r.id != null && r.id!.trim() == targetId;
+    final rTs = r.timestamp.trim();
+    final rLot = r.lotNo.trim();
+    final rHop = r.hopperNo.trim();
+    final rTest = r.testName.trim();
+    final rCal = r.caliber.trim();
+    final attrMatch = rTest == targetTest &&
+        rCal == targetCal &&
+        (rTs == targetTs || rTs.replaceAll('T', ' ').split('.').first == targetTs.replaceAll('T', ' ').split('.').first) &&
+        (rLot == targetLot || (targetHop.isNotEmpty && rHop == targetHop));
+    return idMatch || attrMatch;
+  });
+
+  overwriteWebRecords(records, module);
+}
+
 void clearWebRecords(String module) {
   final key = 'records_$module';
   _setItem(key, jsonEncode([]));
   _setItem('cleared_$module', 'true');
+}
+
+Set<String> getWebDeletedRecords() {
+  final data = _getItem('deleted_record_keys');
+  if (data == null || data.isEmpty) return {};
+  try {
+    final List<dynamic> decoded = jsonDecode(data);
+    return decoded.map((e) => e.toString()).toSet();
+  } catch (_) {
+    return {};
+  }
+}
+
+void saveWebDeletedRecords(Set<String> keys) {
+  _setItem('deleted_record_keys', jsonEncode(keys.toList()));
+}
+
+Set<String> getWebPendingSyncIds() {
+  final data = _getItem('pending_sync_ids');
+  if (data == null || data.isEmpty) return {};
+  try {
+    final List<dynamic> decoded = jsonDecode(data);
+    return decoded.map((e) => e.toString()).toSet();
+  } catch (_) {
+    return {};
+  }
+}
+
+void saveWebPendingSyncIds(Set<String> ids) {
+  _setItem('pending_sync_ids', jsonEncode(ids.toList()));
 }
 
 List<Map<String, String>> getWebOperators() {
