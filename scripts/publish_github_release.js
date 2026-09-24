@@ -19,52 +19,27 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.1 (22 Laboratory Enhancements, Executive Reports Tab & Retest Protocol)';
-const BODY = `## OMPC Ballistic AeroData v1.5.1
+const TAG_NAME = 'v1.5.2';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.2 (Unified Weapon, Transducer & Barrel Fleet Integration & Full Cross-Platform Sync)';
+const BODY = `## OMPC Ballistic AeroData v1.5.2
 
-Comprehensive release incorporating 22 laboratory quality, testing, traceability, and reporting enhancements:
+Release addressing complete equipment fleet synchronization across Lot Acceptance Test and Daily Test:
 
-### Key Highlights & Features:
-1. **Admin Control & User Management**:
-   - Fixed admin user modification and deletion with real-time Supabase cloud synchronization.
-2. **Deduplication & Data Integrity**:
-   - Eliminated duplicate submission entries in the inspection log by enforcing unique record UUIDs.
-3. **Component Test Caliber & Test Type Isolation**:
-   - Restricted Component Test calibers strictly to primed cases: \`5.56\`, \`7.62\`, and \`9mm\` (without military designation prefixes).
-   - Component test types strictly limited to \`Primer Sensitivity\` and \`Propellant\`.
-   - Entry log dynamically changes lot prompt to \`Primer Lot No.\` or \`Propellant Lot No.\`.
-4. **2-Digit Hopper Number Specification**:
-   - Standardized Hopper Number year prefix to exactly 2 digits (e.g., \`26\`).
-5. **Primer Sensitivity Workflow Optimization**:
-   - Streamlined Primer Sensitivity test by eliminating progressive round trials.
-   - Added direct summary inputs: Total Rounds, Total Fire, H_Bar, Sensitivity S.D., H+3S (All Fire), and H-3S (No Fire) with automatic calculation.
-6. **Inspection Log Reordering & Timestamp Accuracy**:
-   - Time in inspection log reflects selected inspection time or exact submission time.
-   - Column sequence standardized: \`TIME\`, \`INSPECTOR\`, \`TEST NAME\`, \`CALIBER\`, \`HOPPER NO.\` / \`LOT NO.\` / \`COMPONENT LOT\`, \`STATUS\`, \`SAMPLE SIZE\`, \`RESULTS\`, \`REMARKS\`, \`ACTIONS\`.
-7. **Consumables Management (4-Column Layout)**:
-   - Restructured consumable items table into 4 clean columns: \`ITEM NAME\`, \`SERIAL NUMBER\`, \`AVAILABLE STOCK\`, and \`CONSUMPTION ACTION\` (with caliber selector, quantity input, remark, and submit action).
-   - Added "Received Shipment Log" dialog for receiving incoming inventory stock.
-8. **QC Retest Protocol**:
-   - Failed or rejected inspection log entries feature a dedicated **Retest** action.
-   - Retest dialog prompts for inspector, shift, and retest remarks, linking retests back to the original test record.
-9. **EPVAT Row Sequencing & Visual Quality Badge**:
-   - Standardized EPVAT input rows (Row 1: Sample Size, Chamber Pressure P1, Case Mouth Pressure P2, Velocity; Row 2: Barrel Serial, Action Time).
-   - Added prominent live colored Quality Status badge (Accepted / Rejected / Pending) above the test form.
-10. **Analytics & SPC Enhancements**:
-    - Box & Whisker plot filtered strictly to EPVAT records with metrics limited to \`Velocity SD\` and \`Pressure SD\`, plus temperature filter.
-    - SPC Trend Chart equipped with dynamic time-range filter (All Time, Today, Last 7 Days, Last 30 Days, This Month, This Year).
-11. **Executive Reports Module**:
-    - Dedicated executive dashboard with Daily, Monthly, and Yearly aggregation periods.
-    - Multi-module selection checkboxes (Daily Test, Lot Acceptance, Component Test, Consumables).
-    - Summary KPI cards, interactive table previews, and instant CSV / PDF print export.
-12. **Supabase Cloud Schema & Synchronization**:
-    - Extended database schema in \`supabase_tables_setup.sql\` with retest tracking columns across master and dedicated tables.
-    - Resilient schema fallback in \`SupabaseService\` ensuring uninterrupted cloud logging.
-13. **Real-Time Cross-Platform Synchronization & Deletion Tombstones**:
-    - Synchronized test record deletions, edits, and entries seamlessly across Windows Desktop, Android APK, and Web.
-    - Cloud & local tombstone tracking (\`deleted_record_keys\`) prevents deleted records from ever resurrecting when cached clients reopen.
-    - Instant real-time WebSocket updates via Supabase Realtime (< 1s sync across all devices) with resilient polling fallback.
+### Key Highlights & Enhancements:
+1. **Registered Weapon Fleet Alignment**:
+   - Resolved weapon selection field mismatch in Function Test and Firing Rate Cycle Test across both Lot Acceptance Module and Daily Test.
+   - Entry Log now directly connects to all weapons registered by Admin in the Control Module (with model, variant, category, and serial numbers).
+   - Added direct "Registered Fleet Weapon" selection with live cumulative round counts badge (\`X rounds tracked\`) and interactive multi-weapon chips.
+   - Firing Rate Cycle Test now supports registered fleet weapons with intelligent automatic category matching (Rifle / Loose vs. Machine Gun / Linked).
+2. **Complete Transducer Fleet Aggregation**:
+   - GP1 (Chamber) and GP2/GP6 (Port) transducers registered in either the Equipment Registration card or the Rules tab are aggregated and matched.
+   - Purged obsolete legacy sensors and ensured 100% telemetry matching for EPVAT tests.
+3. **Accuracy, EPVAT & General Barrel Synchronization**:
+   - Unified barrel registries so that Accuracy Test, EPVAT Test, and Terminal Effect Test share all registered barrels with round tracking.
+4. **Automatic Fleet Self-Healing & Cross-Population**:
+   - Automatic background cross-population ensures that older database rules and client stores automatically heal and synchronize all equipment keys.
+5. **Real-Time Cross-Platform Synchronization**:
+   - Test record additions, edits, and deletions synchronized in real-time across Windows Desktop, Android APK, and Web via Supabase Realtime & WebSockets.
 `;
 
 function request(options, postData) {
@@ -174,7 +149,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.5.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

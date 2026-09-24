@@ -45,11 +45,10 @@ class SupabaseService {
       debugPrint('Supabase connection initialized successfully');
     } catch (e) {
       try {
-        if (Supabase.instance.client != null) {
-          _initialized = true;
-          debugPrint('Supabase client was already active');
-          return;
-        }
+        Supabase.instance.client;
+        _initialized = true;
+        debugPrint('Supabase client was already active');
+        return;
       } catch (_) {}
       debugPrint('Error initializing Supabase: $e');
     }
@@ -62,11 +61,11 @@ class SupabaseService {
       if (!ok) return false;
     }
     try {
-      final res = await client
+      await client
           .from(tableName)
           .select('id')
           .limit(1);
-      return res != null;
+      return true;
     } catch (e) {
       debugPrint('Supabase connection check failed: $e');
       return false;

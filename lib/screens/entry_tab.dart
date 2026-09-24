@@ -235,38 +235,30 @@ class _EntryTabState extends State<EntryTab> {
     ..._customSampleLocations,
   ];
 
-  // Weapon cascading selection state
-  List<String> get _availableWeaponTypes {
-    if (_isCaliber9mm) {
-      return ['Pistol', 'Submachine Gun', 'Other'];
+  // Weapon cascading selection state and serial extractor
+  String _extractWeaponSerial(String weaponStr) {
+    if (weaponStr.isEmpty) return '';
+    final snMatch = RegExp(r'SN[:\s]+([^\s\),]+)', caseSensitive: false).firstMatch(weaponStr);
+    if (snMatch != null) {
+      return snMatch.group(1)!.trim();
     }
-    return [
-      'Rifle',
-      'Carbine',
-      'Machine Gun',
-      'Pistol',
-      'Submachine Gun',
-      'Other',
-    ];
+    final wList = widget.adminRules['weapons'];
+    if (wList is List) {
+      for (final w in wList) {
+        if (w is Map) {
+          final t = (w['type'] ?? '').toString();
+          final s = (w['serial'] ?? '').toString();
+          if (s.isNotEmpty && (weaponStr.contains(s) || weaponStr.contains(t))) {
+            return s;
+          }
+        }
+      }
+    }
+    return weaponStr;
   }
 
-  List<String> _getWeaponSerialsForType(String type) {
-    if (type == 'Pistol') {
-      return ['P-001', 'P-002', 'P-003', 'P-004', 'P-005', 'Other'];
-    } else if (type == 'Submachine Gun') {
-      return ['SMG-01', 'SMG-02', 'SMG-03', 'Other'];
-    } else if (type == 'Rifle') {
-      return ['R-101', 'R-102', 'R-103', 'R-104', 'Other'];
-    } else if (type == 'Carbine') {
-      return ['C-201', 'C-202', 'C-203', 'Other'];
-    } else if (type == 'Machine Gun') {
-      return ['MG-301', 'MG-302', 'MG-303', 'Other'];
-    }
-    return ['Other'];
-  }
 
-  String _selectedWeaponType = 'Pistol';
-  String _selectedWeaponSN = 'P-001';
+  String _selectedRegisteredWeapon = '';
   final _customWeaponTypeController = TextEditingController();
   final _customWeaponSNController = TextEditingController();
 
@@ -502,57 +494,121 @@ class _EntryTabState extends State<EntryTab> {
     return 'Approved';
   }
 
-  // Barrel Serial Numbers list from admin rules
+  // Barrel Serial Numbers list from admin rules (all matched)
   List<String> get _barrelSerialNumbers {
-    final list = widget.adminRules['barrel_serial_numbers'];
-    if (list is List && list.isNotEmpty) {
-      return list.map((e) => e.toString()).toList();
+    final Set<String> result = {};
+    for (final key in ['barrel_serial_numbers', 'accuracy_barrels', 'epvat_barrels']) {
+      final list = widget.adminRules[key];
+      if (list is List) {
+        for (final e in list) {
+          final s = e.toString().trim();
+          if (s.isNotEmpty) result.add(s);
+        }
+      }
     }
+    if (result.isNotEmpty) return result.toList();
     return ['B1001', 'B1002', 'B1003'];
   }
 
-  // GP Transducers lists from admin rules (purged of Kistler)
+  // GP Transducers lists from admin rules (all matched, purged of Kistler)
   List<String> get _gp1Transducers {
-    final gp = widget.adminRules['gp_transducers']?['gp1'];
-    if (gp is List && gp.isNotEmpty) {
-      final list = gp.map((e) => e.toString()).where((s) => !s.toLowerCase().contains('kistler')).toList();
-      if (list.isNotEmpty) return list;
+    final Set<String> result = {};
+    final list1 = widget.adminRules['gp1_transducers'];
+    if (list1 is List) {
+      for (final e in list1) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+      }
     }
+    final gp = widget.adminRules['gp_transducers']?['gp1'];
+    if (gp is List) {
+      for (final e in gp) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+      }
+    }
+    if (result.isNotEmpty) return result.toList();
     return ['GP1-001 (PCB 119B)', 'GP1-002 (PCB 119B)', 'GP1-003 (PCB 119B)'];
   }
 
   List<String> get _gp2Transducers {
+    final Set<String> result = {};
     final gp = widget.adminRules['gp_transducers']?['gp2'];
-    if (gp is List && gp.isNotEmpty) {
-      final list = gp.map((e) => e.toString()).where((s) => !s.toLowerCase().contains('kistler')).toList();
-      if (list.isNotEmpty) return list;
+    if (gp is List) {
+      for (final e in gp) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+      }
     }
+    final list6 = widget.adminRules['gp6_serials'];
+    if (list6 is List) {
+      for (final e in list6) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+      }
+    }
+    if (result.isNotEmpty) return result.toList();
     return ['GP2-001 (PCB 119B)', 'GP2-002 (PCB 119B)', 'GP2-003 (PCB 119B)'];
   }
 
   // Equipment lists & Round counting
   List<String> get _accuracyBarrels {
-    final list = widget.adminRules['accuracy_barrels'] ?? widget.adminRules['barrel_serial_numbers'];
-    if (list is List && list.isNotEmpty) {
-      return list.map((e) => e.toString()).toList();
+    final Set<String> result = {};
+    final accList = widget.adminRules['accuracy_barrels'];
+    if (accList is List) {
+      for (final e in accList) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty) result.add(s);
+      }
     }
+    final genList = widget.adminRules['barrel_serial_numbers'];
+    if (genList is List) {
+      for (final e in genList) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty) result.add(s);
+      }
+    }
+    if (result.isNotEmpty) return result.toList();
     return ['ACC-B-101', 'ACC-B-102', 'ACC-B-103'];
   }
 
   List<String> get _epvatBarrels {
-    final list = widget.adminRules['epvat_barrels'] ?? widget.adminRules['barrel_serial_numbers'];
-    if (list is List && list.isNotEmpty) {
-      return list.map((e) => e.toString()).toList();
+    final Set<String> result = {};
+    final epvList = widget.adminRules['epvat_barrels'];
+    if (epvList is List) {
+      for (final e in epvList) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty) result.add(s);
+      }
     }
+    final genList = widget.adminRules['barrel_serial_numbers'];
+    if (genList is List) {
+      for (final e in genList) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty) result.add(s);
+      }
+    }
+    if (result.isNotEmpty) return result.toList();
     return ['EPVAT-B-201', 'EPVAT-B-202', 'EPVAT-B-203'];
   }
 
   List<String> get _gp6Serials {
+    final Set<String> result = {};
     final list = widget.adminRules['gp6_serials'];
-    if (list is List && list.isNotEmpty) {
-      final filtered = list.map((e) => e.toString()).where((s) => !s.toLowerCase().contains('kistler')).toList();
-      if (filtered.isNotEmpty) return filtered;
+    if (list is List) {
+      for (final e in list) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+      }
     }
+    final gp2 = widget.adminRules['gp_transducers']?['gp2'];
+    if (gp2 is List) {
+      for (final e in gp2) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+      }
+    }
+    if (result.isNotEmpty) return result.toList();
     return ['GP2-PCB-9901', 'GP2-PCB-9902', 'GP2-PCB-9903'];
   }
 
@@ -681,28 +737,63 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   List<String> get _weaponsList {
+    final Set<String> result = {};
+
+    // 1. widget.adminRules['weapons']
     final list = widget.adminRules['weapons'];
-    if (list is List && list.isNotEmpty) {
-      return list.map((e) {
+    if (list is List) {
+      for (final e in list) {
         if (e is Map) {
-          final t = e['type'] ?? '';
-          final s = e['serial'] ?? '';
-          return s.isNotEmpty ? '$t (SN: $s)' : '$t';
+          final t = (e['type'] ?? '').toString().trim();
+          final s = (e['serial'] ?? '').toString().trim();
+          if (t.isNotEmpty && s.isNotEmpty) {
+            if (t.toLowerCase().contains('sn:')) {
+              result.add(t);
+            } else {
+              result.add('$t (SN: $s)');
+            }
+          } else if (t.isNotEmpty) {
+            result.add(t);
+          }
+        } else if (e != null && e.toString().trim().isNotEmpty) {
+          result.add(e.toString().trim());
         }
-        return e.toString();
-      }).toList();
+      }
     }
+
+    // 2. widget.adminRules['function_test']?['weapons']
     final fWeapons = widget.adminRules['function_test']?['weapons'];
-    if (fWeapons is List && fWeapons.isNotEmpty) {
-      return fWeapons.map((e) => e.toString()).toList();
+    if (fWeapons is List) {
+      for (final e in fWeapons) {
+        if (e != null && e.toString().trim().isNotEmpty) {
+          result.add(e.toString().trim());
+        }
+      }
     }
-    return [
-      'M4A1 Carbine (SN: W-9012)',
-      'M16A4 Rifle (SN: W-9015)',
-      'M249 SAW (SN: W-4401)',
-      'G3A3 Rifle (SN: W-7721)',
-      'Beretta M9 Pistol (SN: W-1102)',
-    ];
+
+    // 3. widget.adminRules['cyclic_rate']?['weapons']
+    final cyclicWeapons = widget.adminRules['cyclic_rate']?['weapons'];
+    if (cyclicWeapons is List) {
+      for (final e in cyclicWeapons) {
+        if (e is Map) {
+          final n = (e['name'] ?? '').toString().trim();
+          if (n.isNotEmpty) result.add(n);
+        } else if (e != null && e.toString().trim().isNotEmpty) {
+          result.add(e.toString().trim());
+        }
+      }
+    }
+
+    if (result.isEmpty) {
+      return [
+        'Beretta M9 Pistol (SN: W-1102)',
+        'M4A1 Carbine (SN: W-9012)',
+        'M16A4 Rifle (SN: W-9015)',
+        'M249 SAW (SN: W-4401)',
+        'G3A3 Rifle (SN: W-7721)',
+      ];
+    }
+    return result.toList();
   }
 
   int _getAssetRounds(String serial) {
@@ -1112,13 +1203,17 @@ class _EntryTabState extends State<EntryTab> {
         return false;
       }
     } else if (_testName == 'Function Test') {
-      final effectiveWeapon = _selectedWeaponType.isNotEmpty
-          ? (_selectedWeaponType == 'Other'
-              ? _customWeaponTypeController.text.trim()
-              : (_selectedWeaponSN.isNotEmpty
-                  ? '$_selectedWeaponType (SN: ' + (_selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN) + ')'
-                  : _selectedWeaponType))
-          : _functionWeapon;
+      final effectiveWeapon = _selectedFunctionWeapons.isNotEmpty
+          ? _selectedFunctionWeapons.join(', ')
+          : (_functionWeapon.isNotEmpty
+              ? _functionWeapon
+              : (_selectedRegisteredWeapon.isNotEmpty && _selectedRegisteredWeapon != '[+ Custom / Other Weapon]'
+                  ? _selectedRegisteredWeapon
+                  : (_customWeaponTypeController.text.trim().isNotEmpty
+                      ? (_customWeaponSNController.text.trim().isNotEmpty
+                          ? '${_customWeaponTypeController.text.trim()} (SN: ${_customWeaponSNController.text.trim()})'
+                          : _customWeaponTypeController.text.trim())
+                      : (_weaponsList.isNotEmpty ? _weaponsList.first : ''))));
       if (effectiveWeapon.trim().isEmpty) {
         jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type & Serial');
         return false;
@@ -1961,6 +2056,17 @@ class _EntryTabState extends State<EntryTab> {
     if (_epvatSensor2Controller.text.isEmpty && _gp2Transducers.isNotEmpty) {
       _epvatSensor2Controller.text = _gp2Transducers.first;
     }
+    if (_weaponsList.isNotEmpty) {
+      if (_selectedRegisteredWeapon.isEmpty) {
+        _selectedRegisteredWeapon = _weaponsList.first;
+      }
+      if (_functionWeapon.isEmpty) {
+        _functionWeapon = _weaponsList.first;
+      }
+      if (_selectedFunctionWeapons.isEmpty) {
+        _selectedFunctionWeapons = [_weaponsList.first];
+      }
+    }
     
     // Initialize test date and time locked to opening time (allows manual edit or defaults to submission time)
     _autoGenerateTime(force: true);
@@ -2131,6 +2237,33 @@ class _EntryTabState extends State<EntryTab> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.loggedInUser != widget.loggedInUser) {
       _operatorsController.text = widget.loggedInUser;
+    }
+    if (oldWidget.adminRules != widget.adminRules) {
+      if (_weaponsList.isNotEmpty && (_selectedRegisteredWeapon.isEmpty || !_weaponsList.contains(_selectedRegisteredWeapon))) {
+        _selectedRegisteredWeapon = _weaponsList.first;
+        if (_selectedFunctionWeapons.isEmpty) {
+          _selectedFunctionWeapons = [_weaponsList.first];
+          _functionWeapon = _weaponsList.first;
+        }
+      }
+      if (_accuracyBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_accuracyBarrels.contains(_barrelSNController.text))) {
+        if (_testName == 'Accuracy Test') _barrelSNController.text = _accuracyBarrels.first;
+      }
+      if (_epvatBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_epvatBarrels.contains(_barrelSNController.text))) {
+        if (_testName == 'EPVAT test') _barrelSNController.text = _epvatBarrels.first;
+      }
+      if (_gp1Transducers.isNotEmpty && (_epvatSensor1Controller.text.isEmpty || !_gp1Transducers.contains(_epvatSensor1Controller.text))) {
+        _epvatSensor1Controller.text = _gp1Transducers.first;
+      }
+      if (_gp6Serials.isNotEmpty && (_gp6SerialController.text.isEmpty || !_gp6Serials.contains(_gp6SerialController.text))) {
+        _gp6SerialController.text = _gp6Serials.first;
+      }
+      if (_gp2Transducers.isNotEmpty && (_epvatSensor2Controller.text.isEmpty || !_gp2Transducers.contains(_epvatSensor2Controller.text))) {
+        _epvatSensor2Controller.text = _gp2Transducers.first;
+      }
+      if (_barrelSerialNumbers.isNotEmpty && (_terminalBarrelSNController.text.isEmpty || !_barrelSerialNumbers.contains(_terminalBarrelSNController.text))) {
+        _terminalBarrelSNController.text = _barrelSerialNumbers.first;
+      }
     }
   }
 
@@ -3689,8 +3822,56 @@ class _EntryTabState extends State<EntryTab> {
                               (widget.adminRules['cyclic_rate']?['weapons'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
                             );
                             
-                            // Filter weapons by category
-                            final weapons = allWeapons.where((w) => w['type'] == _cyclicRateAmmoType).toList();
+                            // Merge registered fleet weapons
+                            final adminFleet = widget.adminRules['weapons'];
+                            if (adminFleet is List) {
+                              for (final item in adminFleet) {
+                                String label = '';
+                                String cat = 'Rifle';
+                                if (item is Map) {
+                                  final t = (item['type'] ?? '').toString();
+                                  final s = (item['serial'] ?? '').toString();
+                                  final c = (item['category'] ?? '').toString();
+                                  label = s.isNotEmpty ? '$t (SN: $s)' : t;
+                                  if (c.toLowerCase().contains('machine') || t.toLowerCase().contains('saw') || t.toLowerCase().contains('minimi')) cat = 'Machine Gun';
+                                } else if (item != null) {
+                                  label = item.toString();
+                                }
+                                if (label.isNotEmpty && !allWeapons.any((w) => w['name'] == label)) {
+                                  allWeapons.add({
+                                    'name': label,
+                                    'type': cat,
+                                    'min': 550,
+                                    'max': 950,
+                                  });
+                                }
+                              }
+                            }
+                            for (final wLabel in _weaponsList) {
+                              if (!allWeapons.any((w) => w['name'] == wLabel)) {
+                                final isMg = wLabel.toLowerCase().contains('machine') || wLabel.toLowerCase().contains('saw') || wLabel.toLowerCase().contains('minimi');
+                                allWeapons.add({
+                                  'name': wLabel,
+                                  'type': isMg ? 'Machine Gun' : 'Rifle',
+                                  'min': 550,
+                                  'max': 950,
+                                });
+                              }
+                            }
+                            
+                            // Filter weapons by category (Rifle vs Machine Gun)
+                            final isMgSelected = _cyclicRateAmmoType == 'Machine Gun';
+                            final filteredWeapons = allWeapons.where((w) {
+                              final wType = (w['type'] ?? '').toString().toLowerCase();
+                              final wName = (w['name'] ?? '').toString().toLowerCase();
+                              if (isMgSelected) {
+                                return wType == 'machine gun' || wType == 'linked' || wName.contains('saw') || wName.contains('minimi') || wName.contains('mg');
+                              } else {
+                                return wType != 'machine gun' && wType != 'linked' && !wName.contains('saw') && !wName.contains('minimi');
+                              }
+                            }).toList();
+                            
+                            final weapons = filteredWeapons.isNotEmpty ? filteredWeapons : allWeapons;
 
                             if (_cyclicRateWeaponType.isEmpty && weapons.isNotEmpty) {
                               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -5292,6 +5473,10 @@ class _EntryTabState extends State<EntryTab> {
                                     fontFamily: 'JetBrainsMono',
                                   ),
                                 ),
+                                subtitle: Text(
+                                  '${_getAssetRounds(_extractWeaponSerial(w))} cumulative rounds fired',
+                                  style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontFamily: 'JetBrainsMono'),
+                                ),
                                 value: isChecked,
                                 onChanged: (val) {
                                   setDialogState(() {
@@ -5385,6 +5570,9 @@ class _EntryTabState extends State<EntryTab> {
 
   Widget _buildFunctionTestSpecsCard() {
     final weapons = _weaponsList;
+    if (_selectedRegisteredWeapon.isEmpty && weapons.isNotEmpty) {
+      _selectedRegisteredWeapon = weapons.first;
+    }
     if (_functionWeapon.isEmpty && weapons.isNotEmpty) {
       _functionWeapon = weapons.first;
       if (_selectedFunctionWeapons.isEmpty) {
@@ -5393,6 +5581,15 @@ class _EntryTabState extends State<EntryTab> {
     } else if (_functionWeapon.isNotEmpty && _selectedFunctionWeapons.isEmpty) {
       _selectedFunctionWeapons = _functionWeapon.split(', ').where((s) => s.trim().isNotEmpty).toList();
     }
+
+    final dropdownItems = <String>[
+      ...weapons,
+      '[+ Custom / Other Weapon]',
+    ];
+
+    final currentSelected = dropdownItems.contains(_selectedRegisteredWeapon)
+        ? _selectedRegisteredWeapon
+        : (weapons.isNotEmpty ? weapons.first : '[+ Custom / Other Weapon]');
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -5437,98 +5634,103 @@ class _EntryTabState extends State<EntryTab> {
           _buildFormRow([
             _buildFlexibleField(
               key: _weaponFieldKey,
-              flex: 1,
-              label: _isCaliber9mm ? 'Weapon (Pistol)' : 'Weapon Type',
+              flex: 3,
+              label: 'Registered Fleet Weapon (From Control Module)',
               isRequired: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDropdownField(
                     focusNode: _weaponFocusNode,
-                    value: _availableWeaponTypes.contains(_selectedWeaponType)
-                        ? _selectedWeaponType
-                        : (_availableWeaponTypes.isNotEmpty ? _availableWeaponTypes.first : 'Other'),
-                    items: _availableWeaponTypes,
+                    value: currentSelected,
+                    items: dropdownItems,
                     onChanged: (v) {
                       if (v != null) {
                         setState(() {
-                          _selectedWeaponType = v;
-                          final serials = _getWeaponSerialsForType(v);
-                          _selectedWeaponSN = serials.isNotEmpty ? serials.first : 'Other';
-                          _functionWeapon = '$_selectedWeaponType (SN: $_selectedWeaponSN)';
+                          _selectedRegisteredWeapon = v;
+                          if (v != '[+ Custom / Other Weapon]') {
+                            _functionWeapon = v;
+                            if (_selectedFunctionWeapons.isEmpty || _selectedFunctionWeapons.length == 1) {
+                              _selectedFunctionWeapons = [v];
+                            }
+                          }
                         });
                       }
                     },
                   ),
-                  if (_selectedWeaponType == 'Other') ...[
-                    const SizedBox(height: 6.0),
-                    _buildTextField(
-                      controller: _customWeaponTypeController,
-                      hint: 'Enter custom weapon name',
-                      onChanged: (val) {
-                        setState(() {
-                          _functionWeapon = '$val (SN: ${_selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN})';
-                        });
-                      },
+                  if (currentSelected != '[+ Custom / Other Weapon]') ...[
+                    const SizedBox(height: 4.0),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.history_rounded, size: 13, color: Color(0xFF0284C7)),
+                          const SizedBox(width: 4.0),
+                          Text(
+                            '${_getAssetRounds(_extractWeaponSerial(currentSelected))} cumulative rounds tracked',
+                            style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Weapon Serial Number',
-              isRequired: true,
-              child: Builder(
-                builder: (context) {
-                  final serials = _getWeaponSerialsForType(_selectedWeaponType);
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDropdownField(
-                        value: serials.contains(_selectedWeaponSN) ? _selectedWeaponSN : (serials.isNotEmpty ? serials.first : 'Other'),
-                        items: serials,
-                        onChanged: (v) {
-                          if (v != null) {
-                            setState(() {
-                              _selectedWeaponSN = v;
-                              final wName = _selectedWeaponType == 'Other' ? _customWeaponTypeController.text.trim() : _selectedWeaponType;
-                              _functionWeapon = '$wName (SN: $v)';
-                            });
-                          }
-                        },
-                      ),
-                      if (_selectedWeaponSN == 'Other') ...[
-                        const SizedBox(height: 6.0),
-                        _buildTextField(
-                          controller: _customWeaponSNController,
-                          hint: 'Enter custom serial number',
-                          onChanged: (val) {
-                            setState(() {
-                              final wName = _selectedWeaponType == 'Other' ? _customWeaponTypeController.text.trim() : _selectedWeaponType;
-                              _functionWeapon = '$wName (SN: $val)';
-                            });
-                          },
-                        ),
-                      ],
-                    ],
-                  );
-                },
+            if (currentSelected == '[+ Custom / Other Weapon]') ...[
+              _buildFlexibleField(
+                flex: 2,
+                label: 'Custom Weapon Type / Name',
+                isRequired: true,
+                child: _buildTextField(
+                  controller: _customWeaponTypeController,
+                  hint: 'e.g., Sig P226',
+                  onChanged: (val) {
+                    setState(() {
+                      final sn = _customWeaponSNController.text.trim();
+                      _functionWeapon = sn.isNotEmpty ? '$val (SN: $sn)' : val;
+                    });
+                  },
+                ),
               ),
-            ),
+              _buildFlexibleField(
+                flex: 2,
+                label: 'Custom Serial No.',
+                isRequired: true,
+                child: _buildTextField(
+                  controller: _customWeaponSNController,
+                  hint: 'e.g., SN-8801',
+                  onChanged: (val) {
+                    setState(() {
+                      final name = _customWeaponTypeController.text.trim();
+                      _functionWeapon = val.isNotEmpty ? '$name (SN: $val)' : name;
+                    });
+                  },
+                ),
+              ),
+            ],
             _buildFlexibleField(
-              flex: 1,
-              label: 'Add to Selected',
+              flex: 2,
+              label: 'Add to Tested Weapons',
               child: Padding(
                 padding: const EdgeInsets.only(top: 2.0),
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    final wName = _selectedWeaponType == 'Other' ? _customWeaponTypeController.text.trim() : _selectedWeaponType;
-                    final sVal = _selectedWeaponSN == 'Other' ? _customWeaponSNController.text.trim() : _selectedWeaponSN;
-                    final wEntry = sVal.isNotEmpty ? '$wName (SN: $sVal)' : wName;
-                    if (wEntry.isNotEmpty && !_selectedFunctionWeapons.contains(wEntry)) {
+                    String toAdd = '';
+                    if (_selectedRegisteredWeapon == '[+ Custom / Other Weapon]') {
+                      final name = _customWeaponTypeController.text.trim();
+                      final sn = _customWeaponSNController.text.trim();
+                      if (name.isNotEmpty) {
+                        toAdd = sn.isNotEmpty ? '$name (SN: $sn)' : name;
+                      }
+                    } else if (_selectedRegisteredWeapon.isNotEmpty) {
+                      toAdd = _selectedRegisteredWeapon;
+                    }
+                    if (toAdd.isNotEmpty) {
                       setState(() {
-                        _selectedFunctionWeapons.add(wEntry);
+                        if (!_selectedFunctionWeapons.contains(toAdd)) {
+                          _selectedFunctionWeapons.add(toAdd);
+                        }
                         _functionWeapon = _selectedFunctionWeapons.join(', ');
                       });
                     }
@@ -5564,9 +5766,10 @@ class _EntryTabState extends State<EntryTab> {
               spacing: 8.0,
               runSpacing: 8.0,
               children: _selectedFunctionWeapons.map((weapon) {
+                final rds = _getAssetRounds(_extractWeaponSerial(weapon));
                 return Chip(
                   avatar: const Icon(Icons.military_tech_rounded, size: 16.0, color: Color(0xFF0284C7)),
-                  label: Text(weapon, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 12.0)),
+                  label: Text('$weapon ($rds rds)', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 12.0)),
                   backgroundColor: const Color(0xFFE0F2FE),
                   deleteIcon: const Icon(Icons.close, size: 16, color: Color(0xFF0284C7)),
                   onDeleted: () {

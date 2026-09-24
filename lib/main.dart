@@ -1581,6 +1581,98 @@ class _MainShellState extends State<MainShell> {
         activeRules['gp1_transducers'] = List<String>.from(activeRules['gp1_transducers'] as List);
       }
 
+      // Cross-populate and synchronize equipment fleets across all keys:
+      // 1. Cross-populate Barrels
+      final barrelNumbers = List<String>.from(activeRules['barrel_serial_numbers'] as List? ?? []);
+      final accBarrels = List<String>.from(activeRules['accuracy_barrels'] as List? ?? []);
+      final epvBarrels = List<String>.from(activeRules['epvat_barrels'] as List? ?? []);
+      for (final b in accBarrels) {
+        if (!barrelNumbers.contains(b)) barrelNumbers.add(b);
+      }
+      for (final b in epvBarrels) {
+        if (!barrelNumbers.contains(b)) barrelNumbers.add(b);
+      }
+      for (final b in barrelNumbers) {
+        if (!accBarrels.contains(b)) accBarrels.add(b);
+        if (!epvBarrels.contains(b)) epvBarrels.add(b);
+      }
+      activeRules['barrel_serial_numbers'] = barrelNumbers;
+      activeRules['accuracy_barrels'] = accBarrels;
+      activeRules['epvat_barrels'] = epvBarrels;
+
+      // 2. Cross-populate GP1 & GP2 Transducers
+      final gpMap = Map<String, dynamic>.from(activeRules['gp_transducers'] as Map? ?? {});
+      final gp1List = List<String>.from(activeRules['gp1_transducers'] as List? ?? []);
+      final gp1Internal = List<String>.from(gpMap['gp1'] as List? ?? []);
+      for (final s in gp1List) {
+        if (!gp1Internal.contains(s)) gp1Internal.add(s);
+      }
+      for (final s in gp1Internal) {
+        if (!gp1List.contains(s)) gp1List.add(s);
+      }
+      activeRules['gp1_transducers'] = gp1List;
+      gpMap['gp1'] = gp1Internal;
+
+      final gp6List = List<String>.from(activeRules['gp6_serials'] as List? ?? []);
+      final gp2Internal = List<String>.from(gpMap['gp2'] as List? ?? []);
+      for (final s in gp6List) {
+        if (!gp2Internal.contains(s)) gp2Internal.add(s);
+      }
+      for (final s in gp2Internal) {
+        if (!gp6List.contains(s)) gp6List.add(s);
+      }
+      activeRules['gp6_serials'] = gp6List;
+      gpMap['gp2'] = gp2Internal;
+      activeRules['gp_transducers'] = gpMap;
+
+      // 3. Cross-populate Weapons across weapons, function_test, and cyclic_rate
+      final fleetWeapons = List<Map<String, dynamic>>.from(
+        (activeRules['weapons'] as List? ?? []).map((e) {
+          if (e is Map) return Map<String, dynamic>.from(e);
+          return {'type': e.toString(), 'serial': '', 'category': 'Rifle'};
+        }),
+      );
+      final funcMap = Map<String, dynamic>.from(activeRules['function_test'] as Map? ?? {});
+      final funcWeapons = List<String>.from(funcMap['weapons'] as List? ?? []);
+      final cyclicMap = Map<String, dynamic>.from(activeRules['cyclic_rate'] as Map? ?? {});
+      final cyclicWeapons = List<Map<String, dynamic>>.from(
+        (cyclicMap['weapons'] as List? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
+      );
+
+      for (final fw in fleetWeapons) {
+        final t = (fw['type'] ?? '').toString();
+        final s = (fw['serial'] ?? '').toString();
+        final label = s.isNotEmpty ? (t.contains('(SN:') ? t : '$t (SN: $s)') : t;
+        if (label.isNotEmpty) {
+          if (!funcWeapons.contains(label)) funcWeapons.add(label);
+          if (!cyclicWeapons.any((w) => w['name'] == label)) {
+            cyclicWeapons.add({
+              'name': label,
+              'type': fw['category'] == 'Machine Gun' ? 'Linked' : 'Loose',
+              'min': 550,
+              'max': 950,
+            });
+          }
+        }
+      }
+      for (final fn in funcWeapons) {
+        if (!fleetWeapons.any((w) => (w['type'] == fn || '${w['type']} (SN: ${w['serial']})' == fn))) {
+          final snMatch = RegExp(r'\(SN:\s*([^)]+)\)').firstMatch(fn);
+          final serial = snMatch?.group(1)?.trim() ?? '';
+          final type = snMatch != null ? fn.substring(0, snMatch.start).trim() : fn;
+          fleetWeapons.add({
+            'type': type,
+            'serial': serial,
+            'category': fn.toLowerCase().contains('pistol') ? 'Pistol' : (fn.toLowerCase().contains('machine') || fn.toLowerCase().contains('saw') ? 'Machine Gun' : 'Rifle'),
+          });
+        }
+      }
+      activeRules['weapons'] = fleetWeapons;
+      funcMap['weapons'] = funcWeapons;
+      activeRules['function_test'] = funcMap;
+      cyclicMap['weapons'] = cyclicWeapons;
+      activeRules['cyclic_rate'] = cyclicMap;
+
       // Save rules back to write out any migrated schemas
       await _storageService.saveRules(activeRules);
       
