@@ -1130,13 +1130,13 @@ class _HistoryTabState extends State<HistoryTab> {
       if (calLower.contains('m193')) {
         return Text(
           'MR: ${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm',
-          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
         );
       } else {
         // 7.62, SS109, 9mm, .223: show SD of X and Y
         return Text(
           'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm | SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm',
-          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
         );
       }
     } else if (r.testName == 'EPVAT test') {
@@ -1147,11 +1147,11 @@ class _HistoryTabState extends State<HistoryTab> {
         children: [
           Text(
             'Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Colors.white),
+            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
           ),
           Text(
             'Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit | Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s @ 21 °C',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
           ),
         ],
       );
@@ -1163,11 +1163,11 @@ class _HistoryTabState extends State<HistoryTab> {
         children: [
           Text(
             'Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Colors.white),
+            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
           ),
           Text(
             'Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit | Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s @ 21 °C',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
           ),
         ],
       );
@@ -1178,11 +1178,11 @@ class _HistoryTabState extends State<HistoryTab> {
         children: [
           Text(
             'Min: ${r.accMinX.isNotEmpty ? r.accMinX : "-"} N',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
           ),
           Text(
             'Max: ${r.accMaxX.isNotEmpty ? r.accMaxX : "-"} N',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)),
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
           ),
         ],
       );
@@ -1214,22 +1214,22 @@ class _HistoryTabState extends State<HistoryTab> {
       final minus2 = r.primerNoFireH.isNotEmpty ? r.primerNoFireH : (hm > 0 ? (hm - 2 * sd).toStringAsFixed(1) : "-");
       return Text(
         'H̄+5SD: $plus5 cm | H̄-2SD: $minus2 cm',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
       );
     } else if (r.testName == 'Firing Rate Cycle Test') {
       return Text(
         'Rate: ${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
       );
     } else if (r.testName == 'Terminal Effect Test') {
       return Text(
         'Dist: ${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"}m | Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
       );
     }
     return Text(
       r.notes.isNotEmpty ? r.notes : '-',
-      style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+      style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
     );
   }
 
@@ -1287,7 +1287,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     style: TextStyle(
                       fontSize: 26.0,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Color(0xFF0F172A),
                       letterSpacing: -0.5,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -1298,7 +1298,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     'Complete catalog of ballistic trials logged today',
                     style: TextStyle(
                       fontSize: 13.5,
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF475569),
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -1319,9 +1319,9 @@ class _HistoryTabState extends State<HistoryTab> {
                     icon: const Icon(Icons.folder_open, size: 16.0),
                     label: const Text('Open Logs Folder'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF344D6E),
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Color(0xFF1E3A8A)),
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF0F172A),
+                      side: const BorderSide(color: Color(0xFFB8CEE5)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                     ),
                   ),
@@ -1370,21 +1370,21 @@ class _HistoryTabState extends State<HistoryTab> {
             final searchField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('SEARCH LOT / HOPPER / INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const Text('SEARCH LOT / HOPPER / INSPECTOR', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6.0),
                 TextField(
                   controller: _searchController,
-                  style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
                   decoration: InputDecoration(
                     hintText: 'Type to filter logs...',
                     hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.0),
-                    prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF38BDF8)),
+                    prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF0284C7)),
                     isDense: true,
                     filled: true,
-                    fillColor: const Color(0xFF2C415E),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
+                    fillColor: const Color(0xFFF1F6FB),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF4D99DB), width: 1.5)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
                   ),
                   onChanged: (val) => setState(() {}),
@@ -1395,7 +1395,7 @@ class _HistoryTabState extends State<HistoryTab> {
             final caliberField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const Text('CALIBER', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6.0),
                 _buildDropdown(
                   value: _caliberFilter,
@@ -1408,7 +1408,7 @@ class _HistoryTabState extends State<HistoryTab> {
             final testNameField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const Text('TEST NAME', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6.0),
                 _buildDropdown(
                   value: _testNameFilter,
@@ -1421,7 +1421,7 @@ class _HistoryTabState extends State<HistoryTab> {
             final lotField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('LOT NUMBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const Text('LOT NUMBER', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6.0),
                 _buildDropdown(
                   value: _lotFilter,
@@ -1434,7 +1434,7 @@ class _HistoryTabState extends State<HistoryTab> {
             final hopperField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('HOPPER NO.', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const Text('HOPPER NO.', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6.0),
                 _buildDropdown(
                   value: _hopperFilter,
@@ -1447,7 +1447,7 @@ class _HistoryTabState extends State<HistoryTab> {
             final statusField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const Text('STATUS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6.0),
                 _buildDropdown(
                   value: _statusFilter,
@@ -1460,11 +1460,11 @@ class _HistoryTabState extends State<HistoryTab> {
             return Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF344D6E),
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: const Color(0xFF1E3A8A)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14.0),
+                border: Border.all(color: const Color(0xFFB8CEE5)),
                 boxShadow: const [
-                  BoxShadow(color: Color(0x20000000), blurRadius: 10, offset: Offset(0, 2)),
+                  BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
                 ],
               ),
               child: isSmallScreen
@@ -1524,18 +1524,18 @@ class _HistoryTabState extends State<HistoryTab> {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFB8CEE5)),
               boxShadow: const [
-                BoxShadow(color: Color(0x20000000), blurRadius: 10, offset: Offset(0, 2)),
+                BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
               ],
             ),
             child: displayRecords.isEmpty
                 ? const Center(
                     child: Text(
                       'No inspection logs match the active filters.',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+                      style: TextStyle(color: Color(0xFF475569), fontSize: 13.5),
                     ),
                   )
                 : LayoutBuilder(
@@ -1563,25 +1563,25 @@ class _HistoryTabState extends State<HistoryTab> {
                                 child: DataTable(
                                   columnSpacing: dynamicSpacing,
                                   horizontalMargin: 20.0,
-                                  headingRowColor: MaterialStateProperty.all(const Color(0xFF2C415E)),
+                                  headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F6FB)),
                                   columns: [
-                                    const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                     DataColumn(
                                       label: Text(
                                         widget.currentModule == 'Daily Test'
                                             ? 'HOPPER NO.'
                                             : (widget.currentModule == 'Component Test' ? 'COMPONENT LOT' : 'LOT NO.'),
-                                        style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold),
                                       ),
                                     ),
-                                    const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('SAMPLE SIZE', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('RESULTS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('SAMPLE SIZE', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('RESULTS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
+                                    const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
                                   ],
                                   rows: displayRecords.map((r) {
                                     return DataRow(
@@ -1597,15 +1597,15 @@ class _HistoryTabState extends State<HistoryTab> {
                                         return null;
                                       }),
                                       cells: [
-                                        DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF94A3B8)))),
+                                        DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF475569)))),
                                         DataCell(
                                           Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
-                                              Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.0, color: Colors.white)),
+                                              Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.0, color: Color(0xFF0F172A))),
                                               if (r.shift.isNotEmpty)
-                                                Text('Shift: ${r.shift}', style: const TextStyle(fontSize: 10.0, color: Color(0xFF94A3B8))),
+                                                Text('Shift: ${r.shift}', style: const TextStyle(fontSize: 10.0, color: Color(0xFF64748B))),
                                             ],
                                           ),
                                         ),
@@ -1613,13 +1613,13 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF1C3351),
+                                              color: const Color(0xFFEDF4FC),
                                               borderRadius: BorderRadius.circular(4.0),
-                                              border: Border.all(color: const Color(0xFF1E3A8A)),
+                                              border: Border.all(color: const Color(0xFFB8CEE5)),
                                             ),
                                             child: Text(
                                               r.testName,
-                                              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                              style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold),
                                             ),
                                           ),
                                         ),
@@ -1627,13 +1627,13 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF2C415E),
+                                              color: const Color(0xFFF1F6FB),
                                               borderRadius: BorderRadius.circular(4.0),
-                                              border: Border.all(color: const Color(0xFF1E3A8A)),
+                                              border: Border.all(color: const Color(0xFFCBD5E1)),
                                             ),
                                             child: Text(
                                               r.caliber,
-                                              style: const TextStyle(color: Colors.white, fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
+                                              style: const TextStyle(color: Color(0xFF0F172A), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
                                             ),
                                           ),
                                         ),
@@ -1644,7 +1644,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                                 : (widget.currentModule == 'Component Test'
                                                     ? (r.primerLot.isNotEmpty ? r.primerLot : (r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo))
                                                     : (r.hopperNo.isEmpty && r.boxNo.isEmpty ? r.lotNo : '${r.lotNo} (H:${r.hopperNo}, B:${r.boxNo})')),
-                                            style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w600),
+                                            style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
                                           ),
                                         ),
                                         DataCell(_buildStatusBadge(r.status)),
@@ -1652,9 +1652,9 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF2C415E),
+                                              color: const Color(0xFFF1F6FB),
                                               borderRadius: BorderRadius.circular(6.0),
-                                              border: Border.all(color: const Color(0xFF1E3A8A)),
+                                              border: Border.all(color: const Color(0xFFCBD5E1)),
                                             ),
                                             child: Text(
                                               '${r.produced} rounds',
@@ -1662,7 +1662,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                                 fontFamily: 'JetBrainsMono',
                                                 fontSize: 11.5,
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.white,
+                                                color: Color(0xFF0F172A),
                                               ),
                                             ),
                                           ),
@@ -1673,7 +1673,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                             constraints: const BoxConstraints(maxWidth: 160.0),
                                             child: Text(
                                               r.notes.isNotEmpty ? r.notes : '-',
-                                              style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)),
+                                              style: const TextStyle(fontSize: 11.0, color: Color(0xFF475569)),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1694,7 +1694,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                                 const SizedBox(width: 8.0),
                                               ],
                                               IconButton(
-                                                icon: const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 18.0),
+                                                icon: const Icon(Icons.auto_awesome, color: Color(0xFF0284C7), size: 18.0),
                                                 onPressed: () => _showAiAnalysisDialog(r),
                                                 tooltip: 'AI Analysis & Recommendations',
                                                 padding: EdgeInsets.zero,
@@ -1703,7 +1703,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                               const SizedBox(width: 8.0),
                                               if (r.attachmentBase64.isNotEmpty) ...[
                                                 IconButton(
-                                                  icon: const Icon(Icons.attach_file, color: Color(0xFF38BDF8), size: 18.0),
+                                                  icon: const Icon(Icons.attach_file, color: Color(0xFF0284C7), size: 18.0),
                                                   onPressed: () => _showAttachmentDialog(r),
                                                   tooltip: 'View Attachment (${r.attachmentName})',
                                                   padding: EdgeInsets.zero,
@@ -1712,7 +1712,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                                 const SizedBox(width: 8.0),
                                               ],
                                               IconButton(
-                                                icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF38BDF8), size: 18.0),
+                                                icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF0284C7), size: 18.0),
                                                 onPressed: () => _showReportGenerationDialog([r], singleRecord: r),
                                                 tooltip: 'Generate Individual Report',
                                                 padding: EdgeInsets.zero,
@@ -1721,7 +1721,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                               if (widget.isAdmin || widget.canEditRecords) ...[
                                                 const SizedBox(width: 8.0),
                                                 IconButton(
-                                                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 18.0),
+                                                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF0284C7), size: 18.0),
                                                   onPressed: () => _showEditRecordDialog(r),
                                                   tooltip: 'Edit Entry',
                                                   padding: EdgeInsets.zero,
@@ -1767,23 +1767,23 @@ class _HistoryTabState extends State<HistoryTab> {
       value: value,
       isExpanded: true,
       onChanged: onChanged,
-      style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.w500),
-      dropdownColor: const Color(0xFF344D6E),
+      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.w500),
+      dropdownColor: Colors.white,
       decoration: InputDecoration(
         filled: true,
-        fillColor: const Color(0xFF2C415E),
+        fillColor: const Color(0xFFF1F6FB),
         contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
-          borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF4D99DB), width: 1.5),
         ),
       ),
       items: items.map((String item) {

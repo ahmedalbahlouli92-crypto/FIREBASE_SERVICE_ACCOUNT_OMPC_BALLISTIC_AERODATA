@@ -266,7 +266,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     final lowStock = _lowStockCount;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0E223D),
+      backgroundColor: const Color(0xFFC4D6EC),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -281,9 +281,12 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withOpacity(0.15),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(10.0),
                   border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.5)),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 10, offset: Offset(0, 2)),
+                  ],
                 ),
                 child: Row(
                   children: [
@@ -292,7 +295,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     Expanded(
                       child: Text(
                         'Attention: $lowStock item(s) are currently at or below their safe minimum stock threshold! Immediate replenishment is recommended.',
-                        style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13.0, fontWeight: FontWeight.w600),
+                        style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 13.0, fontWeight: FontWeight.w600),
                       ),
                     ),
                     TextButton(
@@ -304,7 +307,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                           }
                         });
                       },
-                      child: const Text('View Low Stock', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text('View Low Stock', style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -332,39 +335,42 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     return Container(
       padding: const EdgeInsets.all(18.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.25)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF06B6D4).withOpacity(0.15),
+              color: const Color(0xFFEDF4FC),
               borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+              border: Border.all(color: const Color(0xFFB8CEE5)),
             ),
-            child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF06B6D4), size: 28.0),
+            child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF0284C7), size: 28.0),
           ),
           const SizedBox(width: 16.0),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+              children: const [
+                Text(
                   'Consumables & Inventory Management',
                   style: TextStyle(
                     fontSize: 18.0,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Color(0xFF0F172A),
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 4.0),
+                SizedBox(height: 4.0),
                 Text(
                   'Select a category to view and log items. Monitor real-time daily, monthly, and yearly consumption statistics.',
-                  style: TextStyle(fontSize: 12.0, color: const Color(0xFFBAE6FD).withOpacity(0.8)),
+                  style: TextStyle(fontSize: 12.0, color: Color(0xFF475569)),
                 ),
               ],
             ),
@@ -433,7 +439,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 ),
               ],
               IconButton(
-                icon: const Icon(Icons.sync, color: Color(0xFF06B6D4)),
+                icon: const Icon(Icons.sync, color: Color(0xFF0284C7)),
                 tooltip: 'Sync with Cloud',
                 onPressed: () async {
                   await _loadData();
@@ -467,16 +473,16 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       children: [
         Row(
           children: [
-            const Icon(Icons.analytics_outlined, color: Color(0xFF38BDF8), size: 18.0),
+            const Icon(Icons.analytics_outlined, color: Color(0xFF0284C7), size: 18.0),
             const SizedBox(width: 8.0),
             const Text(
               'CONSUMPTION & INVENTORY STATISTICS',
-              style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12.0, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+              style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.0, fontWeight: FontWeight.bold, letterSpacing: 0.8),
             ),
             const Spacer(),
             Text(
               '${_categories.length} Categories • ${_items.length} Registered Items',
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5),
+              style: const TextStyle(color: Color(0xFF475569), fontSize: 11.5),
             ),
           ],
         ),
@@ -497,14 +503,14 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   value: NumberFormat('#,###').format(usedToday),
                   subtitle: DateFormat('MMM dd, yyyy').format(DateTime.now()),
                   icon: Icons.today,
-                  color: const Color(0xFF06B6D4),
+                  color: const Color(0xFF0284C7),
                 ),
                 _buildStatCard(
                   title: 'THIS MONTH',
                   value: NumberFormat('#,###').format(usedMonth),
                   subtitle: DateFormat('MMMM yyyy').format(DateTime.now()),
                   icon: Icons.calendar_month,
-                  color: const Color(0xFF3B82F6),
+                  color: const Color(0xFF2563EB),
                 ),
                 _buildStatCard(
                   title: 'THIS YEAR',
@@ -552,9 +558,12 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A2E49),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 10, offset: Offset(0, 2)),
+        ],
       ),
       child: Row(
         children: [
@@ -574,7 +583,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 9.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  style: const TextStyle(color: Color(0xFF475569), fontSize: 9.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -588,7 +597,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 const SizedBox(height: 1.0),
                 Text(
                   subtitle,
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 9.5),
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 9.5),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -604,9 +613,12 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: Row(
         children: [
@@ -614,16 +626,18 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           Expanded(
             flex: 3,
             child: TextField(
-              style: const TextStyle(color: Colors.white, fontSize: 13.0),
+              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: 'Search by part name or serial...',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.5),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF06B6D4), size: 18.0),
+                hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF0284C7), size: 18.0),
                 filled: true,
-                fillColor: const Color(0xFF0E223D),
+                fillColor: const Color(0xFFF1F6FB),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF4D99DB), width: 1.5)),
               ),
               onChanged: (val) => setState(() => _searchQuery = val),
             ),
@@ -636,18 +650,18 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF0E223D),
+                color: const Color(0xFFF1F6FB),
                 borderRadius: BorderRadius.circular(8.0),
                 border: Border.all(
-                  color: _selectedCategory == 'None' ? const Color(0xFFF59E0B) : const Color(0xFF06B6D4),
+                  color: _selectedCategory == 'None' ? const Color(0xFFF59E0B) : const Color(0xFFCBD5E1),
                   width: _selectedCategory == 'None' ? 1.5 : 1.0,
                 ),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedCategory,
-                  dropdownColor: const Color(0xFF1C3351),
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.5),
                   isExpanded: true,
                   onChanged: (v) => setState(() => _selectedCategory = v ?? 'None'),
                   items: [
@@ -655,7 +669,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                       value: 'None',
                       child: Text(
                         '-- Choose Category (Items Hidden) --',
-                        style: TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold),
                       ),
                     ),
                     ..._categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
@@ -672,15 +686,15 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF0E223D),
+                color: const Color(0xFFF1F6FB),
                 borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: const Color(0xFF1E3A8A)),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _stockFilter,
-                  dropdownColor: const Color(0xFF1C3351),
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.5),
                   isExpanded: true,
                   onChanged: (v) => setState(() => _stockFilter = v ?? 'All'),
                   items: ['All', 'In Stock', 'Low Stock'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
@@ -700,24 +714,27 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 48.0, horizontal: 24.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C3351),
-          borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.2)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14.0),
+          border: Border.all(color: const Color(0xFFB8CEE5)),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+          ],
         ),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF06B6D4).withOpacity(0.12),
+                color: const Color(0xFFEDF4FC),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.touch_app_outlined, color: Color(0xFF06B6D4), size: 40.0),
+              child: const Icon(Icons.touch_app_outlined, color: Color(0xFF0284C7), size: 40.0),
             ),
             const SizedBox(height: 16.0),
             const Text(
               'Select a Category to View Inventory Items',
-              style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Color(0xFF0F172A), fontSize: 16.0, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8.0),
             SizedBox(
@@ -725,7 +742,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               child: Text(
                 'Please select one of the ${_categories.length} categories from the dropdown above to display its corresponding items and parts. General usage and threshold statistics for all items are displayed in the dashboard above.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13.0, height: 1.4),
+                style: const TextStyle(color: Color(0xFF475569), fontSize: 13.0, height: 1.4),
               ),
             ),
             const SizedBox(height: 20.0),
@@ -736,10 +753,10 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
               children: _categories.map((cat) {
                 final count = _items.where((it) => it['category'] == cat).length;
                 return ActionChip(
-                  backgroundColor: const Color(0xFF0E223D),
-                  side: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.3)),
-                  avatar: const Icon(Icons.folder_open, size: 14.0, color: Color(0xFF06B6D4)),
-                  label: Text('$cat ($count)', style: const TextStyle(color: Colors.white, fontSize: 11.5)),
+                  backgroundColor: const Color(0xFFF1F6FB),
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  avatar: const Icon(Icons.folder_open, size: 14.0, color: Color(0xFF0284C7)),
+                  label: Text('$cat ($count)', style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5)),
                   onPressed: () {
                     setState(() => _selectedCategory = cat);
                   },
@@ -757,22 +774,25 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
         width: double.infinity,
         padding: const EdgeInsets.all(40.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C3351),
-          borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(color: const Color(0xFF1E3A8A)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14.0),
+          border: Border.all(color: const Color(0xFFB8CEE5)),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+          ],
         ),
         child: Column(
           children: [
-            const Icon(Icons.inbox_outlined, color: Color(0xFF8E96A3), size: 48.0),
+            const Icon(Icons.inbox_outlined, color: Color(0xFF94A3B8), size: 48.0),
             const SizedBox(height: 12.0),
             Text(
               'No items found under "$_selectedCategory"',
-              style: const TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 16.0, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6.0),
             Text(
               'Try changing your search query or click "Register Item" to add new inventory under this category.',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.5),
+              style: const TextStyle(color: Color(0xFF475569), fontSize: 12.5),
             ),
           ],
         ),
@@ -787,12 +807,12 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           children: [
             Text(
               'CATEGORY: ${_selectedCategory.toUpperCase()} (${filtered.length} ITEMS)',
-              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.0, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+              style: const TextStyle(color: Color(0xFF0284C7), fontSize: 12.0, fontWeight: FontWeight.bold, letterSpacing: 0.8),
             ),
             TextButton.icon(
               onPressed: () => setState(() => _selectedCategory = 'None'),
-              icon: const Icon(Icons.visibility_off_outlined, size: 14.0, color: Color(0xFF94A3B8)),
-              label: const Text('Hide Items', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+              icon: const Icon(Icons.visibility_off_outlined, size: 14.0, color: Color(0xFF64748B)),
+              label: const Text('Hide Items', style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
             ),
           ],
         ),
@@ -804,12 +824,15 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
   Widget _build4ColumnItemsTable(List<Map<String, dynamic>> items) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.25)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(14.0),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
@@ -820,14 +843,14 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 // Table Header with 4 defined columns
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  color: const Color(0xFF0E223D),
+                  color: const Color(0xFFF1F6FB),
                   child: const Row(
                     children: [
                       SizedBox(
                         width: 250.0,
                         child: Text(
                           'ITEM NAME',
-                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
                         ),
                       ),
                       SizedBox(width: 12.0),
@@ -835,7 +858,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                         width: 150.0,
                         child: Text(
                           'SERIAL NUMBER',
-                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
                         ),
                       ),
                       SizedBox(width: 12.0),
@@ -843,7 +866,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                         width: 160.0,
                         child: Text(
                           'AVAILABLE STOCK',
-                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
                         ),
                       ),
                       SizedBox(width: 12.0),
@@ -851,13 +874,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                         width: 440.0,
                         child: Text(
                           'CONSUMPTION ACTION (Caliber | Quantity | Remark | Submit)',
-                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1.0, color: Color(0xFF1E3A8A)),
+                const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
                 // Item Rows
                 ...items.asMap().entries.map((entry) {
                   final index = entry.key;
@@ -899,8 +922,8 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: isEven ? Colors.transparent : const Color(0xFF0E223D).withOpacity(0.35),
-        border: Border(bottom: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.1), width: 1.0)),
+        color: isEven ? Colors.white : const Color(0xFFF8FAFC),
+        border: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -913,7 +936,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 Container(
                   padding: const EdgeInsets.all(7.0),
                   decoration: BoxDecoration(
-                    color: stockColor.withOpacity(0.15),
+                    color: stockColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                   child: Icon(_getCategoryIcon(item['category']), color: stockColor, size: 18.0),
@@ -926,13 +949,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     children: [
                       Text(
                         item['name'] ?? '',
-                        style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2.0),
                       Text(
                         'Min: $minSafe $unit',
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10.5),
+                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.5),
                       ),
                     ],
                   ),
@@ -948,13 +971,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF0E223D),
+                color: const Color(0xFFF1F6FB),
                 borderRadius: BorderRadius.circular(6.0),
-                border: Border.all(color: const Color(0xFF1E3A8A)),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
               child: Text(
                 (item['serial'] ?? '').toString().isNotEmpty ? item['serial'].toString() : 'N/A',
-                style: const TextStyle(color: Color(0xFFBAE6FD), fontSize: 11.5, fontFamily: 'monospace'),
+                style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontFamily: 'monospace', fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -989,7 +1012,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 const SizedBox(height: 2.0),
                 Text(
                   stockStatus,
-                  style: TextStyle(color: stockColor.withOpacity(0.8), fontSize: 10.0, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: stockColor.withOpacity(0.9), fontSize: 10.0, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -1007,15 +1030,15 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   height: 36.0,
                   padding: const EdgeInsets.symmetric(horizontal: 6.0),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0E223D),
+                    color: const Color(0xFFF1F6FB),
                     borderRadius: BorderRadius.circular(6.0),
-                    border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: ['5.56', '7.62', '9mm'].contains(selectedCaliber) ? selectedCaliber : '5.56',
-                      dropdownColor: const Color(0xFF1C3351),
-                      style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                      dropdownColor: Colors.white,
+                      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5, fontWeight: FontWeight.bold),
                       isExpanded: true,
                       onChanged: (val) {
                         if (val != null) {
@@ -1041,20 +1064,24 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   child: TextField(
                     controller: qtyCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0),
                     decoration: InputDecoration(
                       hintText: 'Qty',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11.0),
+                      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
                       filled: true,
-                      fillColor: const Color(0xFF0E223D),
+                      fillColor: const Color(0xFFF1F6FB),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6.0),
-                        borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6.0),
-                        borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6.0),
+                        borderSide: const BorderSide(color: Color(0xFF4D99DB), width: 1.5),
                       ),
                     ),
                   ),
@@ -1067,20 +1094,24 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                     height: 36.0,
                     child: TextField(
                       controller: remarkCtrl,
-                      style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0),
                       decoration: InputDecoration(
                         hintText: 'Remark / Lot',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11.0),
+                        hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
                         filled: true,
-                        fillColor: const Color(0xFF0E223D),
+                        fillColor: const Color(0xFFF1F6FB),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(6.0),
-                          borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(6.0),
-                          borderSide: BorderSide(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6.0),
+                          borderSide: const BorderSide(color: Color(0xFF4D99DB), width: 1.5),
                         ),
                       ),
                     ),

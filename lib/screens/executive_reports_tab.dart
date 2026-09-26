@@ -179,7 +179,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0E223D),
+      backgroundColor: const Color(0xFFC4D6EC),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -225,39 +225,42 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     return Container(
       padding: const EdgeInsets.all(18.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withOpacity(0.15),
+              color: const Color(0xFFEDF4FC),
               borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.3)),
+              border: Border.all(color: const Color(0xFFB8CEE5)),
             ),
-            child: const Icon(Icons.summarize_outlined, color: Color(0xFFA78BFA), size: 28.0),
+            child: const Icon(Icons.summarize_outlined, color: Color(0xFF0284C7), size: 28.0),
           ),
           const SizedBox(width: 16.0),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+              children: const [
+                Text(
                   'Executive Quality & Operations Reports',
                   style: TextStyle(
                     fontSize: 18.0,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Color(0xFF0F172A),
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 4.0),
+                SizedBox(height: 4.0),
                 Text(
                   'Consolidated executive intelligence covering Daily, Monthly, and Yearly ballistics testing & inventory metrics.',
-                  style: TextStyle(fontSize: 12.0, color: const Color(0xFFE2E8F0).withOpacity(0.7)),
+                  style: TextStyle(fontSize: 12.0, color: Color(0xFF475569)),
                 ),
               ],
             ),
@@ -283,7 +286,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                 icon: const Icon(Icons.print, size: 16.0),
                 label: const Text('Print / PDF Report', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
+                  backgroundColor: const Color(0xFF4D99DB),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
@@ -300,9 +303,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,9 +318,9 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               // Period Mode Switcher (Daily, Monthly, Yearly)
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0E223D),
+                  color: const Color(0xFFF1F6FB),
                   borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: const Color(0xFF1E3A8A)),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -330,13 +336,14 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               // Date Picker Button
               OutlinedButton.icon(
                 onPressed: _pickDate,
-                icon: const Icon(Icons.edit_calendar, color: Color(0xFF38BDF8), size: 16.0),
+                icon: const Icon(Icons.edit_calendar, color: Color(0xFF0284C7), size: 16.0),
                 label: Text(
                   _periodLabel,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.0),
+                  style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 13.0),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF38BDF8)),
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  backgroundColor: const Color(0xFFF1F6FB),
                   padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                 ),
@@ -344,7 +351,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             ],
           ),
           const SizedBox(height: 14.0),
-          const Divider(color: Color(0xFF1E3A8A), height: 1.0),
+          const Divider(color: Color(0xFFE2E8F0), height: 1.0),
           const SizedBox(height: 12.0),
 
           // Checkboxes Row
@@ -352,7 +359,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             children: [
               const Text(
                 'MODULES TO INCLUDE:',
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold, letterSpacing: 0.5),
               ),
               const SizedBox(width: 16.0),
               _buildCheckbox(
@@ -393,17 +400,17 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF8B5CF6) : Colors.transparent,
+          color: isSelected ? const Color(0xFF4D99DB) : Colors.transparent,
           borderRadius: BorderRadius.circular(7.0),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14.0, color: isSelected ? Colors.white : const Color(0xFF94A3B8)),
+            Icon(icon, size: 14.0, color: isSelected ? Colors.white : const Color(0xFF475569)),
             const SizedBox(width: 6.0),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                color: isSelected ? Colors.white : const Color(0xFF334155),
                 fontSize: 12.0,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -422,12 +429,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         children: [
           Checkbox(
             value: value,
-            activeColor: const Color(0xFF8B5CF6),
+            activeColor: const Color(0xFF4D99DB),
             checkColor: Colors.white,
-            side: const BorderSide(color: Color(0xFF94A3B8)),
+            side: const BorderSide(color: Color(0xFFCBD5E1)),
             onChanged: onChanged,
           ),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12.5)),
+          Text(label, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.5)),
         ],
       ),
     );
@@ -441,10 +448,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       lastDate: DateTime(2035),
       builder: (context, child) {
         return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF8B5CF6),
-              surface: Color(0xFF1C3351),
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF4D99DB),
+              surface: Colors.white,
             ),
           ),
           child: child!,
@@ -473,7 +480,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             value: '$totalTests',
             subtitle: 'Across selected modules',
             icon: Icons.biotech_outlined,
-            color: const Color(0xFF38BDF8),
+            color: const Color(0xFF0284C7),
           ),
         ),
         const SizedBox(width: 12.0),
@@ -503,7 +510,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             value: '$consumablesUsed',
             subtitle: 'Total units dispensed',
             icon: Icons.inventory_2_outlined,
-            color: const Color(0xFFA855F7),
+            color: const Color(0xFF8B5CF6),
           ),
         ),
       ],
@@ -520,9 +527,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: color.withOpacity(0.35)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: Row(
         children: [
@@ -541,7 +551,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10.0, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  style: const TextStyle(color: Color(0xFF475569), fontSize: 10.0, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2.0),
@@ -553,7 +563,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                 const SizedBox(height: 2.0),
                 Text(
                   subtitle,
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10.0),
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.0),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -567,30 +577,33 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   Widget _buildInspectionPreviewTable(List<Map<String, dynamic>> entries) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0E223D),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
-              border: Border(bottom: BorderSide(color: const Color(0xFF1E3A8A))),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F6FB),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(14.0)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'BALLISTIC INSPECTION LOGS (${entries.length} RECORDS)',
-                  style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 12.0, letterSpacing: 0.5),
+                  style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 12.0, letterSpacing: 0.5),
                 ),
                 Text(
                   'PERIOD: ${_periodLabel.toUpperCase()}',
-                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -599,16 +612,16 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             const Padding(
               padding: EdgeInsets.all(32.0),
               child: Center(
-                child: Text('No inspection records found for the selected period and modules.', style: TextStyle(color: Color(0xFF94A3B8))),
+                child: Text('No inspection records found for the selected period and modules.', style: TextStyle(color: Color(0xFF475569))),
               ),
             )
           else
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(const Color(0xFF0E223D).withOpacity(0.5)),
-                headingTextStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold),
-                dataTextStyle: const TextStyle(color: Colors.white, fontSize: 11.5),
+                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                headingTextStyle: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
+                dataTextStyle: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
                 columns: const [
                   DataColumn(label: Text('MODULE')),
                   DataColumn(label: Text('DATE & TIME')),
@@ -635,7 +648,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                       : (r.lotNo.isNotEmpty ? r.lotNo : 'N/A');
 
                   return DataRow(cells: [
-                    DataCell(Text(module, style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold))),
+                    DataCell(Text(module, style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold))),
                     DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp)),
                     DataCell(Text(r.operators)),
                     DataCell(Text(r.testName, style: const TextStyle(fontWeight: FontWeight.bold))),
@@ -665,30 +678,33 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   Widget _buildConsumablesPreviewTable(List<Map<String, dynamic>> entries) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1C3351),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0E223D),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
-              border: Border(bottom: BorderSide(color: const Color(0xFF1E3A8A))),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F6FB),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(14.0)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'CONSUMABLE INVENTORY TRANSACTIONS (${entries.length} ACTIVITIES)',
-                  style: const TextStyle(color: Color(0xFFA78BFA), fontWeight: FontWeight.bold, fontSize: 12.0, letterSpacing: 0.5),
+                  style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 12.0, letterSpacing: 0.5),
                 ),
                 Text(
                   'PERIOD: ${_periodLabel.toUpperCase()}',
-                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -697,16 +713,16 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             const Padding(
               padding: EdgeInsets.all(32.0),
               child: Center(
-                child: Text('No consumable items activity recorded for this period.', style: TextStyle(color: Color(0xFF94A3B8))),
+                child: Text('No consumable items activity recorded for this period.', style: TextStyle(color: Color(0xFF475569))),
               ),
             )
           else
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(const Color(0xFF0E223D).withOpacity(0.5)),
-                headingTextStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold),
-                dataTextStyle: const TextStyle(color: Colors.white, fontSize: 11.5),
+                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                headingTextStyle: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
+                dataTextStyle: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
                 columns: const [
                   DataColumn(label: Text('DATE & TIME')),
                   DataColumn(label: Text('ACTION TYPE')),
@@ -720,7 +736,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                 rows: entries.map((c) {
                   final type = (c['type'] ?? '').toString();
                   final isReceived = type == 'RECEIVED';
-                  final color = isReceived ? const Color(0xFF10B981) : const Color(0xFF38BDF8);
+                  final color = isReceived ? const Color(0xFF10B981) : const Color(0xFF0284C7);
 
                   return DataRow(cells: [
                     DataCell(Text(c['date']?.toString() ?? '')),

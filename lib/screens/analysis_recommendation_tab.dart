@@ -69,32 +69,35 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       Container(
                         padding: const EdgeInsets.all(8.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2C415E),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(10.0),
-                          border: Border.all(color: const Color(0xFF1E3A8A)),
+                          border: Border.all(color: const Color(0xFFB8CEE5)),
                         ),
-                        child: const Icon(Icons.auto_awesome, color: Color(0xFF38BDF8), size: 24.0),
+                        child: const Icon(Icons.auto_awesome, color: Color(0xFF0284C7), size: 24.0),
                       ),
                       const SizedBox(width: 12.0),
                       const Text(
                         'AI Analysis & Recommendations',
-                        style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: -0.5),
+                        style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A), letterSpacing: -0.5),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4.0),
                   const Text(
                     'Automated 1-week stability diagnostics, leak drift detection, and per-test ballistic engineering recommendations',
-                    style: TextStyle(fontSize: 13.0, color: Color(0xFF94A3B8)),
+                    style: TextStyle(fontSize: 13.0, color: Color(0xFF475569)),
                   ),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
                 decoration: BoxDecoration(
-                  color: weeklyReport.ratingColor.withOpacity(0.12),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: weeklyReport.ratingColor.withOpacity(0.3)),
+                  border: Border.all(color: weeklyReport.ratingColor.withOpacity(0.5)),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 10, offset: Offset(0, 2)),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -117,14 +120,14 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
             width: double.infinity,
             padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFB8CEE5)),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x20000000),
-                  blurRadius: 10.0,
-                  offset: Offset(0, 4),
+                  color: Color(0x0A1E3A8A),
+                  blurRadius: 14.0,
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -143,17 +146,17 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                     const SizedBox(width: 10.0),
                     const Text(
                       '1-Week Ballistic Quality & Stability Executive Summary',
-                      style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     const Spacer(),
                     Text(
                       'Analyzed ${weeklyReport.totalTests} tests (${weeklyReport.totalSampleRounds} total sample rounds)',
-                      style: const TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontSize: 12.0, color: Color(0xFF475569), fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12.0),
-                const Divider(color: Color(0xFF1E3A8A), height: 1.0),
+                const Divider(color: Color(0xFFE2E8F0), height: 1.0),
                 const SizedBox(height: 14.0),
 
                 // Critical alerts list
@@ -163,12 +166,12 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.arrow_right, color: Color(0xFF38BDF8), size: 18.0),
+                        const Icon(Icons.arrow_right, color: Color(0xFF0284C7), size: 18.0),
                         const SizedBox(width: 4.0),
                         Expanded(
                           child: Text(
                             alert,
-                            style: const TextStyle(fontSize: 13.0, color: Colors.white, height: 1.4, fontWeight: FontWeight.w500),
+                            style: const TextStyle(fontSize: 13.0, color: Color(0xFF1E293B), height: 1.4, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
@@ -179,7 +182,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                 const SizedBox(height: 8.0),
                 const Text(
                   'Recommended Quality Control Actions:',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
                 ),
                 const SizedBox(height: 6.0),
                 ...weeklyReport.actionableAdvice.map((advice) {
@@ -193,7 +196,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         Expanded(
                           child: Text(
                             advice,
-                            style: const TextStyle(fontSize: 12.5, color: Color(0xFFCBD5E1), height: 1.35),
+                            style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), height: 1.35),
                           ),
                         ),
                       ],
@@ -221,15 +224,15 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF344D6E),
-                      borderRadius: BorderRadius.circular(12.0),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14.0),
                       border: Border.all(
-                        color: weeklyReport.isLeaksIncreasing ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFF1E3A8A),
+                        color: weeklyReport.isLeaksIncreasing ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFFB8CEE5),
                       ),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x20000000),
-                          blurRadius: 8.0,
+                          color: Color(0x0A1E3A8A),
+                          blurRadius: 14.0,
                           offset: Offset(0, 3),
                         ),
                       ],
@@ -247,7 +250,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                               ),
                               child: Icon(
                                 Icons.water_drop_outlined,
-                                color: weeklyReport.isLeaksIncreasing ? const Color(0xFFEF4444) : const Color(0xFF38BDF8),
+                                color: weeklyReport.isLeaksIncreasing ? const Color(0xFFEF4444) : const Color(0xFF0284C7),
                                 size: 18.0,
                               ),
                             ),
@@ -255,7 +258,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                             const Expanded(
                               child: Text(
                                 'Daily Waterproof Leak Trend',
-                                style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white),
+                                style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                               ),
                             ),
                             Container(
@@ -278,13 +281,13 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         const SizedBox(height: 12.0),
                         Text(
                           weeklyReport.leakTrendSummary,
-                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
+                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
                         ),
                         const SizedBox(height: 16.0),
 
                         // Day by day leak table
                         if (weeklyReport.dailyLeaks.isEmpty)
-                          const Text('No waterproof logs in the last 7 days.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0))
+                          const Text('No waterproof logs in the last 7 days.', style: TextStyle(color: Color(0xFF475569), fontSize: 12.0))
                         else
                           Column(
                             children: weeklyReport.dailyLeaks.entries.map((e) {
@@ -293,7 +296,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                                 child: Row(
                                   children: [
-                                    Text(e.key, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF94A3B8))),
+                                    Text(e.key, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF475569))),
                                     const Spacer(),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
@@ -324,15 +327,15 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF344D6E),
-                      borderRadius: BorderRadius.circular(12.0),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14.0),
                       border: Border.all(
-                        color: weeklyReport.isPressureUnstable ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFF1E3A8A),
+                        color: weeklyReport.isPressureUnstable ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFFB8CEE5),
                       ),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x20000000),
-                          blurRadius: 8.0,
+                          color: Color(0x0A1E3A8A),
+                          blurRadius: 14.0,
                           offset: Offset(0, 3),
                         ),
                       ],
@@ -350,7 +353,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                               ),
                               child: Icon(
                                 Icons.speed_rounded,
-                                color: weeklyReport.isPressureUnstable ? const Color(0xFFEF4444) : const Color(0xFF38BDF8),
+                                color: weeklyReport.isPressureUnstable ? const Color(0xFFEF4444) : const Color(0xFF0284C7),
                                 size: 18.0,
                               ),
                             ),
@@ -358,7 +361,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                             const Expanded(
                               child: Text(
                                 'EPVAT Chamber Pressure Stability',
-                                style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.white),
+                                style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                               ),
                             ),
                             Container(
@@ -381,13 +384,13 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         const SizedBox(height: 12.0),
                         Text(
                           weeklyReport.pressureTrendSummary,
-                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
+                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
                         ),
                         const SizedBox(height: 16.0),
 
                         // Day by day pressure table
                         if (weeklyReport.dailyMeanPressure.isEmpty)
-                          const Text('No EPVAT logs in the last 7 days.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0))
+                          const Text('No EPVAT logs in the last 7 days.', style: TextStyle(color: Color(0xFF475569), fontSize: 12.0))
                         else
                           Column(
                             children: weeklyReport.dailyMeanPressure.entries.map((e) {
@@ -397,11 +400,11 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                                 child: Row(
                                   children: [
-                                    Text(e.key, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF94A3B8))),
+                                    Text(e.key, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF475569))),
                                     const Spacer(),
                                     Text(
                                       'Mean: ${mean.toStringAsFixed(0)} bar',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Colors.white),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)),
                                     ),
                                     const SizedBox(width: 8.0),
                                     Container(
@@ -413,7 +416,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                                       child: Text(
                                         'SD: ${sd.toStringAsFixed(1)}',
                                         style: TextStyle(
-                                          color: sd > 90.0 ? const Color(0xFFEF4444) : const Color(0xFF38BDF8),
+                                          color: sd > 90.0 ? const Color(0xFFEF4444) : const Color(0xFF0284C7),
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -438,14 +441,14 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
             width: double.infinity,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFB8CEE5)),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x20000000),
-                  blurRadius: 10.0,
-                  offset: Offset(0, 4),
+                  color: Color(0x0A1E3A8A),
+                  blurRadius: 14.0,
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -460,16 +463,16 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2C415E),
+                            color: const Color(0xFFEDF4FC),
                             borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                            border: Border.all(color: const Color(0xFFB8CEE5)),
                           ),
-                          child: const Icon(Icons.biotech_outlined, color: Color(0xFF38BDF8), size: 20.0),
+                          child: const Icon(Icons.biotech_outlined, color: Color(0xFF0284C7), size: 20.0),
                         ),
                         const SizedBox(width: 12.0),
                         const Text(
                           'Individual Test AI Diagnostic & Root-Cause Advisory',
-                          style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                       ],
                     ),
@@ -478,15 +481,15 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2C415E),
+                          color: const Color(0xFFF1F6FB),
                           borderRadius: BorderRadius.circular(8.0),
-                          border: Border.all(color: const Color(0xFF1E3A8A)),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<BallisticRecord>(
                             value: activeRecord,
-                            dropdownColor: const Color(0xFF344D6E),
-                            style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                            dropdownColor: Colors.white,
+                            style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.w600),
                             onChanged: (rec) {
                               if (rec != null) setState(() => _selectedRecord = rec);
                             },
@@ -502,7 +505,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                   ],
                 ),
                 const SizedBox(height: 16.0),
-                const Divider(color: Color(0xFF1E3A8A), height: 1.0),
+                const Divider(color: Color(0xFFE2E8F0), height: 1.0),
                 const SizedBox(height: 16.0),
 
                 if (testAdvisory != null) ...[
@@ -523,7 +526,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       const SizedBox(width: 12.0),
                       Text(
                         testAdvisory.summary,
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white),
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                       ),
                     ],
                   ),
@@ -537,15 +540,15 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2C415E),
+                          color: const Color(0xFFF1F6FB),
                           borderRadius: BorderRadius.circular(6.0),
-                          border: Border.all(color: const Color(0xFF1E3A8A)),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
                         ),
                         child: RichText(
                           text: TextSpan(
                             children: [
-                              TextSpan(text: '${e.key}: ', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
-                              TextSpan(text: e.value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.0)),
+                              TextSpan(text: '${e.key}: ', style: const TextStyle(color: Color(0xFF475569), fontSize: 11.5)),
+                              TextSpan(text: e.value, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 12.0)),
                             ],
                           ),
                         ),
@@ -563,16 +566,16 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         child: Container(
                           padding: const EdgeInsets.all(16.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2C415E),
+                            color: const Color(0xFFF1F6FB),
                             borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                            border: Border.all(color: const Color(0xFFD6E4F0)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
                                 'Engineered Findings:',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF38BDF8)),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0284C7)),
                               ),
                               const SizedBox(height: 8.0),
                               ...testAdvisory.findings.map((f) => Padding(
@@ -580,10 +583,10 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                                     child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(Icons.circle, size: 6.0, color: Color(0xFF38BDF8)),
+                                        const Icon(Icons.circle, size: 6.0, color: Color(0xFF0284C7)),
                                         const SizedBox(width: 8.0),
                                         Expanded(
-                                          child: Text(f, style: const TextStyle(fontSize: 12.5, color: Color(0xFFE2E8F0), height: 1.35)),
+                                          child: Text(f, style: const TextStyle(fontSize: 12.5, color: Color(0xFF1E293B), height: 1.35)),
                                         ),
                                       ],
                                     ),
@@ -599,16 +602,16 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                         child: Container(
                           padding: const EdgeInsets.all(16.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2C415E),
+                            color: const Color(0xFFF0FDF4),
                             borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                            border: Border.all(color: const Color(0xFFBBF7D0)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
                                 'AI Corrective Recommendations:',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF10B981)),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF059669)),
                               ),
                               const SizedBox(height: 8.0),
                               ...testAdvisory.recommendations.map((r) => Padding(
@@ -619,7 +622,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                                         const Icon(Icons.lightbulb_outline, size: 14.0, color: Color(0xFF10B981)),
                                         const SizedBox(width: 8.0),
                                         Expanded(
-                                          child: Text(r, style: const TextStyle(fontSize: 12.5, color: Color(0xFFE2E8F0), height: 1.35)),
+                                          child: Text(r, style: const TextStyle(fontSize: 12.5, color: Color(0xFF1E293B), height: 1.35)),
                                         ),
                                       ],
                                     ),
@@ -633,7 +636,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                 ] else ...[
                   const Text(
                     'No inspection record selected. Select a ballistic trial above to view automated AI engineering recommendations.',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.0),
+                    style: TextStyle(color: Color(0xFF475569), fontSize: 13.0),
                   ),
                 ],
               ],

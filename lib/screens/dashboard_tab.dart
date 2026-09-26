@@ -287,7 +287,7 @@ class _DashboardTabState extends State<DashboardTab> {
         : sortedFiltered.take(5).toList();
 
     return Container(
-      color: const Color(0xFFEDF4FC), // Soft icy-blue tinted surface background (#edf4fc)
+      color: const Color(0xFFC4D6EC), // Low-glare mid-tone blue-gray surface background (#c4d6ec)
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
         child: Column(

@@ -3360,14 +3360,14 @@ class _EntryTabState extends State<EntryTab> {
               width: double.infinity,
               padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 14.0 : 24.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF344D6E),
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: const Color(0xFF1E3A8A)),
-                boxShadow: [
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14.0),
+                border: Border.all(color: const Color(0xFFB8CEE5)),
+                boxShadow: const [
                   BoxShadow(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-                    blurRadius: 16.0,
-                    offset: const Offset(0, 4),
+                    color: Color(0x0A1E3A8A),
+                    blurRadius: 14.0,
+                    offset: Offset(0, 3),
                   ),
                 ],
               ),
@@ -3532,20 +3532,20 @@ class _EntryTabState extends State<EntryTab> {
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.list_alt_outlined, color: Color(0xFF06B6D4), size: 18.0),
+                              Icon(Icons.list_alt_outlined, color: Color(0xFF0284C7), size: 18.0),
                               SizedBox(width: 8.0),
                               Text(
                                 'Test Result (Waterproof Leaks)',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                               ),
                             ],
                           ),
@@ -3553,29 +3553,29 @@ class _EntryTabState extends State<EntryTab> {
 
                           // TABLE HEADERS
                           Row(
-                            children: [
+                            children: const [
                               Expanded(
                                 flex: 2,
-                                child: Text('Location', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                child: Text('Location', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
-                                child: Text('Slow Leak (Rounds)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                child: Text('Slow Leak (Rounds)', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
-                                child: Text('Fast Leak (Rounds)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                child: Text('Fast Leak (Rounds)', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
-                          const Divider(color: Colors.white12, height: 16.0),
+                          const Divider(color: Color(0xFFE2E8F0), height: 16.0),
 
                           // ROW 1: MOUTH
                           Row(
                             children: [
-                              Expanded(
+                              const Expanded(
                                 flex: 2,
-                                child: Text('Mouth', style: TextStyle(color: Colors.white70, fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Mouth', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
@@ -3598,9 +3598,9 @@ class _EntryTabState extends State<EntryTab> {
                           // ROW 2: PRIMER
                           Row(
                             children: [
-                              Expanded(
+                              const Expanded(
                                 flex: 2,
-                                child: Text('Primer', style: TextStyle(color: Colors.white70, fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Primer', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
@@ -3618,7 +3618,7 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ],
                           ),
-                          const Divider(color: Colors.white12, height: 24.0),
+                          const Divider(color: Color(0xFFE2E8F0), height: 24.0),
 
                           // CALCULATED TOTAL DISPLAY
                           Builder(
@@ -3763,20 +3763,20 @@ class _EntryTabState extends State<EntryTab> {
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.report_problem_outlined, color: Color(0xFF06B6D4), size: 18.0),
+                              Icon(Icons.report_problem_outlined, color: Color(0xFF0284C7), size: 18.0),
                               SizedBox(width: 8.0),
                               Text(
                                 'Test Result (Splits/Cracks per Zone)',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                               ),
                             ],
                           ),
@@ -3787,26 +3787,26 @@ class _EntryTabState extends State<EntryTab> {
                             children: const [
                               Expanded(
                                 flex: 2,
-                                child: Text('Crack Zone', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                child: Text('Crack Zone', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
-                                child: Text('Hairline Crack (Minor)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                child: Text('Hairline Crack (Minor)', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
-                                child: Text('Split/Crack (Major)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                child: Text('Split/Crack (Major)', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
-                          const Divider(color: Colors.white12, height: 16.0),
+                          const Divider(color: Color(0xFFE2E8F0), height: 16.0),
 
                           // ROW 1: Neck (I zone)
                           Row(
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Neck (I zone)', style: TextStyle(color: Colors.white70, fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Neck (I zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
@@ -3831,7 +3831,7 @@ class _EntryTabState extends State<EntryTab> {
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Shoulder (S zone)', style: TextStyle(color: Colors.white70, fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Shoulder (S zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
@@ -3856,7 +3856,7 @@ class _EntryTabState extends State<EntryTab> {
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Body (J & K zone)', style: TextStyle(color: Colors.white70, fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Body (J & K zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
@@ -3881,7 +3881,7 @@ class _EntryTabState extends State<EntryTab> {
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Head (L & M zone)', style: TextStyle(color: Colors.white70, fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Head (L & M zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
@@ -3899,7 +3899,7 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ],
                           ),
-                          const Divider(color: Colors.white12, height: 24.0),
+                          const Divider(color: Color(0xFFE2E8F0), height: 24.0),
 
                           // CALCULATED TOTAL DISPLAY
                           Builder(
@@ -3968,9 +3968,9 @@ class _EntryTabState extends State<EntryTab> {
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4128,18 +4128,18 @@ class _EntryTabState extends State<EntryTab> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF2C415E),
+                                      color: const Color(0xFFF1F6FB),
                                       borderRadius: BorderRadius.circular(6.0),
-                                      border: Border.all(color: const Color(0xFF1E3A8A)),
+                                      border: Border.all(color: const Color(0xFFCBD5E1)),
                                     ),
                                     child: DropdownButton<String>(
                                       value: weapons.any((w) => w['name'] == _cyclicRateWeaponType) ? _cyclicRateWeaponType : (weapons.isNotEmpty ? weapons.first['name'] as String : ''),
                                       isExpanded: true,
-                                      dropdownColor: const Color(0xFF344D6E),
+                                      dropdownColor: Colors.white,
                                       underline: const SizedBox(),
-                                      style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                                      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
                                       onChanged: (val) => setState(() => _cyclicRateWeaponType = val ?? ''),
-                                      items: weapons.map((w) => DropdownMenuItem<String>(value: w['name'] as String, child: Text(w['name'] ?? ''))).toList(),
+                                      items: weapons.map((w) => DropdownMenuItem<String>(value: w['name'] as String, child: Text(w['name'] ?? '', style: const TextStyle(color: Color(0xFF0F172A))))).toList(),
                                     ),
                                   ),
                                 const SizedBox(height: 14.0),
@@ -4262,9 +4262,9 @@ class _EntryTabState extends State<EntryTab> {
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4330,7 +4330,7 @@ class _EntryTabState extends State<EntryTab> {
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalHoleDiameterRounds[idx],
-                                              dropdownColor: const Color(0xFF344D6E),
+                                              dropdownColor: Colors.white,
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalHoleDiameterRounds[idx] = v!),
                                               items: const [
@@ -4353,7 +4353,7 @@ class _EntryTabState extends State<EntryTab> {
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalSteelPenetrationRounds[idx],
-                                              dropdownColor: const Color(0xFF344D6E),
+                                              dropdownColor: Colors.white,
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalSteelPenetrationRounds[idx] = v!),
                                               items: const [
@@ -4376,7 +4376,7 @@ class _EntryTabState extends State<EntryTab> {
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalAluminumPenetrationRounds[idx],
-                                              dropdownColor: const Color(0xFF344D6E),
+                                              dropdownColor: Colors.white,
                                               style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                               onChanged: (v) => setState(() => _terminalAluminumPenetrationRounds[idx] = v!),
                                               items: const [
@@ -4417,9 +4417,9 @@ class _EntryTabState extends State<EntryTab> {
                       padding: const EdgeInsets.all(16.0),
 
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4670,9 +4670,9 @@ class _EntryTabState extends State<EntryTab> {
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4810,9 +4810,9 @@ class _EntryTabState extends State<EntryTab> {
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4948,7 +4948,7 @@ class _EntryTabState extends State<EntryTab> {
                                               const SizedBox(width: 8.0),
                                               DropdownButton<int>(
                                                 value: _epvatOverallRoundCount[t] ?? 30,
-                                                dropdownColor: const Color(0xFF344D6E),
+                                                dropdownColor: Colors.white,
                                                 style: const TextStyle(color: Colors.white, fontSize: 12.0),
                                                 underline: const SizedBox(),
                                                 onChanged: (val) {

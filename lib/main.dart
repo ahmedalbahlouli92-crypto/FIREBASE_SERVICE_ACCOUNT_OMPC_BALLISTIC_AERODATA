@@ -40,19 +40,19 @@ class OmpcBallisticAeroDataApp extends StatelessWidget {
       title: 'OMPC Ballistic AeroData',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF263852),
-        primaryColor: const Color(0xFF31B9F6),
-        cardColor: const Color(0xFF344D6E),
-        canvasColor: const Color(0xFF2C415E),
-        dialogBackgroundColor: const Color(0xFF344D6E),
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFC4D6EC),
+        primaryColor: const Color(0xFF4D99DB),
+        cardColor: Colors.white,
+        canvasColor: const Color(0xFFC4D6EC),
+        dialogBackgroundColor: Colors.white,
         fontFamily: 'Outfit',
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF31B9F6),
-          secondary: Color(0xFF5FC9F8),
-          surface: Color(0xFF344D6E),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF4D99DB),
+          secondary: Color(0xFF0284C7),
+          surface: Colors.white,
           onPrimary: Colors.white,
-          onSurface: Colors.white,
+          onSurface: Color(0xFF0F172A),
         ),
       ),
       home: const MainShell(),
@@ -3140,7 +3140,7 @@ class _MainShellState extends State<MainShell> {
             style: TextStyle(
               fontSize: 26.0,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Color(0xFF0F172A),
               letterSpacing: -0.5,
             ),
           ),
@@ -3149,7 +3149,7 @@ class _MainShellState extends State<MainShell> {
             'Native desktop hooks and reporting folder configurations',
             style: TextStyle(
               fontSize: 13.5,
-              color: Color(0xFF8E96A3),
+              color: Color(0xFF475569),
             ),
           ),
           const SizedBox(height: 24.0),
@@ -3169,14 +3169,14 @@ class _MainShellState extends State<MainShell> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(24.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF344D6E),
-                      borderRadius: BorderRadius.circular(12.0),
-                      border: Border.all(color: const Color(0xFF1E3A8A)),
-                      boxShadow: [
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14.0),
+                      border: Border.all(color: const Color(0xFFB8CEE5)),
+                      boxShadow: const [
                         BoxShadow(
-                          color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-                          blurRadius: 16.0,
-                          offset: const Offset(0, 4),
+                          color: Color(0x0A1E3A8A),
+                          blurRadius: 14.0,
+                          offset: Offset(0, 3),
                         ),
                       ],
                     ),
@@ -3185,17 +3185,25 @@ class _MainShellState extends State<MainShell> {
                       children: [
                         const Text(
                           'Active Workspace Logs',
-                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         const SizedBox(height: 12.0),
                         const Text(
                           'Ballistic trial outcomes are logged to high-fidelity CSV files. These files are stored in your documents directory for integration with other analytics suites.',
-                          style: TextStyle(fontSize: 13.0, color: Color(0xFF94A3B8), height: 1.4),
+                          style: TextStyle(fontSize: 13.0, color: Color(0xFF334155), height: 1.4),
                         ),
                         const SizedBox(height: 20.0),
-                        Text(
-                          'Target Path:\n$_storagePath',
-                          style: const TextStyle(fontSize: 12.0, color: Color(0xFF38BDF8), fontFamily: 'JetBrainsMono'),
+                        Container(
+                          padding: const EdgeInsets.all(12.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F6FB),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFFD6E4F0)),
+                          ),
+                          child: Text(
+                            'Target Path:\n$_storagePath',
+                            style: const TextStyle(fontSize: 12.0, color: Color(0xFF0284C7), fontFamily: 'JetBrainsMono'),
+                          ),
                         ),
                         const SizedBox(height: 24.0),
                         if (isDesktop && _currentUserRole == UserRole.admin)
@@ -3207,7 +3215,7 @@ class _MainShellState extends State<MainShell> {
                               icon: const Icon(Icons.folder_open, size: 18.0),
                               label: const Text('Open Logs Directory'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0284C7),
+                                backgroundColor: const Color(0xFF4D99DB),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                               ),
@@ -3238,14 +3246,14 @@ class _MainShellState extends State<MainShell> {
                     width: cardWidth,
                     padding: const EdgeInsets.all(24.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF344D6E),
-                      borderRadius: BorderRadius.circular(12.0),
-                      border: Border.all(color: const Color(0xFF1E3A8A)),
-                      boxShadow: [
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14.0),
+                      border: Border.all(color: const Color(0xFFB8CEE5)),
+                      boxShadow: const [
                         BoxShadow(
-                          color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-                          blurRadius: 16.0,
-                          offset: const Offset(0, 4),
+                          color: Color(0x0A1E3A8A),
+                          blurRadius: 14.0,
+                          offset: Offset(0, 3),
                         ),
                       ],
                     ),
@@ -3254,7 +3262,7 @@ class _MainShellState extends State<MainShell> {
                       children: [
                         const Text(
                           'System Diagnostics',
-                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         const SizedBox(height: 16.0),
                         _buildDiagnosticItem('Operating System', kIsWeb ? 'BROWSER' : Platform.operatingSystem.toUpperCase()),
@@ -3308,14 +3316,14 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF344D6E),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-            blurRadius: 16.0,
-            offset: const Offset(0, 4),
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -3330,21 +3338,21 @@ class _MainShellState extends State<MainShell> {
                 Container(
                   padding: const EdgeInsets.all(8.0),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8.0),
-                    border: Border.all(color: const Color(0xFF38BDF8)),
+                    border: Border.all(color: const Color(0xFF4D99DB)),
                   ),
-                  child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF38BDF8), size: 20.0),
+                  child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF0284C7), size: 20.0),
                 ),
                 const SizedBox(width: 12.0),
                 const Expanded(
                   child: Text(
                     'Personnel & Role Management (4 Tiers)',
-                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                 ),
                 IconButton(
-                  icon: Icon(_isPersonnelCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF38BDF8)),
+                  icon: Icon(_isPersonnelCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF0284C7)),
                   onPressed: () => setState(() => _isPersonnelCardExpanded = !_isPersonnelCardExpanded),
                 ),
               ],
@@ -3354,7 +3362,7 @@ class _MainShellState extends State<MainShell> {
             const SizedBox(height: 12.0),
           const Text(
             'Admin defines authorized lab personnel across 4 operational levels: Manager, Supervisor, Technician, and Operator. Personnel log in with their credentials to access the laboratory workspace.',
-            style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
+            style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
           ),
           const SizedBox(height: 16.0),
 
@@ -3650,14 +3658,14 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF344D6E),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-            blurRadius: 16.0,
-            offset: const Offset(0, 4),
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -3672,21 +3680,21 @@ class _MainShellState extends State<MainShell> {
                 Container(
                   padding: const EdgeInsets.all(8.0),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8.0),
-                    border: Border.all(color: const Color(0xFF38BDF8)),
+                    border: Border.all(color: const Color(0xFF4D99DB)),
                   ),
-                  child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF38BDF8), size: 20.0),
+                  child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF0284C7), size: 20.0),
                 ),
                 const SizedBox(width: 12.0),
                 const Expanded(
                   child: Text(
                     'Role Permissions & Access Matrix',
-                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                 ),
                 IconButton(
-                  icon: Icon(_isPermissionsCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF38BDF8)),
+                  icon: Icon(_isPermissionsCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF0284C7)),
                   onPressed: () => setState(() => _isPermissionsCardExpanded = !_isPermissionsCardExpanded),
                 ),
               ],
@@ -3696,7 +3704,7 @@ class _MainShellState extends State<MainShell> {
             const SizedBox(height: 12.0),
           const Text(
             'Admin can grant permissions to specific roles (e.g., Supervisor can edit the data on the report if there is some mistake, delete records, or manage rules). Toggle permissions below; changes are saved and applied immediately.',
-            style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
+            style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
           ),
           const SizedBox(height: 20.0),
 
@@ -3865,14 +3873,14 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF344D6E),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-            blurRadius: 16.0,
-            offset: const Offset(0, 4),
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -3887,22 +3895,22 @@ class _MainShellState extends State<MainShell> {
                 Container(
                   padding: const EdgeInsets.all(8.0),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8.0),
-                    border: Border.all(color: const Color(0xFF38BDF8)),
+                    border: Border.all(color: const Color(0xFF4D99DB)),
                   ),
-                  child: const Icon(Icons.precision_manufacturing_rounded, color: Color(0xFF38BDF8), size: 20.0),
+                  child: const Icon(Icons.precision_manufacturing_rounded, color: Color(0xFF0284C7), size: 20.0),
                 ),
                 const SizedBox(width: 12.0),
                 const Expanded(
                   child: Text(
                     'Equipment Fleet & Cumulative Round Tracking',
-                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                 ),
                 Icon(
                   _isEquipmentCardExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                  color: const Color(0xFF38BDF8),
+                  color: const Color(0xFF0284C7),
                   size: 24.0,
                 ),
               ],
@@ -4943,8 +4951,8 @@ class _MainShellState extends State<MainShell> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5)),
-          Text(val, style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.5, fontFamily: 'JetBrainsMono', fontWeight: FontWeight.w600)),
+          Text(label, style: const TextStyle(color: Color(0xFF475569), fontSize: 12.5)),
+          Text(val, style: const TextStyle(color: Color(0xFF0284C7), fontSize: 12.5, fontFamily: 'JetBrainsMono', fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -4955,14 +4963,14 @@ class _MainShellState extends State<MainShell> {
       width: width,
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF344D6E),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-            blurRadius: 16.0,
-            offset: const Offset(0, 4),
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -4977,7 +4985,7 @@ class _MainShellState extends State<MainShell> {
                 Container(
                   padding: const EdgeInsets.all(8.0),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withOpacity(0.2),
+                    color: const Color(0xFF6366F1).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8.0),
                     border: Border.all(color: const Color(0xFF6366F1)),
                   ),
@@ -4987,7 +4995,7 @@ class _MainShellState extends State<MainShell> {
                 const Expanded(
                   child: Text(
                     'Evaluation Rules & Requirements',
-                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                 ),
                 Icon(
@@ -7269,7 +7277,7 @@ class _MainShellState extends State<MainShell> {
                 // ACTIVE SCREEN PANEL (Full width when sidebar auto-hides)
                 Expanded(
                   child: Container(
-                    color: const Color(0xFF263852),
+                    color: const Color(0xFFC4D6EC),
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),
                       child: mainContent,
@@ -7548,18 +7556,18 @@ class _MainShellState extends State<MainShell> {
     return Container(
       margin: const EdgeInsets.only(bottom: 24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF344D6E),
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-            blurRadius: 10.0,
-            offset: const Offset(0, 2),
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -7578,23 +7586,23 @@ class _MainShellState extends State<MainShell> {
                       icon: Icon(
                         subTabs[index]['icon'],
                         size: 15.0,
-                        color: isActive ? const Color(0xFF38BDF8) : const Color(0xFF64748B),
+                        color: isActive ? Colors.white : const Color(0xFF64748B),
                       ),
                       label: Text(
                         subTabs[index]['label'],
                         style: TextStyle(
-                          color: isActive ? Colors.white : const Color(0xFF94A3B8),
+                          color: isActive ? Colors.white : const Color(0xFF334155),
                           fontSize: 12.5,
-                          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
                         ),
                       ),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                        backgroundColor: isActive ? const Color(0xFF0284C7).withOpacity(0.25) : Colors.transparent,
+                        backgroundColor: isActive ? const Color(0xFF4D99DB) : Colors.transparent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0),
+                          borderRadius: BorderRadius.circular(8.0),
                           side: BorderSide(
-                            color: isActive ? const Color(0xFF38BDF8) : Colors.transparent,
+                            color: isActive ? const Color(0xFF4D99DB) : Colors.transparent,
                           ),
                         ),
                       ),
@@ -7606,17 +7614,17 @@ class _MainShellState extends State<MainShell> {
           ),
           const SizedBox(width: 12.0),
 
-          // Header Badges: Welcome Greeting (Instruction 18), Live Ticking Digital Clock (Instruction 19), Alerts Toggle
+          // Header Badges: Welcome Greeting, Live Ticking Digital Clock, Alerts Toggle
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Instruction 18: Welcome greeting with user's name
+              // Welcome greeting with user's name
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2C415E),
+                  color: const Color(0xFFF1F6FB),
                   borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFF1E3A8A)),
+                  border: Border.all(color: const Color(0xFFB8CEE5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -7626,7 +7634,7 @@ class _MainShellState extends State<MainShell> {
                     Text(
                       'Welcome, ${_currentUserEmail.isNotEmpty ? _currentUserEmail : 'User'}!',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF0F172A),
                         fontSize: 12.0,
                         fontWeight: FontWeight.bold,
                       ),
@@ -7636,24 +7644,24 @@ class _MainShellState extends State<MainShell> {
               ),
               const SizedBox(width: 8.0),
 
-              // Instruction 19: Live ticking digital clock
+              // Live ticking digital clock
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2C415E),
+                  color: const Color(0xFFF1F6FB),
                   borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFF1E3A8A)),
+                  border: Border.all(color: const Color(0xFFB8CEE5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.schedule, size: 14.0, color: Color(0xFF38BDF8)),
+                    const Icon(Icons.schedule, size: 14.0, color: Color(0xFF0284C7)),
                     const SizedBox(width: 6.0),
                     Text(
                       _formatLiveClock(_currentTime),
                       style: const TextStyle(
                         fontFamily: 'JetBrainsMono',
-                        color: Color(0xFF38BDF8),
+                        color: Color(0xFF0284C7),
                         fontSize: 12.0,
                         fontWeight: FontWeight.bold,
                       ),
@@ -7676,7 +7684,7 @@ class _MainShellState extends State<MainShell> {
                     SnackBar(
                       duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
-                      backgroundColor: const Color(0xFF344D6E),
+                      backgroundColor: const Color(0xFF0F172A),
                       content: Text(
                         _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
                         style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.w600),
@@ -7688,10 +7696,10 @@ class _MainShellState extends State<MainShell> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
                   decoration: BoxDecoration(
-                    color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.15) : const Color(0xFF2C415E),
+                    color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFFF1F6FB),
                     borderRadius: BorderRadius.circular(6.0),
                     border: Border.all(
-                      color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF1E3A8A),
+                      color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFFB8CEE5),
                     ),
                   ),
                   child: Row(
@@ -7700,13 +7708,13 @@ class _MainShellState extends State<MainShell> {
                       Icon(
                         _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
                         size: 15.0,
-                        color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                        color: _submissionAlertsEnabled ? const Color(0xFF059669) : const Color(0xFF64748B),
                       ),
                       const SizedBox(width: 6.0),
                       Text(
                         _submissionAlertsEnabled ? 'Alerts: ON' : 'Alerts: OFF',
                         style: TextStyle(
-                          color: _submissionAlertsEnabled ? const Color(0xFF34D399) : const Color(0xFF94A3B8),
+                          color: _submissionAlertsEnabled ? const Color(0xFF059669) : const Color(0xFF475569),
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
                         ),
@@ -7728,14 +7736,14 @@ class _MainShellState extends State<MainShell> {
         constraints: const BoxConstraints(maxWidth: 550.0),
         padding: const EdgeInsets.all(32.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF344D6E),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: const Color(0xFF1E3A8A)),
-          boxShadow: [
+          border: Border.all(color: const Color(0xFFB8CEE5)),
+          boxShadow: const [
             BoxShadow(
-              color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+              color: Color(0x0A1E3A8A),
               blurRadius: 20.0,
-              offset: const Offset(0, 8),
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -7745,27 +7753,27 @@ class _MainShellState extends State<MainShell> {
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
+                color: color.withOpacity(0.12),
                 shape: BoxShape.circle,
-                border: Border.all(color: color.withValues(alpha: 0.4)),
+                border: Border.all(color: color.withOpacity(0.3)),
               ),
               child: Icon(icon, color: color, size: 48.0),
             ),
             const SizedBox(height: 24.0),
             Text(
               name.toUpperCase(),
-              style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5),
+              style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A), letterSpacing: 0.5),
             ),
             const SizedBox(height: 8.0),
-            const Text(
+            Text(
               'Module Initialized',
-              style: TextStyle(fontSize: 12.5, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, letterSpacing: 1.0),
+              style: TextStyle(fontSize: 12.5, color: color, fontWeight: FontWeight.bold, letterSpacing: 1.0),
             ),
             const SizedBox(height: 16.0),
             const Text(
               'This laboratory workspace has been initialized successfully. The underlying database schemas and platform hooks are ready.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8), height: 1.5),
+              style: TextStyle(fontSize: 13.5, color: Color(0xFF334155), height: 1.5),
             ),
             const SizedBox(height: 24.0),
             const Text(
