@@ -257,7 +257,7 @@ class _DoughnutChartPainter extends CustomPainter {
       text: TextSpan(
         text: value,
         style: const TextStyle(
-          color: Colors.white,
+          color: Color(0xFF0F172A),
           fontSize: 18.0,
           fontWeight: FontWeight.bold,
           fontFamily: 'Outfit',
@@ -371,27 +371,35 @@ class CaliberVolumeList extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: allCaliberSpecifications.length,
-      separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1.0),
+      separatorBuilder: (context, index) => const Divider(color: Color(0xFFE2E8F0), height: 1.0),
       itemBuilder: (context, index) {
         final caliber = allCaliberSpecifications[index];
         final count = caliberCounts[caliber] ?? 0;
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.symmetric(vertical: 7.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
                   caliber,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.w500),
+                  style: const TextStyle(color: Color(0xFF1E293B), fontSize: 12.5, fontWeight: FontWeight.w600, fontFamily: 'sans-serif'),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
               ),
               const SizedBox(width: 8.0),
-              Text(
-                '$count rounds',
-                style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontFamily: 'JetBrainsMono', fontWeight: FontWeight.bold),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDF4FC),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFF4D99DB).withOpacity(0.4)),
+                ),
+                child: Text(
+                  '$count rounds',
+                  style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontFamily: 'JetBrainsMono', fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),

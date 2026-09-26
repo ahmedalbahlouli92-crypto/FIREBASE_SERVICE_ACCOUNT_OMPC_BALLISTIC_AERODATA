@@ -286,328 +286,417 @@ class _DashboardTabState extends State<DashboardTab> {
         ? sortedFiltered
         : sortedFiltered.take(5).toList();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row with Export Dashboard button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.currentModule == 'Daily Test'
-                          ? 'Daily Test Dashboard'
-                          : (widget.currentModule == 'Component Test'
-                              ? 'Component Test Dashboard'
-                              : 'Lot Acceptance Dashboard'),
-                      style: const TextStyle(
-                        fontSize: 26.0,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    const SizedBox(height: 4.0),
-                    const Text(
-                      'Real-time statistics for ballistic quality evaluations',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        color: Color(0xFF94A3B8),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16.0),
-              Wrap(
-                spacing: 10.0,
-                runSpacing: 8.0,
-                alignment: WrapAlignment.end,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _showClearAllConfirmationDialog(context),
-                    icon: const Icon(Icons.delete_sweep_outlined, size: 16.0, color: Color(0xFFEF4444)),
-                    label: const Text('Clear All Tests', style: TextStyle(color: Color(0xFFEF4444))),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: const Color(0xFFEF4444).withOpacity(0.5)),
-                      backgroundColor: const Color(0xFFEF4444).withOpacity(0.08),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 14.0),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showExportScopeDialog(context, widget.records, uniqueCalibers),
-                    icon: const Icon(Icons.download, size: 16.0),
-                    label: const Text('Export Dashboard'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20.0),
-
-          // View Mode Selector: Overall | By Test Type | By Caliber
-          Container(
-            padding: const EdgeInsets.all(4.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x20000000),
-                  blurRadius: 10.0,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Wrap(
-              spacing: 6.0,
-              runSpacing: 6.0,
+    return Container(
+      color: const Color(0xFFEDF4FC), // Soft icy-blue tinted surface background (#edf4fc)
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row with Prominent Action Button and Clean Sans-Serif Typography
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildViewModeButton('Overall', 'Overall Overview', Icons.dashboard_outlined),
-                _buildViewModeButton('By Test Type', 'By Test Type Individually', Icons.biotech_outlined),
-                _buildViewModeButton('By Caliber', 'By Caliber Individually', Icons.adjust_outlined),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14.0),
-
-          // Sub-chips when 'By Test Type' is selected
-          if (_dashboardViewMode == 'By Test Type') ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF344D6E),
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: const Color(0xFF1E3A8A)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Select Test Type to Inspect:', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8.0),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children: availableTestTypes.map((t) {
-                      final isSelected = _selectedTestName == t;
-                      return ChoiceChip(
-                        label: Text(t),
-                        selected: isSelected,
-                        onSelected: (_) => setState(() => _selectedTestName = t),
-                        selectedColor: const Color(0xFF0284C7),
-                        backgroundColor: const Color(0xFF2C415E),
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF94A3B8),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 12.0,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14.0),
-          ],
-
-          // Sub-chips when 'By Caliber' is selected
-          if (_dashboardViewMode == 'By Caliber') ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF344D6E),
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: const Color(0xFF1E3A8A)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Select Caliber Specification to Inspect:', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8.0),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children: uniqueCalibers.map((c) {
-                      final isSelected = _selectedCaliber == c;
-                      return ChoiceChip(
-                        label: Text(c),
-                        selected: isSelected,
-                        onSelected: (_) => setState(() => _selectedCaliber = c),
-                        selectedColor: const Color(0xFF0284C7),
-                        backgroundColor: const Color(0xFF2C415E),
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF94A3B8),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 12.0,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14.0),
-          ],
-
-          // Filters Card
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x20000000),
-                  blurRadius: 10.0,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Wrap(
-              spacing: 16.0,
-              runSpacing: 16.0,
-              crossAxisAlignment: WrapCrossAlignment.end,
-              children: [
-                _buildFilterDropdown(
-                  label: 'SHIFT',
-                  value: _selectedShift,
-                  items: shiftOptions,
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedShift = val!;
-                    });
-                  },
-                ),
-                _buildFilterDropdown(
-                  label: 'TIME RANGE',
-                  value: _selectedTime,
-                  items: timeOptions,
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedTime = val!;
-                    });
-                  },
-                ),
-                if (_selectedTime == 'Custom Range')
-                  Column(
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'DATE RANGE',
-                        style: TextStyle(
-                          color: Color(0xFF38BDF8),
-                          fontSize: 11.0,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 4.0,
+                            height: 28.0,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4D99DB), // Vibrant sky blue structural highlight
+                              borderRadius: BorderRadius.circular(2.0),
+                            ),
+                          ),
+                          const SizedBox(width: 10.0),
+                          Expanded(
+                            child: Text(
+                              widget.currentModule == 'Daily Test'
+                                  ? 'Daily Test Dashboard'
+                                  : (widget.currentModule == 'Component Test'
+                                      ? 'Component Test Dashboard'
+                                      : 'Lot Acceptance Dashboard'),
+                              style: const TextStyle(
+                                fontSize: 26.0,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                                fontFamily: 'sans-serif',
+                                letterSpacing: -0.6,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 6.0),
-                      InkWell(
-                        onTap: () async {
-                          final initialRange = _customDateRange ??
-                              DateTimeRange(
-                                start: DateTime.now().subtract(const Duration(days: 7)),
-                                end: DateTime.now(),
-                              );
-                          final picked = await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2035),
-                            initialDateRange: initialRange,
-                            builder: (context, child) => Theme(
-                              data: ThemeData.dark().copyWith(
-                                colorScheme: const ColorScheme.dark(
-                                  primary: Color(0xFF0284C7),
-                                  onPrimary: Colors.white,
-                                  surface: Color(0xFF344D6E),
-                                  onSurface: Colors.white,
-                                ),
-                                dialogBackgroundColor: const Color(0xFF344D6E),
-                              ),
-                              child: child!,
-                            ),
-                          );
-                          if (picked != null) {
-                            setState(() => _customDateRange = picked);
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(8.0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 9.5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2C415E),
-                            borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 14.0),
+                        child: Text(
+                          'Real-time ballistic quality telemetry, batch yield intelligence, and compliance diagnostics',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            color: Color(0xFF475569),
+                            fontFamily: 'sans-serif',
+                            fontWeight: FontWeight.w500,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.date_range, size: 16.0, color: Color(0xFF38BDF8)),
-                              const SizedBox(width: 8.0),
-                              Text(
-                                _customDateRange != null
-                                    ? '${_formatDate(_customDateRange!.start)} to ${_formatDate(_customDateRange!.end)}'
-                                    : 'Select Dates',
-                                style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
                   ),
-                if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Component Test')
-                  _buildFilterDropdown(
-                    label: widget.currentModule == 'Component Test' ? 'COMPONENT LOT NUMBER' : 'LOT NUMBER',
-                    value: _selectedLot,
-                    items: ['Overall', ...uniqueLots],
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedLot = val!;
-                      });
-                    },
-                  ),
-                _buildFilterDropdown(
-                  label: 'CALIBER SPECIFICATION',
-                  value: _selectedCaliber,
-                  items: ['All', ...uniqueCalibers],
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedCaliber = val!;
-                    });
-                  },
                 ),
-                _buildFilterDropdown(
-                  label: 'TEST TYPE',
-                  value: _selectedTestName,
-                  items: ['All', ...availableTestTypes],
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedTestName = val!;
-                    });
-                  },
+                const SizedBox(width: 16.0),
+                Wrap(
+                  spacing: 10.0,
+                  runSpacing: 8.0,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    // Prominent Sky Blue Action Button
+                    ElevatedButton.icon(
+                      onPressed: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+                      icon: const Icon(Icons.file_download_outlined, size: 17.0),
+                      label: const Text(
+                        'Export Caliber Volume Alone',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.0,
+                          fontFamily: 'sans-serif',
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4D99DB), // Vibrant sky blue accent
+                        foregroundColor: Colors.white,
+                        elevation: 3.0,
+                        shadowColor: const Color(0x604D99DB),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _showExportScopeDialog(context, widget.records, uniqueCalibers),
+                      icon: const Icon(Icons.download_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                      label: const Text(
+                        'Export Dashboard',
+                        style: TextStyle(
+                          color: Color(0xFF0284C7),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12.5,
+                          fontFamily: 'sans-serif',
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF4D99DB), width: 1.2),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 14.0),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _showClearAllConfirmationDialog(context),
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 16.0, color: Color(0xFFEF4444)),
+                      label: const Text('Clear Tests', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12.0, fontFamily: 'sans-serif')),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: const Color(0xFFEF4444).withOpacity(0.35)),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 20.0),
+
+            // View Mode Selector Card Container (Clean white container with vibrant sky blue active buttons)
+            Container(
+              padding: const EdgeInsets.all(5.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A1E3A8A),
+                    blurRadius: 10.0,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Wrap(
+                spacing: 6.0,
+                runSpacing: 6.0,
+                children: [
+                  _buildViewModeButton('Overall', 'Overall Overview', Icons.dashboard_outlined),
+                  _buildViewModeButton('By Test Type', 'By Test Type Individually', Icons.biotech_outlined),
+                  _buildViewModeButton('By Caliber', 'By Caliber Individually', Icons.adjust_outlined),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14.0),
+
+            // Sub-chips when 'By Test Type' is selected
+            if (_dashboardViewMode == 'By Test Type') ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.0),
+                  border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x081E3A8A), blurRadius: 8.0, offset: Offset(0, 2)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Test Type to Inspect:',
+                      style: TextStyle(
+                        color: Color(0xFF4D99DB),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'sans-serif',
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 10.0),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: availableTestTypes.map((t) {
+                        final isSelected = _selectedTestName == t;
+                        return ChoiceChip(
+                          label: Text(t),
+                          selected: isSelected,
+                          onSelected: (_) => setState(() => _selectedTestName = t),
+                          selectedColor: const Color(0xFF4D99DB),
+                          backgroundColor: const Color(0xFFEDF4FC),
+                          side: BorderSide(
+                            color: isSelected ? const Color(0xFF4D99DB) : const Color(0xFFD6E4F0),
+                            width: 1.0,
+                          ),
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : const Color(0xFF475569),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontSize: 12.0,
+                            fontFamily: 'sans-serif',
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14.0),
+            ],
+
+            // Sub-chips when 'By Caliber' is selected
+            if (_dashboardViewMode == 'By Caliber') ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.0),
+                  border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x081E3A8A), blurRadius: 8.0, offset: Offset(0, 2)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Caliber Specification to Inspect:',
+                      style: TextStyle(
+                        color: Color(0xFF4D99DB),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'sans-serif',
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 10.0),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: uniqueCalibers.map((c) {
+                        final isSelected = _selectedCaliber == c;
+                        return ChoiceChip(
+                          label: Text(c),
+                          selected: isSelected,
+                          onSelected: (_) => setState(() => _selectedCaliber = c),
+                          selectedColor: const Color(0xFF4D99DB),
+                          backgroundColor: const Color(0xFFEDF4FC),
+                          side: BorderSide(
+                            color: isSelected ? const Color(0xFF4D99DB) : const Color(0xFFD6E4F0),
+                            width: 1.0,
+                          ),
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : const Color(0xFF475569),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontSize: 12.0,
+                            fontFamily: 'sans-serif',
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14.0),
+            ],
+
+            // Filters Card Container (Clean white card container with sky blue labels and clean inputs)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 18.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14.0),
+                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A1E3A8A),
+                    blurRadius: 12.0,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Wrap(
+                spacing: 16.0,
+                runSpacing: 16.0,
+                crossAxisAlignment: WrapCrossAlignment.end,
+                children: [
+                  _buildFilterDropdown(
+                    label: 'SHIFT',
+                    value: _selectedShift,
+                    items: shiftOptions,
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedShift = val!;
+                      });
+                    },
+                  ),
+                  _buildFilterDropdown(
+                    label: 'TIME RANGE',
+                    value: _selectedTime,
+                    items: timeOptions,
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedTime = val!;
+                      });
+                    },
+                  ),
+                  if (_selectedTime == 'Custom Range')
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'DATE RANGE',
+                          style: TextStyle(
+                            color: Color(0xFF4D99DB),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                            fontFamily: 'sans-serif',
+                          ),
+                        ),
+                        const SizedBox(height: 6.0),
+                        InkWell(
+                          onTap: () async {
+                            final initialRange = _customDateRange ??
+                                DateTimeRange(
+                                  start: DateTime.now().subtract(const Duration(days: 7)),
+                                  end: DateTime.now(),
+                                );
+                            final picked = await showDateRangePicker(
+                              context: context,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2035),
+                              initialDateRange: initialRange,
+                              builder: (context, child) => Theme(
+                                data: ThemeData.light().copyWith(
+                                  colorScheme: const ColorScheme.light(
+                                    primary: Color(0xFF4D99DB),
+                                    onPrimary: Colors.white,
+                                    surface: Colors.white,
+                                    onSurface: Color(0xFF0F172A),
+                                  ),
+                                  dialogBackgroundColor: Colors.white,
+                                ),
+                                child: child!,
+                              ),
+                            );
+                            if (picked != null) {
+                              setState(() => _customDateRange = picked);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 9.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFD),
+                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(color: const Color(0xFFD6E4F0)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.date_range, size: 16.0, color: Color(0xFF4D99DB)),
+                                const SizedBox(width: 8.0),
+                                Text(
+                                  _customDateRange != null
+                                      ? '${_formatDate(_customDateRange!.start)} to ${_formatDate(_customDateRange!.end)}'
+                                      : 'Select Dates',
+                                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.w600, fontFamily: 'sans-serif'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Component Test')
+                    _buildFilterDropdown(
+                      label: widget.currentModule == 'Component Test' ? 'COMPONENT LOT NUMBER' : 'LOT NUMBER',
+                      value: _selectedLot,
+                      items: ['Overall', ...uniqueLots],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedLot = val!;
+                        });
+                      },
+                    ),
+                  _buildFilterDropdown(
+                    label: 'CALIBER SPECIFICATION',
+                    value: _selectedCaliber,
+                    items: ['All', ...uniqueCalibers],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedCaliber = val!;
+                      });
+                    },
+                  ),
+                  _buildFilterDropdown(
+                    label: 'TEST TYPE',
+                    value: _selectedTestName,
+                    items: ['All', ...availableTestTypes],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedTestName = val!;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 24.0),
 
           // Modern Analytics Overview Component (#edf4fc background, #4d99db sky blue accents)
@@ -780,14 +869,14 @@ class _DashboardTabState extends State<DashboardTab> {
             height: 460.0,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x20000000),
-                  blurRadius: 16.0,
-                  offset: Offset(0, 4),
+                  color: Color(0x0A1E3A8A),
+                  blurRadius: 14.0,
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -801,14 +890,14 @@ class _DashboardTabState extends State<DashboardTab> {
             height: 380.0,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x20000000),
-                  blurRadius: 16.0,
-                  offset: Offset(0, 4),
+                  color: Color(0x0A1E3A8A),
+                  blurRadius: 14.0,
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -816,17 +905,18 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
           const SizedBox(height: 28.0),
 
+          // Recent Logs Table Card (Clean White Container)
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF344D6E),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: const Color(0xFF1E3A8A)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x20000000),
-                  blurRadius: 16.0,
-                  offset: Offset(0, 4),
+                  color: Color(0x0A1E3A8A),
+                  blurRadius: 14.0,
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -838,43 +928,55 @@ class _DashboardTabState extends State<DashboardTab> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text(
-                          _selectedLot != 'Overall'
-                              ? 'Submitted Reports for Lot: $_selectedLot'
-                              : 'Recent Lab Logs',
-                          style: const TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                      Row(
+                        children: [
+                          Container(
+                            width: 3.5,
+                            height: 18.0,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4D99DB),
+                              borderRadius: BorderRadius.circular(2.0),
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
+                          const SizedBox(width: 8.0),
+                          Text(
+                            _selectedLot != 'Overall'
+                                ? 'Submitted Reports for Lot: $_selectedLot'
+                                : 'Recent Lab Logs',
+                            style: const TextStyle(
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                              fontFamily: 'sans-serif',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16.0),
                       TextButton(
                         onPressed: widget.onGoToLogs,
                         child: const Text(
                           'View All Logs →',
                           style: TextStyle(
-                            color: Color(0xFF38BDF8),
+                            color: Color(0xFF4D99DB),
                             fontWeight: FontWeight.bold,
                             fontSize: 13.0,
+                            fontFamily: 'sans-serif',
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1.0, color: Color(0xFF1E3A8A)),
+                const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
                 if (recentRecords.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 32.0),
                     child: Center(
                       child: Text(
                         'No test entries matched the current filters.',
-                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+                        style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5, fontFamily: 'sans-serif'),
                       ),
                     ),
                   )
@@ -882,51 +984,52 @@ class _DashboardTabState extends State<DashboardTab> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(const Color(0xFF2C415E)),
+                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F6FB)),
                       columns: [
-                        const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('INSPECTORS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                        const DataColumn(label: Text('INSPECTORS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                        const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                        const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
                         DataColumn(
                           label: Text(
                             widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PRODUCTION DATE' : 'LOT',
-                            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'),
                           ),
                         ),
-                        const DataColumn(label: Text('TESTED', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('DEFECTS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                        const DataColumn(label: Text('TESTED', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                        const DataColumn(label: Text('DEFECTS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                        const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
                       ],
                       rows: recentRecords.map((r) {
                         return DataRow(
                           cells: [
-                            DataCell(Text(r.timestamp.split(' ').length > 1 ? r.timestamp.split(' ')[1] : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF94A3B8)))),
-                            DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.white))),
-                            DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8)))),
+                            DataCell(Text(r.timestamp.split(' ').length > 1 ? r.timestamp.split(' ')[1] : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF64748B)))),
+                            DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0F172A), fontFamily: 'sans-serif'))),
+                            DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF475569), fontFamily: 'sans-serif'))),
                             DataCell(
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2C415E),
+                                  color: const Color(0xFFEDF4FC),
                                   borderRadius: BorderRadius.circular(4.0),
-                                  border: Border.all(color: const Color(0xFF1E3A8A)),
+                                  border: Border.all(color: const Color(0xFF4D99DB).withOpacity(0.35)),
                                 ),
                                 child: Text(
                                   r.caliber.replaceAll(' NATO', '').replaceAll(' Parabellum', ''),
-                                  style: const TextStyle(color: Color(0xFF38BDF8), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(color: Color(0xFF0284C7), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ),
-                            DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Colors.white))),
-                            DataCell(Text(r.produced.toString(), style: const TextStyle(fontSize: 12.5, color: Colors.white))),
+                            DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A)))),
+                            DataCell(Text(r.produced.toString(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontFamily: 'sans-serif'))),
                             DataCell(
                               Text(
                                 r.defects.toString(),
                                 style: TextStyle(
-                                  color: r.defects > 0 ? const Color(0xFFEF4444) : Colors.white,
+                                  color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
                                   fontWeight: r.defects > 0 ? FontWeight.bold : FontWeight.normal,
                                   fontSize: 12.5,
+                                  fontFamily: 'sans-serif',
                                 ),
                               ),
                             ),
@@ -941,8 +1044,9 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildViewModeButton(String mode, String label, IconData icon) {
     final bool isSelected = _dashboardViewMode == mode;
@@ -952,10 +1056,10 @@ class _DashboardTabState extends State<DashboardTab> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0284C7) : Colors.transparent,
+          color: isSelected ? const Color(0xFF4D99DB) : Colors.transparent,
           borderRadius: BorderRadius.circular(8.0),
           boxShadow: isSelected
-              ? [BoxShadow(color: const Color(0xFF0284C7).withOpacity(0.25), blurRadius: 8.0, offset: const Offset(0, 2))]
+              ? [BoxShadow(color: const Color(0xFF4D99DB).withOpacity(0.3), blurRadius: 8.0, offset: const Offset(0, 2))]
               : null,
         ),
         child: Row(
@@ -967,8 +1071,9 @@ class _DashboardTabState extends State<DashboardTab> {
               label,
               style: TextStyle(
                 color: isSelected ? Colors.white : const Color(0xFF64748B),
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 fontSize: 12.5,
+                fontFamily: 'sans-serif',
               ),
             ),
           ],
@@ -991,23 +1096,35 @@ class _DashboardTabState extends State<DashboardTab> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Color(0xFF4D99DB),
+            fontSize: 10.5,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+            fontFamily: 'sans-serif',
+          ),
         ),
         const SizedBox(height: 6.0),
         Container(
           width: 200.0,
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
           decoration: BoxDecoration(
-            color: const Color(0xFF2C415E),
+            color: const Color(0xFFF8FAFD),
             borderRadius: BorderRadius.circular(8.0),
-            border: Border.all(color: const Color(0xFF1E3A8A)),
+            border: Border.all(color: const Color(0xFFD6E4F0)),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: safeValue,
               isExpanded: true,
-              dropdownColor: const Color(0xFF344D6E),
-              style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
+              dropdownColor: Colors.white,
+              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF4D99DB)),
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 13.0,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'sans-serif',
+              ),
               items: items.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -1033,32 +1150,32 @@ class _DashboardTabState extends State<DashboardTab> {
   }) {
     return Container(
       width: width,
-      height: 96.0,
+      height: 98.0,
       decoration: BoxDecoration(
-        color: const Color(0xFF344D6E),
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x20000000),
+            color: Color(0x081E3A8A),
             blurRadius: 10.0,
             offset: Offset(0, 3),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(12.0),
         child: Stack(
           children: [
             Positioned(
               left: 0,
               top: 0,
               bottom: 0,
-              width: 4.0,
+              width: 4.5,
               child: Container(color: accentColor),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20.0, 12.0, 16.0, 12.0),
+              padding: const EdgeInsets.fromLTRB(18.0, 12.0, 16.0, 12.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1072,10 +1189,11 @@ class _DashboardTabState extends State<DashboardTab> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 10.0,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF94A3B8),
+                            color: Color(0xFF64748B),
                             letterSpacing: 0.5,
+                            fontFamily: 'sans-serif',
                           ),
                         ),
                         const SizedBox(height: 4.0),
@@ -1084,10 +1202,11 @@ class _DashboardTabState extends State<DashboardTab> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 20.0,
-                            fontWeight: FontWeight.bold,
-                            color: valueColor ?? Colors.white,
+                            fontSize: 22.0,
+                            fontWeight: FontWeight.w800,
+                            color: valueColor ?? const Color(0xFF0F172A),
                             letterSpacing: -0.5,
+                            fontFamily: 'sans-serif',
                           ),
                         ),
                         const SizedBox(height: 2.0),
@@ -1096,14 +1215,22 @@ class _DashboardTabState extends State<DashboardTab> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 9.5,
-                            color: Color(0xFF94A3B8),
+                            fontSize: 10.0,
+                            color: Color(0xFF64748B),
+                            fontFamily: 'sans-serif',
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Icon(icon, color: accentColor.withOpacity(0.85), size: 28.0),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: Icon(icon, color: accentColor, size: 24.0),
+                  ),
                 ],
               ),
             ),
@@ -1121,15 +1248,15 @@ class _DashboardTabState extends State<DashboardTab> {
   }) {
     return Container(
       width: width,
-      height: 310.0,
+      height: 320.0,
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF344D6E),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFF1E3A8A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x20000000),
+            color: Color(0x0A1E3A8A),
             blurRadius: 12.0,
             offset: Offset(0, 3),
           ),
@@ -1141,18 +1268,32 @@ class _DashboardTabState extends State<DashboardTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 3.5,
+                    height: 18.0,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4D99DB),
+                      borderRadius: BorderRadius.circular(2.0),
+                    ),
+                  ),
+                  const SizedBox(width: 8.0),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                      fontFamily: 'sans-serif',
+                    ),
+                  ),
+                ],
               ),
               if (action != null) action,
             ],
           ),
-          const SizedBox(height: 20.0),
+          const SizedBox(height: 16.0),
           Expanded(child: child),
         ],
       ),
@@ -1160,26 +1301,26 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Widget _buildStatusBadge(String status) {
-    Color bg = const Color(0xFF10B981).withOpacity(0.12);
-    Color fg = const Color(0xFF10B981);
-    Color border = const Color(0xFF10B981).withOpacity(0.25);
+    Color bg = const Color(0xFFE8F7F0);
+    Color fg = const Color(0xFF059669);
+    Color border = const Color(0xFF10B981).withOpacity(0.35);
 
     if (status == 'Pending Review') {
-      bg = const Color(0xFFF59E0B).withOpacity(0.12);
-      fg = const Color(0xFFF59E0B);
-      border = const Color(0xFFF59E0B).withOpacity(0.25);
+      bg = const Color(0xFFFEF3C7);
+      fg = const Color(0xFFD97706);
+      border = const Color(0xFFF59E0B).withOpacity(0.35);
     } else if (status == 'Rejected') {
-      bg = const Color(0xFFEF4444).withOpacity(0.12);
-      fg = const Color(0xFFEF4444);
-      border = const Color(0xFFEF4444).withOpacity(0.25);
+      bg = const Color(0xFFFEE2E2);
+      fg = const Color(0xFFDC2626);
+      border = const Color(0xFFEF4444).withOpacity(0.35);
     } else if (status == 'Retest') {
-      bg = const Color(0xFFF59E0B).withOpacity(0.12);
-      fg = const Color(0xFFF59E0B);
-      border = const Color(0xFFF59E0B).withOpacity(0.25);
+      bg = const Color(0xFFFEF3C7);
+      fg = const Color(0xFFD97706);
+      border = const Color(0xFFF59E0B).withOpacity(0.35);
     } else if (status == 'Approved with condition') {
-      bg = const Color(0xFF06B6D4).withOpacity(0.12);
-      fg = const Color(0xFF06B6D4);
-      border = const Color(0xFF06B6D4).withOpacity(0.25);
+      bg = const Color(0xFFEDF4FC);
+      fg = const Color(0xFF0284C7);
+      border = const Color(0xFF4D99DB).withOpacity(0.35);
     }
 
     return Container(
