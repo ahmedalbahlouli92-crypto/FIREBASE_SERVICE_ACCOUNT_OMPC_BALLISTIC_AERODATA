@@ -19,27 +19,40 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.4';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.4 (Supabase Cloud Fleet & Form Persistence Fix, Realtime Sync)';
-const BODY = `## OMPC Ballistic AeroData v1.5.4
+const TAG_NAME = 'v1.5.5';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.5 (Caliber Barrel Registry, Inspection Log Rules, Modern Dashboard & Standalone Caliber Volume Export)';
+const BODY = `## OMPC Ballistic AeroData v1.5.5
 
-Critical update resolving Supabase Cloud Database persistence, cross-device fleet synchronization, and form submission reliability:
+Major feature release delivering specialized laboratory quality rules, caliber-specific barrel management, inspection log result formatting, modern analytics dashboard component, standalone caliber volume exports, and dedicated Supabase admin input tables:
 
-### Key Highlights & Root Cause Fixes:
-1. **Supabase Cloud Fleet & Rules Persistence Fix**:
-   - Resolved HTTP 409 PostgreSQL error on \`admin_control\` by enforcing \`onConflict: 'config_key'\`.
-   - Admin registrations for weapons (e.g., Steyr AUG A3), barrels, and transducers now immediately persist to Supabase \`admin_control\` and \`ballistic_records\` (\`SYSTEM_CONFIG\`).
-   - Cross-device downloads and clean installs now instantly fetch the synchronized 15-weapon fleet, all barrels, and transducers from Supabase cloud.
-2. **Realtime Multi-Device Equipment Fleet Sync**:
-   - Enhanced Realtime Postgres channel to listen to changes on both \`ballistic_records\` and \`admin_control\`.
-   - Background silent sync timer (every 8s) automatically refreshes rules and equipment across all connected machines without requiring app restarts.
-3. **Form Submission Schema Sanitization**:
-   - Sanitize record payloads upfront before inserting into Supabase tables, eliminating \`PGRST204\` schema cache errors.
-   - Guaranteed atomic persistence for both dedicated test tables and master \`ballistic_records\`.
-4. **Caliber-Filtered 3-Tier Weapon Fleet Selection**:
-   - 5.56mm & 7.62mm Calibers restricted strictly to Rifle and Machine Gun.
-   - 9mm Calibers locked strictly to Pistols.
-   - 3-tier cascade: Weapon Type -> Registered Fleet Model -> Registered Serial Number.
+### Key Highlights & Features:
+1. **Caliber-Specific EPVAT & Accuracy Barrel Registration**:
+   - Admin Control now registers EPVAT and Accuracy barrels separately per caliber.
+   - Entry Form automatically filters and prioritizes barrels assigned to the selected caliber.
+2. **Standardized Inspection Log Results Formatting**:
+   - Extraction force: Shows Min and Max values vertically above each other.
+   - Waterproof: Shows exclusively the number of leaks.
+   - Function test: Shows number of cracks and level (if 0 cracks, shows \`0 crack\`).
+   - Residual stress: Shows number of cracks and zone (if 0 cracks, shows \`0 crack\`).
+   - EPVAT & Propellant: Mean chamber pressure, mean port pressure, and mean velocity @ 21 °C.
+   - Accuracy for 7.62, SS109, 9mm, and .223: Shows Standard Deviation (SD) of X and Y.
+   - Accuracy for M193: Shows Mean Radius (MR) only.
+   - Primer sensitivity: Shows HM+5SD and HM-2SD exclusively.
+3. **Module & Caliber Matrix Updates**:
+   - Terminal Effect Test added to Daily Test (available for SS109 in both Lot Acceptance and Daily Test).
+   - Extraction Force Test disallowed for blank ammunition (M200 and M82).
+4. **Intelligent Sampling Location Defaults**:
+   - Lot Acceptance Test defaults to \`After Packing machine\` (user editable), except Primer Test which defaults to \`Priming machine\`.
+   - Daily Test defaults to \`PC530\` for Waterproof, Extraction, EPVAT, Function, Terminal Effect, Cyclic Rate, and Residual Stress.
+   - Daily Test defaults to \`PB31/14\` for Accuracy Test.
+5. **Modern Dashboard Component & Standalone Caliber Volume Export**:
+   - Intelligent modern dashboard component with soft icy-blue surface background (\`#edf4fc\`), sans-serif typography, vibrant sky blue accents (\`#4d99db\`), clean card containers, analytical metric boxes, and prominent action button.
+   - Standalone export of Tested Caliber Volume breakdown (HTML/Print/PDF & Excel .csv) directly from the card, the modern component, or the export dialog.
+6. **Dedicated Supabase Admin Control Input Tables**:
+   - Added dedicated tables for all Admin Control inputs: \`admin_weapons\`, \`admin_epvat_barrels\`, \`admin_accuracy_barrels\`, \`admin_gp1_transducers\`, \`admin_gp6_transducers\`, \`admin_propellant_suppliers\`, \`admin_primer_suppliers\`, \`admin_propellant_codes\`, \`admin_function_levels\`, \`admin_sampling_locations\`, \`admin_role_permissions\`, and \`admin_test_rules\`.
+   - Complete multi-table cloud sync in \`SupabaseService\` with guaranteed fallback to \`admin_control\` and zero data loss.
+7. **Cleaned Testing Accounts**:
+   - Deleted temporary test user accounts from Supabase and local registry while preserving all real laboratory personnel.
 `;
 
 function request(options, postData) {
@@ -149,7 +162,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.4.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.4.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.5.5.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.5.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

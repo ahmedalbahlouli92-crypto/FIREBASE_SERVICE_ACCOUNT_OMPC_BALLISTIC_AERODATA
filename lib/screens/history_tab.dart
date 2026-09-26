@@ -1096,89 +1096,125 @@ class _HistoryTabState extends State<HistoryTab> {
   Widget _buildResultCell(BallisticRecord r) {
     if (r.testName == 'Waterproof Test') {
       final totalLeaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
+      return Text(
+        totalLeaks == 0 ? '0 leaks' : '$totalLeaks leaks',
+        style: TextStyle(
+          fontSize: 12.0,
+          fontWeight: FontWeight.w600,
+          color: totalLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+        ),
+      );
+    } else if (r.testName == 'Function Test') {
+      final l1 = r.functionLevel1;
+      final l2 = r.functionLevel2;
+      final l3 = r.functionLevel3;
+      final l4 = r.functionLevel4;
+      final totalCracks = l1 + l2 + l3 + l4;
+      if (totalCracks == 0) {
+        return const Text(
+          '0 crack',
+          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+        );
+      }
+      final levels = <String>[];
+      if (l1 > 0) levels.add('L1: $l1');
+      if (l2 > 0) levels.add('L2: $l2');
+      if (l3 > 0) levels.add('L3: $l3');
+      if (l4 > 0) levels.add('L4: $l4');
+      return Text(
+        '$totalCracks cracks (${levels.join(", ")})',
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
+      );
+    } else if (r.testName == 'Accuracy Test') {
+      final calLower = r.caliber.toLowerCase();
+      if (calLower.contains('m193')) {
+        return Text(
+          'MR: ${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm',
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+        );
+      } else {
+        // 7.62, SS109, 9mm, .223: show SD of X and Y
+        return Text(
+          'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm | SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm',
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+        );
+      }
+    } else if (r.testName == 'EPVAT test') {
+      final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '$totalLeaks leaks (${totalLeaks == 0 ? "Zero defects" : "M:${r.mouthSlow + r.mouthFast}, P:${r.primerSlow + r.primerFast}"})',
-            style: TextStyle(
-              fontSize: 12.0,
-              fontWeight: FontWeight.w600,
-              color: totalLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-            ),
+            'Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
+            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Colors.white),
           ),
           Text(
-            'Pressure: ${r.pressureBar.isNotEmpty ? r.pressureBar : "0.5"} bar',
+            'Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit | Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s @ 21 °C',
             style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
           ),
         ],
       );
-    } else if (r.testName == 'Function Test') {
+    } else if (r.testName == 'Propellant Test') {
+      final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '${r.defects} defects (L1:${r.functionLevel1}, L2:${r.functionLevel2}, L3:${r.functionLevel3}, L4:${r.functionLevel4})',
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-            ),
-          ),
-          if (r.cyclicRateWeaponType.isNotEmpty)
-            Text(
-              r.cyclicRateWeaponType,
-              style: const TextStyle(fontSize: 10.5, color: Color(0xFF38BDF8)),
-            ),
-        ],
-      );
-    } else if (r.testName == 'Accuracy Test') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'MR: ${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm | X: ${r.accMeanX} | Y: ${r.accMeanY}',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
-          ),
-          if ((double.tryParse(r.accLargestDistance) ?? 0) > 0)
-            Text(
-              'Largest Dist: ${r.accLargestDistance} mm',
-              style: const TextStyle(fontSize: 10.5, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
-            ),
-        ],
-      );
-    } else if (r.testName == 'EPVAT test') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'P1: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} ${r.epvatPressureUnit}',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+            'Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
+            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Colors.white),
           ),
           Text(
-            'Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s | Temp: ${r.cartridgeTemp} °C',
+            'Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit | Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s @ 21 °C',
             style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
           ),
         ],
       );
     } else if (r.testName == 'Extraction Force Test') {
-      return Text(
-        'Mean: ${r.accMeanX.isNotEmpty ? r.accMeanX : "-"} N | Min: ${r.accMinX.isNotEmpty ? r.accMinX : "-"} N',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Min: ${r.accMinX.isNotEmpty ? r.accMinX : "-"} N',
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          Text(
+            'Max: ${r.accMaxX.isNotEmpty ? r.accMaxX : "-"} N',
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)),
+          ),
+        ],
       );
     } else if (r.testName == 'Residual Stress Test') {
-      final total = r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast;
+      final neck = r.neckSlow + r.neckFast;
+      final shoulder = r.shoulderSlow + r.shoulderFast;
+      final body = r.bodySlow + r.bodyFast;
+      final head = r.headSlow + r.headFast;
+      final total = neck + shoulder + body + head;
+      if (total == 0) {
+        return const Text(
+          '0 crack',
+          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+        );
+      }
+      final zones = <String>[];
+      if (neck > 0) zones.add('Neck: $neck');
+      if (shoulder > 0) zones.add('Shoulder: $shoulder');
+      if (body > 0) zones.add('Body: $body');
+      if (head > 0) zones.add('Head: $head');
       return Text(
-        'Total Splits: $total | Temp: ${r.roomTemp.isNotEmpty ? r.roomTemp : "-"} °C',
-        style: TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w600,
-          color: total > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-        ),
+        '$total cracks (${zones.join(", ")})',
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
+      );
+    } else if (r.testName == 'Primer Sensitivity Test') {
+      final hm = double.tryParse(r.primerHbar) ?? 0;
+      final sd = double.tryParse(r.primerSD) ?? 0;
+      final plus5 = r.primerAllFireH.isNotEmpty ? r.primerAllFireH : (hm > 0 ? (hm + 5 * sd).toStringAsFixed(1) : "-");
+      final minus2 = r.primerNoFireH.isNotEmpty ? r.primerNoFireH : (hm > 0 ? (hm - 2 * sd).toStringAsFixed(1) : "-");
+      return Text(
+        'H̄+5SD: $plus5 cm | H̄-2SD: $minus2 cm',
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
       );
     } else if (r.testName == 'Firing Rate Cycle Test') {
       return Text(
@@ -1189,36 +1225,6 @@ class _HistoryTabState extends State<HistoryTab> {
       return Text(
         'Dist: ${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"}m | Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}',
         style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
-      );
-    } else if (r.testName == 'Primer Sensitivity Test') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Lot: ${r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : "-")}${r.primerSupplier.isNotEmpty ? " (${r.primerSupplier})" : ""}',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
-          ),
-          Text(
-            'H̄: ${r.primerHbar.isNotEmpty ? r.primerHbar : "-"} cm | Ins: ${r.primerInsertionDepth.isNotEmpty ? "${r.primerInsertionDepth}mm" : "-"}',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
-          ),
-        ],
-      );
-    } else if (r.testName == 'Propellant Test') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'P1: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} ${r.epvatPressureUnit}${r.propellantCode.isNotEmpty ? " [${r.propellantCode}]" : ""}',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
-          ),
-          Text(
-            'Lot: ${r.propellantLot.isNotEmpty ? r.propellantLot : "-"} | Sup: ${r.propellantSupplier.isNotEmpty ? r.propellantSupplier : "-"}',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
-          ),
-        ],
       );
     }
     return Text(

@@ -818,10 +818,162 @@ class SupabaseService {
           'timestamp': DateTime.now().toIso8601String(),
         });
       }
+
+      // 3. Sync granular dedicated input tables for Admin Control
+      try {
+        await _syncGranularAdminTables(rules);
+      } catch (e) {
+        debugPrint('Granular admin tables sync note: $e');
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error saving rules to Supabase: $e');
       return false;
+    }
+  }
+
+  static Future<void> _syncGranularAdminTables(Map<String, dynamic> rules) async {
+    // 1. Weapons
+    final weapons = rules['weapons'];
+    if (weapons is List && weapons.isNotEmpty) {
+      for (final w in weapons) {
+        if (w is Map) {
+          try {
+            await client.from('admin_weapons').upsert({
+              'category': (w['category'] ?? 'Rifle').toString(),
+              'model': (w['model'] ?? w['type'] ?? '').toString(),
+              'serial_number': (w['serial'] ?? '').toString(),
+              'manufacturer': (w['manufacturer'] ?? '').toString(),
+              'round_count': (w['rounds'] is num) ? (w['rounds'] as num).toInt() : 0,
+            });
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 2. EPVAT Barrels by caliber
+    final epvatByCal = rules['epvat_barrels_by_caliber'];
+    if (epvatByCal is Map) {
+      for (final entry in epvatByCal.entries) {
+        final cal = entry.key.toString();
+        final list = entry.value;
+        if (list is List) {
+          for (final b in list) {
+            final sn = b.toString().trim();
+            if (sn.isNotEmpty) {
+              try {
+                await client.from('admin_epvat_barrels').upsert({
+                  'serial_number': sn,
+                  'caliber': cal,
+                  'is_active': true,
+                }, onConflict: 'serial_number,caliber');
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Accuracy Barrels by caliber
+    final accByCal = rules['accuracy_barrels_by_caliber'];
+    if (accByCal is Map) {
+      for (final entry in accByCal.entries) {
+        final cal = entry.key.toString();
+        final list = entry.value;
+        if (list is List) {
+          for (final b in list) {
+            final sn = b.toString().trim();
+            if (sn.isNotEmpty) {
+              try {
+                await client.from('admin_accuracy_barrels').upsert({
+                  'serial_number': sn,
+                  'caliber': cal,
+                  'is_active': true,
+                }, onConflict: 'serial_number,caliber');
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    }
+
+    // 4. GP1 Transducers
+    final gp1 = rules['gp1_transducers'] ?? rules['gp_transducers']?['gp1'];
+    if (gp1 is List) {
+      for (final t in gp1) {
+        final sn = t.toString().trim();
+        if (sn.isNotEmpty) {
+          try {
+            await client.from('admin_gp1_transducers').upsert({
+              'serial_number': sn,
+              'is_active': true,
+            }, onConflict: 'serial_number');
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 5. GP6 Transducers
+    final gp6 = rules['gp6_serials'] ?? rules['gp_transducers']?['gp2'];
+    if (gp6 is List) {
+      for (final t in gp6) {
+        final sn = t.toString().trim();
+        if (sn.isNotEmpty) {
+          try {
+            await client.from('admin_gp6_transducers').upsert({
+              'serial_number': sn,
+              'is_active': true,
+            }, onConflict: 'serial_number');
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 6. Suppliers (Propellant and Primer)
+    final propSuppliers = rules['propellant_suppliers'];
+    if (propSuppliers is List) {
+      for (final s in propSuppliers) {
+        final name = s.toString().trim();
+        if (name.isNotEmpty) {
+          try {
+            await client.from('admin_propellant_suppliers').upsert({
+              'name': name,
+              'is_active': true,
+            }, onConflict: 'name');
+          } catch (_) {}
+        }
+      }
+    }
+    final primerSuppliers = rules['primer_suppliers'];
+    if (primerSuppliers is List) {
+      for (final s in primerSuppliers) {
+        final name = s.toString().trim();
+        if (name.isNotEmpty) {
+          try {
+            await client.from('admin_primer_suppliers').upsert({
+              'name': name,
+              'is_active': true,
+            }, onConflict: 'name');
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 7. Sampling Locations
+    final locations = rules['sample_locations'];
+    if (locations is List) {
+      for (final loc in locations) {
+        final name = loc.toString().trim();
+        if (name.isNotEmpty) {
+          try {
+            await client.from('admin_sampling_locations').upsert({
+              'location_name': name,
+              'is_active': true,
+            }, onConflict: 'location_name');
+          } catch (_) {}
+        }
+      }
     }
   }
 

@@ -706,8 +706,6 @@ class StorageService {
       {'email': 'supervisor', 'password': 'supervisor123', 'role': 'supervisor', 'name': 'Shift Supervisor'},
       {'email': 'technician', 'password': 'technician123', 'role': 'technician', 'name': 'Ballistics Technician'},
       {'email': 'operator', 'password': 'operator123', 'role': 'operator', 'name': 'Ahmed Said'},
-      {'email': 'admin@ompc.com', 'password': 'admin', 'role': 'admin', 'name': 'System Admin'},
-      {'email': 'operator@ompc.com', 'password': 'operator123', 'role': 'operator', 'name': 'Lead Operator'},
     ];
 
     final Map<String, Map<String, String>> merged = {};

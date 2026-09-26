@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/ballistic_record.dart';
 import '../widgets/custom_dashboard_charts.dart';
 import '../widgets/trend_chart.dart';
+import '../widgets/modern_analytics_card.dart';
 import '../services/report_helper.dart';
 import '../services/svg_chart_generator.dart';
 
@@ -248,6 +249,16 @@ class _DashboardTabState extends State<DashboardTab> {
     final double yieldRate = totalRounds > 0
         ? (((totalRounds - totalDefects) / totalRounds) * 100.0)
         : 100.0;
+
+    String topCaliber = '';
+    int topCaliberRounds = 0;
+    for (final entry in caliberCounts.entries) {
+      if (entry.value > topCaliberRounds) {
+        topCaliberRounds = entry.value;
+        topCaliber = entry.key;
+      }
+    }
+    final int activeCalibersCount = caliberCounts.values.where((c) => c > 0).length;
 
     // Instruction 15: Lot Acceptance tests done based on lot numbers
     final lotAcceptanceRecords = widget.records
@@ -599,6 +610,23 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
           const SizedBox(height: 24.0),
 
+          // Modern Analytics Overview Component (#edf4fc background, #4d99db sky blue accents)
+          ModernAnalyticsOverviewCard(
+            totalRounds: totalRounds,
+            totalInspections: filtered.length,
+            passCount: passCount,
+            rejectCount: rejectCount,
+            retestCount: retestCount,
+            yieldRate: yieldRate,
+            activeCalibersCount: activeCalibersCount,
+            topCaliber: topCaliber,
+            topCaliberRounds: topCaliberRounds,
+            currentModule: widget.currentModule,
+            onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+            onQuickPrint: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+          ),
+          const SizedBox(height: 24.0),
+
           // KPI Cards Grid
           LayoutBuilder(
             builder: (context, constraints) {
@@ -688,6 +716,33 @@ class _DashboardTabState extends State<DashboardTab> {
                 ),
                 _buildChartCard(
                   title: 'Tested Caliber Volume',
+                  action: InkWell(
+                    onTap: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+                    borderRadius: BorderRadius.circular(6.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4D99DB).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(color: const Color(0xFF4D99DB), width: 1.0),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.download, size: 13.0, color: Color(0xFF4D99DB)),
+                          SizedBox(width: 4.0),
+                          Text(
+                            'Export Alone',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4D99DB),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   child: SingleChildScrollView(
                     child: CaliberVolumeList(caliberCounts: caliberCounts),
                   ),
@@ -1062,6 +1117,7 @@ class _DashboardTabState extends State<DashboardTab> {
     required String title,
     required Widget child,
     required double width,
+    Widget? action,
   }) {
     return Container(
       width: width,
@@ -1082,13 +1138,19 @@ class _DashboardTabState extends State<DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              if (action != null) action,
+            ],
           ),
           const SizedBox(height: 20.0),
           Expanded(child: child),
@@ -1867,6 +1929,14 @@ class _DashboardTabState extends State<DashboardTab> {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 8.0),
+                  _buildExportScopeTile(
+                    title: '📈 Tested Caliber Volume Breakdown Alone',
+                    subtitle: 'Export caliber testing volume breakdown, percentage shares, and distribution chart alone.',
+                    value: 'CaliberVolume',
+                    groupValue: exportScope,
+                    onChanged: (v) => setDialogState(() => exportScope = v!),
+                  ),
                   const SizedBox(height: 18.0),
 
                   // Section 2: Time & Shift Filter
@@ -2258,6 +2328,18 @@ class _DashboardTabState extends State<DashboardTab> {
       exportRecords = widget.records.where((r) => r.lotNo.trim() == selectedLot.trim()).toList();
       reportTitle = 'Lot $selectedLot Acceptance Dossier';
       scopeLabel = 'Consolidated Lot: $selectedLot (${exportRecords.length} Tests)';
+    } else if (scope == 'CaliberVolume') {
+      final Map<String, int> counts = {};
+      for (var r in exportRecords) {
+        counts[r.caliber] = (counts[r.caliber] ?? 0) + r.produced;
+      }
+      await _exportCaliberVolumeAlone(
+        context,
+        counts,
+        records: exportRecords,
+        formatOverride: format,
+      );
+      return;
     }
 
     final buffer = StringBuffer();
@@ -2704,6 +2786,356 @@ class _DashboardTabState extends State<DashboardTab> {
     } else {
       await ReportHelper.instance.printHtml(htmlContent: buffer.toString());
     }
+  }
+
+  Future<void> _exportCaliberVolumeAlone(
+    BuildContext context,
+    Map<String, int> caliberCounts, {
+    List<BallisticRecord>? records,
+    String? formatOverride,
+  }) async {
+    String? choice = formatOverride;
+    if (choice == null) {
+      choice = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1C3351),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.0)),
+          title: Row(
+            children: const [
+              Icon(Icons.bar_chart_rounded, color: Color(0xFF4D99DB), size: 24),
+              SizedBox(width: 10),
+              Text(
+                'Export Caliber Volume Alone',
+                style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Export tested caliber volume breakdown and share percentages as a standalone report.',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Select export format:',
+                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF059669)),
+                foregroundColor: const Color(0xFF34D399),
+              ),
+              onPressed: () => Navigator.pop(ctx, 'csv'),
+              icon: const Icon(Icons.table_chart, size: 16),
+              label: const Text('Excel (.csv)'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4D99DB),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(ctx, 'pdf'),
+              icon: const Icon(Icons.print, size: 16),
+              label: const Text('Print / PDF'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (choice == null) return;
+
+    final totalVolume = caliberCounts.values.fold<int>(0, (sum, val) => sum + val);
+    final sortedEntries = caliberCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final effectiveRecords = records ?? widget.records;
+
+    if (choice == 'csv' || choice == 'excel') {
+      final buffer = StringBuffer();
+      buffer.writeln('OMPC BALLISTIC AERODATA - TESTED CALIBER VOLUME REPORT');
+      buffer.writeln('Export Date,${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}');
+      buffer.writeln('Module,${widget.currentModule}');
+      buffer.writeln('Total Rounds Tested Across All Calibers,$totalVolume');
+      buffer.writeln('');
+      buffer.writeln('Caliber Specification,Tested Rounds,Volume Share (%),Total Inspections,Approved,Rejected,Retest');
+
+      for (final entry in sortedEntries) {
+        final cal = entry.key;
+        final count = entry.value;
+        final share = totalVolume > 0 ? ((count / totalVolume) * 100.0).toStringAsFixed(2) : '0.00';
+        final calRecords = effectiveRecords.where((r) => r.caliber.trim() == cal.trim()).toList();
+        final pass = calRecords.where((r) => r.status == 'Approved' || r.status == 'Approved with condition').length;
+        final rej = calRecords.where((r) => r.status == 'Rejected').length;
+        final ret = calRecords.where((r) => r.status == 'Retest').length;
+        final cleanCal = cal.replaceAll('"', '""');
+        buffer.writeln('"$cleanCal",$count,$share%,${calRecords.length},$pass,$rej,$ret');
+      }
+
+      final filename = 'ompc_caliber_volume_${DateTime.now().millisecondsSinceEpoch}.csv';
+      await ReportHelper.instance.downloadCsv(content: buffer.toString(), filename: filename);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Exported Caliber Volume CSV: $filename'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
+      return;
+    }
+
+    // PDF / HTML Print preview
+    final caliberVolumeSvg = SvgChartGenerator.generateCaliberVolumeSvg(caliberCounts, width: 750, height: 260);
+
+    final html = StringBuffer();
+    html.writeln('''<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OMPC Ballistic AeroData - Tested Caliber Volume Report</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #0f172a;
+      padding: 36px 48px;
+      margin: 0;
+      background-color: #f8fafc;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 36px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 3px solid #4d99db;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .header-title h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #0c2a4d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .header-title p {
+      margin: 4px 0 0 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .badge {
+      background-color: #edf4fc;
+      color: #1e6091;
+      border: 1px solid #4d99db;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .no-print {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background-color: #4d99db;
+      color: #ffffff;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: #edf4fc;
+      border: 1px solid #cbe2f8;
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+    .card-label {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .card-val {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0c2a4d;
+      margin: 4px 0;
+    }
+    .chart-container {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    th {
+      background: #edf4fc;
+      color: #0c2a4d;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+      font-weight: 700;
+    }
+    td {
+      padding: 9px 12px;
+      border: 1px solid #e2e8f0;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    .progress-bar-bg {
+      background: #e2e8f0;
+      border-radius: 4px;
+      height: 8px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      background: #4d99db;
+      height: 8px;
+    }
+    @media print {
+      body {
+        padding: 0;
+        background: #ffffff;
+      }
+      .container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="no-print">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+    <div class="header-bar">
+      <div class="header-title">
+        <h1>OMPC Ballistic AeroData</h1>
+        <p>Tested Caliber Volume Breakdown & Surveillance Report</p>
+      </div>
+      <div class="badge">${widget.currentModule.toUpperCase()}</div>
+    </div>
+    <div class="summary-grid">
+      <div class="card">
+        <div class="card-label">Total Rounds Evaluated</div>
+        <div class="card-val">$totalVolume</div>
+        <div style="font-size: 11px; color: #64748b;">Across all caliber variants</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Active Calibers</div>
+        <div class="card-val">${sortedEntries.where((e) => e.value > 0).length}</div>
+        <div style="font-size: 11px; color: #64748b;">With positive testing runs</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Leading Caliber Volume</div>
+        <div class="card-val" style="font-size: 18px;">${sortedEntries.isNotEmpty ? sortedEntries.first.key : 'N/A'}</div>
+        <div style="font-size: 11px; color: #64748b;">${sortedEntries.isNotEmpty ? '${sortedEntries.first.value} rounds' : ''}</div>
+      </div>
+    </div>
+
+    <h3 style="color: #0c2a4d; margin-bottom: 12px; font-size: 15px;">Volume Distribution Chart</h3>
+    <div class="chart-container">
+      $caliberVolumeSvg
+    </div>
+
+    <h3 style="color: #0c2a4d; margin-bottom: 12px; font-size: 15px;">Detailed Caliber Breakdown</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Caliber Specification</th>
+          <th style="text-align: right;">Rounds Tested</th>
+          <th style="width: 140px;">Volume Share</th>
+          <th style="text-align: right;">% Share</th>
+          <th style="text-align: center;">Tests</th>
+          <th style="text-align: center;">Status (App/Rej/Ret)</th>
+        </tr>
+      </thead>
+      <tbody>''');
+
+    for (final entry in sortedEntries) {
+      final cal = entry.key;
+      final count = entry.value;
+      final pct = totalVolume > 0 ? (count / totalVolume) * 100.0 : 0.0;
+      final calRecords = effectiveRecords.where((r) => r.caliber.trim() == cal.trim()).toList();
+      final pass = calRecords.where((r) => r.status == 'Approved' || r.status == 'Approved with condition').length;
+      final rej = calRecords.where((r) => r.status == 'Rejected').length;
+      final ret = calRecords.where((r) => r.status == 'Retest').length;
+
+      html.writeln('''
+        <tr>
+          <td><strong>$cal</strong></td>
+          <td style="text-align: right; font-family: monospace; font-weight: bold; color: #0c2a4d;">$count</td>
+          <td>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" style="width: ${pct.clamp(0.0, 100.0)}%;"></div>
+            </div>
+          </td>
+          <td style="text-align: right; font-family: monospace; color: #1e6091; font-weight: bold;">${pct.toStringAsFixed(1)}%</td>
+          <td style="text-align: center; color: #64748b;">${calRecords.length}</td>
+          <td style="text-align: center;">
+            <span style="color: #10b981; font-weight: bold;">$pass</span> /
+            <span style="color: #ef4444; font-weight: bold;">$rej</span> /
+            <span style="color: #f59e0b; font-weight: bold;">$ret</span>
+          </td>
+        </tr>''');
+    }
+
+    html.writeln('''
+      </tbody>
+    </table>
+    <div style="margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+      Generated automatically by OMPC Ballistic AeroData System • ${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())}
+    </div>
+  </div>
+</body>
+</html>''');
+
+    await ReportHelper.instance.printHtml(htmlContent: html.toString());
   }
 
   String _csvEscape(dynamic val) {

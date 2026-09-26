@@ -467,6 +467,21 @@ final Map<String, dynamic> _defaultRules = {
     'B1002',
     'B1003',
   ],
+  'accuracy_barrels_by_caliber': {
+    '5.56x45 SS109': ['ACC-556-01', 'ACC-B-101', 'B1001'],
+    '5.56x45 M193': ['ACC-556-01', 'ACC-B-101', 'B1001'],
+    '5.56x45 .223 69 grains': ['ACC-556-01', 'ACC-B-101'],
+    '5.56x45 .223 55 grains': ['ACC-556-01', 'ACC-B-101'],
+    '5.56x45 .223 77 grains': ['ACC-556-01', 'ACC-B-101'],
+    '5.56x45 M200 Blank': ['ACC-556-01'],
+    '7.62x51 M80': ['ACC-762-01', 'ACC-B-102', 'B1002'],
+    '7.62x51 .308': ['ACC-762-01', 'ACC-B-102'],
+    '7.62x51 M82': ['ACC-762-01'],
+    '9x19mm Para': ['ACC-9MM-01', 'ACC-B-103', 'B1003'],
+    '9x19mm Luger': ['ACC-9MM-01', 'ACC-B-103'],
+    '9x19mm Match': ['ACC-9MM-01', 'ACC-B-103'],
+    '9x19mm 124 grains CMJ': ['ACC-9MM-01', 'ACC-B-103'],
+  },
   'epvat_barrels': [
     'EPVAT-B-201',
     'EPVAT-B-202',
@@ -478,6 +493,21 @@ final Map<String, dynamic> _defaultRules = {
     'B1002',
     'B1003',
   ],
+  'epvat_barrels_by_caliber': {
+    '5.56x45 SS109': ['EPV-556-01', 'EPVAT-B-201', 'B1001'],
+    '5.56x45 M193': ['EPV-556-01', 'EPVAT-B-201', 'B1001'],
+    '5.56x45 .223 69 grains': ['EPV-556-01', 'EPVAT-B-201'],
+    '5.56x45 .223 55 grains': ['EPV-556-01', 'EPVAT-B-201'],
+    '5.56x45 .223 77 grains': ['EPV-556-01', 'EPVAT-B-201'],
+    '5.56x45 M200 Blank': ['EPV-556-01'],
+    '7.62x51 M80': ['EPV-762-01', 'EPVAT-B-202', 'B1002'],
+    '7.62x51 .308': ['EPV-762-01', 'EPVAT-B-202'],
+    '7.62x51 M82': ['EPV-762-01'],
+    '9x19mm Para': ['EPV-9MM-01', 'EPVAT-B-203', 'B1003'],
+    '9x19mm Luger': ['EPV-9MM-01', 'EPVAT-B-203'],
+    '9x19mm Match': ['EPV-9MM-01', 'EPVAT-B-203'],
+    '9x19mm 124 grains CMJ': ['EPV-9MM-01', 'EPVAT-B-203'],
+  },
   'gp6_serials': [
     'GP2-001 (PCB 119B)',
     'GP2-002 (PCB 119B)',
@@ -906,6 +936,8 @@ class _MainShellState extends State<MainShell> {
   String _selectedPropellantCodeSupplier = '';
   String _selectedAdminWeaponType = 'Pistol';
   String _selectedAdminWeaponManufacturer = 'Beretta';
+  String _selectedEpvatBarrelCaliber = '5.56x45 SS109';
+  String _selectedAccuracyBarrelCaliber = '5.56x45 SS109';
 
   // Collapsible control module sections
   bool _isPersonnelCardExpanded = true;
@@ -1532,10 +1564,20 @@ class _MainShellState extends State<MainShell> {
       } else {
         activeRules['accuracy_barrels'] = List<String>.from(activeRules['accuracy_barrels'] as List);
       }
+      if (activeRules['accuracy_barrels_by_caliber'] == null) {
+        activeRules['accuracy_barrels_by_caliber'] = Map<String, dynamic>.from(_defaultRules['accuracy_barrels_by_caliber'] as Map);
+      } else {
+        activeRules['accuracy_barrels_by_caliber'] = Map<String, dynamic>.from(activeRules['accuracy_barrels_by_caliber'] as Map);
+      }
       if (activeRules['epvat_barrels'] == null) {
         activeRules['epvat_barrels'] = List<String>.from(_defaultRules['epvat_barrels']);
       } else {
         activeRules['epvat_barrels'] = List<String>.from(activeRules['epvat_barrels'] as List);
+      }
+      if (activeRules['epvat_barrels_by_caliber'] == null) {
+        activeRules['epvat_barrels_by_caliber'] = Map<String, dynamic>.from(_defaultRules['epvat_barrels_by_caliber'] as Map);
+      } else {
+        activeRules['epvat_barrels_by_caliber'] = Map<String, dynamic>.from(activeRules['epvat_barrels_by_caliber'] as Map);
       }
       if (activeRules['gp6_serials'] == null) {
         activeRules['gp6_serials'] = List<String>.from(_defaultRules['gp6_serials']);
@@ -4287,8 +4329,38 @@ class _MainShellState extends State<MainShell> {
             const SizedBox(height: 18.0),
 
             // 4. EPVAT BARREL TEST SERIALS
-            _buildAssetCategoryHeader('EPVAT Barrel Test Serial Numbers', Icons.adjust_rounded, const Color(0xFF06B6D4)),
+            _buildAssetCategoryHeader('EPVAT Barrel Test Serial Numbers (Separately per Caliber)', Icons.adjust_rounded, const Color(0xFF06B6D4)),
             const SizedBox(height: 8.0),
+            Container(
+              margin: const EdgeInsets.only(bottom: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF23364F),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.5)),
+              ),
+              child: Row(
+                children: [
+                  const Text('Select Caliber:', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: EntryTab.calibers.contains(_selectedEpvatBarrelCaliber) ? _selectedEpvatBarrelCaliber : EntryTab.calibers.first,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF2C415E),
+                        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF06B6D4)),
+                        style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedEpvatBarrelCaliber = val);
+                        },
+                        items: EntryTab.calibers.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Row(
               children: [
                 Expanded(
@@ -4296,7 +4368,7 @@ class _MainShellState extends State<MainShell> {
                     controller: _newEpvatBarrelCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
                     decoration: InputDecoration(
-                      hintText: 'EPVAT Barrel Serial (e.g., EPVAT-B-201)',
+                      hintText: 'EPVAT Barrel Serial (e.g., EPV-556-01)',
                       hintStyle: const TextStyle(color: Color(0xFF64748B)),
                       filled: true,
                       fillColor: const Color(0xFF2C415E),
@@ -4312,21 +4384,28 @@ class _MainShellState extends State<MainShell> {
                   onPressed: () async {
                     final serial = _newEpvatBarrelCtrl.text.trim();
                     if (serial.isEmpty) return;
-                    final list = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
+                    final byCal = Map<String, dynamic>.from(_adminRules['epvat_barrels_by_caliber'] as Map? ?? {});
+                    final list = List<String>.from(byCal[_selectedEpvatBarrelCaliber] as List? ?? []);
                     if (!list.contains(serial)) {
                       list.add(serial);
-                      _adminRules['epvat_barrels'] = list;
-                      final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
-                      if (!bList.contains(serial)) {
-                        bList.add(serial);
-                        _adminRules['barrel_serial_numbers'] = bList;
-                      }
-                      await _storageService.saveRules(_adminRules);
-                      setState(() {
-                        _adminRules = Map<String, dynamic>.from(_adminRules);
-                        _newEpvatBarrelCtrl.clear();
-                      });
+                      byCal[_selectedEpvatBarrelCaliber] = list;
+                      _adminRules['epvat_barrels_by_caliber'] = byCal;
                     }
+                    final allEpv = List<String>.from(_adminRules['epvat_barrels'] as List? ?? []);
+                    if (!allEpv.contains(serial)) {
+                      allEpv.add(serial);
+                      _adminRules['epvat_barrels'] = allEpv;
+                    }
+                    final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List? ?? []);
+                    if (!bList.contains(serial)) {
+                      bList.add(serial);
+                      _adminRules['barrel_serial_numbers'] = bList;
+                    }
+                    await _storageService.saveRules(_adminRules);
+                    setState(() {
+                      _adminRules = Map<String, dynamic>.from(_adminRules);
+                      _newEpvatBarrelCtrl.clear();
+                    });
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF06B6D4),
@@ -4340,22 +4419,42 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 8.0),
             _buildAssetItemList(
-              items: epvatBarrels.map((sn) {
-                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
-                return {
-                  'label': sn,
-                  'serial': sn,
-                  'rounds': rounds,
-                  'category': 'EPVAT Barrel',
-                };
-              }).toList(),
+              items: (() {
+                final byCal = Map<String, dynamic>.from(_adminRules['epvat_barrels_by_caliber'] as Map? ?? {});
+                final calBarrels = List<String>.from(byCal[_selectedEpvatBarrelCaliber] as List? ?? epvatBarrels);
+                return calBarrels.map((sn) {
+                  final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                  return {
+                    'label': '$sn  ($_selectedEpvatBarrelCaliber)',
+                    'serial': sn,
+                    'rounds': rounds,
+                    'category': 'EPVAT Barrel',
+                  };
+                }).toList();
+              })(),
               accentColor: const Color(0xFF06B6D4),
               onDelete: (item) async {
-                epvatBarrels.remove(item['serial']);
-                _adminRules['epvat_barrels'] = epvatBarrels;
-                final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
-                bList.remove(item['serial']);
-                _adminRules['barrel_serial_numbers'] = bList;
+                final sn = item['serial'] as String;
+                final byCal = Map<String, dynamic>.from(_adminRules['epvat_barrels_by_caliber'] as Map? ?? {});
+                final list = List<String>.from(byCal[_selectedEpvatBarrelCaliber] as List? ?? []);
+                list.remove(sn);
+                byCal[_selectedEpvatBarrelCaliber] = list;
+                _adminRules['epvat_barrels_by_caliber'] = byCal;
+
+                bool usedElsewhere = false;
+                for (final v in byCal.values) {
+                  if (v is List && v.contains(sn)) {
+                    usedElsewhere = true;
+                    break;
+                  }
+                }
+                if (!usedElsewhere) {
+                  epvatBarrels.remove(sn);
+                  _adminRules['epvat_barrels'] = epvatBarrels;
+                  final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List? ?? []);
+                  bList.remove(sn);
+                  _adminRules['barrel_serial_numbers'] = bList;
+                }
                 await _storageService.saveRules(_adminRules);
                 setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
               },
@@ -4363,8 +4462,38 @@ class _MainShellState extends State<MainShell> {
             const SizedBox(height: 18.0),
 
             // 5. ACCURACY BARREL TEST SERIALS
-            _buildAssetCategoryHeader('Accuracy Barrel Test Serial Numbers', Icons.radar_rounded, const Color(0xFFF59E0B)),
+            _buildAssetCategoryHeader('Accuracy Barrel Test Serial Numbers (Separately per Caliber)', Icons.radar_rounded, const Color(0xFFF59E0B)),
             const SizedBox(height: 8.0),
+            Container(
+              margin: const EdgeInsets.only(bottom: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF23364F),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5)),
+              ),
+              child: Row(
+                children: [
+                  const Text('Select Caliber:', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 12.0, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: EntryTab.calibers.contains(_selectedAccuracyBarrelCaliber) ? _selectedAccuracyBarrelCaliber : EntryTab.calibers.first,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF2C415E),
+                        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFF59E0B)),
+                        style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedAccuracyBarrelCaliber = val);
+                        },
+                        items: EntryTab.calibers.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Row(
               children: [
                 Expanded(
@@ -4388,21 +4517,28 @@ class _MainShellState extends State<MainShell> {
                   onPressed: () async {
                     final serial = _newAccuracyBarrelCtrl.text.trim();
                     if (serial.isEmpty) return;
-                    final list = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
+                    final byCal = Map<String, dynamic>.from(_adminRules['accuracy_barrels_by_caliber'] as Map? ?? {});
+                    final list = List<String>.from(byCal[_selectedAccuracyBarrelCaliber] as List? ?? []);
                     if (!list.contains(serial)) {
                       list.add(serial);
-                      _adminRules['accuracy_barrels'] = list;
-                      final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
-                      if (!bList.contains(serial)) {
-                        bList.add(serial);
-                        _adminRules['barrel_serial_numbers'] = bList;
-                      }
-                      await _storageService.saveRules(_adminRules);
-                      setState(() {
-                        _adminRules = Map<String, dynamic>.from(_adminRules);
-                        _newAccuracyBarrelCtrl.clear();
-                      });
+                      byCal[_selectedAccuracyBarrelCaliber] = list;
+                      _adminRules['accuracy_barrels_by_caliber'] = byCal;
                     }
+                    final allAcc = List<String>.from(_adminRules['accuracy_barrels'] as List? ?? []);
+                    if (!allAcc.contains(serial)) {
+                      allAcc.add(serial);
+                      _adminRules['accuracy_barrels'] = allAcc;
+                    }
+                    final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List? ?? []);
+                    if (!bList.contains(serial)) {
+                      bList.add(serial);
+                      _adminRules['barrel_serial_numbers'] = bList;
+                    }
+                    await _storageService.saveRules(_adminRules);
+                    setState(() {
+                      _adminRules = Map<String, dynamic>.from(_adminRules);
+                      _newAccuracyBarrelCtrl.clear();
+                    });
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF59E0B),
@@ -4416,22 +4552,42 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 8.0),
             _buildAssetItemList(
-              items: accBarrels.map((sn) {
-                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
-                return {
-                  'label': sn,
-                  'serial': sn,
-                  'rounds': rounds,
-                  'category': 'Accuracy Barrel',
-                };
-              }).toList(),
+              items: (() {
+                final byCal = Map<String, dynamic>.from(_adminRules['accuracy_barrels_by_caliber'] as Map? ?? {});
+                final calBarrels = List<String>.from(byCal[_selectedAccuracyBarrelCaliber] as List? ?? accBarrels);
+                return calBarrels.map((sn) {
+                  final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                  return {
+                    'label': '$sn  ($_selectedAccuracyBarrelCaliber)',
+                    'serial': sn,
+                    'rounds': rounds,
+                    'category': 'Accuracy Barrel',
+                  };
+                }).toList();
+              })(),
               accentColor: const Color(0xFFF59E0B),
               onDelete: (item) async {
-                accBarrels.remove(item['serial']);
-                _adminRules['accuracy_barrels'] = accBarrels;
-                final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List<dynamic>? ?? []);
-                bList.remove(item['serial']);
-                _adminRules['barrel_serial_numbers'] = bList;
+                final sn = item['serial'] as String;
+                final byCal = Map<String, dynamic>.from(_adminRules['accuracy_barrels_by_caliber'] as Map? ?? {});
+                final list = List<String>.from(byCal[_selectedAccuracyBarrelCaliber] as List? ?? []);
+                list.remove(sn);
+                byCal[_selectedAccuracyBarrelCaliber] = list;
+                _adminRules['accuracy_barrels_by_caliber'] = byCal;
+
+                bool usedElsewhere = false;
+                for (final v in byCal.values) {
+                  if (v is List && v.contains(sn)) {
+                    usedElsewhere = true;
+                    break;
+                  }
+                }
+                if (!usedElsewhere) {
+                  accBarrels.remove(sn);
+                  _adminRules['accuracy_barrels'] = accBarrels;
+                  final bList = List<String>.from(_adminRules['barrel_serial_numbers'] as List? ?? []);
+                  bList.remove(sn);
+                  _adminRules['barrel_serial_numbers'] = bList;
+                }
                 await _storageService.saveRules(_adminRules);
                 setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
               },

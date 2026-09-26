@@ -558,9 +558,7 @@ VALUES
     ('manager', 'manager123', 'manager', 'Quality Manager', true),
     ('supervisor', 'supervisor123', 'supervisor', 'Shift Supervisor', true),
     ('technician', 'technician123', 'technician', 'Ballistics Technician', true),
-    ('operator', 'operator123', 'operator', 'Ahmed Said', true),
-    ('admin@ompc.com', 'admin', 'admin', 'System Admin', true),
-    ('operator@ompc.com', 'operator123', 'operator', 'Lead Operator', true)
+    ('operator', 'operator123', 'operator', 'Ahmed Said', true)
 ON CONFLICT (username) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
     role = EXCLUDED.role,
@@ -590,6 +588,187 @@ ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public access policy" ON public.admin_audit_log;
 CREATE POLICY "Public access policy" ON public.admin_audit_log FOR ALL USING (true) WITH CHECK (true);
 GRANT ALL ON TABLE public.admin_audit_log TO anon, authenticated, service_role;
+
+-- Dedicated Tables for Each Admin Control Input
+
+-- 1. Weapons Fleet Input Table
+CREATE TABLE IF NOT EXISTS public.admin_weapons (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    category TEXT NOT NULL DEFAULT 'Rifle', -- 'Rifle', 'Machine Gun', 'Pistol'
+    model TEXT NOT NULL,
+    serial_number TEXT DEFAULT '',
+    manufacturer TEXT DEFAULT '',
+    round_count INTEGER DEFAULT 0,
+    max_rounds INTEGER DEFAULT 5000,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_weapons ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_weapons;
+CREATE POLICY "Public access policy" ON public.admin_weapons FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_weapons TO anon, authenticated, service_role;
+
+-- 2. EPVAT Barrels Input Table (by Caliber)
+CREATE TABLE IF NOT EXISTS public.admin_epvat_barrels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    serial_number TEXT NOT NULL,
+    caliber TEXT NOT NULL,
+    round_count INTEGER DEFAULT 0,
+    max_rounds INTEGER DEFAULT 2500,
+    is_active BOOLEAN DEFAULT true,
+    CONSTRAINT unq_admin_epvat_barrel UNIQUE (serial_number, caliber)
+);
+ALTER TABLE public.admin_epvat_barrels ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_epvat_barrels;
+CREATE POLICY "Public access policy" ON public.admin_epvat_barrels FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_epvat_barrels TO anon, authenticated, service_role;
+
+-- 3. Accuracy Barrels Input Table (by Caliber)
+CREATE TABLE IF NOT EXISTS public.admin_accuracy_barrels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    serial_number TEXT NOT NULL,
+    caliber TEXT NOT NULL,
+    round_count INTEGER DEFAULT 0,
+    max_rounds INTEGER DEFAULT 3000,
+    is_active BOOLEAN DEFAULT true,
+    CONSTRAINT unq_admin_accuracy_barrel UNIQUE (serial_number, caliber)
+);
+ALTER TABLE public.admin_accuracy_barrels ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_accuracy_barrels;
+CREATE POLICY "Public access policy" ON public.admin_accuracy_barrels FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_accuracy_barrels TO anon, authenticated, service_role;
+
+-- 4. GP1 Chamber Transducers Input Table
+CREATE TABLE IF NOT EXISTS public.admin_gp1_transducers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    serial_number TEXT UNIQUE NOT NULL,
+    brand TEXT DEFAULT 'PCB Piezotronics',
+    calibration_date TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_gp1_transducers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_gp1_transducers;
+CREATE POLICY "Public access policy" ON public.admin_gp1_transducers FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_gp1_transducers TO anon, authenticated, service_role;
+
+-- 5. GP6 Port Transducers Input Table
+CREATE TABLE IF NOT EXISTS public.admin_gp6_transducers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    serial_number TEXT UNIQUE NOT NULL,
+    brand TEXT DEFAULT 'PCB Piezotronics',
+    calibration_date TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_gp6_transducers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_gp6_transducers;
+CREATE POLICY "Public access policy" ON public.admin_gp6_transducers FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_gp6_transducers TO anon, authenticated, service_role;
+
+-- 6. Propellant Suppliers Input Table
+CREATE TABLE IF NOT EXISTS public.admin_propellant_suppliers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    name TEXT UNIQUE NOT NULL,
+    country TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_propellant_suppliers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_propellant_suppliers;
+CREATE POLICY "Public access policy" ON public.admin_propellant_suppliers FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_propellant_suppliers TO anon, authenticated, service_role;
+
+-- 7. Primer Suppliers Input Table
+CREATE TABLE IF NOT EXISTS public.admin_primer_suppliers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    name TEXT UNIQUE NOT NULL,
+    country TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_primer_suppliers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_primer_suppliers;
+CREATE POLICY "Public access policy" ON public.admin_primer_suppliers FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_primer_suppliers TO anon, authenticated, service_role;
+
+-- 8. Propellant Codes Input Table
+CREATE TABLE IF NOT EXISTS public.admin_propellant_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    code TEXT NOT NULL,
+    supplier TEXT NOT NULL,
+    caliber TEXT DEFAULT '',
+    charge_weight_grains NUMERIC DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    CONSTRAINT unq_admin_propellant_code UNIQUE (code, supplier)
+);
+ALTER TABLE public.admin_propellant_codes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_propellant_codes;
+CREATE POLICY "Public access policy" ON public.admin_propellant_codes FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_propellant_codes TO anon, authenticated, service_role;
+
+-- 9. Function Test Defect Levels Input Table
+CREATE TABLE IF NOT EXISTS public.admin_function_levels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    caliber TEXT NOT NULL,
+    level_number INTEGER NOT NULL, -- 1, 2, 3, 4
+    level_name TEXT NOT NULL,
+    max_allowed INTEGER DEFAULT 0,
+    description TEXT DEFAULT '',
+    CONSTRAINT unq_admin_function_level UNIQUE (caliber, level_number)
+);
+ALTER TABLE public.admin_function_levels ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_function_levels;
+CREATE POLICY "Public access policy" ON public.admin_function_levels FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_function_levels TO anon, authenticated, service_role;
+
+-- 10. Sampling Inspection Locations Input Table
+CREATE TABLE IF NOT EXISTS public.admin_sampling_locations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    location_name TEXT UNIQUE NOT NULL,
+    default_for_module TEXT DEFAULT '',
+    default_for_test TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_sampling_locations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_sampling_locations;
+CREATE POLICY "Public access policy" ON public.admin_sampling_locations FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_sampling_locations TO anon, authenticated, service_role;
+
+-- 11. Role Permissions Input Table
+CREATE TABLE IF NOT EXISTS public.admin_role_permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    role TEXT NOT NULL,
+    permission_key TEXT NOT NULL,
+    permission_title TEXT NOT NULL,
+    is_enabled BOOLEAN DEFAULT true,
+    CONSTRAINT unq_admin_role_perm UNIQUE (role, permission_key)
+);
+ALTER TABLE public.admin_role_permissions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_role_permissions;
+CREATE POLICY "Public access policy" ON public.admin_role_permissions FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_role_permissions TO anon, authenticated, service_role;
+
+-- 12. Test Rules & Tolerances Input Table
+CREATE TABLE IF NOT EXISTS public.admin_test_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    caliber TEXT NOT NULL,
+    test_name TEXT NOT NULL,
+    rules_data JSONB NOT NULL,
+    updated_by TEXT DEFAULT 'admin',
+    CONSTRAINT unq_admin_test_rule UNIQUE (caliber, test_name)
+);
+ALTER TABLE public.admin_test_rules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_test_rules;
+CREATE POLICY "Public access policy" ON public.admin_test_rules FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_test_rules TO anon, authenticated, service_role;
 
 -- 6. Master Table Permissions & Default Indexes
 ALTER TABLE public.ballistic_records ENABLE ROW LEVEL SECURITY;

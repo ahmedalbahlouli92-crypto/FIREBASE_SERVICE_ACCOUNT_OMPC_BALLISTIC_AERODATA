@@ -222,18 +222,52 @@ class _EntryTabState extends State<EntryTab> {
 
   // Sample Location state
   final List<String> _defaultSampleLocations = [
+    'After Packing machine',
+    'Priming machine',
     'PC530',
-    'After priming machine',
+    'PB31/14',
     'PD26',
-    'after packing machine',
-    'after visual inspection',
-    'after link machine',
+    'After visual inspection',
+    'After link machine',
   ];
   final List<String> _customSampleLocations = [];
-  List<String> get _allSampleLocations => [
-    ..._defaultSampleLocations,
-    ..._customSampleLocations,
-  ];
+  List<String> get _allSampleLocations {
+    final Set<String> locs = {
+      ..._defaultSampleLocations,
+    };
+    final adminLocs = widget.adminRules['sample_locations'];
+    if (adminLocs is List) {
+      for (final l in adminLocs) {
+        if (l != null && l.toString().trim().isNotEmpty) {
+          locs.add(l.toString().trim());
+        }
+      }
+    }
+    for (final cl in _customSampleLocations) {
+      if (cl.trim().isNotEmpty) locs.add(cl.trim());
+    }
+    return locs.toList();
+  }
+
+  String _getDefaultSamplingLocation({required String module, required String test}) {
+    if (module == 'Lot Acceptance Test') {
+      if (test == 'Primer Sensitivity Test') {
+        return 'Priming machine';
+      }
+      return 'After Packing machine';
+    } else if (module == 'Daily Test') {
+      if (test == 'Accuracy Test') {
+        return 'PB31/14';
+      }
+      // Waterproof, Extraction, EPVAT, Function, terminal, cyclic rate and Residual stress
+      return 'PC530';
+    }
+    // Component test or other
+    if (test == 'Primer Sensitivity Test') {
+      return 'Priming machine';
+    }
+    return 'After Packing machine';
+  }
 
   // Weapon cascading selection state and serial extractor
   String _extractWeaponSerial(String weaponStr) {
@@ -561,6 +595,17 @@ class _EntryTabState extends State<EntryTab> {
   // Equipment lists & Round counting
   List<String> get _accuracyBarrels {
     final Set<String> result = {};
+    final byCal = widget.adminRules['accuracy_barrels_by_caliber'];
+    if (byCal is Map && byCal.containsKey(_caliber)) {
+      final list = byCal[_caliber];
+      if (list is List && list.isNotEmpty) {
+        for (final e in list) {
+          final s = e.toString().trim();
+          if (s.isNotEmpty) result.add(s);
+        }
+        if (result.isNotEmpty) return result.toList();
+      }
+    }
     final accList = widget.adminRules['accuracy_barrels'];
     if (accList is List) {
       for (final e in accList) {
@@ -581,6 +626,17 @@ class _EntryTabState extends State<EntryTab> {
 
   List<String> get _epvatBarrels {
     final Set<String> result = {};
+    final byCal = widget.adminRules['epvat_barrels_by_caliber'];
+    if (byCal is Map && byCal.containsKey(_caliber)) {
+      final list = byCal[_caliber];
+      if (list is List && list.isNotEmpty) {
+        for (final e in list) {
+          final s = e.toString().trim();
+          if (s.isNotEmpty) result.add(s);
+        }
+        if (result.isNotEmpty) return result.toList();
+      }
+    }
     final epvList = widget.adminRules['epvat_barrels'];
     if (epvList is List) {
       for (final e in epvList) {
@@ -1498,7 +1554,7 @@ class _EntryTabState extends State<EntryTab> {
       _requirementController.clear();
       _pressureController.clear();
       _viscosityController.clear();
-      _locationController.clear();
+      _locationController.text = _getDefaultSamplingLocation(module: widget.currentModule, test: _testName);
       _mouthSlowController.text = '0';
       _mouthFastController.text = '0';
       _primerSlowController.text = '0';
@@ -1634,6 +1690,8 @@ class _EntryTabState extends State<EntryTab> {
           c.contains('.308') || c.contains('match') || c.contains('luger')) {
         return false;
       }
+    } else if (test == 'Extraction Force Test') {
+      if (c.contains('m200') || c.contains('m82')) return false;
     } else if (test == 'Accuracy Test') {
       if (c.contains('m200') || c.contains('m82')) return false;
     } else if (test == 'Residual Stress Test') {
@@ -1644,7 +1702,6 @@ class _EntryTabState extends State<EntryTab> {
     } else if (test == 'EPVAT test') {
       if (c.contains('m200') || c.contains('m82')) return false;
     } else if (test == 'Terminal Effect Test') {
-      if (widget.currentModule == 'Daily Test') return false;
       if (!c.contains('ss109')) return false;
     } else if (test == 'Firing Rate Cycle Test') {
       if (!(c.contains('m82') || c.contains('m200'))) return false;
@@ -1813,6 +1870,10 @@ class _EntryTabState extends State<EntryTab> {
         final allowed = _allowedTestsForCaliber(_caliber);
         _testName = allowed.isNotEmpty ? allowed.first : 'Function Test';
         widget.onTestNameChanged(_testName);
+        _locationController.text = _getDefaultSamplingLocation(
+          module: widget.currentModule,
+          test: _testName,
+        );
       }
       if (_isCaliberSingleTempOnly) {
         _epvatPressureType = 'Individual';
@@ -1848,6 +1909,10 @@ class _EntryTabState extends State<EntryTab> {
   void _onTestNameSelected(String newTest) {
     setState(() {
       _testName = newTest;
+      _locationController.text = _getDefaultSamplingLocation(
+        module: widget.currentModule,
+        test: newTest,
+      );
       if (_testName == 'Waterproof Test') {
         _pressureController.text = (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5';
       } else {
@@ -2174,6 +2239,10 @@ class _EntryTabState extends State<EntryTab> {
       }
     }
     _operatorsController.text = widget.loggedInUser;
+    _locationController.text = _getDefaultSamplingLocation(
+      module: widget.currentModule,
+      test: _testName,
+    );
     
     if (_barrelSNController.text.isEmpty && _accuracyBarrels.isNotEmpty) {
       _barrelSNController.text = _accuracyBarrels.first;
@@ -2372,6 +2441,12 @@ class _EntryTabState extends State<EntryTab> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.loggedInUser != widget.loggedInUser) {
       _operatorsController.text = widget.loggedInUser;
+    }
+    if (oldWidget.currentModule != widget.currentModule) {
+      _locationController.text = _getDefaultSamplingLocation(
+        module: widget.currentModule,
+        test: _testName,
+      );
     }
     if (oldWidget.adminRules != widget.adminRules) {
       _syncFunctionWeaponState();
