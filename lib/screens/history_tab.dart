@@ -110,9 +110,91 @@ class _HistoryTabState extends State<HistoryTab> {
     }
 
     final retestOpCtrl = TextEditingController(text: widget.loggedInUser.isNotEmpty ? widget.loggedInUser : r.operators);
-    final retestNotesCtrl = TextEditingController();
+    final retestShiftCtrl = TextEditingController(text: r.shift);
     final retestProducedCtrl = TextEditingController(text: '${r.produced}');
+    final retestDefectsCtrl = TextEditingController(text: '${r.defects}');
+    final retestNotesCtrl = TextEditingController();
     String selectedOutcome = 'Approved';
+
+    // Test-specific parameter controllers pre-filled from r:
+    final mouthSlowCtrl = TextEditingController(text: '${r.mouthSlow}');
+    final mouthFastCtrl = TextEditingController(text: '${r.mouthFast}');
+    final primerSlowCtrl = TextEditingController(text: '${r.primerSlow}');
+    final primerFastCtrl = TextEditingController(text: '${r.primerFast}');
+
+    final neckSlowCtrl = TextEditingController(text: '${r.neckSlow}');
+    final neckFastCtrl = TextEditingController(text: '${r.neckFast}');
+    final shoulderSlowCtrl = TextEditingController(text: '${r.shoulderSlow}');
+    final shoulderFastCtrl = TextEditingController(text: '${r.shoulderFast}');
+    final bodySlowCtrl = TextEditingController(text: '${r.bodySlow}');
+    final bodyFastCtrl = TextEditingController(text: '${r.bodyFast}');
+    final headSlowCtrl = TextEditingController(text: '${r.headSlow}');
+    final headFastCtrl = TextEditingController(text: '${r.headFast}');
+    final roomTempCtrl = TextEditingController(text: r.roomTemp);
+
+    final extMinForceCtrl = TextEditingController(text: r.accMinX.isNotEmpty ? r.accMinX : (r.pressureBar.isNotEmpty ? r.pressureBar : ''));
+    final extTypeCtrl = TextEditingController(text: r.extractionForceType);
+
+    final accRadiusCtrl = TextEditingController(text: r.accMeanRadius);
+    final accSDXCtrl = TextEditingController(text: r.accSDX);
+    final accSDYCtrl = TextEditingController(text: r.accSDY);
+    final accMaxDistCtrl = TextEditingController(text: r.accLargestDistance);
+    final velMeanCtrl = TextEditingController(text: r.velMean);
+    final velMinCtrl = TextEditingController(text: r.velMin);
+    final velMaxCtrl = TextEditingController(text: r.velMax);
+    final velSDCtrl = TextEditingController(text: r.velSD);
+
+    final epvCartridgeTempCtrl = TextEditingController(text: r.cartridgeTemp);
+    final epvMeanP1Ctrl = TextEditingController(text: r.epvatMeanPressure);
+    final epvMaxP1Ctrl = TextEditingController(text: r.epvatMaxPressure);
+    final epvMinP1Ctrl = TextEditingController(text: r.epvatMinPressure);
+    final epvSDP1Ctrl = TextEditingController(text: r.epvatSDPressure);
+    final epvMeanP2Ctrl = TextEditingController(text: r.epvatP2MeanPressure);
+    final epvMaxP2Ctrl = TextEditingController(text: r.epvatP2MaxPressure);
+    final epvActionTimeMeanCtrl = TextEditingController(text: r.actionTimeMean);
+
+    final funcL1Ctrl = TextEditingController(text: '${r.functionLevel1}');
+    final funcL2Ctrl = TextEditingController(text: '${r.functionLevel2}');
+    final funcL3Ctrl = TextEditingController(text: '${r.functionLevel3}');
+    final funcL4Ctrl = TextEditingController(text: '${r.functionLevel4}');
+    final funcDetailsCtrl = TextEditingController(text: r.functionDefectDetails);
+
+    final primerHbarCtrl = TextEditingController(text: r.primerHbar);
+    final primerSDCtrl = TextEditingController(text: r.primerSD);
+    final primerAllFireCtrl = TextEditingController(text: r.primerAllFireH);
+    final primerNoFireCtrl = TextEditingController(text: r.primerNoFireH);
+
+    final cyclicWeaponCtrl = TextEditingController(text: r.cyclicRateWeaponType);
+    final cyclicRateValCtrl = TextEditingController(text: r.cyclicRateValue);
+
+    final termHoleCtrl = TextEditingController(text: r.terminalHoleDiameter);
+    final termSteelCtrl = TextEditingController(text: r.terminalSteelPenetration);
+    final termVelCtrl = TextEditingController(text: r.terminalVelocity);
+
+    Widget buildParamField(String label, TextEditingController ctrl, {bool isNumber = true, int flex = 1}) {
+      return Expanded(
+        flex: flex,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 8.0, bottom: 8.0),
+          child: TextFormField(
+            controller: ctrl,
+            keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+            style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10.5),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+              filled: true,
+              fillColor: const Color(0xFF0F172A),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF334155))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF59E0B))),
+            ),
+          ),
+        ),
+      );
+    }
 
     showDialog(
       context: context,
@@ -120,6 +202,10 @@ class _HistoryTabState extends State<HistoryTab> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            Color outcomeColor = const Color(0xFF10B981);
+            if (selectedOutcome == 'Rejected') outcomeColor = const Color(0xFFEF4444);
+            if (selectedOutcome == 'Approved with condition') outcomeColor = const Color(0xFF0284C7);
+
             return AlertDialog(
               backgroundColor: const Color(0xFF1E293B),
               shape: RoundedRectangleBorder(
@@ -155,11 +241,12 @@ class _HistoryTabState extends State<HistoryTab> {
                 ],
               ),
               content: SizedBox(
-                width: 580.0,
+                width: 640.0,
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // 1. Original Summary Box
                       Container(
                         padding: const EdgeInsets.all(12.0),
                         decoration: BoxDecoration(
@@ -190,8 +277,8 @@ class _HistoryTabState extends State<HistoryTab> {
                             const SizedBox(height: 4.0),
                             Row(
                               children: [
-                                Expanded(child: Text('Sample Size: ${r.produced} rounds', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
-                                Expanded(child: Text('Defects/Leaks: ${r.defects}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
+                                Expanded(child: Text('Original Qty: ${r.produced} rounds', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
+                                Expanded(child: Text('Original Defects: ${r.defects}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
                               ],
                             ),
                             if (r.notes.isNotEmpty) ...[
@@ -201,9 +288,195 @@ class _HistoryTabState extends State<HistoryTab> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 18.0),
+                      const SizedBox(height: 16.0),
+
+                      // 2. Pre-filled Parameters Card
+                      Container(
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A).withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(color: const Color(0xFF334155)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'RETEST PARAMETERS (PRE-FILLED)',
+                                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0284C7).withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text('Adjust if retest measurements differ', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10.0),
+
+                            // Fields according to test type
+                            if (r.testName == 'Waterproof Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Total Leaks / Defects', retestDefectsCtrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('Mouth Slow', mouthSlowCtrl),
+                                  buildParamField('Mouth Fast', mouthFastCtrl),
+                                  buildParamField('Primer Slow', primerSlowCtrl),
+                                  buildParamField('Primer Fast', primerFastCtrl),
+                                ],
+                              ),
+                            ] else if (r.testName == 'Residual Stress Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Total Cracks / Splits', retestDefectsCtrl),
+                                  buildParamField('Room Temp °C', roomTempCtrl, isNumber: false),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('Neck Slow', neckSlowCtrl),
+                                  buildParamField('Neck Fast', neckFastCtrl),
+                                  buildParamField('Shoulder Slow', shoulderSlowCtrl),
+                                  buildParamField('Shoulder Fast', shoulderFastCtrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('Body Slow', bodySlowCtrl),
+                                  buildParamField('Body Fast', bodyFastCtrl),
+                                  buildParamField('Head Slow', headSlowCtrl),
+                                  buildParamField('Head Fast', headFastCtrl),
+                                ],
+                              ),
+                            ] else if (r.testName == 'Extraction Force Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Min Extraction Force (N)', extMinForceCtrl),
+                                  buildParamField('Force Type', extTypeCtrl, isNumber: false),
+                                ],
+                              ),
+                            ] else if (r.testName == 'Accuracy Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Mean Radius (mm)', accRadiusCtrl),
+                                  buildParamField('Largest Distance (mm)', accMaxDistCtrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('SD X (mm)', accSDXCtrl),
+                                  buildParamField('SD Y (mm)', accSDYCtrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('Mean Velocity (m/s)', velMeanCtrl),
+                                  buildParamField('Min Velocity (m/s)', velMinCtrl),
+                                  buildParamField('Max Velocity (m/s)', velMaxCtrl),
+                                  buildParamField('SD Velocity (m/s)', velSDCtrl),
+                                ],
+                              ),
+                            ] else if (r.testName == 'EPVAT test' || r.testName == 'Propellant Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Cartridge Temp °C', epvCartridgeTempCtrl, isNumber: false),
+                                  buildParamField('Action Time Mean (ms)', epvActionTimeMeanCtrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('P1 Mean (bar)', epvMeanP1Ctrl),
+                                  buildParamField('P1 Max (bar)', epvMaxP1Ctrl),
+                                  buildParamField('P1 Min (bar)', epvMinP1Ctrl),
+                                  buildParamField('P1 SD (bar)', epvSDP1Ctrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('P2 Mean (bar)', epvMeanP2Ctrl),
+                                  buildParamField('P2 Max (bar)', epvMaxP2Ctrl),
+                                  buildParamField('Mean Vel (m/s)', velMeanCtrl),
+                                  buildParamField('SD Vel (m/s)', velSDCtrl),
+                                ],
+                              ),
+                            ] else if (r.testName == 'Function Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Cartridge Temp °C', epvCartridgeTempCtrl, isNumber: false),
+                                  buildParamField('Defect Details', funcDetailsCtrl, isNumber: false, flex: 2),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('Level 1 Critical', funcL1Ctrl),
+                                  buildParamField('Level 2 Major', funcL2Ctrl),
+                                  buildParamField('Level 3 Minor', funcL3Ctrl),
+                                  buildParamField('Level 4 Minor', funcL4Ctrl),
+                                ],
+                              ),
+                            ] else if (r.testName == 'Primer Sensitivity Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Mean Height H̄ (mm)', primerHbarCtrl),
+                                  buildParamField('SD S (mm)', primerSDCtrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('Min All-Fire H (mm)', primerAllFireCtrl),
+                                  buildParamField('Max No-Fire H (mm)', primerNoFireCtrl),
+                                ],
+                              ),
+                            ] else if (r.testName == 'Firing Rate Cycle Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Weapon Category', cyclicWeaponCtrl, isNumber: false),
+                                  buildParamField('Cyclic Rate (rpm)', cyclicRateValCtrl),
+                                ],
+                              ),
+                            ] else if (r.testName == 'Terminal Effect Test') ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Hole Diameter (mm)', termHoleCtrl, isNumber: false),
+                                  buildParamField('Steel Penetration', termSteelCtrl, isNumber: false),
+                                  buildParamField('Terminal Vel (m/s)', termVelCtrl),
+                                ],
+                              ),
+                            ] else ...[
+                              Row(
+                                children: [
+                                  buildParamField('Retest Sample Qty', retestProducedCtrl),
+                                  buildParamField('Defects Count', retestDefectsCtrl),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16.0),
+
+                      // 3. Retest Inspector & Outcome
                       const Text(
-                        'RETEST RESULTS & FINDINGS',
+                        'RETEST VERIFICATION & DISPOSITION',
                         style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                       ),
                       const SizedBox(height: 10.0),
@@ -224,15 +497,14 @@ class _HistoryTabState extends State<HistoryTab> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12.0),
+                          const SizedBox(width: 10.0),
                           Expanded(
                             flex: 2,
                             child: TextFormField(
-                              controller: retestProducedCtrl,
-                              keyboardType: TextInputType.number,
+                              controller: retestShiftCtrl,
                               style: const TextStyle(color: Colors.white, fontSize: 13.0),
                               decoration: InputDecoration(
-                                labelText: 'Retest Sample Qty',
+                                labelText: 'Shift',
                                 labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
                                 filled: true,
                                 fillColor: const Color(0xFF0F172A),
@@ -244,60 +516,68 @@ class _HistoryTabState extends State<HistoryTab> {
                         ],
                       ),
                       const SizedBox(height: 12.0),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0F172A),
-                                borderRadius: BorderRadius.circular(8.0),
-                                border: Border.all(color: selectedOutcome == 'Approved' ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: selectedOutcome,
-                                  isExpanded: true,
-                                  dropdownColor: const Color(0xFF1E293B),
-                                  style: TextStyle(
-                                    color: selectedOutcome == 'Approved' ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'Approved',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18.0),
-                                          SizedBox(width: 8.0),
-                                          Text('Approved (Retest Passed)', style: TextStyle(color: Color(0xFF10B981))),
-                                        ],
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'Rejected',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.cancel_rounded, color: Color(0xFFEF4444), size: 18.0),
-                                          SizedBox(width: 8.0),
-                                          Text('Rejected (Retest Failed)', style: TextStyle(color: Color(0xFFEF4444))),
-                                        ],
-                                      ),
-                                    ),
+
+                      // Retest Outcome Dropdown
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(color: outcomeColor),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedOutcome,
+                            isExpanded: true,
+                            dropdownColor: const Color(0xFF1E293B),
+                            style: TextStyle(
+                              color: outcomeColor,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'Approved',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18.0),
+                                    SizedBox(width: 8.0),
+                                    Text('Approved (Retest Passed)', style: TextStyle(color: Color(0xFF10B981))),
                                   ],
-                                  onChanged: (v) {
-                                    if (v != null) {
-                                      setDialogState(() => selectedOutcome = v);
-                                    }
-                                  },
                                 ),
                               ),
-                            ),
+                              DropdownMenuItem(
+                                value: 'Approved with condition',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.verified_user_rounded, color: Color(0xFF0284C7), size: 18.0),
+                                    SizedBox(width: 8.0),
+                                    Text('Approved with condition', style: TextStyle(color: Color(0xFF0284C7))),
+                                  ],
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Rejected',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.cancel_rounded, color: Color(0xFFEF4444), size: 18.0),
+                                    SizedBox(width: 8.0),
+                                    Text('Rejected (Retest Failed)', style: TextStyle(color: Color(0xFFEF4444))),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) {
+                                setDialogState(() => selectedOutcome = v);
+                              }
+                            },
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 12.0),
+
+                      // 4. Retest Findings & Remarks
                       TextFormField(
                         controller: retestNotesCtrl,
                         maxLines: 3,
@@ -305,7 +585,7 @@ class _HistoryTabState extends State<HistoryTab> {
                         decoration: InputDecoration(
                           labelText: 'Retest Findings & Remarks',
                           labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
-                          hintText: 'Describe rounds tested, condition observed, and reason for outcome...',
+                          hintText: 'Enter specific retest measurements, conditions observed, and reason for disposition...',
                           hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0),
                           filled: true,
                           fillColor: const Color(0xFF0F172A),
@@ -325,18 +605,78 @@ class _HistoryTabState extends State<HistoryTab> {
                 ElevatedButton.icon(
                   onPressed: () async {
                     final op = retestOpCtrl.text.trim().isNotEmpty ? retestOpCtrl.text.trim() : r.operators;
-                    final notes = retestNotesCtrl.text.trim();
+                    final shift = retestShiftCtrl.text.trim().isNotEmpty ? retestShiftCtrl.text.trim() : r.shift;
+                    final newRemarks = retestNotesCtrl.text.trim();
                     final timestamp = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-                    final finalStatus = selectedOutcome == 'Approved' ? 'Approved (Retest Passed)' : 'Rejected (Retest Failed)';
+
+                    String finalStatus;
+                    if (selectedOutcome == 'Approved') {
+                      finalStatus = 'Approved (Retest Passed)';
+                    } else if (selectedOutcome == 'Approved with condition') {
+                      finalStatus = 'Approved with condition';
+                    } else {
+                      finalStatus = 'Rejected (Retest Failed)';
+                    }
+
+                    final remarksHeader = '[RETEST by $op on $timestamp - Outcome: $finalStatus]';
                     final updatedNotes = r.notes.isNotEmpty
-                        ? '${r.notes}\n[RETEST by $op on $timestamp]: $notes (Outcome: $finalStatus)'
-                        : '[RETEST by $op on $timestamp]: $notes (Outcome: $finalStatus)';
+                        ? (newRemarks.isNotEmpty ? '${r.notes}\n$remarksHeader: $newRemarks' : '${r.notes}\n$remarksHeader')
+                        : (newRemarks.isNotEmpty ? '$remarksHeader: $newRemarks' : remarksHeader);
 
                     final updatedRecord = r.copyWith(
+                      operators: op,
+                      shift: shift,
+                      produced: int.tryParse(retestProducedCtrl.text.trim()) ?? r.produced,
+                      defects: int.tryParse(retestDefectsCtrl.text.trim()) ?? r.defects,
+                      mouthSlow: int.tryParse(mouthSlowCtrl.text.trim()) ?? r.mouthSlow,
+                      mouthFast: int.tryParse(mouthFastCtrl.text.trim()) ?? r.mouthFast,
+                      primerSlow: int.tryParse(primerSlowCtrl.text.trim()) ?? r.primerSlow,
+                      primerFast: int.tryParse(primerFastCtrl.text.trim()) ?? r.primerFast,
+                      neckSlow: int.tryParse(neckSlowCtrl.text.trim()) ?? r.neckSlow,
+                      neckFast: int.tryParse(neckFastCtrl.text.trim()) ?? r.neckFast,
+                      shoulderSlow: int.tryParse(shoulderSlowCtrl.text.trim()) ?? r.shoulderSlow,
+                      shoulderFast: int.tryParse(shoulderFastCtrl.text.trim()) ?? r.shoulderFast,
+                      bodySlow: int.tryParse(bodySlowCtrl.text.trim()) ?? r.bodySlow,
+                      bodyFast: int.tryParse(bodyFastCtrl.text.trim()) ?? r.bodyFast,
+                      headSlow: int.tryParse(headSlowCtrl.text.trim()) ?? r.headSlow,
+                      headFast: int.tryParse(headFastCtrl.text.trim()) ?? r.headFast,
+                      roomTemp: roomTempCtrl.text.trim().isNotEmpty ? roomTempCtrl.text.trim() : r.roomTemp,
+                      accMinX: extMinForceCtrl.text.trim().isNotEmpty ? extMinForceCtrl.text.trim() : r.accMinX,
+                      extractionForceType: extTypeCtrl.text.trim().isNotEmpty ? extTypeCtrl.text.trim() : r.extractionForceType,
+                      accMeanRadius: accRadiusCtrl.text.trim().isNotEmpty ? accRadiusCtrl.text.trim() : r.accMeanRadius,
+                      accSDX: accSDXCtrl.text.trim().isNotEmpty ? accSDXCtrl.text.trim() : r.accSDX,
+                      accSDY: accSDYCtrl.text.trim().isNotEmpty ? accSDYCtrl.text.trim() : r.accSDY,
+                      accLargestDistance: accMaxDistCtrl.text.trim().isNotEmpty ? accMaxDistCtrl.text.trim() : r.accLargestDistance,
+                      velMean: velMeanCtrl.text.trim().isNotEmpty ? velMeanCtrl.text.trim() : r.velMean,
+                      velMin: velMinCtrl.text.trim().isNotEmpty ? velMinCtrl.text.trim() : r.velMin,
+                      velMax: velMaxCtrl.text.trim().isNotEmpty ? velMaxCtrl.text.trim() : r.velMax,
+                      velSD: velSDCtrl.text.trim().isNotEmpty ? velSDCtrl.text.trim() : r.velSD,
+                      cartridgeTemp: epvCartridgeTempCtrl.text.trim().isNotEmpty ? epvCartridgeTempCtrl.text.trim() : r.cartridgeTemp,
+                      epvatMeanPressure: epvMeanP1Ctrl.text.trim().isNotEmpty ? epvMeanP1Ctrl.text.trim() : r.epvatMeanPressure,
+                      epvatMaxPressure: epvMaxP1Ctrl.text.trim().isNotEmpty ? epvMaxP1Ctrl.text.trim() : r.epvatMaxPressure,
+                      epvatMinPressure: epvMinP1Ctrl.text.trim().isNotEmpty ? epvMinP1Ctrl.text.trim() : r.epvatMinPressure,
+                      epvatSDPressure: epvSDP1Ctrl.text.trim().isNotEmpty ? epvSDP1Ctrl.text.trim() : r.epvatSDPressure,
+                      epvatP2MeanPressure: epvMeanP2Ctrl.text.trim().isNotEmpty ? epvMeanP2Ctrl.text.trim() : r.epvatP2MeanPressure,
+                      epvatP2MaxPressure: epvMaxP2Ctrl.text.trim().isNotEmpty ? epvMaxP2Ctrl.text.trim() : r.epvatP2MaxPressure,
+                      actionTimeMean: epvActionTimeMeanCtrl.text.trim().isNotEmpty ? epvActionTimeMeanCtrl.text.trim() : r.actionTimeMean,
+                      functionLevel1: int.tryParse(funcL1Ctrl.text.trim()) ?? r.functionLevel1,
+                      functionLevel2: int.tryParse(funcL2Ctrl.text.trim()) ?? r.functionLevel2,
+                      functionLevel3: int.tryParse(funcL3Ctrl.text.trim()) ?? r.functionLevel3,
+                      functionLevel4: int.tryParse(funcL4Ctrl.text.trim()) ?? r.functionLevel4,
+                      functionDefectDetails: funcDetailsCtrl.text.trim().isNotEmpty ? funcDetailsCtrl.text.trim() : r.functionDefectDetails,
+                      primerHbar: primerHbarCtrl.text.trim().isNotEmpty ? primerHbarCtrl.text.trim() : r.primerHbar,
+                      primerSD: primerSDCtrl.text.trim().isNotEmpty ? primerSDCtrl.text.trim() : r.primerSD,
+                      primerAllFireH: primerAllFireCtrl.text.trim().isNotEmpty ? primerAllFireCtrl.text.trim() : r.primerAllFireH,
+                      primerNoFireH: primerNoFireCtrl.text.trim().isNotEmpty ? primerNoFireCtrl.text.trim() : r.primerNoFireH,
+                      cyclicRateWeaponType: cyclicWeaponCtrl.text.trim().isNotEmpty ? cyclicWeaponCtrl.text.trim() : r.cyclicRateWeaponType,
+                      cyclicRateValue: cyclicRateValCtrl.text.trim().isNotEmpty ? cyclicRateValCtrl.text.trim() : r.cyclicRateValue,
+                      terminalHoleDiameter: termHoleCtrl.text.trim().isNotEmpty ? termHoleCtrl.text.trim() : r.terminalHoleDiameter,
+                      terminalSteelPenetration: termSteelCtrl.text.trim().isNotEmpty ? termSteelCtrl.text.trim() : r.terminalSteelPenetration,
+                      terminalVelocity: termVelCtrl.text.trim().isNotEmpty ? termVelCtrl.text.trim() : r.terminalVelocity,
                       isRetest: true,
                       retestTimestamp: timestamp,
                       retestOperator: op,
-                      retestNotes: notes,
+                      retestNotes: newRemarks,
                       retestStatus: selectedOutcome,
                       originalStatus: r.originalStatus.isNotEmpty ? r.originalStatus : r.status,
                       status: finalStatus,
@@ -353,7 +693,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Retest submitted successfully for lot "${r.lotNo}". Final status: $finalStatus'),
-                          backgroundColor: selectedOutcome == 'Approved' ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                          backgroundColor: selectedOutcome == 'Rejected' ? const Color(0xFFEF4444) : (selectedOutcome == 'Approved with condition' ? const Color(0xFF0284C7) : const Color(0xFF10B981)),
                         ),
                       );
                     }

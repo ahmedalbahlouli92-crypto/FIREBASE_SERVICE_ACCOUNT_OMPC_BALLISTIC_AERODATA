@@ -82,22 +82,22 @@ class ReportGenerator {
     final lotHeader = moduleName == 'Daily Test' ? 'Hopper No. / Production Date' : 'Lot No';
     
     if (testName == 'Waterproof Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Pressure (Bar),Viscosity,Time of Test,Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Pressure (Bar),Viscosity,Time of Test,Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Remarks');
       for (var r in records) {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.pressureBar, r.viscosity, r.testTime, r.samplingLocation,
-          r.mouthSlow, r.mouthFast, r.primerSlow, r.primerFast
+          r.mouthSlow, r.mouthFast, r.primerSlow, r.primerFast, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Residual Stress Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Room Temp,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Location,Time of Test');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Room Temp,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Location,Time of Test,Remarks');
       for (var r in records) {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.roomTemp, r.neckSlow, r.neckFast, r.shoulderSlow, r.shoulderFast,
-          r.bodySlow, r.bodyFast, r.headSlow, r.headFast, r.samplingLocation, r.testTime
+          r.bodySlow, r.bodyFast, r.headSlow, r.headFast, r.samplingLocation, r.testTime, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -308,7 +308,7 @@ class ReportGenerator {
         .where((n) => n.isNotEmpty && n.toLowerCase() != 'clear')
         .toSet()
         .toList();
-    final remarksText = remarksList.join(', ');
+    final remarksText = remarksList.join('<br/>');
 
     final requirementList = records
         .map((r) => r.requirement.trim())
@@ -726,6 +726,7 @@ class ReportGenerator {
       font-weight: bold;
       line-height: 1.4;
       color: #1e293b;
+      white-space: pre-wrap;
     }
     .signatures {
       margin-top: 25px;
@@ -1267,7 +1268,7 @@ class ReportGenerator {
         .where((n) => n.isNotEmpty && n.toLowerCase() != 'clear')
         .toSet()
         .toList();
-    final remarksText = remarksList.join(', ');
+    final remarksText = remarksList.join('<br/>');
 
     final requirementList = records
         .map((r) => r.requirement.trim())
@@ -1606,7 +1607,7 @@ class ReportGenerator {
     table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
     table.data-table th { background-color: #f1f5f9; color: #475569; text-align: left; font-size: 10px; font-weight: bold; padding: 6px 8px; border-bottom: 2px solid #cbd5e1; }
     table.data-table td { padding: 6px 8px; font-size: 10px; border-bottom: 1px solid #e2e8f0; color: #334155; }
-    .sentence-box { padding: 10px; border: 1px solid #cbd5e1; background-color: #f8fafc; font-size: 11px; font-weight: bold; color: #1e293b; }
+    .sentence-box { padding: 10px; border: 1px solid #cbd5e1; background-color: #f8fafc; font-size: 11px; font-weight: bold; color: #1e293b; white-space: pre-wrap; }
     .signatures { margin-top: 25px; width: 100%; }
     .signatures td { width: 50%; text-align: center; font-size: 11px; color: #475569; padding-top: 20px; border-top: 1px solid #cbd5e1; }
     @media print { @page { margin: 0; } body { margin: 12mm 15mm; -webkit-print-color-adjust: exact; } }
