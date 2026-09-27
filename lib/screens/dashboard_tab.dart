@@ -214,6 +214,7 @@ class _DashboardTabState extends State<DashboardTab> {
     int totalRounds = 0;
     int totalDefects = 0;
     int passCount = 0;
+    int condCount = 0;
     int rejectCount = 0;
     int retestCount = 0;
     final Map<String, int> caliberCounts = {};
@@ -237,8 +238,10 @@ class _DashboardTabState extends State<DashboardTab> {
         statusCounts[r.status] = 1;
       }
 
-      if (r.status == 'Approved' || r.status == 'Approved with condition') {
+      if (r.status == 'Approved') {
         passCount++;
+      } else if (r.status == 'Approved with condition') {
+        condCount++;
       } else if (r.status == 'Rejected') {
         rejectCount++;
       } else if (r.status == 'Retest') {
@@ -704,6 +707,7 @@ class _DashboardTabState extends State<DashboardTab> {
             totalRounds: totalRounds,
             totalInspections: filtered.length,
             passCount: passCount,
+            condCount: condCount,
             rejectCount: rejectCount,
             retestCount: retestCount,
             yieldRate: yieldRate,
@@ -746,6 +750,14 @@ class _DashboardTabState extends State<DashboardTab> {
                     accentColor: const Color(0xFF10B981),
                     width: cardWidth,
                     icon: Icons.check_circle_outline,
+                  ),
+                  _buildKpiCard(
+                    title: 'COND. APPROVED',
+                    value: condCount.toString(),
+                    desc: 'Approved with condition',
+                    accentColor: const Color(0xFF06B6D4),
+                    width: cardWidth,
+                    icon: Icons.verified_user_outlined,
                   ),
                   _buildKpiCard(
                     title: 'REJECTED TESTS',
@@ -1317,10 +1329,10 @@ class _DashboardTabState extends State<DashboardTab> {
       bg = const Color(0xFFFEF3C7);
       fg = const Color(0xFFD97706);
       border = const Color(0xFFF59E0B).withOpacity(0.35);
-    } else if (status == 'Approved with condition') {
-      bg = const Color(0xFFEDF4FC);
+    } else if (status.trim().toLowerCase().contains('condition')) {
+      bg = const Color(0xFFE0F2FE);
       fg = const Color(0xFF0284C7);
-      border = const Color(0xFF4D99DB).withOpacity(0.35);
+      border = const Color(0xFF0284C7).withOpacity(0.4);
     }
 
     return Container(

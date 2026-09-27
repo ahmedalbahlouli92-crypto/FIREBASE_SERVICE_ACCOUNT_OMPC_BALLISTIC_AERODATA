@@ -637,7 +637,9 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                   final r = entry['record'] as BallisticRecord;
                   final status = r.status.trim();
                   Color statusColor = const Color(0xFF10B981);
-                  if (status.toLowerCase().contains('reject') || status.toLowerCase().contains('fail')) {
+                  if (status.toLowerCase().contains('condition')) {
+                    statusColor = const Color(0xFF0284C7);
+                  } else if (status.toLowerCase().contains('reject') || status.toLowerCase().contains('fail')) {
                     statusColor = const Color(0xFFEF4444);
                   } else if (status.toLowerCase().contains('retest')) {
                     statusColor = const Color(0xFFF59E0B);

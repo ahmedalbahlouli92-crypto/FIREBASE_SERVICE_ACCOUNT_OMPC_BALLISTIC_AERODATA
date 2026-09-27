@@ -1250,7 +1250,7 @@ class _HistoryTabState extends State<HistoryTab> {
           r.notes.toLowerCase().contains(query);
 
       final matchesCaliber = _caliberFilter == 'All' || r.caliber == _caliberFilter;
-      final matchesStatus = _statusFilter == 'All' || r.status == _statusFilter;
+      final matchesStatus = _statusFilter == 'All' || r.status.trim().toLowerCase() == _statusFilter.trim().toLowerCase();
       final matchesLot = _lotFilter == 'All' || r.lotNo.trim() == _lotFilter;
       final matchesHopper = _hopperFilter == 'All' || r.hopperNo.trim() == _hopperFilter;
       final matchesTestName = _testNameFilter == 'All' || r.testName == _testNameFilter;
@@ -1587,7 +1587,9 @@ class _HistoryTabState extends State<HistoryTab> {
                                     return DataRow(
                                       color: MaterialStateProperty.resolveWith((states) {
                                         final st = r.status.toLowerCase();
-                                        if (st.contains('approved')) {
+                                        if (st.contains('condition')) {
+                                          return const Color(0xFF0284C7).withOpacity(0.09);
+                                        } else if (st.contains('approved')) {
                                           return const Color(0xFF10B981).withOpacity(0.08);
                                         } else if (st.contains('reject')) {
                                           return const Color(0xFFEF4444).withOpacity(0.12);
@@ -1800,22 +1802,23 @@ class _HistoryTabState extends State<HistoryTab> {
     Color fg = const Color(0xFF10B981);
     Color border = const Color(0xFF10B981).withOpacity(0.25);
 
-    if (status == 'Pending Review') {
-      bg = const Color(0xFFF59E0B).withOpacity(0.12);
-      fg = const Color(0xFFF59E0B);
+    final st = status.trim().toLowerCase();
+    if (st.contains('condition')) {
+      bg = const Color(0xFFE0F2FE);
+      fg = const Color(0xFF0284C7);
+      border = const Color(0xFF0284C7).withOpacity(0.4);
+    } else if (st.contains('pending')) {
+      bg = const Color(0xFFFEF3C7);
+      fg = const Color(0xFFD97706);
       border = const Color(0xFFF59E0B).withOpacity(0.25);
-    } else if (status == 'Rejected' || status == 'Failed') {
-      bg = const Color(0xFFEF4444).withOpacity(0.12);
+    } else if (st.contains('reject') || st.contains('fail')) {
+      bg = const Color(0xFFFEE2E2);
       fg = const Color(0xFFEF4444);
       border = const Color(0xFFEF4444).withOpacity(0.25);
-    } else if (status == 'Retest') {
-      bg = const Color(0xFFF59E0B).withOpacity(0.12);
-      fg = const Color(0xFFF59E0B);
+    } else if (st.contains('retest')) {
+      bg = const Color(0xFFFEF3C7);
+      fg = const Color(0xFFD97706);
       border = const Color(0xFFF59E0B).withOpacity(0.25);
-    } else if (status == 'Approved with condition') {
-      bg = const Color(0xFF06B6D4).withOpacity(0.12);
-      fg = const Color(0xFF06B6D4);
-      border = const Color(0xFF06B6D4).withOpacity(0.25);
     }
 
     return Container(

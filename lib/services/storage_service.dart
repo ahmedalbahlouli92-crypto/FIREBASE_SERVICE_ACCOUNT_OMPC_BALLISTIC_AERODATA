@@ -128,7 +128,11 @@ class StorageService {
     }
   }
 
-  Future<Set<String>> _getAllDeletedKeys() async {
+  // Memory cache for cloud deleted keys to avoid redundant network hits during parallel module loading
+  Set<String>? _cachedDeletedKeys;
+  DateTime? _lastDeletedKeysFetch;
+
+  Future<Set<String>> _getAllDeletedKeys({bool localOnly = false}) async {
     final Set<String> keys = {};
     if (kIsWeb) {
       keys.addAll(getWebDeletedRecords());
@@ -146,9 +150,25 @@ class StorageService {
       } catch (_) {}
     }
 
+    if (localOnly) {
+      if (_cachedDeletedKeys != null) {
+        keys.addAll(_cachedDeletedKeys!);
+      }
+      return keys;
+    }
+
     if (SupabaseService.isInitialized) {
+      // Re-use cached deleted keys if fetched within the last 15 seconds
+      if (_cachedDeletedKeys != null &&
+          _lastDeletedKeysFetch != null &&
+          DateTime.now().difference(_lastDeletedKeysFetch!).inSeconds < 15) {
+        keys.addAll(_cachedDeletedKeys!);
+        return keys;
+      }
       try {
         final cloudDeleted = await SupabaseService.fetchDeletedRecordsFromCloud();
+        _cachedDeletedKeys = cloudDeleted.toSet();
+        _lastDeletedKeysFetch = DateTime.now();
         keys.addAll(cloudDeleted);
         if (kIsWeb) {
           saveWebDeletedRecords(keys);
@@ -361,18 +381,40 @@ class StorageService {
   }
 
   // Load and parse all ballistic logs (from Supabase if connected, else local cache)
-  Future<List<BallisticRecord>> loadRecords({String module = 'Lot Acceptance Test'}) async {
+  Future<List<BallisticRecord>> loadRecords({String module = 'Lot Acceptance Test', bool localOnly = false}) async {
     final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
         ? 'Daily Test'
         : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
     final bool isDaily = cleanModule == 'Daily Test';
     final bool isComponent = cleanModule == 'Component Test';
 
+    // Fast-path: local only for instant app startup
+    final deletedKeys = await _getAllDeletedKeys(localOnly: localOnly);
+
+    if (localOnly) {
+      final List<BallisticRecord> rawLocal = kIsWeb
+          ? getWebRecords(cleanModule)
+          : await _loadAllLocalCsvRecords(cleanModule);
+      final filtered = rawLocal.where((r) {
+        if (_isRecordDeleted(r, deletedKeys)) return false;
+        if (isDaily) {
+          return r.module == 'Daily Test' || r.module == 'Daily Test Report';
+        } else if (isComponent) {
+          return r.module == 'Component Test';
+        } else {
+          return r.module.isEmpty || r.module == 'Lot Acceptance Test';
+        }
+      }).map((r) {
+        if (isDaily && r.hopperNo.isEmpty && r.lotNo.isNotEmpty) {
+          return r.copyWith(hopperNo: r.lotNo, module: 'Daily Test');
+        }
+        return r;
+      }).toList();
+      return BallisticRecord.consolidateRecords(filtered);
+    }
+
     // Ensure Supabase is initialized
     await SupabaseService.ensureInitialized();
-
-    // Retrieve active deleted keys / tombstones (cloud + local)
-    final deletedKeys = await _getAllDeletedKeys();
 
     // 1. Attempt to fetch from Supabase Cloud Database
     if (SupabaseService.isInitialized) {
@@ -699,7 +741,7 @@ class StorageService {
   }
 
   // Load registered operators from storage (cloud-synced + local fallback with smart merging)
-  Future<List<Map<String, String>>> loadOperators() async {
+  Future<List<Map<String, String>>> loadOperators({bool localOnly = false}) async {
     final defaultOperators = [
       {'email': 'admin', 'password': 'admin123', 'role': 'admin', 'name': 'System Administrator'},
       {'email': 'manager', 'password': 'manager123', 'role': 'manager', 'name': 'Quality Manager'},
@@ -747,6 +789,10 @@ class StorageService {
       } catch (e) {
         print("Error reading local operators: $e");
       }
+    }
+
+    if (localOnly) {
+      return merged.values.toList();
     }
 
     // 3. Overlay Supabase Cloud users (syncs across PCs and mobile devices)
@@ -913,7 +959,7 @@ class StorageService {
   }
 
   // Load Admin Rules (cloud-synced + local fallback with smart merge)
-  Future<Map<String, dynamic>> loadRules() async {
+  Future<Map<String, dynamic>> loadRules({bool localOnly = false}) async {
     // 1. Load local rules first as baseline
     Map<String, dynamic> localRules = {};
     if (kIsWeb) {
@@ -929,6 +975,10 @@ class StorageService {
       } catch (_) {}
     }
 
+    if (localOnly) {
+      return localRules;
+    }
+
     // 2. Fetch cloud rules if connected
     await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
@@ -937,19 +987,19 @@ class StorageService {
         if (cloudRules != null && cloudRules.isNotEmpty) {
           final mergedRules = Map<String, dynamic>.from(cloudRules);
 
-          // Smart merge: preserve local custom_formulas if cloud is missing or empty
+          // Smart merge: preserve local custom_formulas (including empty lists when rules are deleted)
           final localEpv = localRules['epvat'];
           final cloudEpv = mergedRules['epvat'];
           if (localEpv is Map && localEpv['custom_formulas'] is Map && (localEpv['custom_formulas'] as Map).isNotEmpty) {
             final Map<String, dynamic> mergedFormulas = {};
             // Start with local
             (localEpv['custom_formulas'] as Map).forEach((k, v) {
-              if (v is List && v.isNotEmpty) mergedFormulas[k.toString()] = v;
+              if (v is List) mergedFormulas[k.toString()] = v;
             });
             // Overlay cloud if any
             if (cloudEpv is Map && cloudEpv['custom_formulas'] is Map) {
               (cloudEpv['custom_formulas'] as Map).forEach((k, v) {
-                if (v is List && v.isNotEmpty) mergedFormulas[k.toString()] = v;
+                if (v is List) mergedFormulas[k.toString()] = v;
               });
             }
             if (cloudEpv is Map) {

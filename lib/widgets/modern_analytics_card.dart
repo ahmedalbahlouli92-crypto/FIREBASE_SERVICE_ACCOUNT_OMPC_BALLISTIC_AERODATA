@@ -10,6 +10,7 @@ class ModernAnalyticsOverviewCard extends StatelessWidget {
   final int totalRounds;
   final int totalInspections;
   final int passCount;
+  final int condCount;
   final int rejectCount;
   final int retestCount;
   final double yieldRate;
@@ -25,6 +26,7 @@ class ModernAnalyticsOverviewCard extends StatelessWidget {
     required this.totalRounds,
     required this.totalInspections,
     required this.passCount,
+    this.condCount = 0,
     required this.rejectCount,
     required this.retestCount,
     required this.yieldRate,
@@ -230,7 +232,9 @@ class ModernAnalyticsOverviewCard extends StatelessWidget {
                       title: 'QUALITY CONFORMANCE',
                       value: '${yieldRate.toStringAsFixed(1)}%',
                       unit: 'yield',
-                      subtitle: '$passCount Approved • $rejectCount Rejected',
+                      subtitle: condCount > 0
+                          ? '$passCount Approved • $condCount Cond. • $rejectCount Rejected'
+                          : '$passCount Approved • $rejectCount Rejected',
                       badgeText: yieldRate >= 95.0 ? 'Optimal' : (yieldRate >= 80.0 ? 'Acceptable' : 'Attention'),
                       badgeColor: yieldRate >= 95.0 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                       icon: Icons.verified_outlined,

@@ -319,15 +319,15 @@ class EpvatFormulaHelper {
     if (formulasMap.isEmpty) {
       return getDefaultFormulas(isThreeTemp: isThreeTemp);
     }
-    // 1. Direct match
-    if (formulasMap.containsKey(caliber) && formulasMap[caliber] is List && (formulasMap[caliber] as List).isNotEmpty) {
+    // 1. Direct match (even if empty list, meaning admin deleted/cleared all rules for this caliber)
+    if (formulasMap.containsKey(caliber) && formulasMap[caliber] is List) {
       return (formulasMap[caliber] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
     // 2. Resilient substring / token match (e.g. SS109 <-> 5.56x45 SS109)
     final calLower = caliber.toLowerCase().replaceAll(' ', '').trim();
     for (final entry in formulasMap.entries) {
       final keyLower = entry.key.toLowerCase().replaceAll(' ', '').trim();
-      if (entry.value is List && (entry.value as List).isNotEmpty) {
+      if (entry.value is List) {
         if (keyLower == calLower ||
             (calLower.contains('ss109') && keyLower.contains('ss109')) ||
             (calLower.contains('m193') && keyLower.contains('m193')) ||
@@ -346,10 +346,10 @@ class EpvatFormulaHelper {
       }
     }
     // 3. Fallback to 'default' key if specified
-    if (formulasMap.containsKey('default') && formulasMap['default'] is List && (formulasMap['default'] as List).isNotEmpty) {
+    if (formulasMap.containsKey('default') && formulasMap['default'] is List) {
       return (formulasMap['default'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
-    // 4. Return default NATO EPVAT formulas
+    // 4. Return default NATO EPVAT formulas if caliber was never configured
     return getDefaultFormulas(isThreeTemp: isThreeTemp);
   }
 

@@ -57,7 +57,10 @@ class EntryTab extends StatefulWidget {
     required this.onCaliberChanged,
     required this.onTestNameChanged,
     required this.adminRules,
+    this.onOpenEpvatRulesInControl,
   }) : super(key: key);
+
+  final VoidCallback? onOpenEpvatRulesInControl;
 
   static const List<String> calibers = [
     '5.56x45 SS109',
@@ -7934,7 +7937,55 @@ class _EntryTabState extends State<EntryTab> {
       isThreeTemp: _epvatPressureType == 'Overall',
     );
     
-    if (list.isEmpty) return const SizedBox.shrink();
+    if (list.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(10.0),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.calculate_outlined, color: Color(0xFF8E96A3), size: 18.0),
+                const SizedBox(width: 8.0),
+                Text(
+                  'No custom EPVAT evaluation formulas registered for "$_caliber".',
+                  style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+            if (widget.onOpenEpvatRulesInControl != null)
+              InkWell(
+                onTap: widget.onOpenEpvatRulesInControl,
+                borderRadius: BorderRadius.circular(6.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.tune_rounded, color: Color(0xFF818CF8), size: 13.0),
+                      SizedBox(width: 4.0),
+                      Text(
+                        'Configure Rules in Control Module',
+                        style: TextStyle(color: Color(0xFF818CF8), fontSize: 11.0, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
     
     final defaultTemp = _epvatPressureType == 'Overall'
         ? '21'
@@ -7974,17 +8025,47 @@ class _EntryTabState extends State<EntryTab> {
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF06B6D4).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4.0),
-                  border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
-                ),
-                child: const Text(
-                  'Auto Calculated',
-                  style: TextStyle(color: Color(0xFF06B6D4), fontSize: 10.5, fontWeight: FontWeight.bold),
-                ),
+              Row(
+                children: [
+                  if (widget.onOpenEpvatRulesInControl != null) ...[
+                    InkWell(
+                      onTap: widget.onOpenEpvatRulesInControl,
+                      borderRadius: BorderRadius.circular(4.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4.0),
+                          border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.4)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.tune_rounded, color: Color(0xFF818CF8), size: 12.0),
+                            SizedBox(width: 4.0),
+                            Text(
+                              'Configure in Control Rules',
+                              style: TextStyle(color: Color(0xFF818CF8), fontSize: 10.5, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF06B6D4).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4.0),
+                      border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                    ),
+                    child: const Text(
+                      'Auto Calculated',
+                      style: TextStyle(color: Color(0xFF06B6D4), fontSize: 10.5, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -8382,6 +8463,20 @@ class _EntryTabState extends State<EntryTab> {
                 rejected = true;
               }
             }
+
+            // Evaluate custom formulas configured in Control module
+            final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
+            final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(formulasMap, _caliber, isThreeTemp: true);
+            if (!rejected && customFormulas.isNotEmpty) {
+              final vars = _getEpvatVariablesMap();
+              for (final f in customFormulas) {
+                final res = EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), vars, defaultTemp: '21');
+                if (res != null && !res.isPassed) {
+                  rejected = true;
+                  break;
+                }
+              }
+            }
             
             autoStatus = rejected ? 'Rejected' : 'Approved';
           } else {
@@ -8412,6 +8507,23 @@ class _EntryTabState extends State<EntryTab> {
                 rejected = true;
               }
             }
+
+            // Evaluate custom formulas configured in Control module
+            final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
+            final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(formulasMap, _caliber, isThreeTemp: false);
+            if (!rejected && customFormulas.isNotEmpty) {
+              final defaultTemp = _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
+                  ? '21'
+                  : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim();
+              final vars = _getEpvatVariablesMap();
+              for (final f in customFormulas) {
+                final res = EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), vars, defaultTemp: defaultTemp);
+                if (res != null && !res.isPassed) {
+                  rejected = true;
+                  break;
+                }
+              }
+            }
             
             autoStatus = rejected ? 'Rejected' : 'Approved';
           }
@@ -8431,7 +8543,10 @@ class _EntryTabState extends State<EntryTab> {
         Color statusBorderColor;
         Color statusTextColor = Colors.white;
         
-        if (_status == 'Approved' || _status == 'Approved with condition') {
+        if (_status == 'Approved with condition') {
+          statusBgColor = const Color(0xFF0284C7); // Sky-blue / Cyan for conditional approval
+          statusBorderColor = const Color(0xFF0369A1);
+        } else if (_status == 'Approved') {
           statusBgColor = const Color(0xFF10B981); // Full Green
           statusBorderColor = const Color(0xFF059669);
         } else if (_status == 'Rejected') {
@@ -8472,19 +8587,33 @@ class _EntryTabState extends State<EntryTab> {
                 borderSide: BorderSide(color: statusBorderColor, width: 2.0),
               ),
             ),
-            items: const ['Approved', 'Pending Review', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
+            items: const ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
               Color itemColor = Colors.white;
               if (s == 'Approved') itemColor = const Color(0xFF34D399);
+              if (s == 'Approved with condition') itemColor = const Color(0xFF38BDF8);
               if (s == 'Rejected') itemColor = const Color(0xFFF87171);
               if (s == 'Retest') itemColor = const Color(0xFFFBBF24);
+              if (s == 'Pending Review') itemColor = const Color(0xFFFCD34D);
               return DropdownMenuItem<String>(
                 value: s,
-                child: Text(s, style: TextStyle(color: itemColor, fontWeight: FontWeight.bold)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: itemColor, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(s, style: TextStyle(color: itemColor, fontWeight: FontWeight.bold)),
+                  ],
+                ),
               );
             }).toList(),
-            onChanged: (autoStatus != null && autoStatus != 'Approved') 
-                ? null 
-                : (v) => setState(() => _status = v!),
+            onChanged: (v) {
+              if (v != null) {
+                setState(() => _status = v);
+              }
+            },
           ),
         );
       },

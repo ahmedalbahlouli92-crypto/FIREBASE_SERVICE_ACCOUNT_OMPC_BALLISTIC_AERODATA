@@ -1032,7 +1032,8 @@ class _MainShellState extends State<MainShell> {
   bool _isPersonnelCardExpanded = true;
   bool _isPermissionsCardExpanded = true;
   bool _isEquipmentCardExpanded = true;
-  bool _isRulesCardExpanded = true;
+  bool _isRulesCardExpanded = false; // Collapsed by default as requested; admin will open it
+  int? _editingFormulaIndex;
   final Map<String, List<String>> _adminWeaponManufacturers = {
     'Pistol': ['Beretta', 'Glock', 'SIG Sauer', 'CZ', 'Smith & Wesson', 'Colt', 'Browning', 'Other'],
     'Rifle': ['Colt', 'FN Herstal', 'Heckler & Koch', 'Steyr', 'Kalashnikov', 'Remington', 'Other'],
@@ -1554,108 +1555,167 @@ class _MainShellState extends State<MainShell> {
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     
-    try {
-      final logoBytes = await rootBundle.load('assets/logo.png');
-      _base64Logo = base64Encode(logoBytes.buffer.asUint8List());
-    } catch (e) {
+    // Fast-path: Load assets in parallel
+    final logoFuture = rootBundle.load('assets/logo.png').then((bytes) {
+      _base64Logo = base64Encode(bytes.buffer.asUint8List());
+    }).catchError((e) {
       print("Error loading logo: $e");
-    }
+    });
     
-    try {
-      final headerBytes = await rootBundle.load('assets/report_header.png');
-      _base64ReportHeader = base64Encode(headerBytes.buffer.asUint8List());
-    } catch (e) {
+    final headerFuture = rootBundle.load('assets/report_header.png').then((bytes) {
+      _base64ReportHeader = base64Encode(bytes.buffer.asUint8List());
+    }).catchError((e) {
       print("Error loading report header: $e");
-    }
-    
+    });
+
     try {
-      final dirPath = await _storageService.getDirectoryPath();
+      final path = await _storageService.getDirectoryPath();
+      final savedModule = _storageService.loadActiveModule();
+
+      // 1. Instant local load (offline-first UI renders immediately without waiting for network)
+      final localOps = await _storageService.loadOperators(localOnly: true);
+      final localRules = await _storageService.loadRules(localOnly: true);
+      final Map<String, dynamic> activeLocalRules = localRules.isEmpty ? Map<String, dynamic>.from(_defaultRules) : localRules;
+      
+      final localRecordsList = await _storageService.loadRecords(module: 'Lot Acceptance Test', localOnly: true);
+      final localDailyList = await _storageService.loadRecords(module: 'Daily Test', localOnly: true);
+      final localComponentList = await _storageService.loadRecords(module: 'Component Test', localOnly: true);
+
+      if (mounted) {
+        setState(() {
+          if (savedModule != null && savedModule.isNotEmpty) {
+            _currentModule = savedModule;
+          }
+          _records = localRecordsList;
+          _dailyTestRecords = localDailyList;
+          _componentTestRecords = localComponentList;
+          _storagePath = path;
+          if (localOps.isNotEmpty) _operators = localOps;
+          _adminRules = activeLocalRules;
+          _submissionAlertsEnabled = activeLocalRules['submission_alerts_enabled'] == true;
+          // Unblock UI immediately so the user doesn't experience slow opening
+          _isLoading = false;
+        });
+      }
+
+      await Future.wait([logoFuture, headerFuture]);
+
+      // 2. Cloud data synchronization in parallel in background
+      _syncInitialCloudData();
+    } catch (e) {
+      print("Error loading initial data: $e");
+      if (mounted) {
+        setState(() {
+          _storagePath = 'Error loading directory';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _syncInitialCloudData() async {
+    try {
       final opsList = await _storageService.loadOperators();
       final rules = await _storageService.loadRules();
       final Map<String, dynamic> activeRules = rules.isEmpty ? Map<String, dynamic>.from(_defaultRules) : rules;
       
+      bool schemaMigrated = false;
+
       // Safe schema migration: populate missing sections or keys
       if (activeRules['waterproof'] == null) {
         activeRules['waterproof'] = Map<String, dynamic>.from(_defaultRules['waterproof']);
+        schemaMigrated = true;
       } else {
         final wp = Map<String, dynamic>.from(activeRules['waterproof'] as Map);
         if (wp['calibers'] == null) {
           wp['calibers'] = Map<String, dynamic>.from(_defaultRules['waterproof']['calibers']);
+          schemaMigrated = true;
         } else {
           final def = Map<String, dynamic>.from(_defaultRules['waterproof']['calibers'] ?? {});
           final cur = Map<String, dynamic>.from(wp['calibers'] as Map);
-          def.forEach((k, v) { if (!cur.containsKey(k)) cur[k] = v; });
+          def.forEach((k, v) { if (!cur.containsKey(k)) { cur[k] = v; schemaMigrated = true; } });
           wp['calibers'] = cur;
         }
         activeRules['waterproof'] = wp;
       }
       if (activeRules['residual_stress'] == null) {
         activeRules['residual_stress'] = Map<String, dynamic>.from(_defaultRules['residual_stress']);
+        schemaMigrated = true;
       } else {
         final rs = Map<String, dynamic>.from(activeRules['residual_stress'] as Map);
         if (rs['classification_image'] == null) rs['classification_image'] = '';
         if (rs['calibers'] == null) {
           rs['calibers'] = Map<String, dynamic>.from(_defaultRules['residual_stress']['calibers']);
+          schemaMigrated = true;
         } else {
           final def = Map<String, dynamic>.from(_defaultRules['residual_stress']['calibers'] ?? {});
           final cur = Map<String, dynamic>.from(rs['calibers'] as Map);
-          def.forEach((k, v) { if (!cur.containsKey(k)) cur[k] = v; });
+          def.forEach((k, v) { if (!cur.containsKey(k)) { cur[k] = v; schemaMigrated = true; } });
           rs['calibers'] = cur;
         }
         activeRules['residual_stress'] = rs;
       }
       if (activeRules['extraction'] == null) {
         activeRules['extraction'] = Map<String, dynamic>.from(_defaultRules['extraction']);
+        schemaMigrated = true;
       } else {
         final ext = Map<String, dynamic>.from(activeRules['extraction'] as Map);
         if (ext['calibers'] == null) {
           ext['calibers'] = Map<String, dynamic>.from(_defaultRules['extraction']['calibers']);
+          schemaMigrated = true;
         } else {
           final def = Map<String, dynamic>.from(_defaultRules['extraction']['calibers'] ?? {});
           final cur = Map<String, dynamic>.from(ext['calibers'] as Map);
-          def.forEach((k, v) { if (!cur.containsKey(k)) cur[k] = v; });
+          def.forEach((k, v) { if (!cur.containsKey(k)) { cur[k] = v; schemaMigrated = true; } });
           ext['calibers'] = cur;
         }
         activeRules['extraction'] = ext;
       }
       if (activeRules['accuracy'] == null) {
         activeRules['accuracy'] = Map<String, dynamic>.from(_defaultRules['accuracy']);
+        schemaMigrated = true;
       } else {
         final acc = Map<String, dynamic>.from(activeRules['accuracy'] as Map);
         final defaultLimits = Map<String, dynamic>.from(_defaultRules['accuracy']['limits'] ?? {});
         final curLimits = Map<String, dynamic>.from(acc['limits'] ?? {});
         defaultLimits.forEach((k, v) {
-          if (!curLimits.containsKey(k)) curLimits[k] = v;
+          if (!curLimits.containsKey(k)) { curLimits[k] = v; schemaMigrated = true; }
         });
         acc['limits'] = curLimits;
         activeRules['accuracy'] = acc;
       }
       if (activeRules['epvat'] == null) {
         activeRules['epvat'] = Map<String, dynamic>.from(_defaultRules['epvat']);
+        schemaMigrated = true;
       } else {
         final epv = Map<String, dynamic>.from(activeRules['epvat'] as Map);
         final defaultFormulas = Map<String, dynamic>.from(_defaultRules['epvat']['custom_formulas'] ?? {});
         if (epv['custom_formulas'] == null || (epv['custom_formulas'] is Map && (epv['custom_formulas'] as Map).isEmpty)) {
           epv['custom_formulas'] = defaultFormulas;
+          schemaMigrated = true;
         } else if (epv['custom_formulas'] is Map) {
           final curFormulas = Map<String, dynamic>.from(epv['custom_formulas'] as Map);
           defaultFormulas.forEach((k, v) {
-            if (!curFormulas.containsKey(k) || (curFormulas[k] is List && (curFormulas[k] as List).isEmpty)) {
+            // ONLY populate if caliber was never registered; preserve deliberate empty list on deletion
+            if (!curFormulas.containsKey(k)) {
               curFormulas[k] = v;
+              schemaMigrated = true;
             }
           });
           epv['custom_formulas'] = curFormulas;
         }
         if (epv['bullet_mass_grams'] == null) {
           epv['bullet_mass_grams'] = Map<String, dynamic>.from(_defaultRules['epvat']['bullet_mass_grams']);
+          schemaMigrated = true;
         }
         if (epv['limits_by_caliber'] == null) {
           epv['limits_by_caliber'] = Map<String, dynamic>.from(_defaultRules['epvat']['limits_by_caliber']);
+          schemaMigrated = true;
         } else {
           final defaultLimits = Map<String, dynamic>.from(_defaultRules['epvat']['limits_by_caliber'] ?? {});
           final curLimits = Map<String, dynamic>.from(epv['limits_by_caliber'] as Map);
           defaultLimits.forEach((k, v) {
-            if (!curLimits.containsKey(k)) curLimits[k] = v;
+            if (!curLimits.containsKey(k)) { curLimits[k] = v; schemaMigrated = true; }
           });
           epv['limits_by_caliber'] = curLimits;
         }
@@ -1663,34 +1723,41 @@ class _MainShellState extends State<MainShell> {
       }
       if (activeRules['cyclic_rate'] == null || activeRules['cyclic_rate']['weapons'] == null) {
         activeRules['cyclic_rate'] = Map<String, dynamic>.from(_defaultRules['cyclic_rate']);
+        schemaMigrated = true;
       }
       if (activeRules['barrel_serial_numbers'] == null) {
         activeRules['barrel_serial_numbers'] = List<String>.from(_defaultRules['barrel_serial_numbers']);
+        schemaMigrated = true;
       } else {
         activeRules['barrel_serial_numbers'] = List<String>.from(activeRules['barrel_serial_numbers'] as List);
       }
       if (activeRules['accuracy_barrels'] == null) {
         activeRules['accuracy_barrels'] = List<String>.from(_defaultRules['accuracy_barrels']);
+        schemaMigrated = true;
       } else {
         activeRules['accuracy_barrels'] = List<String>.from(activeRules['accuracy_barrels'] as List);
       }
       if (activeRules['accuracy_barrels_by_caliber'] == null) {
         activeRules['accuracy_barrels_by_caliber'] = Map<String, dynamic>.from(_defaultRules['accuracy_barrels_by_caliber'] as Map);
+        schemaMigrated = true;
       } else {
         activeRules['accuracy_barrels_by_caliber'] = Map<String, dynamic>.from(activeRules['accuracy_barrels_by_caliber'] as Map);
       }
       if (activeRules['epvat_barrels'] == null) {
         activeRules['epvat_barrels'] = List<String>.from(_defaultRules['epvat_barrels']);
+        schemaMigrated = true;
       } else {
         activeRules['epvat_barrels'] = List<String>.from(activeRules['epvat_barrels'] as List);
       }
       if (activeRules['epvat_barrels_by_caliber'] == null) {
         activeRules['epvat_barrels_by_caliber'] = Map<String, dynamic>.from(_defaultRules['epvat_barrels_by_caliber'] as Map);
+        schemaMigrated = true;
       } else {
         activeRules['epvat_barrels_by_caliber'] = Map<String, dynamic>.from(activeRules['epvat_barrels_by_caliber'] as Map);
       }
       if (activeRules['gp6_serials'] == null) {
         activeRules['gp6_serials'] = List<String>.from(_defaultRules['gp6_serials']);
+        schemaMigrated = true;
       } else {
         activeRules['gp6_serials'] = List<String>.from(activeRules['gp6_serials'] as List);
       }
@@ -1698,6 +1765,7 @@ class _MainShellState extends State<MainShell> {
         activeRules['weapons'] = List<Map<String, dynamic>>.from(
           (_defaultRules['weapons'] as List).map((e) => Map<String, dynamic>.from(e as Map)),
         );
+        schemaMigrated = true;
       } else {
         activeRules['weapons'] = List<Map<String, dynamic>>.from(
           (activeRules['weapons'] as List).map((e) {
@@ -1708,6 +1776,7 @@ class _MainShellState extends State<MainShell> {
       }
       if (activeRules['gp_transducers'] == null) {
         activeRules['gp_transducers'] = Map<String, dynamic>.from(_defaultRules['gp_transducers']);
+        schemaMigrated = true;
       } else {
         final gp = Map<String, dynamic>.from(activeRules['gp_transducers'] as Map);
         if (gp['gp1'] == null) gp['gp1'] = List<String>.from(_defaultRules['gp_transducers']['gp1']);
@@ -1716,6 +1785,7 @@ class _MainShellState extends State<MainShell> {
       }
       if (activeRules['function_test'] == null) {
         activeRules['function_test'] = Map<String, dynamic>.from(_defaultRules['function_test']);
+        schemaMigrated = true;
       } else {
         final func = Map<String, dynamic>.from(activeRules['function_test'] as Map);
         if (func['weapons'] == null) {
@@ -1733,14 +1803,16 @@ class _MainShellState extends State<MainShell> {
       }
       if (activeRules['primer_sensitivity'] == null) {
         activeRules['primer_sensitivity'] = Map<String, dynamic>.from(_defaultRules['primer_sensitivity']);
+        schemaMigrated = true;
       } else {
         final pr = Map<String, dynamic>.from(activeRules['primer_sensitivity'] as Map);
         if (pr['calibers'] == null) {
           pr['calibers'] = Map<String, dynamic>.from(_defaultRules['primer_sensitivity']['calibers']);
+          schemaMigrated = true;
         } else {
           final def = Map<String, dynamic>.from(_defaultRules['primer_sensitivity']['calibers'] ?? {});
           final cur = Map<String, dynamic>.from(pr['calibers'] as Map);
-          def.forEach((k, v) { if (!cur.containsKey(k)) cur[k] = v; });
+          def.forEach((k, v) { if (!cur.containsKey(k)) { cur[k] = v; schemaMigrated = true; } });
           pr['calibers'] = cur;
         }
         activeRules['primer_sensitivity'] = pr;
@@ -1748,16 +1820,18 @@ class _MainShellState extends State<MainShell> {
 
       if (activeRules['role_permissions'] == null) {
         activeRules['role_permissions'] = Map<String, dynamic>.from(_defaultRules['role_permissions']);
+        schemaMigrated = true;
       } else {
         final curPerms = Map<String, dynamic>.from(activeRules['role_permissions'] as Map);
         final defPerms = Map<String, dynamic>.from(_defaultRules['role_permissions'] as Map);
         defPerms.forEach((role, perms) {
           if (!curPerms.containsKey(role)) {
             curPerms[role] = Map<String, dynamic>.from(perms as Map);
+            schemaMigrated = true;
           } else {
             final curRoleMap = Map<String, dynamic>.from(curPerms[role] as Map);
             (perms as Map).forEach((pk, pv) {
-              if (!curRoleMap.containsKey(pk)) curRoleMap[pk] = pv;
+              if (!curRoleMap.containsKey(pk)) { curRoleMap[pk] = pv; schemaMigrated = true; }
             });
             curPerms[role] = curRoleMap;
           }
@@ -1769,26 +1843,30 @@ class _MainShellState extends State<MainShell> {
       }
       if (activeRules['primer_suppliers'] == null) {
         activeRules['primer_suppliers'] = List<String>.from(_defaultRules['primer_suppliers']);
+        schemaMigrated = true;
       } else {
         activeRules['primer_suppliers'] = List<String>.from(activeRules['primer_suppliers'] as List);
       }
       if (activeRules['propellant_suppliers'] == null) {
         activeRules['propellant_suppliers'] = List<String>.from(_defaultRules['propellant_suppliers']);
+        schemaMigrated = true;
       } else {
         activeRules['propellant_suppliers'] = List<String>.from(activeRules['propellant_suppliers'] as List);
       }
       if (activeRules['propellant_codes'] == null) {
         activeRules['propellant_codes'] = List<String>.from(_defaultRules['propellant_codes']);
+        schemaMigrated = true;
       } else {
         activeRules['propellant_codes'] = List<String>.from(activeRules['propellant_codes'] as List);
       }
       if (activeRules['propellant_supplier_codes'] == null) {
         activeRules['propellant_supplier_codes'] = Map<String, dynamic>.from(_defaultRules['propellant_supplier_codes']);
+        schemaMigrated = true;
       } else {
         activeRules['propellant_supplier_codes'] = Map<String, dynamic>.from(activeRules['propellant_supplier_codes'] as Map);
       }
+
       // Cross-populate and synchronize equipment fleets across all keys:
-      // 1. Cross-populate Barrels
       final barrelNumbers = List<String>.from(activeRules['barrel_serial_numbers'] as List? ?? []);
       final accBarrels = List<String>.from(activeRules['accuracy_barrels'] as List? ?? []);
       final epvBarrels = List<String>.from(activeRules['epvat_barrels'] as List? ?? []);
@@ -1806,7 +1884,6 @@ class _MainShellState extends State<MainShell> {
       activeRules['accuracy_barrels'] = accBarrels;
       activeRules['epvat_barrels'] = epvBarrels;
 
-      // 2. Cross-populate & Unify GP6 Transducers (admin registers all in one pool, operator chooses GP6 (1) and GP6 (2))
       final Set<String> unifiedGp6 = {};
       final rawGp6Transducers = activeRules['gp6_transducers'];
       if (rawGp6Transducers is List) {
@@ -1845,7 +1922,6 @@ class _MainShellState extends State<MainShell> {
       activeRules['gp6_serials'] = unifiedGp6List;
       activeRules['gp_transducers'] = {'gp1': unifiedGp6List, 'gp2': unifiedGp6List};
 
-      // 3. Cross-populate Weapons across weapons, function_test, and cyclic_rate
       final fleetWeapons = List<Map<String, dynamic>>.from(
         (activeRules['weapons'] as List? ?? []).map((e) {
           if (e is Map) return Map<String, dynamic>.from(e);
@@ -1893,34 +1969,30 @@ class _MainShellState extends State<MainShell> {
       cyclicMap['weapons'] = cyclicWeapons;
       activeRules['cyclic_rate'] = cyclicMap;
 
-      // Save rules back to write out any migrated schemas
-      await _storageService.saveRules(activeRules);
+      // Only save rules to cloud if schema changes were actually applied
+      if (schemaMigrated) {
+        unawaited(_storageService.saveRules(activeRules));
+      }
       
-      final recordsList = await _storageService.loadRecords(module: 'Lot Acceptance Test');
-      final dailyList = await _storageService.loadRecords(module: 'Daily Test');
-      final componentList = await _storageService.loadRecords(module: 'Component Test');
-      final path = await _storageService.getDirectoryPath();
-      final savedModule = _storageService.loadActiveModule();
+      // Load all three module records concurrently in parallel
+      final recordsFutures = await Future.wait([
+        _storageService.loadRecords(module: 'Lot Acceptance Test'),
+        _storageService.loadRecords(module: 'Daily Test'),
+        _storageService.loadRecords(module: 'Component Test'),
+      ]);
 
-      setState(() {
-        if (savedModule != null && savedModule.isNotEmpty) {
-          _currentModule = savedModule;
-        }
-        _records = recordsList;
-        _dailyTestRecords = dailyList;
-        _componentTestRecords = componentList;
-        _storagePath = path;
-        _operators = opsList;
-        _adminRules = activeRules;
-        _submissionAlertsEnabled = activeRules['submission_alerts_enabled'] == true;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _records = recordsFutures[0];
+          _dailyTestRecords = recordsFutures[1];
+          _componentTestRecords = recordsFutures[2];
+          _operators = opsList;
+          _adminRules = activeRules;
+          _submissionAlertsEnabled = activeRules['submission_alerts_enabled'] == true;
+        });
+      }
     } catch (e) {
-      print("Error loading initial data: $e");
-      setState(() {
-        _storagePath = 'Error loading directory';
-        _isLoading = false;
-      });
+      debugPrint("Error syncing initial cloud data: $e");
     }
   }
 
@@ -5053,6 +5125,211 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  void _showEditFormulaDialog({
+    required BuildContext context,
+    required int index,
+    required Map<String, dynamic> item,
+    required String caliber,
+    required Future<void> Function(Map<String, dynamic>) onSave,
+  }) {
+    final nameCtrl = TextEditingController(text: item['name'] ?? '');
+    final exprCtrl = TextEditingController(text: item['formula'] ?? '');
+    final limitCtrl = TextEditingController(text: '${item['limit'] ?? ''}');
+    final unitCtrl = TextEditingController(text: '${item['unit'] ?? ''}');
+    String selectedOp = item['operator'] ?? '<=';
+    if (!['<=', '>=', '<', '>', '==', '±'].contains(selectedOp)) {
+      selectedOp = '<=';
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                side: const BorderSide(color: Color(0xFF06B6D4), width: 1.2),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.edit_note_rounded, color: Color(0xFF06B6D4), size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Edit Formula for $caliber',
+                      style: const TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 540,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Rule / Check Name', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      TextField(
+                        controller: nameCtrl,
+                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                        decoration: _getFormulaFieldDecoration(hint: 'Rule name'),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('Formula Expression', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      TextField(
+                        controller: exprCtrl,
+                        style: const TextStyle(color: Colors.white, fontSize: 13.0, fontFamily: 'JetBrainsMono'),
+                        decoration: _getFormulaFieldDecoration(hint: 'Expression'),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text('Quick Tokens:', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.0)),
+                          ...['P1_MEAN', 'P1_SD', 'P1_MAX_INDIVIDUAL', 'P2_MEAN', 'P2_SD', 'VEL_MEAN', 'VEL_SD'].map((token) => InkWell(
+                            onTap: () {
+                              final current = exprCtrl.text;
+                              if (current.isEmpty) {
+                                exprCtrl.text = token;
+                              } else {
+                                exprCtrl.text = '$current $token';
+                              }
+                              exprCtrl.selection = TextSelection.fromPosition(
+                                TextPosition(offset: exprCtrl.text.length),
+                              );
+                              setDialogState(() {});
+                            },
+                            borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                              ),
+                              child: Text(token, style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontFamily: 'JetBrainsMono')),
+                            ),
+                          )),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Operator', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                Container(
+                                  height: 38,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2C415E),
+                                    borderRadius: BorderRadius.circular(6.0),
+                                    border: Border.all(color: const Color(0xFF1E3A8A)),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: selectedOp,
+                                      isExpanded: true,
+                                      dropdownColor: const Color(0xFF344D6E),
+                                      style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setDialogState(() => selectedOp = val);
+                                        }
+                                      },
+                                      items: ['<=', '>=', '<', '>', '==', '±'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 4,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Limit', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: limitCtrl,
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                                  decoration: _getFormulaFieldDecoration(hint: '4200'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Unit', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: unitCtrl,
+                                  style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                                  decoration: _getFormulaFieldDecoration(hint: 'bar'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  ),
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    final expr = exprCtrl.text.trim();
+                    final limit = limitCtrl.text.trim();
+                    final unit = unitCtrl.text.trim();
+                    if (name.isEmpty || expr.isEmpty) return;
+                    Navigator.pop(ctx);
+                    await onSave({
+                      'name': name,
+                      'formula': expr,
+                      'operator': selectedOp,
+                      'limit': limit.isEmpty ? '0' : limit,
+                      'unit': unit.isEmpty ? (expr.toLowerCase().contains('vel') ? 'm/s' : 'bar') : unit,
+                      'description': item['description'] ?? 'Custom rule for $caliber',
+                    });
+                  },
+                  icon: const Icon(Icons.check, size: 16, color: Colors.white),
+                  label: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildRulesManagementCard(double width) {
     return Container(
       width: width,
@@ -5582,25 +5859,51 @@ class _MainShellState extends State<MainShell> {
                   ),
                   const SizedBox(height: 16.0),
 
-                  // Dedicated Register New Formula Box with persistent controllers (prevents auto-closing / focus drops)
+                  // Dedicated Register / Edit Formula Box with persistent controllers
                   Container(
                     padding: const EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
                       color: const Color(0xFF23364F),
                       borderRadius: BorderRadius.circular(10.0),
-                      border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                      border: Border.all(
+                        color: _editingFormulaIndex == null ? const Color(0xFF06B6D4).withOpacity(0.4) : const Color(0xFFF59E0B),
+                        width: _editingFormulaIndex == null ? 1.0 : 1.5,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.add_circle_outline, color: Color(0xFF06B6D4), size: 18),
+                            Icon(
+                              _editingFormulaIndex == null ? Icons.add_circle_outline : Icons.edit_note_rounded,
+                              color: _editingFormulaIndex == null ? const Color(0xFF06B6D4) : const Color(0xFFF59E0B),
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Text(
-                              'Register New Formula for $_ruleSelectedCaliber',
+                              _editingFormulaIndex == null
+                                  ? 'Register New Formula for $_ruleSelectedCaliber'
+                                  : 'Edit Formula #$_editingFormulaIndex for $_ruleSelectedCaliber',
                               style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
                             ),
+                            if (_editingFormulaIndex != null) ...[
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _editingFormulaIndex = null;
+                                    _ruleNewFormulaNameCtrl.clear();
+                                    _ruleNewFormulaExprCtrl.clear();
+                                    _ruleNewFormulaLimitCtrl.clear();
+                                    _ruleNewFormulaUnitCtrl.text = 'bar';
+                                    _ruleNewFormulaOperator = '<=';
+                                  });
+                                },
+                                icon: const Icon(Icons.close, size: 14, color: Color(0xFF94A3B8)),
+                                label: const Text('Cancel Edit', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+                              ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 12.0),
@@ -5748,6 +6051,28 @@ class _MainShellState extends State<MainShell> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
+                            if (_editingFormulaIndex != null) ...[
+                              OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _editingFormulaIndex = null;
+                                    _ruleNewFormulaNameCtrl.clear();
+                                    _ruleNewFormulaExprCtrl.clear();
+                                    _ruleNewFormulaLimitCtrl.clear();
+                                    _ruleNewFormulaUnitCtrl.text = 'bar';
+                                    _ruleNewFormulaOperator = '<=';
+                                  });
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF94A3B8),
+                                  side: const BorderSide(color: Color(0xFF475569)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                ),
+                                child: const Text('Cancel'),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                             ElevatedButton.icon(
                               onPressed: () async {
                                 final name = _ruleNewFormulaNameCtrl.text.trim();
@@ -5770,26 +6095,41 @@ class _MainShellState extends State<MainShell> {
                                 
                                 final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
                                 final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                curList.add({
+                                final formulaData = {
                                   'name': name,
                                   'formula': expr,
                                   'operator': _ruleNewFormulaOperator,
                                   'limit': limit.isEmpty ? '0' : limit,
                                   'unit': unit.isEmpty ? (expr.toLowerCase().contains('vel') ? 'm/s' : 'bar') : unit,
                                   'description': 'Custom rule for $_ruleSelectedCaliber',
-                                });
-                                newMap[_ruleSelectedCaliber] = curList;
+                                };
 
-                                await saveFormulas(newMap, feedback: 'Formula "$name" registered and saved successfully for $_ruleSelectedCaliber.');
+                                if (_editingFormulaIndex != null && _editingFormulaIndex! < curList.length) {
+                                  curList[_editingFormulaIndex!] = formulaData;
+                                  newMap[_ruleSelectedCaliber] = curList;
+                                  await saveFormulas(newMap, feedback: 'Formula "$name" updated and saved successfully for $_ruleSelectedCaliber.');
+                                  setState(() {
+                                    _editingFormulaIndex = null;
+                                  });
+                                } else {
+                                  curList.add(formulaData);
+                                  newMap[_ruleSelectedCaliber] = curList;
+                                  await saveFormulas(newMap, feedback: 'Formula "$name" registered and saved successfully for $_ruleSelectedCaliber.');
+                                }
                                 
                                 _ruleNewFormulaNameCtrl.clear();
                                 _ruleNewFormulaExprCtrl.clear();
                                 _ruleNewFormulaLimitCtrl.clear();
                               },
-                              icon: const Icon(Icons.check_circle_outline, size: 16),
-                              label: Text('Register & Save Formula for $_ruleSelectedCaliber', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              icon: Icon(_editingFormulaIndex == null ? Icons.check_circle_outline : Icons.save_outlined, size: 16),
+                              label: Text(
+                                _editingFormulaIndex == null
+                                    ? 'Register & Save Formula for $_ruleSelectedCaliber'
+                                    : 'Update Formula for $_ruleSelectedCaliber',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF10B981),
+                                backgroundColor: _editingFormulaIndex == null ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -5838,7 +6178,7 @@ class _MainShellState extends State<MainShell> {
                         Expanded(flex: 2, child: Text('Operator', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                         Expanded(flex: 2, child: Text('Limit', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                         Expanded(flex: 1, child: Text('Unit', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                        SizedBox(width: 32),
+                        SizedBox(width: 58),
                       ],
                     ),
                     const Divider(color: Color(0xFF1E3A8A), height: 14),
@@ -5904,17 +6244,69 @@ class _MainShellState extends State<MainShell> {
                               ),
                               const SizedBox(width: 6),
                               IconButton(
+                                icon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 18),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Edit formula',
+                                onPressed: () {
+                                  _showEditFormulaDialog(
+                                    context: context,
+                                    index: i,
+                                    item: item,
+                                    caliber: _ruleSelectedCaliber,
+                                    onSave: (updated) async {
+                                      final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
+                                      final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
+                                      if (i < curList.length) {
+                                        curList[i] = updated;
+                                        newMap[_ruleSelectedCaliber] = curList;
+                                        await saveFormulas(newMap, feedback: 'Formula "${updated['name']}" updated and saved.');
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
                                 icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 tooltip: 'Delete formula',
                                 onPressed: () async {
-                                  final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                                  final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                  final removed = newList.removeAt(i);
-                                  newMap[_ruleSelectedCaliber] = newList;
-                                  final removedName = (removed is Map ? removed['name'] : '') ?? '';
-                                  await saveFormulas(newMap, feedback: 'Formula "$removedName" deleted and saved.');
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      backgroundColor: const Color(0xFF1E293B),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        side: const BorderSide(color: Color(0xFFEF4444), width: 1),
+                                      ),
+                                      title: const Text('Delete Formula Rule?', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                                      content: Text(
+                                        'Are you sure you want to delete the formula "${item['name']}" for $_ruleSelectedCaliber?',
+                                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx, false),
+                                          child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                                          onPressed: () => Navigator.pop(ctx, true),
+                                          child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirm == true) {
+                                    final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
+                                    final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
+                                    final removed = newList.removeAt(i);
+                                    newMap[_ruleSelectedCaliber] = newList;
+                                    final removedName = (removed is Map ? removed['name'] : '') ?? '';
+                                    await saveFormulas(newMap, feedback: 'Formula "$removedName" deleted and saved.');
+                                  }
                                 },
                               ),
                             ],
@@ -7182,6 +7574,17 @@ class _MainShellState extends State<MainShell> {
         adminRules: _adminRules,
         componentPrimerRecords: _componentTestRecords.where((r) => r.testName == 'Primer Sensitivity Test').toList(),
         componentPropellantRecords: _componentTestRecords.where((r) => r.testName == 'Propellant Test').toList(),
+        onOpenEpvatRulesInControl: () {
+          setState(() {
+            _activeTabIndex = 4; // Controls tab
+            _isRulesCardExpanded = true;
+            _selectedRuleTest = 'EPVAT Test';
+            _ruleSelectedCaliber = _selectedEntryCaliber;
+            _ruleSelectedFuncCaliber = _selectedEntryCaliber;
+            _ruleSelectedEpvatCaliberForMass = _selectedEntryCaliber;
+            _syncRulesControllers();
+          });
+        },
       ),
       HistoryTab(
         currentModule: _currentModule,
