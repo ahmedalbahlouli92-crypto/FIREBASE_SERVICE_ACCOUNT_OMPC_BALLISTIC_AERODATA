@@ -1433,10 +1433,7 @@ class _EntryTabState extends State<EntryTab> {
           notifyMissing('Primer Supplier');
           return false;
         }
-        if (_primerLotController.text.trim().isEmpty) {
-          notifyMissing('Primer Lot Number');
-          return false;
-        }
+        _primerLotController.text = _lotController.text.trim();
         if (_primerInsertionDepthController.text.trim().isEmpty) {
           notifyMissing('Average Insertion Depth');
           return false;
@@ -3473,7 +3470,7 @@ class _EntryTabState extends State<EntryTab> {
                       label: widget.currentModule == 'Lot Acceptance Test'
                           ? 'Lot Number'
                           : (widget.currentModule == 'Component Test'
-                              ? (_testName == 'Primer Sensitivity Test' ? 'Primer Lot No.' : 'Propellant Lot No.')
+                              ? (_testName == 'Primer Sensitivity Test' ? 'Lot Number' : 'Propellant Lot No.')
                               : 'Hopper No.'),
                       isRequired: true,
                       child: _buildLotNoField(focusNode: _lotFocusNode),
@@ -4958,8 +4955,8 @@ class _EntryTabState extends State<EntryTab> {
                                       Row(
                                         children: [
                                           const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                          const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                          const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           if (!_isCaliber9mm)
                                             const Expanded(flex: 2, child: Text('GP2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
@@ -4993,9 +4990,10 @@ class _EntryTabState extends State<EntryTab> {
                                                     child: Padding(
                                                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
                                                       child: _buildTextField(
-                                                        controller: _overallEpvatVelRoundsControllers[t]![rIdx],
-                                                        hint: 'm/s',
+                                                        controller: _overallEpvatActionTimeRoundsControllers[t]![rIdx],
+                                                        hint: 'ms',
                                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        inputFormatters: [ActionTimeInputFormatter()],
                                                       ),
                                                     ),
                                                   ),
@@ -5004,10 +5002,9 @@ class _EntryTabState extends State<EntryTab> {
                                                     child: Padding(
                                                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
                                                       child: _buildTextField(
-                                                        controller: _overallEpvatActionTimeRoundsControllers[t]![rIdx],
-                                                        hint: 'ms',
+                                                        controller: _overallEpvatVelRoundsControllers[t]![rIdx],
+                                                        hint: 'm/s',
                                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                        inputFormatters: [ActionTimeInputFormatter()],
                                                       ),
                                                     ),
                                                   ),
@@ -5077,19 +5074,6 @@ class _EntryTabState extends State<EntryTab> {
                                     ],
                                     const SizedBox(height: 16.0),
                                     Text(
-                                      'Velocity ($t °C) (m/s)',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    ]),
-                                    const SizedBox(height: 16.0),
-                                    Text(
                                       'Action Time ($t °C) (ms)',
                                       style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
                                     ),
@@ -5100,6 +5084,19 @@ class _EntryTabState extends State<EntryTab> {
                                       _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                       _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                       _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                    ]),
+                                    const SizedBox(height: 16.0),
+                                    Text(
+                                      'Velocity ($t °C) (m/s)',
+                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                    _buildFormRow([
+                                      _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                     ]),
                                     
                                     // --- Kinetic Energy Display (only for +21°C tab) ---
@@ -5167,8 +5164,8 @@ class _EntryTabState extends State<EntryTab> {
                                 Row(
                                   children: [
                                     const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     if (!_isCaliber9mm)
                                       const Expanded(flex: 2, child: Text('GP2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
@@ -5192,9 +5189,10 @@ class _EntryTabState extends State<EntryTab> {
                                           child: Padding(
                                             padding: const EdgeInsets.only(right: 8.0),
                                             child: _buildTextField(
-                                              controller: _epvatVelRoundsControllers[index],
+                                              controller: _actionTimeRoundsControllers[index],
                                               hint: '0.0',
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              inputFormatters: [ActionTimeInputFormatter()],
                                               onChanged: (val) => _recalculateEpvatStats(),
                                             ),
                                           ),
@@ -5204,10 +5202,9 @@ class _EntryTabState extends State<EntryTab> {
                                           child: Padding(
                                             padding: const EdgeInsets.only(right: 8.0),
                                             child: _buildTextField(
-                                              controller: _actionTimeRoundsControllers[index],
+                                              controller: _epvatVelRoundsControllers[index],
                                               hint: '0.0',
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              inputFormatters: [ActionTimeInputFormatter()],
                                               onChanged: (val) => _recalculateEpvatStats(),
                                             ),
                                           ),
@@ -5245,19 +5242,6 @@ class _EntryTabState extends State<EntryTab> {
                                 ),
                                 const SizedBox(height: 8.0),
                                 const Text(
-                                  'Velocity Statistics (m/s)',
-                                  style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4.0),
-                                _buildFormRow([
-                                   _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _meanVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _maxVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _minVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _rangeVelController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _sdVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                 ]),
-                                const SizedBox(height: 12.0),
-                                const Text(
                                   'Action Time Statistics (ms)',
                                   style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
                                 ),
@@ -5268,6 +5252,19 @@ class _EntryTabState extends State<EntryTab> {
                                    _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _actionTimeMinController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                    _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _actionTimeRangeController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                    _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _actionTimeSDController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                 ]),
+                                const SizedBox(height: 12.0),
+                                const Text(
+                                  'Velocity Statistics (m/s)',
+                                  style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4.0),
+                                _buildFormRow([
+                                   _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _meanVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                   _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _maxVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                   _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _minVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                   _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _rangeVelController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                   _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _sdVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                  ]),
                                 const SizedBox(height: 12.0),
                                 Text(
@@ -8155,12 +8152,15 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   Widget _buildPrimerSensitivityCard() {
-    final prRules = _getPrimerRulesForCaliber();
-    final double defaultDropWeight = ((prRules['drop_weight'] ?? 55.0) as num).toDouble();
     final bool isLotPrimerLocked = widget.currentModule == 'Lot Acceptance Test';
-
-    if (_primerDropWeightController.text.isEmpty) {
-      _primerDropWeightController.text = defaultDropWeight.toStringAsFixed(1);
+    final calLower = _caliber.toLowerCase();
+    String ruleBadgeText = 'Rule: H̄+5S < 500 & H̄-2S > 75';
+    if (calLower.contains('5.56') || calLower.contains('.223')) {
+      ruleBadgeText = 'Rule: H̄+5S < 450 & H̄-2S > 75';
+    } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
+      ruleBadgeText = 'Rule: H̄+5S < 350 & H̄-2S > 75';
+    } else if (calLower.contains('7.62') || calLower.contains('.308')) {
+      ruleBadgeText = 'Rule: H̄+5S < 500 & H̄-2S > 75';
     }
 
     return Container(
@@ -8181,7 +8181,7 @@ class _EntryTabState extends State<EntryTab> {
                   Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 18.0),
                   SizedBox(width: 8.0),
                   Text(
-                    'Primer Sensitivity Test (Drop Ball Method)',
+                    'Primer Sensitivity Test',
                     style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                   ),
                 ],
@@ -8194,7 +8194,7 @@ class _EntryTabState extends State<EntryTab> {
                   border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
                 ),
                 child: Text(
-                  'Spec: ${defaultDropWeight.toStringAsFixed(1)}g Ball',
+                  ruleBadgeText,
                   style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -8227,39 +8227,11 @@ class _EntryTabState extends State<EntryTab> {
           _buildFormRow([
             _buildFlexibleField(
               flex: 1,
-              label: 'Drop Ball Weight (grams)',
-              child: _buildTextField(
-                controller: _primerDropWeightController,
-                readOnly: isLotPrimerLocked,
-                hint: 'e.g. 55.0 or 111.86',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (val) {
-                  _scheduleAutoSave();
-                  setState(() {});
-                },
-              ),
-            ),
-            _buildFlexibleField(
-              flex: 1,
               label: 'Total Test Rounds Recorded',
               child: _buildTextField(
                 controller: _producedController,
                 readOnly: isLotPrimerLocked,
                 hint: '50',
-                keyboardType: TextInputType.number,
-                onChanged: (val) {
-                  _scheduleAutoSave();
-                  setState(() {});
-                },
-              ),
-            ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Misfires Count',
-              child: _buildTextField(
-                controller: _primerMisfiresCountController,
-                readOnly: isLotPrimerLocked,
-                hint: '0',
                 keyboardType: TextInputType.number,
                 onChanged: (val) {
                   _scheduleAutoSave();
@@ -8331,7 +8303,7 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
-  Widget _buildQualityStatusField({int flex = 3}) {
+  Widget _buildQualityStatusField({int flex = 4}) {
     return Builder(
       builder: (context) {
         String? autoStatus;
@@ -8420,6 +8392,29 @@ class _EntryTabState extends State<EntryTab> {
           final l3 = int.tryParse(_functionLevel3Controller.text.trim()) ?? 0;
           final l4 = int.tryParse(_functionLevel4Controller.text.trim()) ?? 0;
           autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
+        } else if (_testName == 'Primer Sensitivity Test') {
+          final h = double.tryParse(_primerHbarController.text.trim());
+          final s = double.tryParse(_primerSDController.text.trim());
+          if (h != null && s != null) {
+            final plus5 = h + 5.0 * s;
+            final minus2 = h - 2.0 * s;
+            final calLower = _caliber.toLowerCase();
+            double maxPlus5 = 500.0;
+            if (calLower.contains('5.56') || calLower.contains('.223')) {
+              maxPlus5 = 450.0;
+            } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
+              maxPlus5 = 350.0;
+            } else if (calLower.contains('7.62') || calLower.contains('.308')) {
+              maxPlus5 = 500.0;
+            }
+            const minMinus2 = 75.0;
+
+            if (plus5 < maxPlus5 && minus2 > minMinus2) {
+              autoStatus = 'Approved';
+            } else {
+              autoStatus = 'Rejected';
+            }
+          }
         } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
           final epv = widget.adminRules['epvat'] ?? {};
           final bool threeSigmaEnabled = epv['enable_three_sigma_pressure'] == true;
@@ -8567,13 +8562,14 @@ class _EntryTabState extends State<EntryTab> {
           child: DropdownButtonFormField<String>(
             value: _status,
             isExpanded: true,
+            isDense: true,
             dropdownColor: const Color(0xFF1E293B),
             icon: Icon(Icons.arrow_drop_down, color: statusTextColor),
-            style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+            style: TextStyle(color: statusTextColor, fontSize: 12.5, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               filled: true,
               fillColor: statusBgColor,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide(color: statusBorderColor),
@@ -8587,6 +8583,35 @@ class _EntryTabState extends State<EntryTab> {
                 borderSide: BorderSide(color: statusBorderColor, width: 2.0),
               ),
             ),
+            selectedItemBuilder: (BuildContext context) {
+              return const ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(color: statusTextColor, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          s,
+                          style: TextStyle(
+                            color: statusTextColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList();
+            },
             items: const ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
               Color itemColor = Colors.white;
               if (s == 'Approved') itemColor = const Color(0xFF34D399);
@@ -8700,7 +8725,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5',
           ),
         ),
-        _buildQualityStatusField(flex: 3),
+        _buildQualityStatusField(flex: 4),
       ], lockSingleRow: true);
     }
 
@@ -8764,7 +8789,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: 'e.g., 25',
           ),
         ),
-        _buildQualityStatusField(flex: 3),
+        _buildQualityStatusField(flex: 4),
       ], lockSingleRow: true);
     }
 
@@ -9088,7 +9113,7 @@ class _EntryTabState extends State<EntryTab> {
                 hint: 'e.g., 25',
               ),
             ),
-            _buildQualityStatusField(flex: 3),
+            _buildQualityStatusField(flex: 4),
           ], lockSingleRow: true),
         ],
       );
@@ -9161,7 +9186,7 @@ class _EntryTabState extends State<EntryTab> {
               },
             ),
           ),
-        _buildQualityStatusField(flex: 3),
+        _buildQualityStatusField(flex: 4),
       ], lockSingleRow: true);
     }
 
@@ -9218,7 +9243,7 @@ class _EntryTabState extends State<EntryTab> {
             ),
           ),
       ],
-      _buildQualityStatusField(flex: 3),
+      _buildQualityStatusField(flex: 4),
     ], lockSingleRow: true);
   }
 
@@ -9392,16 +9417,6 @@ class _EntryTabState extends State<EntryTab> {
                         ),
                       ),
                   ],
-                ),
-              ),
-              _buildFlexibleField(
-                flex: 1,
-                label: 'Primer Lot Number',
-                isRequired: true,
-                child: _buildTextField(
-                  controller: _primerLotController,
-                  hint: 'Type primer lot number (e.g., PR-2026-01)',
-                  onChanged: (_) => _scheduleAutoSave(),
                 ),
               ),
             ]),

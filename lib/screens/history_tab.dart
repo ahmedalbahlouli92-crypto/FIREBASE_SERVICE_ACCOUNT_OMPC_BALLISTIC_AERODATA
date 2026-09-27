@@ -1466,48 +1466,41 @@ class _HistoryTabState extends State<HistoryTab> {
         style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
       );
     } else if (r.testName == 'Accuracy Test') {
-      final calLower = r.caliber.toLowerCase();
-      if (calLower.contains('m193')) {
-        return Text(
-          'MR: ${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm',
-          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-        );
-      } else {
-        // 7.62, SS109, 9mm, .223: show SD of X and Y
-        return Text(
-          'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm | SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm',
-          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-        );
-      }
-    } else if (r.testName == 'EPVAT test') {
-      final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
+            'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm',
             style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
           ),
           Text(
-            'Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit | Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s @ 21 °C',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
+            'SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm',
+            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+          ),
+          Text(
+            'Mean Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s',
+            style: const TextStyle(fontSize: 10.0, color: Color(0xFF475569)),
           ),
         ],
       );
-    } else if (r.testName == 'Propellant Test') {
+    } else if (r.testName == 'EPVAT test' || r.testName == 'Propellant Test') {
       final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
+            'Mean Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
             style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
           ),
           Text(
-            'Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit | Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s @ 21 °C',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
+            'Mean Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit',
+            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+          ),
+          Text(
+            'Mean Vel (+21 °C): ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s',
+            style: const TextStyle(fontSize: 10.0, color: Color(0xFF475569)),
           ),
         ],
       );
@@ -1901,6 +1894,8 @@ class _HistoryTabState extends State<HistoryTab> {
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(minWidth: availableWidth),
                                 child: DataTable(
+                                  dataRowMinHeight: 48.0,
+                                  dataRowMaxHeight: 68.0,
                                   columnSpacing: dynamicSpacing,
                                   horizontalMargin: 20.0,
                                   headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F6FB)),

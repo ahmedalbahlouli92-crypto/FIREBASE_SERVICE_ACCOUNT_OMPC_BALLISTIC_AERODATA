@@ -31,39 +31,168 @@ class EpvatFormulaHelper {
   }) {
     final Map<String, double> vars = {};
 
-    for (final r in records) {
-      if (r.testName != 'EPVAT test') continue;
-      String t = r.cartridgeTemp.trim();
-      if (t.isEmpty) t = '+21';
+    Map<String, double> computeStats(String commaString) {
+      final nums = commaString
+          .split(',')
+          .map((s) => double.tryParse(s.trim()))
+          .where((n) => n != null)
+          .cast<double>()
+          .toList();
+      if (nums.isEmpty) {
+        return {'mean': 0.0, 'max': 0.0, 'min': 0.0, 'range': 0.0, 'sd': 0.0};
+      }
+      final mean = nums.reduce((a, b) => a + b) / nums.length;
+      final max = nums.reduce(math.max);
+      final min = nums.reduce(math.min);
+      final range = max - min;
+      final variance = nums.length > 1
+          ? nums.map((x) => math.pow(x - mean, 2)).reduce((a, b) => a + b) / (nums.length - 1)
+          : 0.0;
+      final sd = math.sqrt(variance);
+      return {'mean': mean, 'max': max, 'min': min, 'range': range, 'sd': sd};
+    }
 
+    for (final r in records) {
+      if (r.testName != 'EPVAT test' && r.testName != 'Propellant Test') continue;
+      final String t = r.cartridgeTemp.trim();
+
+      // Determine baseline temperature suffix for record's primary fields
       String sfx = '21';
-      if (t.contains('52')) {
-        sfx = '52';
-      } else if (t.contains('54')) {
-        sfx = '54';
-      } else if (t.contains('32')) {
-        sfx = '32';
-      } else if (t.contains('21')) {
-        sfx = '21';
+      if (!t.contains('21')) {
+        if (t.contains('52')) sfx = '52';
+        else if (t.contains('54')) sfx = '54';
+        else if (t.contains('32')) sfx = '32';
       }
 
-      vars['p1_mean_$sfx'] = double.tryParse(r.epvatMeanPressure) ?? 0.0;
-      vars['p1_max_$sfx'] = double.tryParse(r.epvatMaxPressure) ?? 0.0;
-      vars['p1_min_$sfx'] = double.tryParse(r.epvatMinPressure) ?? 0.0;
-      vars['p1_range_$sfx'] = double.tryParse(r.epvatRangePressure) ?? 0.0;
-      vars['p1_sd_$sfx'] = double.tryParse(r.epvatSDPressure) ?? 0.0;
+      final p1Mean = double.tryParse(r.epvatMeanPressure) ?? 0.0;
+      final p1Max = double.tryParse(r.epvatMaxPressure) ?? 0.0;
+      final p1Min = double.tryParse(r.epvatMinPressure) ?? 0.0;
+      final p1Range = double.tryParse(r.epvatRangePressure) ?? 0.0;
+      final p1Sd = double.tryParse(r.epvatSDPressure) ?? 0.0;
 
-      vars['p2_mean_$sfx'] = double.tryParse(r.epvatP2MeanPressure) ?? 0.0;
-      vars['p2_max_$sfx'] = double.tryParse(r.epvatP2MaxPressure) ?? 0.0;
-      vars['p2_min_$sfx'] = double.tryParse(r.epvatP2MinPressure) ?? 0.0;
-      vars['p2_range_$sfx'] = double.tryParse(r.epvatP2RangePressure) ?? 0.0;
-      vars['p2_sd_$sfx'] = double.tryParse(r.epvatP2SDPressure) ?? 0.0;
+      final p2Mean = double.tryParse(r.epvatP2MeanPressure) ?? 0.0;
+      final p2Max = double.tryParse(r.epvatP2MaxPressure) ?? 0.0;
+      final p2Min = double.tryParse(r.epvatP2MinPressure) ?? 0.0;
+      final p2Range = double.tryParse(r.epvatP2RangePressure) ?? 0.0;
+      final p2Sd = double.tryParse(r.epvatP2SDPressure) ?? 0.0;
 
-      vars['vel_mean_$sfx'] = double.tryParse(r.velMean) ?? 0.0;
-      vars['vel_max_$sfx'] = double.tryParse(r.velMax) ?? 0.0;
-      vars['vel_min_$sfx'] = double.tryParse(r.velMin) ?? 0.0;
-      vars['vel_range_$sfx'] = double.tryParse(r.velRange) ?? 0.0;
-      vars['vel_sd_$sfx'] = double.tryParse(r.velSD) ?? 0.0;
+      final velMean = double.tryParse(r.velMean) ?? 0.0;
+      final velMax = double.tryParse(r.velMax) ?? 0.0;
+      final velMin = double.tryParse(r.velMin) ?? 0.0;
+      final velRange = double.tryParse(r.velRange) ?? 0.0;
+      final velSd = double.tryParse(r.velSD) ?? 0.0;
+
+      final actMean = double.tryParse(r.actionTimeMean) ?? 0.0;
+      final actMax = double.tryParse(r.actionTimeMax) ?? 0.0;
+      final actMin = double.tryParse(r.actionTimeMin) ?? 0.0;
+      final actRange = double.tryParse(r.actionTimeRange) ?? 0.0;
+      final actSd = double.tryParse(r.actionTimeSD) ?? 0.0;
+
+      // Assign suffixed variables
+      vars['p1_mean_$sfx'] = p1Mean;
+      vars['p1_max_$sfx'] = p1Max;
+      vars['p1_min_$sfx'] = p1Min;
+      vars['p1_range_$sfx'] = p1Range;
+      vars['p1_sd_$sfx'] = p1Sd;
+
+      vars['p2_mean_$sfx'] = p2Mean;
+      vars['p2_max_$sfx'] = p2Max;
+      vars['p2_min_$sfx'] = p2Min;
+      vars['p2_range_$sfx'] = p2Range;
+      vars['p2_sd_$sfx'] = p2Sd;
+
+      vars['vel_mean_$sfx'] = velMean;
+      vars['vel_max_$sfx'] = velMax;
+      vars['vel_min_$sfx'] = velMin;
+      vars['vel_range_$sfx'] = velRange;
+      vars['vel_sd_$sfx'] = velSd;
+
+      vars['action_time_mean_$sfx'] = actMean;
+      vars['action_time_max_$sfx'] = actMax;
+      vars['action_time_min_$sfx'] = actMin;
+      vars['action_time_range_$sfx'] = actRange;
+      vars['action_time_sd_$sfx'] = actSd;
+
+      // Also set default un-suffixed variables
+      vars.putIfAbsent('p1_mean', () => p1Mean);
+      vars.putIfAbsent('p1_max', () => p1Max);
+      vars.putIfAbsent('p1_min', () => p1Min);
+      vars.putIfAbsent('p1_range', () => p1Range);
+      vars.putIfAbsent('p1_sd', () => p1Sd);
+      vars.putIfAbsent('p2_mean', () => p2Mean);
+      vars.putIfAbsent('p2_max', () => p2Max);
+      vars.putIfAbsent('p2_min', () => p2Min);
+      vars.putIfAbsent('p2_range', () => p2Range);
+      vars.putIfAbsent('p2_sd', () => p2Sd);
+      vars.putIfAbsent('vel_mean', () => velMean);
+      vars.putIfAbsent('vel_max', () => velMax);
+      vars.putIfAbsent('vel_min', () => velMin);
+      vars.putIfAbsent('vel_range', () => velRange);
+      vars.putIfAbsent('vel_sd', () => velSd);
+      vars.putIfAbsent('action_time_mean', () => actMean);
+      vars.putIfAbsent('action_time_max', () => actMax);
+      vars.putIfAbsent('action_time_min', () => actMin);
+      vars.putIfAbsent('action_time_range', () => actRange);
+      vars.putIfAbsent('action_time_sd', () => actSd);
+
+      // If semicolon-separated rounds exist for multiple temperatures, compute per-temp variables
+      if (r.epvatPressureRounds.contains(';') || r.epvatVelRounds.contains(';')) {
+        final p1Secs = r.epvatPressureRounds.split(';');
+        final p2Secs = r.epvatP2PressureRounds.split(';');
+        final velSecs = r.epvatVelRounds.split(';');
+        final actSecs = r.actionTimeRounds.split(';');
+
+        final tempKeys = ['21', '52', '54'];
+        for (int i = 0; i < tempKeys.length; i++) {
+          final curSfx = tempKeys[i];
+          if (i < p1Secs.length && p1Secs[i].trim().isNotEmpty) {
+            final st = computeStats(p1Secs[i]);
+            vars['p1_mean_$curSfx'] = st['mean']!;
+            vars['p1_max_$curSfx'] = st['max']!;
+            vars['p1_min_$curSfx'] = st['min']!;
+            vars['p1_range_$curSfx'] = st['range']!;
+            vars['p1_sd_$curSfx'] = st['sd']!;
+          }
+          if (i < p2Secs.length && p2Secs[i].trim().isNotEmpty) {
+            final st = computeStats(p2Secs[i]);
+            vars['p2_mean_$curSfx'] = st['mean']!;
+            vars['p2_max_$curSfx'] = st['max']!;
+            vars['p2_min_$curSfx'] = st['min']!;
+            vars['p2_range_$curSfx'] = st['range']!;
+            vars['p2_sd_$curSfx'] = st['sd']!;
+          }
+          if (i < velSecs.length && velSecs[i].trim().isNotEmpty) {
+            final st = computeStats(velSecs[i]);
+            vars['vel_mean_$curSfx'] = st['mean']!;
+            vars['vel_max_$curSfx'] = st['max']!;
+            vars['vel_min_$curSfx'] = st['min']!;
+            vars['vel_range_$curSfx'] = st['range']!;
+            vars['vel_sd_$curSfx'] = st['sd']!;
+          }
+          if (i < actSecs.length && actSecs[i].trim().isNotEmpty) {
+            final st = computeStats(actSecs[i]);
+            vars['action_time_mean_$curSfx'] = st['mean']!;
+            vars['action_time_max_$curSfx'] = st['max']!;
+            vars['action_time_min_$curSfx'] = st['min']!;
+            vars['action_time_range_$curSfx'] = st['range']!;
+            vars['action_time_sd_$curSfx'] = st['sd']!;
+          }
+        }
+      }
+
+      // Also parse notes for temperature metrics if available (e.g. "Temps: +21°C ...; +52°C ...")
+      if (r.notes.contains('Temps:')) {
+        final matches = RegExp(r'([+-]?\d+)°C\s*\([^)]*P1=([\d.]+)[^)]*Max=([\d.]+)[^)]*V=([\d.]+)\)').allMatches(r.notes);
+        for (final m in matches) {
+          final tRaw = m.group(1)?.replaceAll('+', '').replaceAll('-', '') ?? '21';
+          final p1m = double.tryParse(m.group(2) ?? '');
+          final p1mx = double.tryParse(m.group(3) ?? '');
+          final vm = double.tryParse(m.group(4) ?? '');
+          if (p1m != null && !vars.containsKey('p1_mean_$tRaw')) vars['p1_mean_$tRaw'] = p1m;
+          if (p1mx != null && !vars.containsKey('p1_max_$tRaw')) vars['p1_max_$tRaw'] = p1mx;
+          if (vm != null && !vars.containsKey('vel_mean_$tRaw')) vars['vel_mean_$tRaw'] = vm;
+        }
+      }
     }
 
     return vars;
@@ -78,6 +207,8 @@ class EpvatFormulaHelper {
   /// - `|expr|` -> `abs(expr)`
   static String normalizeFormula(String input, {String defaultTemp = '21'}) {
     String expr = input.trim();
+    String cleanDefaultTemp = defaultTemp.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanDefaultTemp.isEmpty) cleanDefaultTemp = '21';
 
     // 1. Convert pipe absolute syntax |A - B| into abs(A - B)
     expr = expr.replaceAllMapped(RegExp(r'\|([^|]+)\|'), (m) => 'abs(${m[1]})');
@@ -97,12 +228,12 @@ class EpvatFormulaHelper {
     // 3. Normalise compound tokens WITH temperature suffixes or without:
     // e.g. "P1 Mean @ 21", "P1 Mean @ +21", "P1 Mean @52", "Mean P1 @ -54", "P1 SD @ 21", "P1 Mean"
     expr = expr.replaceAllMapped(
-      RegExp(r'\b(p1|p2|vel(?:ocity)?|v)\s*(mean|sd|max|min|range)\s*(?:@\s*\+?(-?\d+))?\b', caseSensitive: false),
+      RegExp(r'\b(p1|p2|vel(?:ocity)?|v|action_time|at)\s*(mean|sd|max|min|range)\s*(?:@\s*\+?(-?\d+))?\b', caseSensitive: false),
       (m) {
         final pRaw = m[1]!.toLowerCase();
-        final param = pRaw.startsWith('v') ? 'vel' : pRaw;
+        final param = (pRaw.startsWith('v')) ? 'vel' : ((pRaw == 'at' || pRaw == 'action_time') ? 'action_time' : pRaw);
         final metric = m[2]!.toLowerCase();
-        String temp = m[3] ?? defaultTemp;
+        String temp = m[3] ?? cleanDefaultTemp;
         temp = temp.replaceAll('-', '').replaceAll('+', '');
         return '${param}_${metric}_$temp';
       },
@@ -115,7 +246,7 @@ class EpvatFormulaHelper {
         final metric = m[1]!.toLowerCase();
         final pRaw = m[2]!.toLowerCase();
         final param = pRaw.startsWith('v') ? 'vel' : pRaw;
-        String temp = m[3] ?? defaultTemp;
+        String temp = m[3] ?? cleanDefaultTemp;
         temp = temp.replaceAll('-', '').replaceAll('+', '');
         return '${param}_${metric}_$temp';
       },
@@ -127,7 +258,7 @@ class EpvatFormulaHelper {
       RegExp(r'(?<![a-z0-9_])(p1|p2)(?!\s*_[a-z0-9_])\s*(?:@\s*\+?(-?\d+))?(?![a-z0-9_])', caseSensitive: false),
       (m) {
         final param = m[1]!.toLowerCase();
-        String temp = m[2] ?? defaultTemp;
+        String temp = m[2] ?? cleanDefaultTemp;
         temp = temp.replaceAll('-', '').replaceAll('+', '');
         return '${param}_mean_$temp';
       },
@@ -140,7 +271,7 @@ class EpvatFormulaHelper {
       (m) {
         final mRaw = m[1]!.toLowerCase();
         final metric = (mRaw == 'sigma' || mRaw == 'sd') ? 'sd' : 'mean';
-        String temp = m[2] ?? defaultTemp;
+        String temp = m[2] ?? cleanDefaultTemp;
         temp = temp.replaceAll('-', '').replaceAll('+', '');
         return 'p1_${metric}_$temp';
       },
