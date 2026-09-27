@@ -3,13 +3,6 @@ import '../models/ballistic_record.dart';
 import 'epvat_formula_helper.dart';
 
 class ReportGenerator {
-  static String formatCartridgeTemp(String temp) {
-    final t = temp.trim();
-    if (t.isEmpty) return 'N/A';
-    if (t.contains('°C') || t.contains('C')) return t;
-    return '$t °C';
-  }
-
   static String _formatImageSrc(String raw) {
     if (raw.startsWith('data:')) return raw;
     return 'data:image/png;base64,$raw';
@@ -87,59 +80,41 @@ class ReportGenerator {
   static String generateCsv(List<BallisticRecord> records, String testName, String moduleName) {
     final buffer = StringBuffer();
     final lotHeader = moduleName == 'Daily Test' ? 'Hopper No. / Production Date' : 'Lot No';
-    final retestHeaders = 'Initial Result,Retest Result,Retest Inspector,Retest Date,Retest Remarks';
-
-    List<dynamic> getRetestCols(BallisticRecord r) {
-      final init = r.isRetest ? (r.originalStatus.isNotEmpty ? r.originalStatus : 'Retest') : r.status;
-      final ret = r.isRetest ? (r.retestStatus.isNotEmpty ? r.retestStatus : r.status) : 'N/A';
-      final op = r.isRetest ? (r.retestOperator.isNotEmpty ? r.retestOperator : r.operators) : '-';
-      final dt = r.isRetest ? (r.retestTimestamp.isNotEmpty ? r.retestTimestamp : r.timestamp) : '-';
-      final rem = r.isRetest ? r.retestNotes : '-';
-      return [init, ret, op, dt, rem];
-    }
     
     if (testName == 'Waterproof Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Pressure (Bar),Viscosity,Time of Test,Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Pressure (Bar),Viscosity,Time of Test,Location,Mouth Slow,Mouth Fast,Primer Slow,Primer Fast,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.pressureBar, r.viscosity, r.testTime, r.samplingLocation,
           r.mouthSlow, r.mouthFast, r.primerSlow, r.primerFast, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Residual Stress Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Room Temp,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Location,Time of Test,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Room Temp,Neck Slow,Neck Fast,Shoulder Slow,Shoulder Fast,Body Slow,Body Fast,Head Slow,Head Fast,Location,Time of Test,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.roomTemp, r.neckSlow, r.neckFast, r.shoulderSlow, r.shoulderFast,
           r.bodySlow, r.bodyFast, r.headSlow, r.headFast, r.samplingLocation, r.testTime, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Extraction Force Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Mode,Min Force (N),Mean Force (N),Max Force (N),Range Force (N),SD Force (N),Round Values (N),Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Mode,Min Force (N),Mean Force (N),Max Force (N),Range Force (N),SD Force (N),Round Values (N),Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.extractionForceType, r.accMinX, r.accMeanX, r.accMaxX, r.accRangeX, r.accSDX, r.extractionForceRounds, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Accuracy Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Barrel S.N.,Distance (m),Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Radius,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Barrel S.N.,Distance (m),Mean X,Max X,Min X,Range X,SD X,Mean Y,Max Y,Min Y,Range Y,SD Y,Mean Radius,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.barrelSN, r.velocityDistance,
           r.accMeanX, r.accMaxX, r.accMinX, r.accRangeX, r.accSDX,
           r.accMeanY, r.accMaxY, r.accMinY, r.accRangeY, r.accSDY,
@@ -148,62 +123,51 @@ class ReportGenerator {
         buffer.writeln(row);
       }
     } else if (testName == 'EPVAT test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Barrel S.N.,Distance (m),Cartridge Temp,Pressure Type,Pressure Unit,Mean P1,Max P1,Min P1,Range P1,SD P1,Mean P2,Max P2,Min P2,Range P2,SD P2,Mean Action Time,Max Action Time,Min Action Time,Range Action Time,SD Action Time,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,P1 Rounds,P2 Rounds,Action Time Rounds,Vel Rounds,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Barrel S.N.,Distance (m),Cartridge Temp,Pressure Type,Pressure Unit,Mean P1,Max P1,Min P1,Range P1,SD P1,Mean P2,Max P2,Min P2,Range P2,SD P2,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,P1 Rounds,P2 Rounds,Vel Rounds,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
-          r.barrelSN, r.velocityDistance, formatCartridgeTemp(r.cartridgeTemp), r.epvatPressureType, r.epvatPressureUnit,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
+          r.barrelSN, r.velocityDistance, r.cartridgeTemp, r.epvatPressureType, r.epvatPressureUnit,
           r.epvatMeanPressure, r.epvatMaxPressure, r.epvatMinPressure, r.epvatRangePressure, r.epvatSDPressure,
           r.epvatP2MeanPressure, r.epvatP2MaxPressure, r.epvatP2MinPressure, r.epvatP2RangePressure, r.epvatP2SDPressure,
-          r.actionTimeMean, r.actionTimeMax, r.actionTimeMin, r.actionTimeRange, r.actionTimeSD,
           r.velMean, r.velMin, r.velMax, r.velRange, r.velSD,
-          r.epvatPressureRounds, r.epvatP2PressureRounds, r.actionTimeRounds, r.epvatVelRounds, r.notes
+          r.epvatPressureRounds, r.epvatP2PressureRounds, r.epvatVelRounds, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Firing Rate Cycle Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Weapon Model,Category,Min RPM,Max RPM,Measured RPM,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Weapon Model,Category,Min RPM,Max RPM,Measured RPM,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.cyclicRateWeaponType, r.cyclicRateAmmoType, r.cyclicRateMin, r.cyclicRateMax, r.cyclicRateValue, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Terminal Effect Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Barrel S.N.,Distance (m),Hole Diameter,Steel Plate,Aluminum Plate,Velocity,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Barrel S.N.,Distance (m),Hole Diameter,Steel Plate,Aluminum Plate,Velocity,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.barrelSN, r.velocityDistance,
           r.terminalHoleDiameter, r.terminalSteelPenetration, r.terminalAluminumPenetration, r.terminalVelocity, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Function Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Weapon,Temperature,Qty,Level 1 (Critical),Level 2 (Major),Level 3 (Minor),Level 4,Total Defects,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Weapon,Temperature,Result,Qty,Level 1 (Critical),Level 2 (Major),Level 3 (Minor),Level 4,Total Defects,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.cyclicRateWeaponType, formatCartridgeTemp(r.cartridgeTemp), r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.cyclicRateWeaponType, r.cartridgeTemp, r.status, r.produced,
           r.functionLevel1, r.functionLevel2, r.functionLevel3, r.functionLevel4, r.defects, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else if (testName == 'Primer Sensitivity Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Primer Lot,Primer Supplier,Insertion Depth (mm),Hbar (mm),SD (mm),All Fire H (mm),No Fire H (mm),Drop Heights,Fire Results,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Primer Lot,Primer Supplier,Insertion Depth (mm),Hbar (cm),SD (cm),All Fire H (cm),No Fire H (cm),Drop Heights,Fire Results,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.primerLot, r.primerSupplier, r.primerInsertionDepth,
           r.primerHbar, r.primerSD, r.primerAllFireH, r.primerNoFireH,
           r.primerDropHeights, r.primerFireResults, r.notes
@@ -211,30 +175,25 @@ class ReportGenerator {
         buffer.writeln(row);
       }
     } else if (testName == 'Propellant Test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Qty,Propellant Lot,Propellant Supplier,Propellant Code,Barrel S.N.,Distance (m),Cartridge Temp,Pressure Type,Pressure Unit,Mean P1,Max P1,Min P1,Range P1,SD P1,Mean P2,Max P2,Min P2,Range P2,SD P2,Mean Action Time,Max Action Time,Min Action Time,Range Action Time,SD Action Time,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,P1 Rounds,P2 Rounds,Action Time Rounds,Vel Rounds,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Propellant Lot,Propellant Supplier,Propellant Code,Barrel S.N.,Distance (m),Cartridge Temp,Pressure Type,Pressure Unit,Mean P1,Max P1,Min P1,Range P1,SD P1,Mean P2,Max P2,Min P2,Range P2,SD P2,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,P1 Rounds,P2 Rounds,Vel Rounds,Remarks');
       for (var r in records) {
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.produced,
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.propellantLot, r.propellantSupplier, r.propellantCode,
-          r.barrelSN, r.velocityDistance, formatCartridgeTemp(r.cartridgeTemp), r.epvatPressureType, r.epvatPressureUnit,
+          r.barrelSN, r.velocityDistance, r.cartridgeTemp, r.epvatPressureType, r.epvatPressureUnit,
           r.epvatMeanPressure, r.epvatMaxPressure, r.epvatMinPressure, r.epvatRangePressure, r.epvatSDPressure,
           r.epvatP2MeanPressure, r.epvatP2MaxPressure, r.epvatP2MinPressure, r.epvatP2RangePressure, r.epvatP2SDPressure,
-          r.actionTimeMean, r.actionTimeMax, r.actionTimeMin, r.actionTimeRange, r.actionTimeSD,
           r.velMean, r.velMin, r.velMax, r.velRange, r.velSD,
-          r.epvatPressureRounds, r.epvatP2PressureRounds, r.actionTimeRounds, r.epvatVelRounds, r.notes
+          r.epvatPressureRounds, r.epvatP2PressureRounds, r.epvatVelRounds, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
     } else {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,$retestHeaders,Test Name,Qty,Key Metrics,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Test Name,Result,Qty,Key Metrics,Remarks');
       for (var r in records) {
         final metrics = _getRecordMetricsSummary(r);
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo,
-          ...getRetestCols(r),
-          r.testName, r.produced, metrics, r.notes
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.testName, r.status, r.produced, metrics, r.notes
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -251,26 +210,17 @@ class ReportGenerator {
     final caliber = records[0].caliber;
     final epvRules = adminRules['epvat'] ?? {};
     final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
+    var list = List<dynamic>.from(formulasMap[caliber] ?? []);
+    if (list.isEmpty) {
+      list = List<dynamic>.from(formulasMap['default'] ?? []);
+    }
     final bool isThreeTemp = records.map((r) => r.cartridgeTemp).toSet().length > 1;
-    var list = EpvatFormulaHelper.getFormulasForCaliber(
-      formulasMap,
-      caliber,
-      isThreeTemp: isThreeTemp,
-    );
     final String activePressureUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty
         ? records[0].epvatPressureUnit
         : 'bar';
-    String defaultTemp = '21';
-    if (records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty) {
-      final t = records[0].cartridgeTemp;
-      if (t.contains('52') && !t.contains('21')) {
-        defaultTemp = '52';
-      } else if ((t.contains('54') || t.contains('32')) && !t.contains('21')) {
-        defaultTemp = t.contains('54') ? '54' : '32';
-      } else {
-        defaultTemp = '21';
-      }
-    }
+    final String defaultTemp = records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty
+        ? records[0].cartridgeTemp.replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim()
+        : '21';
     if (list.isEmpty) {
       list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: isThreeTemp);
     }
@@ -286,10 +236,7 @@ class ReportGenerator {
 
     // Kinetic Energy row if applicable
     String keHtml = '';
-    final r21 = records.firstWhere(
-      (r) => r.cartridgeTemp.contains('21') || r.cartridgeTemp.isEmpty,
-      orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty(),
-    );
+    final r21 = records.firstWhere((r) => r.cartridgeTemp == '+21', orElse: () => BallisticRecord.empty());
     if (adminRules.isNotEmpty && r21.velMean.isNotEmpty) {
       final massMap = epvRules['bullet_mass_grams'] ?? {};
       final double? massG = (massMap[caliber] as num?)?.toDouble();
@@ -299,7 +246,7 @@ class ReportGenerator {
         keHtml = '''
         <tr style="background-color: #f0f4ff;">
           <td colspan="5" style="padding: 8px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0;">
-            <strong style="color:#4f46e5;">Kinetic Energy (+21 °C):</strong>
+            <strong style="color:#4f46e5;">⚡ Kinetic Energy (+21 °C):</strong>
             <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
             <span style="color: #64748b; margin-left: 8px;">(Bullet mass = ${massG.toStringAsFixed(2)} g, Mean velocity = ${vMean.toStringAsFixed(1)} m/s)</span>
           </td>
@@ -479,26 +426,9 @@ class ReportGenerator {
     final hasRejected = records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
     final hasRetest = records.any((r) => r.status.toLowerCase() == 'retest');
     final hasPending = records.any((r) => r.status.toLowerCase() == 'pending review');
-    final hasRetestRecord = records.any((r) => r.isRetest);
-    final retestedRecord = hasRetestRecord ? records.firstWhere((r) => r.isRetest) : null;
-    final initialOutcome = retestedRecord != null && retestedRecord.originalStatus.isNotEmpty
-        ? retestedRecord.originalStatus
-        : (records.isNotEmpty ? records[0].status : 'N/A');
-    final retestOutcome = retestedRecord != null && retestedRecord.retestStatus.isNotEmpty
-        ? retestedRecord.retestStatus
-        : (retestedRecord != null ? retestedRecord.status : 'N/A');
-    final retestOperator = retestedRecord?.retestOperator ?? '';
-    final retestTimestamp = retestedRecord?.retestTimestamp ?? '';
-    final retestRemarks = retestedRecord?.retestNotes ?? '';
 
     String sentenceRequirement = '';
-    if (hasRetestRecord) {
-      if (retestOutcome.toLowerCase().contains('approved')) {
-        sentenceRequirement = 'Retest verification completed. The lot successfully satisfied all retest tolerances and is APPROVED.';
-      } else {
-        sentenceRequirement = 'Retest verification completed. The lot failed retest tolerance requirements and is REJECTED.';
-      }
-    } else if (records.isEmpty) {
+    if (records.isEmpty) {
       sentenceRequirement = 'No records available to evaluate sentence requirements.';
     } else if (hasRejected) {
       sentenceRequirement = 'The inspected lot fails to satisfy waterproof test and ballistic specification criteria. The lot is officially REJECTED and quarantined.';
@@ -537,7 +467,7 @@ class ReportGenerator {
 
     final residualStressRows = StringBuffer();
     if (testName == 'Residual Stress Test') {
-      final roomTempStr = records.isNotEmpty && records[0].roomTemp.isNotEmpty ? '${records[0].roomTemp} °C' : 'N/A';
+      final roomTempStr = records.isNotEmpty && records[0].roomTemp.isNotEmpty ? '${records[0].roomTemp} &deg;C' : 'N/A';
       final locationStr = records.isNotEmpty && records[0].samplingLocation.isNotEmpty ? records[0].samplingLocation : 'N/A';
       residualStressRows.write('<tr>');
       residualStressRows.write('<td style="font-weight: bold; color: #475569;">Room Temperature:</td>');
@@ -567,7 +497,7 @@ class ReportGenerator {
       epvatRows.write('</tr>');
       epvatRows.write('<tr>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
-      epvatRows.write('<td>${records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty ? formatCartridgeTemp(records[0].cartridgeTemp) : ''}</td>');
+      epvatRows.write('<td>${records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty ? '${records[0].cartridgeTemp} &deg;C' : ''}</td>');
       epvatRows.write('<td></td><td></td>');
       epvatRows.write('</tr>');
 
@@ -578,15 +508,12 @@ class ReportGenerator {
         final String cal = records.isNotEmpty ? records[0].caliber : '';
         final double? massG = (massMap[cal] as num?)?.toDouble();
         // Use +21°C record velocity if multi-temp, else single-record mean vel
-        final r21 = records.firstWhere(
-          (r) => r.cartridgeTemp.contains('21') || r.cartridgeTemp.isEmpty,
-          orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty(),
-        );
+        final r21 = records.firstWhere((r) => r.cartridgeTemp == '+21', orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty());
         final double? vMean = double.tryParse(r21.velMean);
         if (massG != null && vMean != null && vMean > 0) {
           final double ke = 0.5 * (massG / 1000.0) * vMean * vMean;
           epvatRows.write('<tr style="background-color: #f0f4ff;">');
-          epvatRows.write('<td style="font-weight: bold; color: #4f46e5;">Kinetic Energy (+21°C):</td>');
+          epvatRows.write('<td style="font-weight: bold; color: #4f46e5;">⚡ Kinetic Energy (+21°C):</td>');
           epvatRows.write('<td style="font-family: monospace; font-weight: bold; color: #4f46e5;">${ke.toStringAsFixed(1)} J</td>');
           epvatRows.write('<td style="color: #64748b; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMean.toStringAsFixed(1)} m/s</td>');
           epvatRows.write('<td></td>');
@@ -867,21 +794,6 @@ class ReportGenerator {
         <td style="font-weight: bold; color: #475569;">Test Result:</td>
         <td style="font-weight: bold; color: ${batchResult.toLowerCase() == 'approved' ? '#15803d' : (batchResult.toLowerCase() == 'retest' ? '#b45309' : '#b91c1c')};">$batchResult</td>
       </tr>
-      ${hasRetestRecord ? '''
-      <tr>
-        <td style="font-weight: bold; color: #475569;">Initial Test Result:</td>
-        <td style="font-weight: bold; color: #b45309;">$initialOutcome</td>
-        <td style="font-weight: bold; color: #475569;">Retest Result:</td>
-        <td style="font-weight: bold; color: ${retestOutcome.toLowerCase().contains('approved') ? '#15803d' : '#b91c1c'};">$retestOutcome</td>
-      </tr>
-      <tr>
-        <td style="font-weight: bold; color: #475569;">Retest Inspector:</td>
-        <td>${retestOperator.isNotEmpty ? retestOperator : 'N/A'}</td>
-        <td style="font-weight: bold; color: #475569;">Retest Date:</td>
-        <td>${retestTimestamp.isNotEmpty ? retestTimestamp : 'N/A'}</td>
-      </tr>
-      ${retestRemarks.isNotEmpty ? '<tr><td style="font-weight: bold; color: #475569;">Retest Remarks:</td><td colspan="3" style="color: #1e293b;">$retestRemarks</td></tr>' : ''}
-      ''' : ''}
       ${testName == 'Waterproof Test' ? waterproofRows.toString() : ''}
       ${testName == 'Residual Stress Test' ? residualStressRows.toString() : ''}
       ${testName == 'Accuracy Test' ? accuracyRows.toString() : ''}
@@ -1082,37 +994,16 @@ class ReportGenerator {
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
-        final tempStr = formatCartridgeTemp(r.cartridgeTemp);
+        final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
-        if (r.isRetest) {
-          buffer.writeln('''
-            <tr>
-              <td colspan="6" style="background-color: #fef3c7; color: #92400e; font-size: 11px; padding: 6px 10px; border-bottom: 2px solid #fde68a;">
-                <strong>⚠️ RETEST VERIFICATION DATA</strong> &nbsp;|&nbsp; 
-                Initial Outcome: <strong>${r.originalStatus.isNotEmpty ? r.originalStatus : 'Retest'}</strong> &nbsp;&rarr;&nbsp; 
-                Retest Outcome: <strong style="color: ${r.status.toLowerCase().contains('approved') ? '#15803d' : '#b91c1c'};">${r.status}</strong> 
-                (Inspector: ${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}, Date: ${r.retestTimestamp.isNotEmpty ? r.retestTimestamp : r.timestamp})
-                ${r.retestNotes.isNotEmpty ? '<br/><em>Retest Remarks: ' + r.retestNotes + '</em>' : ''}
-              </td>
-            </tr>
-          ''');
-        }
         if (r.epvatPressureRounds.isNotEmpty) {
-          final primaryP1Rounds = r.epvatPressureRounds.split(';').first;
-          final primaryP2Rounds = r.epvatP2PressureRounds.split(';').first;
-          final primaryVelRounds = r.epvatVelRounds.split(';').first;
-          final primaryActRounds = r.actionTimeRounds.split(';').first;
-
-          final roundsList = primaryP1Rounds.split(',');
-          final p2List = primaryP2Rounds.split(',');
-          final velList = primaryVelRounds.split(',');
-          final actList = primaryActRounds.split(',');
-
+          final roundsList = r.epvatPressureRounds.split(',');
+          final p2List = r.epvatP2PressureRounds.split(',');
+          final velList = r.epvatVelRounds.split(',');
           final bufferRounds = StringBuffer();
           bufferRounds.write('<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">');
           bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Action Time (ms)</th>');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
           final chamberHeader = is9mm ? 'Chamber Pres' : 'GP1 (Chamber)';
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$chamberHeader (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
@@ -1122,13 +1013,11 @@ class ReportGenerator {
           bufferRounds.write('</tr>');
           for (int idx = 0; idx < roundsList.length; idx++) {
             final roundNo = idx + 1;
-            final actVal = idx < actList.length ? actList[idx] : '';
             final velVal = idx < velList.length ? velList[idx] : '';
             final p1Val = roundsList[idx];
             final p2Val = idx < p2List.length ? p2List[idx] : '';
             bufferRounds.write('<tr>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">Round $roundNo</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$actVal</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$velVal</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p1Val</td>');
             if (!is9mm) {
@@ -1152,12 +1041,6 @@ class ReportGenerator {
         final p2Min = r.epvatP2MinPressure.trim().isNotEmpty ? r.epvatP2MinPressure : '-';
         final p2Range = r.epvatP2RangePressure.trim().isNotEmpty ? r.epvatP2RangePressure : '-';
         final p2SD = r.epvatP2SDPressure.trim().isNotEmpty ? r.epvatP2SDPressure : '-';
-
-        final actMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
-        final actMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
-        final actMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
-        final actRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
-        final actSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
 
         final vMean = r.velMean.trim().isNotEmpty ? r.velMean : '-';
         final vMax = r.velMax.trim().isNotEmpty ? r.velMax : '-';
@@ -1185,18 +1068,6 @@ class ReportGenerator {
             <td>$p2Min</td>
             <td>$p2Range</td>
             <td>$p2SD</td>
-          </tr>
-          ''');
-        }
-        if (actMean != '-' || r.actionTimeRounds.isNotEmpty) {
-          buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Action Time (ms)</td>
-            <td>$actMean</td>
-            <td>$actMax</td>
-            <td>$actMin</td>
-            <td>$actRange</td>
-            <td>$actSD</td>
           </tr>
           ''');
         }
@@ -1522,26 +1393,9 @@ class ReportGenerator {
     final hasRejected = records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
     final hasRetest = records.any((r) => r.status.toLowerCase() == 'retest');
     final hasPending = records.any((r) => r.status.toLowerCase() == 'pending review');
-    final hasRetestRecord = records.any((r) => r.isRetest);
-    final retestedRecord = hasRetestRecord ? records.firstWhere((r) => r.isRetest) : null;
-    final initialOutcome = retestedRecord != null && retestedRecord.originalStatus.isNotEmpty
-        ? retestedRecord.originalStatus
-        : (records.isNotEmpty ? records[0].status : 'N/A');
-    final retestOutcome = retestedRecord != null && retestedRecord.retestStatus.isNotEmpty
-        ? retestedRecord.retestStatus
-        : (retestedRecord != null ? retestedRecord.status : 'N/A');
-    final retestOperator = retestedRecord?.retestOperator ?? '';
-    final retestTimestamp = retestedRecord?.retestTimestamp ?? '';
-    final retestRemarks = retestedRecord?.retestNotes ?? '';
 
     String sentenceRequirement = '';
-    if (hasRetestRecord) {
-      if (retestOutcome.toLowerCase().contains('approved')) {
-        sentenceRequirement = 'Retest verification completed. The lot successfully satisfied all retest tolerances and is APPROVED.';
-      } else {
-        sentenceRequirement = 'Retest verification completed. The lot failed retest tolerance requirements and is REJECTED.';
-      }
-    } else if (records.isEmpty) {
+    if (records.isEmpty) {
       sentenceRequirement = 'No records available to evaluate sentence requirements.';
     } else if (hasRejected) {
       sentenceRequirement = 'The inspected lot fails to satisfy waterproof test and ballistic specification criteria. The lot is officially REJECTED and quarantined.';
@@ -1801,21 +1655,6 @@ class ReportGenerator {
       <td style="font-weight: bold; color: #475569;">Test Result:</td>
       <td style="font-weight: bold; color: ${batchResult.toLowerCase() == 'approved' ? '#15803d' : (batchResult.toLowerCase() == 'retest' ? '#b45309' : '#b91c1c')};">$batchResult</td>
     </tr>
-    ${hasRetestRecord ? '''
-    <tr>
-      <td style="font-weight: bold; color: #475569;">Initial Test Result:</td>
-      <td style="font-weight: bold; color: #b45309;">$initialOutcome</td>
-      <td style="font-weight: bold; color: #475569;">Retest Result:</td>
-      <td style="font-weight: bold; color: ${retestOutcome.toLowerCase().contains('approved') ? '#15803d' : '#b91c1c'};">$retestOutcome</td>
-    </tr>
-    <tr>
-      <td style="font-weight: bold; color: #475569;">Retest Inspector:</td>
-      <td>${retestOperator.isNotEmpty ? retestOperator : 'N/A'}</td>
-      <td style="font-weight: bold; color: #475569;">Retest Date:</td>
-      <td>${retestTimestamp.isNotEmpty ? retestTimestamp : 'N/A'}</td>
-    </tr>
-    ${retestRemarks.isNotEmpty ? '<tr><td style="font-weight: bold; color: #475569;">Retest Remarks:</td><td colspan="3" style="color: #1e293b;">$retestRemarks</td></tr>' : ''}
-    ''' : ''}
     ${testName == 'Waterproof Test' ? waterproofRows.toString() : ''}
     ${testName == 'Residual Stress Test' ? residualStressRows.toString() : ''}
     ${testName == 'Accuracy Test' ? accuracyRows.toString() : ''}
@@ -1946,37 +1785,16 @@ class ReportGenerator {
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
-        final tempStr = formatCartridgeTemp(r.cartridgeTemp);
+        final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
-        if (r.isRetest) {
-          buffer.writeln('''
-            <tr>
-              <td colspan="6" style="background-color: #fef3c7; color: #92400e; font-size: 11px; padding: 6px 10px; border-bottom: 2px solid #fde68a;">
-                <strong>⚠️ RETEST VERIFICATION DATA</strong> &nbsp;|&nbsp; 
-                Initial Outcome: <strong>${r.originalStatus.isNotEmpty ? r.originalStatus : 'Retest'}</strong> &nbsp;&rarr;&nbsp; 
-                Retest Outcome: <strong style="color: ${r.status.toLowerCase().contains('approved') ? '#15803d' : '#b91c1c'};">${r.status}</strong> 
-                (Inspector: ${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}, Date: ${r.retestTimestamp.isNotEmpty ? r.retestTimestamp : r.timestamp})
-                ${r.retestNotes.isNotEmpty ? '<br/><em>Retest Remarks: ' + r.retestNotes + '</em>' : ''}
-              </td>
-            </tr>
-          ''');
-        }
         if (r.epvatPressureRounds.isNotEmpty) {
-          final primaryP1Rounds = r.epvatPressureRounds.split(';').first;
-          final primaryP2Rounds = r.epvatP2PressureRounds.split(';').first;
-          final primaryVelRounds = r.epvatVelRounds.split(';').first;
-          final primaryActRounds = r.actionTimeRounds.split(';').first;
-
-          final roundsList = primaryP1Rounds.split(',');
-          final p2List = primaryP2Rounds.split(',');
-          final velList = primaryVelRounds.split(',');
-          final actList = primaryActRounds.split(',');
-
+          final roundsList = r.epvatPressureRounds.split(',');
+          final p2List = r.epvatP2PressureRounds.split(',');
+          final velList = r.epvatVelRounds.split(',');
           final bufferRounds = StringBuffer();
           bufferRounds.write('<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">');
           bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Action Time (ms)</th>');
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
           final chamberHeader = is9mm ? 'Chamber Pres' : 'GP1 (Chamber)';
           bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$chamberHeader (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
@@ -1986,13 +1804,11 @@ class ReportGenerator {
           bufferRounds.write('</tr>');
           for (int idx = 0; idx < roundsList.length; idx++) {
             final roundNo = idx + 1;
-            final actVal = idx < actList.length ? actList[idx] : '';
             final velVal = idx < velList.length ? velList[idx] : '';
             final p1Val = roundsList[idx];
             final p2Val = idx < p2List.length ? p2List[idx] : '';
             bufferRounds.write('<tr>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">Round $roundNo</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$actVal</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$velVal</td>');
             bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p1Val</td>');
             if (!is9mm) {
@@ -2016,12 +1832,6 @@ class ReportGenerator {
         final p2Min = r.epvatP2MinPressure.trim().isNotEmpty ? r.epvatP2MinPressure : '-';
         final p2Range = r.epvatP2RangePressure.trim().isNotEmpty ? r.epvatP2RangePressure : '-';
         final p2SD = r.epvatP2SDPressure.trim().isNotEmpty ? r.epvatP2SDPressure : '-';
-
-        final actMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
-        final actMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
-        final actMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
-        final actRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
-        final actSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
 
         final vMean = r.velMean.trim().isNotEmpty ? r.velMean : '-';
         final vMax = r.velMax.trim().isNotEmpty ? r.velMax : '-';
@@ -2049,18 +1859,6 @@ class ReportGenerator {
             <td>$p2Min</td>
             <td>$p2Range</td>
             <td>$p2SD</td>
-          </tr>
-          ''');
-        }
-        if (actMean != '-' || r.actionTimeRounds.isNotEmpty) {
-          buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Action Time (ms)</td>
-            <td>$actMean</td>
-            <td>$actMax</td>
-            <td>$actMin</td>
-            <td>$actRange</td>
-            <td>$actSD</td>
           </tr>
           ''');
         }

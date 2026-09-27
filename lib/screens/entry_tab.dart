@@ -1433,7 +1433,10 @@ class _EntryTabState extends State<EntryTab> {
           notifyMissing('Primer Supplier');
           return false;
         }
-        _primerLotController.text = _lotController.text.trim();
+        if (_primerLotController.text.trim().isEmpty) {
+          notifyMissing('Primer Lot Number');
+          return false;
+        }
         if (_primerInsertionDepthController.text.trim().isEmpty) {
           notifyMissing('Average Insertion Depth');
           return false;
@@ -2386,7 +2389,6 @@ class _EntryTabState extends State<EntryTab> {
     } else {
       rangeCtrl.clear();
     }
-    if (mounted) setState(() {});
   }
 
   void _onManualPrimerHbarOrSDChanged() {
@@ -2675,7 +2677,6 @@ class _EntryTabState extends State<EntryTab> {
     calcMetrics(_overallEpvatActionTimeRoundsControllers[temp] ?? [], 'action_time');
     calcMetrics(_overallEpvatP1RoundsControllers[temp] ?? [], 'p1');
     calcMetrics(_overallEpvatP2RoundsControllers[temp] ?? [], 'p2');
-    if (mounted) setState(() {});
   }
 
   void _submitForm() async {
@@ -2731,12 +2732,9 @@ class _EntryTabState extends State<EntryTab> {
           final p1 = _overallEpvatControllers[t]?['p1_mean']?.text.trim() ?? '';
           final p2 = _overallEpvatControllers[t]?['p2_mean']?.text.trim() ?? '';
           final v = _overallEpvatControllers[t]?['vel_mean']?.text.trim() ?? '';
-          final act = _overallEpvatControllers[t]?['action_time_mean']?.text.trim() ?? '';
           final hasRounds = (_overallEpvatP1RoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false) ||
-                            (_overallEpvatP2RoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false) ||
-                            (_overallEpvatVelRoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false) ||
-                            (_overallEpvatActionTimeRoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false);
-          return p1.isNotEmpty || p2.isNotEmpty || v.isNotEmpty || act.isNotEmpty || hasRounds;
+                            (_overallEpvatVelRoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false);
+          return p1.isNotEmpty || p2.isNotEmpty || v.isNotEmpty || hasRounds;
         }).toList();
 
         // If no temps have values entered, fallback to the currently active tab
@@ -2750,21 +2748,8 @@ class _EntryTabState extends State<EntryTab> {
           totalProduced += count;
           final p1m = _overallEpvatControllers[t]!['p1_mean']!.text.trim();
           final p1max = _overallEpvatControllers[t]!['p1_max']!.text.trim();
-          final p1min = _overallEpvatControllers[t]!['p1_min']!.text.trim();
-          final p1sd = _overallEpvatControllers[t]!['p1_sd']!.text.trim();
-          final p2m = _overallEpvatControllers[t]!['p2_mean']!.text.trim();
-          final p2max = _overallEpvatControllers[t]!['p2_max']!.text.trim();
-          final p2min = _overallEpvatControllers[t]!['p2_min']!.text.trim();
-          final p2sd = _overallEpvatControllers[t]!['p2_sd']!.text.trim();
           final vm = _overallEpvatControllers[t]!['vel_mean']!.text.trim();
-          final vmax = _overallEpvatControllers[t]!['vel_max']!.text.trim();
-          final vmin = _overallEpvatControllers[t]!['vel_min']!.text.trim();
-          final vsd = _overallEpvatControllers[t]!['vel_sd']!.text.trim();
-          final atm = _overallEpvatControllers[t]!['action_time_mean']?.text.trim() ?? '';
-          final atsd = _overallEpvatControllers[t]!['action_time_sd']?.text.trim() ?? '';
-          tempDetails.add(
-            '$t°C ($count rds: P1=$p1m, Max=$p1max, Min=$p1min, SD=$p1sd, P2=$p2m, P2Max=$p2max, P2Min=$p2min, P2SD=$p2sd, V=$vm, VMax=$vmax, VMin=$vmin, VSD=$vsd, AT=$atm, ATSD=$atsd)',
-          );
+          tempDetails.add('$t°C ($count rds: P1=$p1m, Max=$p1max, V=$vm)');
         }
 
         // Primary baseline temp (+21 or first)
@@ -3488,7 +3473,7 @@ class _EntryTabState extends State<EntryTab> {
                       label: widget.currentModule == 'Lot Acceptance Test'
                           ? 'Lot Number'
                           : (widget.currentModule == 'Component Test'
-                              ? (_testName == 'Primer Sensitivity Test' ? 'Lot Number' : 'Propellant Lot No.')
+                              ? (_testName == 'Primer Sensitivity Test' ? 'Primer Lot No.' : 'Propellant Lot No.')
                               : 'Hopper No.'),
                       isRequired: true,
                       child: _buildLotNoField(focusNode: _lotFocusNode),
@@ -4973,8 +4958,8 @@ class _EntryTabState extends State<EntryTab> {
                                       Row(
                                         children: [
                                           const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                          const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                          const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           if (!_isCaliber9mm)
                                             const Expanded(flex: 2, child: Text('GP2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
@@ -5008,10 +4993,9 @@ class _EntryTabState extends State<EntryTab> {
                                                     child: Padding(
                                                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
                                                       child: _buildTextField(
-                                                        controller: _overallEpvatActionTimeRoundsControllers[t]![rIdx],
-                                                        hint: 'ms',
+                                                        controller: _overallEpvatVelRoundsControllers[t]![rIdx],
+                                                        hint: 'm/s',
                                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                        inputFormatters: [ActionTimeInputFormatter()],
                                                       ),
                                                     ),
                                                   ),
@@ -5020,9 +5004,10 @@ class _EntryTabState extends State<EntryTab> {
                                                     child: Padding(
                                                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
                                                       child: _buildTextField(
-                                                        controller: _overallEpvatVelRoundsControllers[t]![rIdx],
-                                                        hint: 'm/s',
+                                                        controller: _overallEpvatActionTimeRoundsControllers[t]![rIdx],
+                                                        hint: 'ms',
                                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        inputFormatters: [ActionTimeInputFormatter()],
                                                       ),
                                                     ),
                                                   ),
@@ -5070,10 +5055,10 @@ class _EntryTabState extends State<EntryTab> {
                                     const SizedBox(height: 8.0),
                                     _buildFormRow([
                                       _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Mean P' : 'Mean P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                       _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Range P' : 'Range P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                     ]),
                                     if (!_isCaliber9mm) ...[
                                       const SizedBox(height: 16.0),
@@ -5084,25 +5069,12 @@ class _EntryTabState extends State<EntryTab> {
                                       const SizedBox(height: 8.0),
                                       _buildFormRow([
                                         _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                        _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                        _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                        _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                        _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                         _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                        _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                        _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                       ]),
                                     ],
-                                    const SizedBox(height: 16.0),
-                                    Text(
-                                      'Action Time ($t °C) (ms)',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                      _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                    ]),
                                     const SizedBox(height: 16.0),
                                     Text(
                                       'Velocity ($t °C) (m/s)',
@@ -5111,10 +5083,23 @@ class _EntryTabState extends State<EntryTab> {
                                     const SizedBox(height: 8.0),
                                     _buildFormRow([
                                       _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                      _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                       _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                    ]),
+                                    const SizedBox(height: 16.0),
+                                    Text(
+                                      'Action Time ($t °C) (ms)',
+                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                    _buildFormRow([
+                                      _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                     ]),
                                     
                                     // --- Kinetic Energy Display (only for +21°C tab) ---
@@ -5182,8 +5167,8 @@ class _EntryTabState extends State<EntryTab> {
                                 Row(
                                   children: [
                                     const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     if (!_isCaliber9mm)
                                       const Expanded(flex: 2, child: Text('GP2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
@@ -5207,10 +5192,9 @@ class _EntryTabState extends State<EntryTab> {
                                           child: Padding(
                                             padding: const EdgeInsets.only(right: 8.0),
                                             child: _buildTextField(
-                                              controller: _actionTimeRoundsControllers[index],
+                                              controller: _epvatVelRoundsControllers[index],
                                               hint: '0.0',
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              inputFormatters: [ActionTimeInputFormatter()],
                                               onChanged: (val) => _recalculateEpvatStats(),
                                             ),
                                           ),
@@ -5220,9 +5204,10 @@ class _EntryTabState extends State<EntryTab> {
                                           child: Padding(
                                             padding: const EdgeInsets.only(right: 8.0),
                                             child: _buildTextField(
-                                              controller: _epvatVelRoundsControllers[index],
+                                              controller: _actionTimeRoundsControllers[index],
                                               hint: '0.0',
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              inputFormatters: [ActionTimeInputFormatter()],
                                               onChanged: (val) => _recalculateEpvatStats(),
                                             ),
                                           ),
@@ -5260,29 +5245,29 @@ class _EntryTabState extends State<EntryTab> {
                                 ),
                                 const SizedBox(height: 8.0),
                                 const Text(
-                                  'Action Time Statistics (ms)',
-                                  style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4.0),
-                                _buildFormRow([
-                                   _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _actionTimeMeanController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                   _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _actionTimeMaxController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                   _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _actionTimeMinController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                   _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _actionTimeRangeController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                   _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _actionTimeSDController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                 ]),
-                                const SizedBox(height: 12.0),
-                                const Text(
                                   'Velocity Statistics (m/s)',
                                   style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 4.0),
                                 _buildFormRow([
-                                   _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _meanVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                   _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _maxVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                   _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _minVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                   _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _meanVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                   _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _maxVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                   _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _minVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                    _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _rangeVelController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _sdVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                   _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _sdVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                 ]),
+                                const SizedBox(height: 12.0),
+                                const Text(
+                                  'Action Time Statistics (ms)',
+                                  style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4.0),
+                                _buildFormRow([
+                                   _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _actionTimeMeanController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _actionTimeMaxController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _actionTimeMinController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _actionTimeRangeController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                   _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _actionTimeSDController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
                                  ]),
                                 const SizedBox(height: 12.0),
                                 Text(
@@ -5291,11 +5276,11 @@ class _EntryTabState extends State<EntryTab> {
                                 ),
                                 const SizedBox(height: 4.0),
                                 _buildFormRow([
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Mean P' : 'Mean P1', child: _buildTextField(controller: _epvatMeanPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _epvatMaxPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _epvatMinPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Mean P' : 'Mean P1', child: _buildTextField(controller: _epvatMeanPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _epvatMaxPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _epvatMinPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                   _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Range P' : 'Range P1', child: _buildTextField(controller: _epvatRangePressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _epvatSDPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _epvatSDPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                 ]),
                                 if (!_isCaliber9mm) ...[
                                   const SizedBox(height: 12.0),
@@ -5305,11 +5290,11 @@ class _EntryTabState extends State<EntryTab> {
                                   ),
                                   const SizedBox(height: 4.0),
                                   _buildFormRow([
-                                    _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _epvatP2MeanPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                    _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _epvatP2MaxPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                    _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _epvatP2MinPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                    _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _epvatP2MeanPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                    _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _epvatP2MaxPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                                    _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _epvatP2MinPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                     _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _epvatP2RangePressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _epvatP2SDPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                                    _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _epvatP2SDPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                   ]),
                                 ],
                               ],
@@ -7319,7 +7304,6 @@ class _EntryTabState extends State<EntryTab> {
         _producedController.text = '$maxRounds';
       }
     }
-    if (mounted) setState(() {});
   }
 
   void _calculateStatsForValues(
@@ -7454,126 +7438,34 @@ class _EntryTabState extends State<EntryTab> {
         metricsMap.forEach((key, ctrl) {
           variables['${key}_${sfx}'] = double.tryParse(ctrl.text.trim()) ?? 0.0;
         });
-        if (variables.containsKey('p1_max_$sfx')) {
-          variables['p1_max_individual_$sfx'] = variables['p1_max_$sfx']!;
-        }
-      }
-      // Populate un-suffixed fallbacks from baseline +21
-      final metrics = ['vel', 'action_time', 'p1', 'p2'];
-      final subMetrics = ['mean', 'max', 'min', 'range', 'sd'];
-      for (var m in metrics) {
-        for (var s in subMetrics) {
-          final key21 = '${m}_${s}_21';
-          if (variables.containsKey(key21)) {
-            variables['${m}_$s'] = variables[key21]!;
-          }
-        }
-      }
-      if (variables.containsKey('p1_max_21')) {
-        variables['p1_max_individual'] = variables['p1_max_21']!;
       }
     } else {
       final activeTemp = _cartridgeTempController.text.trim();
       final String sfx = activeTemp.contains('52') ? '52' : (activeTemp.contains('32') ? '32' : (activeTemp.contains('54') ? '54' : '21'));
       
-      final p1Mean = double.tryParse(_epvatMeanPressureController.text.trim()) ?? 0.0;
-      final p1Max = double.tryParse(_epvatMaxPressureController.text.trim()) ?? 0.0;
-      final p1Min = double.tryParse(_epvatMinPressureController.text.trim()) ?? 0.0;
-      final p1Range = double.tryParse(_epvatRangePressureController.text.trim()) ?? 0.0;
-      final p1Sd = double.tryParse(_epvatSDPressureController.text.trim()) ?? 0.0;
+      variables['p1_mean_$sfx'] = double.tryParse(_epvatMeanPressureController.text.trim()) ?? 0.0;
+      variables['p1_max_$sfx'] = double.tryParse(_epvatMaxPressureController.text.trim()) ?? 0.0;
+      variables['p1_min_$sfx'] = double.tryParse(_epvatMinPressureController.text.trim()) ?? 0.0;
+      variables['p1_range_$sfx'] = double.tryParse(_epvatRangePressureController.text.trim()) ?? 0.0;
+      variables['p1_sd_$sfx'] = double.tryParse(_epvatSDPressureController.text.trim()) ?? 0.0;
 
-      final p2Mean = double.tryParse(_epvatP2MeanPressureController.text.trim()) ?? 0.0;
-      final p2Max = double.tryParse(_epvatP2MaxPressureController.text.trim()) ?? 0.0;
-      final p2Min = double.tryParse(_epvatP2MinPressureController.text.trim()) ?? 0.0;
-      final p2Range = double.tryParse(_epvatP2RangePressureController.text.trim()) ?? 0.0;
-      final p2Sd = double.tryParse(_epvatP2SDPressureController.text.trim()) ?? 0.0;
+      variables['p2_mean_$sfx'] = double.tryParse(_epvatP2MeanPressureController.text.trim()) ?? 0.0;
+      variables['p2_max_$sfx'] = double.tryParse(_epvatP2MaxPressureController.text.trim()) ?? 0.0;
+      variables['p2_min_$sfx'] = double.tryParse(_epvatP2MinPressureController.text.trim()) ?? 0.0;
+      variables['p2_range_$sfx'] = double.tryParse(_epvatP2RangePressureController.text.trim()) ?? 0.0;
+      variables['p2_sd_$sfx'] = double.tryParse(_epvatP2SDPressureController.text.trim()) ?? 0.0;
 
-      final velMean = double.tryParse(_meanVelController.text.trim()) ?? 0.0;
-      final velMax = double.tryParse(_maxVelController.text.trim()) ?? 0.0;
-      final velMin = double.tryParse(_minVelController.text.trim()) ?? 0.0;
-      final velRange = double.tryParse(_rangeVelController.text.trim()) ?? 0.0;
-      final velSd = double.tryParse(_sdVelController.text.trim()) ?? 0.0;
+      variables['vel_mean_$sfx'] = double.tryParse(_meanVelController.text.trim()) ?? 0.0;
+      variables['vel_max_$sfx'] = double.tryParse(_maxVelController.text.trim()) ?? 0.0;
+      variables['vel_min_$sfx'] = double.tryParse(_minVelController.text.trim()) ?? 0.0;
+      variables['vel_range_$sfx'] = double.tryParse(_rangeVelController.text.trim()) ?? 0.0;
+      variables['vel_sd_$sfx'] = double.tryParse(_sdVelController.text.trim()) ?? 0.0;
 
-      final actMean = double.tryParse(_actionTimeMeanController.text.trim()) ?? 0.0;
-      final actMax = double.tryParse(_actionTimeMaxController.text.trim()) ?? 0.0;
-      final actMin = double.tryParse(_actionTimeMinController.text.trim()) ?? 0.0;
-      final actRange = double.tryParse(_actionTimeRangeController.text.trim()) ?? 0.0;
-      final actSd = double.tryParse(_actionTimeSDController.text.trim()) ?? 0.0;
-
-      // Suffixed variables
-      variables['p1_mean_$sfx'] = p1Mean;
-      variables['p1_max_$sfx'] = p1Max;
-      variables['p1_max_individual_$sfx'] = p1Max;
-      variables['p1_min_$sfx'] = p1Min;
-      variables['p1_range_$sfx'] = p1Range;
-      variables['p1_sd_$sfx'] = p1Sd;
-
-      variables['p2_mean_$sfx'] = p2Mean;
-      variables['p2_max_$sfx'] = p2Max;
-      variables['p2_min_$sfx'] = p2Min;
-      variables['p2_range_$sfx'] = p2Range;
-      variables['p2_sd_$sfx'] = p2Sd;
-
-      variables['vel_mean_$sfx'] = velMean;
-      variables['vel_max_$sfx'] = velMax;
-      variables['vel_min_$sfx'] = velMin;
-      variables['vel_range_$sfx'] = velRange;
-      variables['vel_sd_$sfx'] = velSd;
-
-      variables['action_time_mean_$sfx'] = actMean;
-      variables['action_time_max_$sfx'] = actMax;
-      variables['action_time_min_$sfx'] = actMin;
-      variables['action_time_range_$sfx'] = actRange;
-      variables['action_time_sd_$sfx'] = actSd;
-
-      // Un-suffixed variables
-      variables['p1_mean'] = p1Mean;
-      variables['p1_max'] = p1Max;
-      variables['p1_max_individual'] = p1Max;
-      variables['p1_min'] = p1Min;
-      variables['p1_range'] = p1Range;
-      variables['p1_sd'] = p1Sd;
-
-      variables['p2_mean'] = p2Mean;
-      variables['p2_max'] = p2Max;
-      variables['p2_min'] = p2Min;
-      variables['p2_range'] = p2Range;
-      variables['p2_sd'] = p2Sd;
-
-      variables['vel_mean'] = velMean;
-      variables['vel_max'] = velMax;
-      variables['vel_min'] = velMin;
-      variables['vel_range'] = velRange;
-      variables['vel_sd'] = velSd;
-
-      variables['action_time_mean'] = actMean;
-      variables['action_time_max'] = actMax;
-      variables['action_time_min'] = actMin;
-      variables['action_time_range'] = actRange;
-      variables['action_time_sd'] = actSd;
-
-      // If active temperature is not 21, also provide _21 keys as fallback
-      variables.putIfAbsent('p1_mean_21', () => p1Mean);
-      variables.putIfAbsent('p1_max_21', () => p1Max);
-      variables.putIfAbsent('p1_max_individual_21', () => p1Max);
-      variables.putIfAbsent('p1_min_21', () => p1Min);
-      variables.putIfAbsent('p1_range_21', () => p1Range);
-      variables.putIfAbsent('p1_sd_21', () => p1Sd);
-      variables.putIfAbsent('p2_mean_21', () => p2Mean);
-      variables.putIfAbsent('p2_max_21', () => p2Max);
-      variables.putIfAbsent('p2_min_21', () => p2Min);
-      variables.putIfAbsent('p2_range_21', () => p2Range);
-      variables.putIfAbsent('p2_sd_21', () => p2Sd);
-      variables.putIfAbsent('vel_mean_21', () => velMean);
-      variables.putIfAbsent('vel_max_21', () => velMax);
-      variables.putIfAbsent('vel_min_21', () => velMin);
-      variables.putIfAbsent('vel_range_21', () => velRange);
-      variables.putIfAbsent('vel_sd_21', () => velSd);
-      variables.putIfAbsent('action_time_mean_21', () => actMean);
-      variables.putIfAbsent('action_time_max_21', () => actMax);
-      variables.putIfAbsent('action_time_min_21', () => actMin);
-      variables.putIfAbsent('action_time_range_21', () => actRange);
-      variables.putIfAbsent('action_time_sd_21', () => actSd);
+      variables['action_time_mean_$sfx'] = double.tryParse(_actionTimeMeanController.text.trim()) ?? 0.0;
+      variables['action_time_max_$sfx'] = double.tryParse(_actionTimeMaxController.text.trim()) ?? 0.0;
+      variables['action_time_min_$sfx'] = double.tryParse(_actionTimeMinController.text.trim()) ?? 0.0;
+      variables['action_time_range_$sfx'] = double.tryParse(_actionTimeRangeController.text.trim()) ?? 0.0;
+      variables['action_time_sd_$sfx'] = double.tryParse(_actionTimeSDController.text.trim()) ?? 0.0;
     }
     return variables;
   }
@@ -8263,15 +8155,12 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   Widget _buildPrimerSensitivityCard() {
+    final prRules = _getPrimerRulesForCaliber();
+    final double defaultDropWeight = ((prRules['drop_weight'] ?? 55.0) as num).toDouble();
     final bool isLotPrimerLocked = widget.currentModule == 'Lot Acceptance Test';
-    final calLower = _caliber.toLowerCase();
-    String ruleBadgeText = 'Rule: H̄+5S < 500 & H̄-2S > 75';
-    if (calLower.contains('5.56') || calLower.contains('.223')) {
-      ruleBadgeText = 'Rule: H̄+5S < 450 & H̄-2S > 75';
-    } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
-      ruleBadgeText = 'Rule: H̄+5S < 350 & H̄-2S > 75';
-    } else if (calLower.contains('7.62') || calLower.contains('.308')) {
-      ruleBadgeText = 'Rule: H̄+5S < 500 & H̄-2S > 75';
+
+    if (_primerDropWeightController.text.isEmpty) {
+      _primerDropWeightController.text = defaultDropWeight.toStringAsFixed(1);
     }
 
     return Container(
@@ -8292,7 +8181,7 @@ class _EntryTabState extends State<EntryTab> {
                   Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 18.0),
                   SizedBox(width: 8.0),
                   Text(
-                    'Primer Sensitivity Test',
+                    'Primer Sensitivity Test (Drop Ball Method)',
                     style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                   ),
                 ],
@@ -8305,7 +8194,7 @@ class _EntryTabState extends State<EntryTab> {
                   border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
                 ),
                 child: Text(
-                  ruleBadgeText,
+                  'Spec: ${defaultDropWeight.toStringAsFixed(1)}g Ball',
                   style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -8338,11 +8227,39 @@ class _EntryTabState extends State<EntryTab> {
           _buildFormRow([
             _buildFlexibleField(
               flex: 1,
+              label: 'Drop Ball Weight (grams)',
+              child: _buildTextField(
+                controller: _primerDropWeightController,
+                readOnly: isLotPrimerLocked,
+                hint: 'e.g. 55.0 or 111.86',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (val) {
+                  _scheduleAutoSave();
+                  setState(() {});
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
               label: 'Total Test Rounds Recorded',
               child: _buildTextField(
                 controller: _producedController,
                 readOnly: isLotPrimerLocked,
                 hint: '50',
+                keyboardType: TextInputType.number,
+                onChanged: (val) {
+                  _scheduleAutoSave();
+                  setState(() {});
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Misfires Count',
+              child: _buildTextField(
+                controller: _primerMisfiresCountController,
+                readOnly: isLotPrimerLocked,
+                hint: '0',
                 keyboardType: TextInputType.number,
                 onChanged: (val) {
                   _scheduleAutoSave();
@@ -8414,7 +8331,7 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
-  Widget _buildQualityStatusField({int flex = 4}) {
+  Widget _buildQualityStatusField({int flex = 3}) {
     return Builder(
       builder: (context) {
         String? autoStatus;
@@ -8503,29 +8420,6 @@ class _EntryTabState extends State<EntryTab> {
           final l3 = int.tryParse(_functionLevel3Controller.text.trim()) ?? 0;
           final l4 = int.tryParse(_functionLevel4Controller.text.trim()) ?? 0;
           autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
-        } else if (_testName == 'Primer Sensitivity Test') {
-          final h = double.tryParse(_primerHbarController.text.trim());
-          final s = double.tryParse(_primerSDController.text.trim());
-          if (h != null && s != null) {
-            final plus5 = h + 5.0 * s;
-            final minus2 = h - 2.0 * s;
-            final calLower = _caliber.toLowerCase();
-            double maxPlus5 = 500.0;
-            if (calLower.contains('5.56') || calLower.contains('.223')) {
-              maxPlus5 = 450.0;
-            } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
-              maxPlus5 = 350.0;
-            } else if (calLower.contains('7.62') || calLower.contains('.308')) {
-              maxPlus5 = 500.0;
-            }
-            const minMinus2 = 75.0;
-
-            if (plus5 < maxPlus5 && minus2 > minMinus2) {
-              autoStatus = 'Approved';
-            } else {
-              autoStatus = 'Rejected';
-            }
-          }
         } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
           final epv = widget.adminRules['epvat'] ?? {};
           final bool threeSigmaEnabled = epv['enable_three_sigma_pressure'] == true;
@@ -8576,13 +8470,8 @@ class _EntryTabState extends State<EntryTab> {
             if (!rejected && customFormulas.isNotEmpty) {
               final vars = _getEpvatVariablesMap();
               for (final f in customFormulas) {
-                final res = EpvatFormulaHelper.evaluateFormulaItem(
-                  Map<String, dynamic>.from(f as Map),
-                  vars,
-                  defaultTemp: '21',
-                  activePressureUnit: _epvatPressureUnit,
-                );
-                if (!res.isPassed) {
+                final res = EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), vars, defaultTemp: '21');
+                if (res != null && !res.isPassed) {
                   rejected = true;
                   break;
                 }
@@ -8628,13 +8517,8 @@ class _EntryTabState extends State<EntryTab> {
                   : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim();
               final vars = _getEpvatVariablesMap();
               for (final f in customFormulas) {
-                final res = EpvatFormulaHelper.evaluateFormulaItem(
-                  Map<String, dynamic>.from(f as Map),
-                  vars,
-                  defaultTemp: defaultTemp,
-                  activePressureUnit: _epvatPressureUnit,
-                );
-                if (!res.isPassed) {
+                final res = EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), vars, defaultTemp: defaultTemp);
+                if (res != null && !res.isPassed) {
                   rejected = true;
                   break;
                 }
@@ -8683,14 +8567,13 @@ class _EntryTabState extends State<EntryTab> {
           child: DropdownButtonFormField<String>(
             value: _status,
             isExpanded: true,
-            isDense: true,
             dropdownColor: const Color(0xFF1E293B),
             icon: Icon(Icons.arrow_drop_down, color: statusTextColor),
-            style: TextStyle(color: statusTextColor, fontSize: 12.5, fontWeight: FontWeight.bold),
+            style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               filled: true,
               fillColor: statusBgColor,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide(color: statusBorderColor),
@@ -8704,35 +8587,6 @@ class _EntryTabState extends State<EntryTab> {
                 borderSide: BorderSide(color: statusBorderColor, width: 2.0),
               ),
             ),
-            selectedItemBuilder: (BuildContext context) {
-              return const ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(color: statusTextColor, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          s,
-                          style: TextStyle(
-                            color: statusTextColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }).toList();
-            },
             items: const ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
               Color itemColor = Colors.white;
               if (s == 'Approved') itemColor = const Color(0xFF34D399);
@@ -8750,7 +8604,13 @@ class _EntryTabState extends State<EntryTab> {
                       decoration: BoxDecoration(color: itemColor, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 8),
-                    Text(s, style: TextStyle(color: itemColor, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        s,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: itemColor, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -8846,7 +8706,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5',
           ),
         ),
-        _buildQualityStatusField(flex: 4),
+        _buildQualityStatusField(flex: 3),
       ], lockSingleRow: true);
     }
 
@@ -8910,7 +8770,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: 'e.g., 25',
           ),
         ),
-        _buildQualityStatusField(flex: 4),
+        _buildQualityStatusField(flex: 3),
       ], lockSingleRow: true);
     }
 
@@ -9234,7 +9094,7 @@ class _EntryTabState extends State<EntryTab> {
                 hint: 'e.g., 25',
               ),
             ),
-            _buildQualityStatusField(flex: 4),
+            _buildQualityStatusField(flex: 3),
           ], lockSingleRow: true),
         ],
       );
@@ -9307,7 +9167,7 @@ class _EntryTabState extends State<EntryTab> {
               },
             ),
           ),
-        _buildQualityStatusField(flex: 4),
+        _buildQualityStatusField(flex: 3),
       ], lockSingleRow: true);
     }
 
@@ -9364,7 +9224,7 @@ class _EntryTabState extends State<EntryTab> {
             ),
           ),
       ],
-      _buildQualityStatusField(flex: 4),
+      _buildQualityStatusField(flex: 3),
     ], lockSingleRow: true);
   }
 
@@ -9538,6 +9398,16 @@ class _EntryTabState extends State<EntryTab> {
                         ),
                       ),
                   ],
+                ),
+              ),
+              _buildFlexibleField(
+                flex: 1,
+                label: 'Primer Lot Number',
+                isRequired: true,
+                child: _buildTextField(
+                  controller: _primerLotController,
+                  hint: 'Type primer lot number (e.g., PR-2026-01)',
+                  onChanged: (_) => _scheduleAutoSave(),
                 ),
               ),
             ]),
