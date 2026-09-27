@@ -892,9 +892,11 @@ class StorageService {
     for (var r in records) {
       final bSn = r.barrelSN.trim().toLowerCase();
       final gSn = r.gp6Serial.trim().toLowerCase();
+      final s1 = r.epvatSensor1.trim().toLowerCase();
+      final s2 = r.epvatSensor2.trim().toLowerCase();
       final wSn = r.cyclicRateWeaponType.trim().toLowerCase();
       
-      if (bSn == cleanSerial || gSn == cleanSerial || wSn.contains(cleanSerial)) {
+      if (bSn == cleanSerial || gSn == cleanSerial || s1 == cleanSerial || s2 == cleanSerial || wSn.contains(cleanSerial)) {
         total += r.produced;
       }
     }
@@ -910,44 +912,83 @@ class StorageService {
     return counts;
   }
 
-  // Load Admin Rules (cloud-synced + local fallback)
+  // Load Admin Rules (cloud-synced + local fallback with smart merge)
   Future<Map<String, dynamic>> loadRules() async {
+    // 1. Load local rules first as baseline
+    Map<String, dynamic> localRules = {};
+    if (kIsWeb) {
+      localRules = getWebRules();
+    } else {
+      try {
+        final dirPath = await getDirectoryPath();
+        final file = File('$dirPath/admin_rules.json');
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          localRules = jsonDecode(content) as Map<String, dynamic>;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Fetch cloud rules if connected
     await SupabaseService.ensureInitialized();
     if (SupabaseService.isInitialized) {
       try {
         final cloudRules = await SupabaseService.fetchRulesFromCloud();
         if (cloudRules != null && cloudRules.isNotEmpty) {
+          final mergedRules = Map<String, dynamic>.from(cloudRules);
+
+          // Smart merge: preserve local custom_formulas if cloud is missing or empty
+          final localEpv = localRules['epvat'];
+          final cloudEpv = mergedRules['epvat'];
+          if (localEpv is Map && localEpv['custom_formulas'] is Map && (localEpv['custom_formulas'] as Map).isNotEmpty) {
+            final Map<String, dynamic> mergedFormulas = {};
+            // Start with local
+            (localEpv['custom_formulas'] as Map).forEach((k, v) {
+              if (v is List && v.isNotEmpty) mergedFormulas[k.toString()] = v;
+            });
+            // Overlay cloud if any
+            if (cloudEpv is Map && cloudEpv['custom_formulas'] is Map) {
+              (cloudEpv['custom_formulas'] as Map).forEach((k, v) {
+                if (v is List && v.isNotEmpty) mergedFormulas[k.toString()] = v;
+              });
+            }
+            if (cloudEpv is Map) {
+              final newCloudEpv = Map<String, dynamic>.from(cloudEpv);
+              newCloudEpv['custom_formulas'] = mergedFormulas;
+              mergedRules['epvat'] = newCloudEpv;
+            }
+          }
+
+          // Smart merge: preserve unified GP6 transducers
+          final localGp6 = localRules['gp6_transducers'];
+          if (localGp6 is List && localGp6.isNotEmpty && (mergedRules['gp6_transducers'] == null || (mergedRules['gp6_transducers'] as List).isEmpty)) {
+            mergedRules['gp6_transducers'] = localGp6;
+          }
+
           if (kIsWeb) {
-            saveWebRules(cloudRules);
+            saveWebRules(mergedRules);
           } else {
             try {
               final dirPath = await getDirectoryPath();
               final file = File('$dirPath/admin_rules.json');
-              await file.writeAsString(jsonEncode(cloudRules), mode: FileMode.write, flush: true);
+              await file.writeAsString(jsonEncode(mergedRules), mode: FileMode.write, flush: true);
             } catch (_) {}
           }
-          return cloudRules;
+          return mergedRules;
         }
       } catch (e) {
         print("Supabase load rules error: $e");
       }
     }
 
+    if (localRules.isNotEmpty) {
+      return localRules;
+    }
+
     if (kIsWeb) {
       return getWebRules();
     }
-    try {
-      final dirPath = await getDirectoryPath();
-      final file = File('$dirPath/admin_rules.json');
-      if (!await file.exists()) {
-        return {};
-      }
-      final content = await file.readAsString();
-      return jsonDecode(content) as Map<String, dynamic>;
-    } catch (e) {
-      print("Error loading admin rules: $e");
-      return {};
-    }
+    return {};
   }
 
   // Save Admin Rules (syncs to local and cloud)

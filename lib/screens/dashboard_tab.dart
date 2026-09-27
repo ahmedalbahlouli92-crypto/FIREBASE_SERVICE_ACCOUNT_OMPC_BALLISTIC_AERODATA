@@ -3005,24 +3005,13 @@ class _DashboardTabState extends State<DashboardTab> {
 
     if (choice == 'csv' || choice == 'excel') {
       final buffer = StringBuffer();
-      buffer.writeln('OMPC BALLISTIC AERODATA - TESTED CALIBER VOLUME REPORT');
-      buffer.writeln('Export Date,${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}');
-      buffer.writeln('Module,${widget.currentModule}');
-      buffer.writeln('Total Rounds Tested Across All Calibers,$totalVolume');
-      buffer.writeln('');
-      buffer.writeln('Caliber Specification,Tested Rounds,Volume Share (%),Total Inspections,Approved,Rejected,Retest');
+      buffer.writeln('Caliber,Quantity Used');
 
       for (final entry in sortedEntries) {
-        final cal = entry.key;
-        final count = entry.value;
-        final share = totalVolume > 0 ? ((count / totalVolume) * 100.0).toStringAsFixed(2) : '0.00';
-        final calRecords = effectiveRecords.where((r) => r.caliber.trim() == cal.trim()).toList();
-        final pass = calRecords.where((r) => r.status == 'Approved' || r.status == 'Approved with condition').length;
-        final rej = calRecords.where((r) => r.status == 'Rejected').length;
-        final ret = calRecords.where((r) => r.status == 'Retest').length;
-        final cleanCal = cal.replaceAll('"', '""');
-        buffer.writeln('"$cleanCal",$count,$share%,${calRecords.length},$pass,$rej,$ret');
+        final cleanCal = entry.key.replaceAll('"', '""');
+        buffer.writeln('"$cleanCal",${entry.value}');
       }
+      buffer.writeln('"Total",$totalVolume');
 
       final filename = 'ompc_caliber_volume_${DateTime.now().millisecondsSinceEpoch}.csv';
       await ReportHelper.instance.downloadCsv(content: buffer.toString(), filename: filename);
@@ -3037,15 +3026,13 @@ class _DashboardTabState extends State<DashboardTab> {
       return;
     }
 
-    // PDF / HTML Print preview
-    final caliberVolumeSvg = SvgChartGenerator.generateCaliberVolumeSvg(caliberCounts, width: 750, height: 260);
-
+    // PDF / HTML Print preview (Only Caliber and Quantity Used without extra data)
     final html = StringBuffer();
     html.writeln('''<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OMPC Ballistic AeroData - Tested Caliber Volume Report</title>
+  <title>OMPC Ballistic AeroData - Tested Caliber Volume</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -3055,10 +3042,10 @@ class _DashboardTabState extends State<DashboardTab> {
       background-color: #f8fafc;
     }
     .container {
-      max-width: 900px;
+      max-width: 650px;
       margin: 0 auto;
       background: #ffffff;
-      padding: 36px;
+      padding: 32px;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.06);
       border: 1px solid #e2e8f0;
@@ -3067,38 +3054,38 @@ class _DashboardTabState extends State<DashboardTab> {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 3px solid #4d99db;
-      padding-bottom: 16px;
-      margin-bottom: 24px;
+      border-bottom: 2px solid #4d99db;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
     }
     .header-title h1 {
       margin: 0;
-      font-size: 20px;
+      font-size: 18px;
       color: #0c2a4d;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .header-title p {
-      margin: 4px 0 0 0;
-      font-size: 13px;
+      margin: 3px 0 0 0;
+      font-size: 12px;
       color: #64748b;
     }
     .badge {
       background-color: #edf4fc;
       color: #1e6091;
       border: 1px solid #4d99db;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 11px;
       font-weight: 700;
     }
     .no-print {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       display: flex;
       gap: 10px;
     }
     .btn {
-      padding: 10px 18px;
+      padding: 8px 16px;
       border-radius: 6px;
       font-size: 13px;
       font-weight: bold;
@@ -3109,69 +3096,48 @@ class _DashboardTabState extends State<DashboardTab> {
       background-color: #4d99db;
       color: #ffffff;
     }
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-    .card {
-      background: #edf4fc;
-      border: 1px solid #cbe2f8;
-      border-radius: 8px;
-      padding: 14px 18px;
-    }
-    .card-label {
-      font-size: 11px;
-      color: #64748b;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-    .card-val {
-      font-size: 24px;
-      font-weight: bold;
-      color: #0c2a4d;
-      margin: 4px 0;
-    }
-    .chart-container {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 28px;
-      text-align: center;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 13px;
     }
     th {
       background: #edf4fc;
       color: #0c2a4d;
-      padding: 10px 12px;
+      padding: 10px 14px;
       border: 1px solid #cbd5e1;
       text-align: left;
       font-weight: 700;
+      font-size: 13px;
+    }
+    th.num {
+      text-align: right;
     }
     td {
-      padding: 9px 12px;
+      padding: 10px 14px;
       border: 1px solid #e2e8f0;
+      font-size: 13px;
+    }
+    td.num {
+      text-align: right;
+      font-family: monospace;
+      font-weight: bold;
+      color: #0c2a4d;
+      font-size: 13.5px;
     }
     tr:nth-child(even) {
       background-color: #f8fafc;
     }
-    .progress-bar-bg {
-      background: #e2e8f0;
-      border-radius: 4px;
-      height: 8px;
-      width: 100%;
-      overflow: hidden;
+    tr.total-row {
+      background-color: #e2e8f0 !important;
+      font-weight: bold;
+      border-top: 2px solid #94a3b8;
     }
-    .progress-bar-fill {
-      background: #4d99db;
-      height: 8px;
+    tr.total-row td {
+      font-size: 13.5px;
+      font-weight: bold;
+      color: #0c2a4d;
     }
     @media print {
       body {
@@ -3182,6 +3148,7 @@ class _DashboardTabState extends State<DashboardTab> {
         border: none;
         box-shadow: none;
         padding: 0;
+        max-width: 100%;
       }
       .no-print {
         display: none !important;
@@ -3197,43 +3164,16 @@ class _DashboardTabState extends State<DashboardTab> {
     <div class="header-bar">
       <div class="header-title">
         <h1>OMPC Ballistic AeroData</h1>
-        <p>Tested Caliber Volume Breakdown & Surveillance Report</p>
+        <p>Tested Caliber Volume</p>
       </div>
       <div class="badge">${widget.currentModule.toUpperCase()}</div>
     </div>
-    <div class="summary-grid">
-      <div class="card">
-        <div class="card-label">Total Rounds Evaluated</div>
-        <div class="card-val">$totalVolume</div>
-        <div style="font-size: 11px; color: #64748b;">Across all caliber variants</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Active Calibers</div>
-        <div class="card-val">${sortedEntries.where((e) => e.value > 0).length}</div>
-        <div style="font-size: 11px; color: #64748b;">With positive testing runs</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Leading Caliber Volume</div>
-        <div class="card-val" style="font-size: 18px;">${sortedEntries.isNotEmpty ? sortedEntries.first.key : 'N/A'}</div>
-        <div style="font-size: 11px; color: #64748b;">${sortedEntries.isNotEmpty ? '${sortedEntries.first.value} rounds' : ''}</div>
-      </div>
-    </div>
 
-    <h3 style="color: #0c2a4d; margin-bottom: 12px; font-size: 15px;">Volume Distribution Chart</h3>
-    <div class="chart-container">
-      $caliberVolumeSvg
-    </div>
-
-    <h3 style="color: #0c2a4d; margin-bottom: 12px; font-size: 15px;">Detailed Caliber Breakdown</h3>
     <table>
       <thead>
         <tr>
-          <th>Caliber Specification</th>
-          <th style="text-align: right;">Rounds Tested</th>
-          <th style="width: 140px;">Volume Share</th>
-          <th style="text-align: right;">% Share</th>
-          <th style="text-align: center;">Tests</th>
-          <th style="text-align: center;">Status (App/Rej/Ret)</th>
+          <th>Caliber</th>
+          <th class="num">Quantity Used</th>
         </tr>
       </thead>
       <tbody>''');
@@ -3241,36 +3181,23 @@ class _DashboardTabState extends State<DashboardTab> {
     for (final entry in sortedEntries) {
       final cal = entry.key;
       final count = entry.value;
-      final pct = totalVolume > 0 ? (count / totalVolume) * 100.0 : 0.0;
-      final calRecords = effectiveRecords.where((r) => r.caliber.trim() == cal.trim()).toList();
-      final pass = calRecords.where((r) => r.status == 'Approved' || r.status == 'Approved with condition').length;
-      final rej = calRecords.where((r) => r.status == 'Rejected').length;
-      final ret = calRecords.where((r) => r.status == 'Retest').length;
 
       html.writeln('''
         <tr>
           <td><strong>$cal</strong></td>
-          <td style="text-align: right; font-family: monospace; font-weight: bold; color: #0c2a4d;">$count</td>
-          <td>
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill" style="width: ${pct.clamp(0.0, 100.0)}%;"></div>
-            </div>
-          </td>
-          <td style="text-align: right; font-family: monospace; color: #1e6091; font-weight: bold;">${pct.toStringAsFixed(1)}%</td>
-          <td style="text-align: center; color: #64748b;">${calRecords.length}</td>
-          <td style="text-align: center;">
-            <span style="color: #10b981; font-weight: bold;">$pass</span> /
-            <span style="color: #ef4444; font-weight: bold;">$rej</span> /
-            <span style="color: #f59e0b; font-weight: bold;">$ret</span>
-          </td>
+          <td class="num">$count</td>
         </tr>''');
     }
 
     html.writeln('''
+        <tr class="total-row">
+          <td>Total</td>
+          <td class="num">$totalVolume</td>
+        </tr>
       </tbody>
     </table>
-    <div style="margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 14px;">
-      Generated automatically by OMPC Ballistic AeroData System • ${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())}
+    <div style="margin-top: 24px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+      OMPC Ballistic AeroData • ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}
     </div>
   </div>
 </body>

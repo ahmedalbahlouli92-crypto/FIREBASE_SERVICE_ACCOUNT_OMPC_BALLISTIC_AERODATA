@@ -165,15 +165,20 @@ class EpvatFormulaHelper {
     final String norm = normalizeFormula(originalFormula, defaultTemp: defaultTemp);
     String substituted = norm;
 
+    final Map<String, double> lowerVars = {};
+    for (final e in variables.entries) {
+      lowerVars[e.key.toLowerCase()] = e.value;
+    }
+
     // Sort variable keys by length descending to avoid partial replacement
-    final keys = variables.keys.toList()..sort((a, b) => b.length.compareTo(a.length));
+    final keys = lowerVars.keys.toList()..sort((a, b) => b.length.compareTo(a.length));
     for (final k in keys) {
-      if (substituted.contains(k)) {
-        final val = variables[k] ?? 0.0;
+      if (substituted.toLowerCase().contains(k)) {
+        final val = lowerVars[k] ?? 0.0;
         final valStr = val == val.roundToDouble() && !val.isNaN && !val.isInfinite
             ? val.toInt().toString()
             : val.toStringAsFixed(2);
-        substituted = substituted.replaceAll(k, valStr);
+        substituted = substituted.replaceAll(RegExp(RegExp.escape(k), caseSensitive: false), valStr);
       }
     }
 
@@ -303,6 +308,51 @@ class EpvatFormulaHelper {
     );
   }
 
+  /// Retrieves custom formulas for a given caliber with resilient matching.
+  /// Supports exact match ('5.56x45 SS109'), short code ('SS109'), case-insensitive matches,
+  /// and falls back to 'default' or standard defaults.
+  static List<Map<String, dynamic>> getFormulasForCaliber(
+    Map<String, dynamic> formulasMap,
+    String caliber, {
+    bool isThreeTemp = true,
+  }) {
+    if (formulasMap.isEmpty) {
+      return getDefaultFormulas(isThreeTemp: isThreeTemp);
+    }
+    // 1. Direct match
+    if (formulasMap.containsKey(caliber) && formulasMap[caliber] is List && (formulasMap[caliber] as List).isNotEmpty) {
+      return (formulasMap[caliber] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    // 2. Resilient substring / token match (e.g. SS109 <-> 5.56x45 SS109)
+    final calLower = caliber.toLowerCase().replaceAll(' ', '').trim();
+    for (final entry in formulasMap.entries) {
+      final keyLower = entry.key.toLowerCase().replaceAll(' ', '').trim();
+      if (entry.value is List && (entry.value as List).isNotEmpty) {
+        if (keyLower == calLower ||
+            (calLower.contains('ss109') && keyLower.contains('ss109')) ||
+            (calLower.contains('m193') && keyLower.contains('m193')) ||
+            (calLower.contains('m80') && keyLower.contains('m80')) ||
+            (calLower.contains('para') && keyLower.contains('para')) ||
+            (calLower.contains('luger') && keyLower.contains('luger')) ||
+            (calLower.contains('cmj') && keyLower.contains('cmj')) ||
+            (calLower.contains('m200') && keyLower.contains('m200')) ||
+            (calLower.contains('m82') && keyLower.contains('m82')) ||
+            (calLower.contains('69') && keyLower.contains('69')) ||
+            (calLower.contains('77') && keyLower.contains('77')) ||
+            (calLower.contains('55') && keyLower.contains('55')) ||
+            (calLower.contains('308') && keyLower.contains('308'))) {
+          return (entry.value as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+    }
+    // 3. Fallback to 'default' key if specified
+    if (formulasMap.containsKey('default') && formulasMap['default'] is List && (formulasMap['default'] as List).isNotEmpty) {
+      return (formulasMap['default'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    // 4. Return default NATO EPVAT formulas
+    return getDefaultFormulas(isThreeTemp: isThreeTemp);
+  }
+
   /// Returns standard default formulas if none are defined for the caliber
   static List<Map<String, dynamic>> getDefaultFormulas({bool isThreeTemp = true}) {
     if (!isThreeTemp) {
@@ -362,10 +412,16 @@ class EpvatFormulaHelper {
     ];
   }
 
+
   // --- Core Expression Parser ---
   static double _parseAndCompute(String expression, Map<String, double> variables) {
     String expr = expression.replaceAll(' ', '').toLowerCase();
     int index = 0;
+
+    final Map<String, double> lowerVars = {};
+    for (final e in variables.entries) {
+      lowerVars[e.key.toLowerCase()] = e.value;
+    }
 
     late double Function() parseExpression;
     late double Function() parseTerm;
@@ -431,7 +487,7 @@ class EpvatFormulaHelper {
         return sign * numVal;
       }
 
-      final varVal = variables[token] ?? 0.0;
+      final varVal = lowerVars[token] ?? 0.0;
       return sign * varVal;
     };
 

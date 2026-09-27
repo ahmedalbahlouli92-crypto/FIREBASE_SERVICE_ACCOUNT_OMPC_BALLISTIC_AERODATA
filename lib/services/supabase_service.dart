@@ -915,7 +915,7 @@ class SupabaseService {
     }
 
     // 5. GP6 Transducers
-    final gp6 = rules['gp6_serials'] ?? rules['gp_transducers']?['gp2'];
+    final gp6 = rules['gp6_transducers'] ?? rules['gp6_serials'] ?? rules['gp_transducers']?['gp2'];
     if (gp6 is List) {
       for (final t in gp6) {
         final sn = t.toString().trim();

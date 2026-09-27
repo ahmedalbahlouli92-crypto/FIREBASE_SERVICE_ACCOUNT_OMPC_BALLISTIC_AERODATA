@@ -440,6 +440,79 @@ final Map<String, dynamic> _defaultRules = {
     'enable_three_sigma_pressure': false,
     'enable_temp_velocity_delta': false,
     'temp_velocity_delta_max': 30.0,
+    // Custom sentencing calculations per caliber
+    'custom_formulas': {
+      '5.56x45 SS109': [
+        {
+          'name': 'P1 Max Individual (+21°C)',
+          'formula': 'P1_MAX_INDIVIDUAL',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': 'NATO STANAG 4172: Max individual chamber pressure at +21°C'
+        },
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': '3-Sigma Chamber Pressure at +21°C'
+        },
+        {
+          'name': 'P2 Port Mean - 3SD (+21°C)',
+          'formula': 'P2_MEAN - 3 * P2_SD',
+          'operator': '>=',
+          'limit': '180',
+          'unit': 'bar',
+          'description': 'Port pressure minimum 3-sigma bound at +21°C'
+        }
+      ],
+      'SS109': [
+        {
+          'name': 'P1 Max Individual (+21°C)',
+          'formula': 'P1_MAX_INDIVIDUAL',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': 'NATO STANAG 4172: Max individual chamber pressure at +21°C'
+        },
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': '3-Sigma Chamber Pressure at +21°C'
+        },
+        {
+          'name': 'P2 Port Mean - 3SD (+21°C)',
+          'formula': 'P2_MEAN - 3 * P2_SD',
+          'operator': '>=',
+          'limit': '180',
+          'unit': 'bar',
+          'description': 'Port pressure minimum 3-sigma bound at +21°C'
+        }
+      ],
+      'default': [
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': 'Statistical upper bound for chamber pressure at +21°C'
+        },
+        {
+          'name': 'P2 Mean - 3SD (+21°C)',
+          'formula': 'P2_MEAN - 3 * P2_SD',
+          'operator': '>=',
+          'limit': '180',
+          'unit': 'bar',
+          'description': 'Statistical lower bound for gas port pressure at +21°C'
+        }
+      ]
+    },
   },
   'cyclic_rate': {
     'weapons': [
@@ -508,10 +581,26 @@ final Map<String, dynamic> _defaultRules = {
     '9x19mm Match': ['EPV-9MM-01', 'EPVAT-B-203'],
     '9x19mm 124 grains CMJ': ['EPV-9MM-01', 'EPVAT-B-203'],
   },
+  'gp6_transducers': [
+    'GP6-001 (PCB 119B)',
+    'GP6-002 (PCB 119B)',
+    'GP6-003 (Kistler 6215)',
+    'GP6-Kistler-8801',
+    'GP6-Kistler-8802',
+    'GP6-PCB-9901',
+  ],
+  'gp1_transducers': [
+    'GP6-001 (PCB 119B)',
+    'GP6-002 (PCB 119B)',
+    'GP6-003 (Kistler 6215)',
+    'GP6-Kistler-8801',
+    'GP6-Kistler-8802',
+    'GP6-PCB-9901',
+  ],
   'gp6_serials': [
-    'GP2-001 (PCB 119B)',
-    'GP2-002 (PCB 119B)',
-    'GP2-003 (Kistler 6215)',
+    'GP6-001 (PCB 119B)',
+    'GP6-002 (PCB 119B)',
+    'GP6-003 (Kistler 6215)',
     'GP6-Kistler-8801',
     'GP6-Kistler-8802',
     'GP6-PCB-9901',
@@ -1011,6 +1100,13 @@ class _MainShellState extends State<MainShell> {
   String _ruleSelectedGPType = 'GP1'; // 'GP1' or 'GP2'
   final TextEditingController _ruleNewGPTransducerCtrl = TextEditingController();
 
+  // EPVAT Custom Formula Registration controllers
+  final TextEditingController _ruleNewFormulaNameCtrl = TextEditingController();
+  final TextEditingController _ruleNewFormulaExprCtrl = TextEditingController();
+  final TextEditingController _ruleNewFormulaLimitCtrl = TextEditingController();
+  final TextEditingController _ruleNewFormulaUnitCtrl = TextEditingController(text: 'bar');
+  String _ruleNewFormulaOperator = '<=';
+
   // Weapons rule controllers
   final TextEditingController _ruleNewWeaponNameCtrl = TextEditingController();
   String _ruleNewWeaponType = 'Loose'; // 'Loose' or 'Linked'
@@ -1154,6 +1250,11 @@ class _MainShellState extends State<MainShell> {
     _newPropellantCodeCtrl.dispose();
     _newWeaponTypeInputCtrl.dispose();
     _newWeaponSerialInputCtrl.dispose();
+    
+    _ruleNewFormulaNameCtrl.dispose();
+    _ruleNewFormulaExprCtrl.dispose();
+    _ruleNewFormulaLimitCtrl.dispose();
+    _ruleNewFormulaUnitCtrl.dispose();
     
     super.dispose();
   }
@@ -1533,8 +1634,17 @@ class _MainShellState extends State<MainShell> {
         activeRules['epvat'] = Map<String, dynamic>.from(_defaultRules['epvat']);
       } else {
         final epv = Map<String, dynamic>.from(activeRules['epvat'] as Map);
-        if (epv['custom_formulas'] == null) {
-          epv['custom_formulas'] = <String, dynamic>{};
+        final defaultFormulas = Map<String, dynamic>.from(_defaultRules['epvat']['custom_formulas'] ?? {});
+        if (epv['custom_formulas'] == null || (epv['custom_formulas'] is Map && (epv['custom_formulas'] as Map).isEmpty)) {
+          epv['custom_formulas'] = defaultFormulas;
+        } else if (epv['custom_formulas'] is Map) {
+          final curFormulas = Map<String, dynamic>.from(epv['custom_formulas'] as Map);
+          defaultFormulas.forEach((k, v) {
+            if (!curFormulas.containsKey(k) || (curFormulas[k] is List && (curFormulas[k] as List).isEmpty)) {
+              curFormulas[k] = v;
+            }
+          });
+          epv['custom_formulas'] = curFormulas;
         }
         if (epv['bullet_mass_grams'] == null) {
           epv['bullet_mass_grams'] = Map<String, dynamic>.from(_defaultRules['epvat']['bullet_mass_grams']);
@@ -1677,17 +1787,6 @@ class _MainShellState extends State<MainShell> {
       } else {
         activeRules['propellant_supplier_codes'] = Map<String, dynamic>.from(activeRules['propellant_supplier_codes'] as Map);
       }
-      if (activeRules['gp1_transducers'] == null) {
-        final gp1List = activeRules['gp_transducers']?['gp1'];
-        if (gp1List is List && gp1List.isNotEmpty) {
-          activeRules['gp1_transducers'] = List<String>.from(gp1List);
-        } else {
-          activeRules['gp1_transducers'] = ['GP1-001 (PCB 119B)', 'GP1-002 (PCB 119B)', 'GP1-003', 'GP1-004'];
-        }
-      } else {
-        activeRules['gp1_transducers'] = List<String>.from(activeRules['gp1_transducers'] as List);
-      }
-
       // Cross-populate and synchronize equipment fleets across all keys:
       // 1. Cross-populate Barrels
       final barrelNumbers = List<String>.from(activeRules['barrel_serial_numbers'] as List? ?? []);
@@ -1707,30 +1806,44 @@ class _MainShellState extends State<MainShell> {
       activeRules['accuracy_barrels'] = accBarrels;
       activeRules['epvat_barrels'] = epvBarrels;
 
-      // 2. Cross-populate GP1 & GP2 Transducers
-      final gpMap = Map<String, dynamic>.from(activeRules['gp_transducers'] as Map? ?? {});
-      final gp1List = List<String>.from(activeRules['gp1_transducers'] as List? ?? []);
-      final gp1Internal = List<String>.from(gpMap['gp1'] as List? ?? []);
-      for (final s in gp1List) {
-        if (!gp1Internal.contains(s)) gp1Internal.add(s);
+      // 2. Cross-populate & Unify GP6 Transducers (admin registers all in one pool, operator chooses GP6 (1) and GP6 (2))
+      final Set<String> unifiedGp6 = {};
+      final rawGp6Transducers = activeRules['gp6_transducers'];
+      if (rawGp6Transducers is List) {
+        for (final e in rawGp6Transducers) {
+          final s = e.toString().trim();
+          if (s.isNotEmpty) unifiedGp6.add(s);
+        }
       }
-      for (final s in gp1Internal) {
-        if (!gp1List.contains(s)) gp1List.add(s);
+      for (final key in ['gp1_transducers', 'gp6_serials']) {
+        final list = activeRules[key];
+        if (list is List) {
+          for (final e in list) {
+            final s = e.toString().trim();
+            if (s.isNotEmpty) unifiedGp6.add(s);
+          }
+        }
       }
-      activeRules['gp1_transducers'] = gp1List;
-      gpMap['gp1'] = gp1Internal;
-
-      final gp6List = List<String>.from(activeRules['gp6_serials'] as List? ?? []);
-      final gp2Internal = List<String>.from(gpMap['gp2'] as List? ?? []);
-      for (final s in gp6List) {
-        if (!gp2Internal.contains(s)) gp2Internal.add(s);
+      final rawGpMap = activeRules['gp_transducers'];
+      if (rawGpMap is Map) {
+        for (final sub in ['gp1', 'gp2']) {
+          final list = rawGpMap[sub];
+          if (list is List) {
+            for (final e in list) {
+              final s = e.toString().trim();
+              if (s.isNotEmpty) unifiedGp6.add(s);
+            }
+          }
+        }
       }
-      for (final s in gp2Internal) {
-        if (!gp6List.contains(s)) gp6List.add(s);
+      if (unifiedGp6.isEmpty) {
+        unifiedGp6.addAll(['GP6-001 (PCB 119B)', 'GP6-002 (PCB 119B)', 'GP6-003 (Kistler 6215)', 'GP6-Kistler-8801']);
       }
-      activeRules['gp6_serials'] = gp6List;
-      gpMap['gp2'] = gp2Internal;
-      activeRules['gp_transducers'] = gpMap;
+      final unifiedGp6List = unifiedGp6.toList();
+      activeRules['gp6_transducers'] = unifiedGp6List;
+      activeRules['gp1_transducers'] = unifiedGp6List;
+      activeRules['gp6_serials'] = unifiedGp6List;
+      activeRules['gp_transducers'] = {'gp1': unifiedGp6List, 'gp2': unifiedGp6List};
 
       // 3. Cross-populate Weapons across weapons, function_test, and cyclic_rate
       final fleetWeapons = List<Map<String, dynamic>>.from(
@@ -4174,8 +4287,13 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 18.0),
 
-            // 2. GP1 (CHAMBER) TRANSDUCER SERIAL NUMBERS
-            _buildAssetCategoryHeader('GP1 (Chamber) Transducer Serial Numbers (EPVAT)', Icons.speed_rounded, const Color(0xFF06B6D4)),
+            // 2. GP6 TRANSDUCER SERIAL NUMBERS (EPVAT CHAMBER & PORT)
+            _buildAssetCategoryHeader('GP6 Transducer Serial Numbers (Unified Chamber & Port Sensors)', Icons.sensors_rounded, const Color(0xFF06B6D4)),
+            const SizedBox(height: 4.0),
+            const Text(
+              'Register all GP6 piezoelectric transducers here in one field. In the test entry module, operators will select which sensor is mounted as GP6 (1) Chamber and GP6 (2) Port.',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
+            ),
             const SizedBox(height: 8.0),
             Row(
               children: [
@@ -4184,7 +4302,7 @@ class _MainShellState extends State<MainShell> {
                     controller: _newGP1TransducerCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
                     decoration: InputDecoration(
-                      hintText: 'GP1 Serial (e.g., GP1-PCB-119B)',
+                      hintText: 'GP6 Transducer S.N. (e.g., GP6-001, PCB 119B SN#4120)',
                       hintStyle: const TextStyle(color: Color(0xFF64748B)),
                       filled: true,
                       fillColor: const Color(0xFF2C415E),
@@ -4200,18 +4318,35 @@ class _MainShellState extends State<MainShell> {
                   onPressed: () async {
                     final serial = _newGP1TransducerCtrl.text.trim();
                     if (serial.isEmpty) return;
+                    
+                    final gp6Transducers = List<String>.from(_adminRules['gp6_transducers'] as List<dynamic>? ?? []);
+                    if (!gp6Transducers.contains(serial)) {
+                      gp6Transducers.add(serial);
+                      _adminRules['gp6_transducers'] = gp6Transducers;
+                    }
                     final list = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
                     if (!list.contains(serial)) {
                       list.add(serial);
                       _adminRules['gp1_transducers'] = list;
+                    }
+                    final list2 = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
+                    if (!list2.contains(serial)) {
+                      list2.add(serial);
+                      _adminRules['gp6_serials'] = list2;
                     }
                     final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
                     final gp1Internal = List<String>.from(gpMap['gp1'] as List<dynamic>? ?? []);
                     if (!gp1Internal.contains(serial)) {
                       gp1Internal.add(serial);
                       gpMap['gp1'] = gp1Internal;
-                      _adminRules['gp_transducers'] = gpMap;
                     }
+                    final gp2Internal = List<String>.from(gpMap['gp2'] as List<dynamic>? ?? []);
+                    if (!gp2Internal.contains(serial)) {
+                      gp2Internal.add(serial);
+                      gpMap['gp2'] = gp2Internal;
+                    }
+                    _adminRules['gp_transducers'] = gpMap;
+
                     await _storageService.saveRules(_adminRules);
                     setState(() {
                       _adminRules = Map<String, dynamic>.from(_adminRules);
@@ -4222,118 +4357,78 @@ class _MainShellState extends State<MainShell> {
                     backgroundColor: const Color(0xFF06B6D4),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
                   ),
-                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text('Add Sensor', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
             const SizedBox(height: 8.0),
-            _buildAssetItemList(
-              items: gp1List.map((sn) {
-                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
-                return {
-                  'label': sn,
-                  'serial': sn,
-                  'rounds': rounds,
-                  'category': 'GP1 (Chamber)',
-                };
-              }).toList(),
-              accentColor: const Color(0xFF06B6D4),
-              onDelete: (item) async {
-                final sn = item['serial'] as String;
-                gp1List.remove(sn);
-                _adminRules['gp1_transducers'] = gp1List;
-                final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
-                final gp1Internal = List<String>.from(gpMap['gp1'] as List<dynamic>? ?? []);
-                gp1Internal.remove(sn);
-                gpMap['gp1'] = gp1Internal;
-                _adminRules['gp_transducers'] = gpMap;
-                await _storageService.saveRules(_adminRules);
-                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-              },
-            ),
-            const SizedBox(height: 18.0),
+            Builder(builder: (context) {
+              final Set<String> allSensors = {};
+              for (final k in ['gp6_transducers', 'gp1_transducers', 'gp6_serials']) {
+                final l = _adminRules[k];
+                if (l is List) {
+                  for (final item in l) {
+                    final s = item.toString().trim();
+                    if (s.isNotEmpty) allSensors.add(s);
+                  }
+                }
+              }
+              final gpMap = _adminRules['gp_transducers'];
+              if (gpMap is Map) {
+                for (final sub in ['gp1', 'gp2']) {
+                  final l = gpMap[sub];
+                  if (l is List) {
+                    for (final item in l) {
+                      final s = item.toString().trim();
+                      if (s.isNotEmpty) allSensors.add(s);
+                    }
+                  }
+                }
+              }
+              final sensorList = allSensors.toList();
 
-            // 3. GP2 (PORT) TRANSDUCER SERIAL NUMBERS
-            _buildAssetCategoryHeader('GP2 (Port) Transducer Serial Numbers (EPVAT)', Icons.sensors_rounded, const Color(0xFF10B981)),
-            const SizedBox(height: 8.0),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _newGP6SerialCtrl,
-                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
-                    decoration: InputDecoration(
-                      hintText: 'GP2 Serial (e.g., GP2-PCB-9901)',
-                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                      filled: true,
-                      fillColor: const Color(0xFF2C415E),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF10B981))),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-                ElevatedButton(
-                  onPressed: () async {
-                    final serial = _newGP6SerialCtrl.text.trim();
-                    if (serial.isEmpty) return;
-                    final list = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
-                    if (!list.contains(serial)) {
-                      list.add(serial);
-                      _adminRules['gp6_serials'] = list;
-                    }
-                    final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
-                    final gp2Internal = List<String>.from(gpMap['gp2'] as List<dynamic>? ?? []);
-                    if (!gp2Internal.contains(serial)) {
-                      gp2Internal.add(serial);
-                      gpMap['gp2'] = gp2Internal;
-                      _adminRules['gp_transducers'] = gpMap;
-                    }
-                    await _storageService.saveRules(_adminRules);
-                    setState(() {
-                      _adminRules = Map<String, dynamic>.from(_adminRules);
-                      _newGP6SerialCtrl.clear();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                  ),
-                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8.0),
-            _buildAssetItemList(
-              items: gp6List.map((sn) {
-                final rounds = _storageService.calculateAssetRounds(allRecords, sn);
-                return {
-                  'label': sn,
-                  'serial': sn,
-                  'rounds': rounds,
-                  'category': 'GP2 (Port)',
-                };
-              }).toList(),
-              accentColor: const Color(0xFF10B981),
-              onDelete: (item) async {
-                final sn = item['serial'] as String;
-                gp6List.remove(sn);
-                _adminRules['gp6_serials'] = gp6List;
-                final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
-                final gp2Internal = List<String>.from(gpMap['gp2'] as List<dynamic>? ?? []);
-                gp2Internal.remove(sn);
-                gpMap['gp2'] = gp2Internal;
-                _adminRules['gp_transducers'] = gpMap;
-                await _storageService.saveRules(_adminRules);
-                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-              },
-            ),
+              return _buildAssetItemList(
+                items: sensorList.map((sn) {
+                  final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                  return {
+                    'label': sn,
+                    'serial': sn,
+                    'rounds': rounds,
+                    'category': 'GP6 Transducer',
+                  };
+                }).toList(),
+                accentColor: const Color(0xFF06B6D4),
+                onDelete: (item) async {
+                  final sn = item['serial'] as String;
+                  
+                  final gp6Transducers = List<String>.from(_adminRules['gp6_transducers'] as List<dynamic>? ?? []);
+                  gp6Transducers.remove(sn);
+                  _adminRules['gp6_transducers'] = gp6Transducers;
+
+                  final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
+                  gp1List.remove(sn);
+                  _adminRules['gp1_transducers'] = gp1List;
+
+                  final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
+                  gp6List.remove(sn);
+                  _adminRules['gp6_serials'] = gp6List;
+
+                  final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
+                  final gp1Internal = List<String>.from(gpMap['gp1'] as List<dynamic>? ?? []);
+                  gp1Internal.remove(sn);
+                  gpMap['gp1'] = gp1Internal;
+                  final gp2Internal = List<String>.from(gpMap['gp2'] as List<dynamic>? ?? []);
+                  gp2Internal.remove(sn);
+                  gpMap['gp2'] = gp2Internal;
+                  _adminRules['gp_transducers'] = gpMap;
+
+                  await _storageService.saveRules(_adminRules);
+                  setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+                },
+              );
+            }),
             const SizedBox(height: 18.0),
 
             // 4. EPVAT BARREL TEST SERIALS
@@ -5047,7 +5142,7 @@ class _MainShellState extends State<MainShell> {
                   'Primer Sensitivity Test',
                   'Function Test',
                   'Firing Rate Cycle Test',
-                  'GP Transducers (GP1 & GP2)',
+                  'GP6 Transducers (EPVAT)',
                   'Barrels',
                   'Weapons',
                 ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -5060,6 +5155,7 @@ class _MainShellState extends State<MainShell> {
             final bool isCaliberAware = _selectedRuleTest != 'Firing Rate Cycle Test' &&
                 _selectedRuleTest != 'Barrel Serial Numbers' &&
                 _selectedRuleTest != 'Barrels' &&
+                _selectedRuleTest != 'GP6 Transducers (EPVAT)' &&
                 _selectedRuleTest != 'GP Transducers (GP1 & GP2)' &&
                 _selectedRuleTest != 'Weapons';
             if (!isCaliberAware) return const SizedBox.shrink();
@@ -5349,6 +5445,36 @@ class _MainShellState extends State<MainShell> {
               final formulasMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
               final list = List<dynamic>.from(formulasMap[_ruleSelectedCaliber] ?? []);
               
+              Future<void> saveFormulas(Map<String, dynamic> newMap, {String? feedback}) async {
+                if (_ruleSelectedCaliber == '5.56x45 SS109' || _ruleSelectedCaliber == 'SS109') {
+                  final curVal = newMap[_ruleSelectedCaliber];
+                  newMap['5.56x45 SS109'] = curVal;
+                  newMap['SS109'] = curVal;
+                }
+                _adminRules['epvat']?['custom_formulas'] = newMap;
+                await _storageService.saveRules(_adminRules);
+                if (context.mounted) {
+                  setState(() {
+                    _adminRules = Map<String, dynamic>.from(_adminRules);
+                  });
+                  if (feedback != null && feedback.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(feedback)),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF10B981),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                }
+              }
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -5358,122 +5484,357 @@ class _MainShellState extends State<MainShell> {
                     runSpacing: 8,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                            newMap[_ruleSelectedCaliber] = EpvatFormulaHelper.getDefaultFormulas();
-                            _adminRules['epvat']?['custom_formulas'] = newMap;
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Standard EPVAT formulas added for selected caliber.')),
-                          );
+                        onPressed: () async {
+                          final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
+                          newMap[_ruleSelectedCaliber] = EpvatFormulaHelper.getDefaultFormulas();
+                          await saveFormulas(newMap, feedback: 'Standard EPVAT preset formulas registered and saved for $_ruleSelectedCaliber.');
                         },
-                        icon: const Icon(Icons.playlist_add_check, size: 14),
-                        label: const Text('Load Standard Presets', style: TextStyle(fontSize: 11.5)),
+                        icon: const Icon(Icons.playlist_add_check, size: 15),
+                        label: const Text('Load Standard Presets', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0284C7),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                         ),
                       ),
                       ActionChip(
-                        avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
+                        avatar: const Icon(Icons.add_task, size: 14, color: Color(0xFF38BDF8)),
                         label: const Text('P1 Mean + 3SD (+21°C)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
                         backgroundColor: const Color(0xFF2C415E),
                         side: const BorderSide(color: Color(0xFF1E3A8A)),
                         onPressed: () {
-                          setState(() {
-                            final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                            final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                            curList.add({
-                              'name': 'P1 3-Sigma (+21°C)',
-                              'formula': 'P1 Mean @ 21 + 3 * P1 SD @ 21',
-                              'operator': '<=',
-                              'limit': '3800',
-                              'unit': 'bar',
-                            });
-                            newMap[_ruleSelectedCaliber] = curList;
-                            _adminRules['epvat']?['custom_formulas'] = newMap;
-                          });
+                          _ruleNewFormulaNameCtrl.text = 'P1 3-Sigma (+21°C)';
+                          _ruleNewFormulaExprCtrl.text = 'P1_MEAN + 3 * P1_SD';
+                          _ruleNewFormulaOperator = '<=';
+                          _ruleNewFormulaLimitCtrl.text = '4200';
+                          _ruleNewFormulaUnitCtrl.text = 'bar';
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Preset loaded into registration form below. Click "Register & Save" to confirm.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                         },
                       ),
                       ActionChip(
-                        avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
+                        avatar: const Icon(Icons.add_task, size: 14, color: Color(0xFF38BDF8)),
                         label: const Text('P1 Delta (|21°C - 52°C|)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
                         backgroundColor: const Color(0xFF2C415E),
                         side: const BorderSide(color: Color(0xFF1E3A8A)),
                         onPressed: () {
-                          setState(() {
-                            final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                            final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                            curList.add({
-                              'name': 'P1 Difference (+21°C vs +52°C)',
-                              'formula': 'abs(P1 Mean @ 21 - P1 Mean @ 52)',
-                              'operator': '<=',
-                              'limit': '450',
-                              'unit': 'bar',
-                            });
-                            newMap[_ruleSelectedCaliber] = curList;
-                            _adminRules['epvat']?['custom_formulas'] = newMap;
-                          });
+                          _ruleNewFormulaNameCtrl.text = 'P1 Difference (+21°C vs +52°C)';
+                          _ruleNewFormulaExprCtrl.text = 'abs(P1_MEAN_21 - P1_MEAN_52)';
+                          _ruleNewFormulaOperator = '<=';
+                          _ruleNewFormulaLimitCtrl.text = '450';
+                          _ruleNewFormulaUnitCtrl.text = 'bar';
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Preset loaded into registration form below. Click "Register & Save" to confirm.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                         },
                       ),
                       ActionChip(
-                        avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
+                        avatar: const Icon(Icons.add_task, size: 14, color: Color(0xFF38BDF8)),
                         label: const Text('Velocity Delta (|21°C - 52°C|)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
                         backgroundColor: const Color(0xFF2C415E),
                         side: const BorderSide(color: Color(0xFF1E3A8A)),
                         onPressed: () {
-                          setState(() {
-                            final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                            final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                            curList.add({
-                              'name': 'Velocity Delta (+21°C vs +52°C)',
-                              'formula': 'abs(Vel Mean @ 21 - Vel Mean @ 52)',
-                              'operator': '<=',
-                              'limit': '30',
-                              'unit': 'm/s',
-                            });
-                            newMap[_ruleSelectedCaliber] = curList;
-                            _adminRules['epvat']?['custom_formulas'] = newMap;
-                          });
+                          _ruleNewFormulaNameCtrl.text = 'Velocity Delta (+21°C vs +52°C)';
+                          _ruleNewFormulaExprCtrl.text = 'abs(VEL_MEAN_21 - VEL_MEAN_52)';
+                          _ruleNewFormulaOperator = '<=';
+                          _ruleNewFormulaLimitCtrl.text = '30';
+                          _ruleNewFormulaUnitCtrl.text = 'm/s';
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Preset loaded into registration form below. Click "Register & Save" to confirm.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                         },
                       ),
                       ActionChip(
-                        avatar: const Icon(Icons.add, size: 14, color: Color(0xFF38BDF8)),
-                        label: const Text('Velocity Delta (±30 m/s)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
+                        avatar: const Icon(Icons.add_task, size: 14, color: Color(0xFF38BDF8)),
+                        label: const Text('Velocity Tolerance (±30 m/s)', style: TextStyle(fontSize: 11.0, color: Colors.white)),
                         backgroundColor: const Color(0xFF2C415E),
                         side: const BorderSide(color: Color(0xFF1E3A8A)),
                         onPressed: () {
-                          setState(() {
-                            final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                            final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                            curList.add({
-                              'name': 'Velocity Tolerance (+21°C vs +52°C)',
-                              'formula': 'abs(Vel Mean @ 21 - Vel Mean @ 52)',
-                              'operator': '±',
-                              'limit': '30',
-                              'unit': 'm/s',
-                            });
-                            newMap[_ruleSelectedCaliber] = curList;
-                            _adminRules['epvat']?['custom_formulas'] = newMap;
-                          });
+                          _ruleNewFormulaNameCtrl.text = 'Velocity Tolerance (+21°C vs +52°C)';
+                          _ruleNewFormulaExprCtrl.text = 'abs(VEL_MEAN_21 - VEL_MEAN_52)';
+                          _ruleNewFormulaOperator = '±';
+                          _ruleNewFormulaLimitCtrl.text = '30';
+                          _ruleNewFormulaUnitCtrl.text = 'm/s';
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Preset loaded into registration form below. Click "Register & Save" to confirm.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                         },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14.0),
+                  const SizedBox(height: 16.0),
+
+                  // Dedicated Register New Formula Box with persistent controllers (prevents auto-closing / focus drops)
+                  Container(
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF23364F),
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.add_circle_outline, color: Color(0xFF06B6D4), size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Register New Formula for $_ruleSelectedCaliber',
+                              style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12.0),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Formula Name
+                            Expanded(
+                              flex: 5,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Rule / Check Name', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: _ruleNewFormulaNameCtrl,
+                                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                    decoration: _getFormulaFieldDecoration(hint: 'e.g., P1 3-Sigma Upper Bound'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Formula Expression
+                            Expanded(
+                              flex: 6,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Formula Expression', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: _ruleNewFormulaExprCtrl,
+                                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                                    decoration: _getFormulaFieldDecoration(hint: 'e.g., P1_MEAN + 3 * P1_SD'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Operator
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Operator', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    height: 38,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2C415E),
+                                      borderRadius: BorderRadius.circular(6.0),
+                                      border: Border.all(color: const Color(0xFF1E3A8A)),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _ruleNewFormulaOperator,
+                                        isExpanded: true,
+                                        dropdownColor: const Color(0xFF344D6E),
+                                        style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+                                        onChanged: (val) {
+                                          if (val != null) {
+                                            setState(() => _ruleNewFormulaOperator = val);
+                                          }
+                                        },
+                                        items: ['<=', '>=', '<', '>', '==', '±'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Limit
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Limit', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: _ruleNewFormulaLimitCtrl,
+                                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                                    decoration: _getFormulaFieldDecoration(hint: '4200'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Unit
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Unit', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: _ruleNewFormulaUnitCtrl,
+                                    style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                                    decoration: _getFormulaFieldDecoration(hint: 'bar'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        // Quick variable tags
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text('Quick Tokens:', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.5)),
+                            ...['P1_MEAN', 'P1_SD', 'P1_MAX_INDIVIDUAL', 'P2_MEAN', 'P2_SD', 'VEL_MEAN', 'VEL_SD'].map((token) => InkWell(
+                              onTap: () {
+                                final current = _ruleNewFormulaExprCtrl.text;
+                                if (current.isEmpty) {
+                                  _ruleNewFormulaExprCtrl.text = token;
+                                } else {
+                                  _ruleNewFormulaExprCtrl.text = '$current $token';
+                                }
+                                _ruleNewFormulaExprCtrl.selection = TextSelection.fromPosition(
+                                  TextPosition(offset: _ruleNewFormulaExprCtrl.text.length),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(4),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                ),
+                                child: Text(token, style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontFamily: 'JetBrainsMono')),
+                              ),
+                            )),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final name = _ruleNewFormulaNameCtrl.text.trim();
+                                final expr = _ruleNewFormulaExprCtrl.text.trim();
+                                final limit = _ruleNewFormulaLimitCtrl.text.trim();
+                                final unit = _ruleNewFormulaUnitCtrl.text.trim();
+                                
+                                if (name.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please enter a Rule / Check Name.'), backgroundColor: Colors.red),
+                                  );
+                                  return;
+                                }
+                                if (expr.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please enter a Formula Expression.'), backgroundColor: Colors.red),
+                                  );
+                                  return;
+                                }
+                                
+                                final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
+                                final curList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
+                                curList.add({
+                                  'name': name,
+                                  'formula': expr,
+                                  'operator': _ruleNewFormulaOperator,
+                                  'limit': limit.isEmpty ? '0' : limit,
+                                  'unit': unit.isEmpty ? (expr.toLowerCase().contains('vel') ? 'm/s' : 'bar') : unit,
+                                  'description': 'Custom rule for $_ruleSelectedCaliber',
+                                });
+                                newMap[_ruleSelectedCaliber] = curList;
+
+                                await saveFormulas(newMap, feedback: 'Formula "$name" registered and saved successfully for $_ruleSelectedCaliber.');
+                                
+                                _ruleNewFormulaNameCtrl.clear();
+                                _ruleNewFormulaExprCtrl.clear();
+                                _ruleNewFormulaLimitCtrl.clear();
+                              },
+                              icon: const Icon(Icons.check_circle_outline, size: 16),
+                              label: Text('Register & Save Formula for $_ruleSelectedCaliber', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18.0),
+
+                  // Header for existing registered formulas
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Registered Formulas for $_ruleSelectedCaliber (${list.length})',
+                        style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8.0),
+
                   if (list.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12.0),
-                      child: Text('No custom sentencing calculations defined for this caliber. Click "Load Standard Presets" or "+ Add Formula" below.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0, fontStyle: FontStyle.italic)),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(color: Colors.white.withOpacity(0.04)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'No custom formulas registered yet for $_ruleSelectedCaliber. Use the form above or click "Load Standard Presets".',
+                          style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0, fontStyle: FontStyle.italic),
+                        ),
+                      ),
                     )
                   else ...[
                     Row(
                       children: const [
                         Expanded(flex: 3, child: Text('Rule / Check Name', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                        Expanded(flex: 4, child: Text('Adjustable Formula Expression', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                        Expanded(flex: 4, child: Text('Formula Expression', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                         Expanded(flex: 2, child: Text('Operator', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                         Expanded(flex: 2, child: Text('Limit', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                         Expanded(flex: 1, child: Text('Unit', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
@@ -5484,158 +5845,88 @@ class _MainShellState extends State<MainShell> {
                     ...List.generate(list.length, (i) {
                       final item = Map<String, dynamic>.from(list[i] as Map);
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                initialValue: item['name'] ?? '',
-                                key: ValueKey('name_${_ruleSelectedCaliber}_$i'),
-                                style: const TextStyle(color: Colors.white, fontSize: 12.0),
-                                decoration: _getFormulaFieldDecoration(),
-                                onChanged: (val) {
-                                  final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                                  final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                  final innerMap = Map<String, dynamic>.from(newList[i] as Map);
-                                  innerMap['name'] = val;
-                                  newList[i] = innerMap;
-                                  newMap[_ruleSelectedCaliber] = newList;
-                                  _adminRules['epvat']?['custom_formulas'] = newMap;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              flex: 4,
-                              child: TextFormField(
-                                initialValue: item['formula'] ?? '',
-                                key: ValueKey('formula_${_ruleSelectedCaliber}_$i'),
-                                style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
-                                decoration: _getFormulaFieldDecoration(),
-                                onChanged: (val) {
-                                  final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                                  final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                  final innerMap = Map<String, dynamic>.from(newList[i] as Map);
-                                  innerMap['formula'] = val;
-                                  newList[i] = innerMap;
-                                  newMap[_ruleSelectedCaliber] = newList;
-                                  _adminRules['epvat']?['custom_formulas'] = newMap;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              flex: 2,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2C415E),
-                                  borderRadius: BorderRadius.circular(4.0),
-                                  border: Border.all(color: const Color(0xFF1E3A8A)),
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6.0),
+                            border: Border.all(color: Colors.white.withOpacity(0.04)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  item['name'] ?? '',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.w600),
                                 ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: (['<=', '>=', '<', '>', '==', '±'].contains(item['operator']))
-                                        ? item['operator']
-                                        : (item['operator'] == '+/-' ? '±' : '<='),
-                                    isExpanded: true,
-                                    dropdownColor: const Color(0xFF344D6E),
-                                    style: const TextStyle(color: Colors.white, fontSize: 12.0),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                                        final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                        final innerMap = Map<String, dynamic>.from(newList[i] as Map);
-                                        innerMap['operator'] = val;
-                                        newList[i] = innerMap;
-                                        newMap[_ruleSelectedCaliber] = newList;
-                                        _adminRules['epvat']?['custom_formulas'] = newMap;
-                                      });
-                                    },
-                                    items: ['<=', '>=', '<', '>', '==', '±'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                flex: 4,
+                                child: Text(
+                                  item['formula'] ?? '',
+                                  style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.0, fontFamily: 'JetBrainsMono'),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2C415E),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    item['operator'] ?? '<=',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                initialValue: item['limit'] ?? '',
-                                key: ValueKey('limit_${_ruleSelectedCaliber}_$i'),
-                                style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
-                                decoration: _getFormulaFieldDecoration(),
-                                onChanged: (val) {
+                              const SizedBox(width: 6),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '${item['limit'] ?? ''}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                flex: 1,
+                                child: Text(
+                                  '${item['unit'] ?? ''}',
+                                  style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Delete formula',
+                                onPressed: () async {
                                   final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
                                   final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                  final innerMap = Map<String, dynamic>.from(newList[i] as Map);
-                                  innerMap['limit'] = val;
-                                  newList[i] = innerMap;
+                                  final removed = newList.removeAt(i);
                                   newMap[_ruleSelectedCaliber] = newList;
-                                  _adminRules['epvat']?['custom_formulas'] = newMap;
+                                  final removedName = (removed is Map ? removed['name'] : '') ?? '';
+                                  await saveFormulas(newMap, feedback: 'Formula "$removedName" deleted and saved.');
                                 },
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              flex: 1,
-                              child: TextFormField(
-                                initialValue: item['unit'] ?? (item['formula'].toString().toLowerCase().contains('vel') ? 'm/s' : 'bar'),
-                                key: ValueKey('unit_${_ruleSelectedCaliber}_$i'),
-                                style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0, fontFamily: 'JetBrainsMono'),
-                                decoration: _getFormulaFieldDecoration(),
-                                onChanged: (val) {
-                                  final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                                  final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                  final innerMap = Map<String, dynamic>.from(newList[i] as Map);
-                                  innerMap['unit'] = val;
-                                  newList[i] = innerMap;
-                                  newMap[_ruleSelectedCaliber] = newList;
-                                  _adminRules['epvat']?['custom_formulas'] = newMap;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                                  final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                                  newList.removeAt(i);
-                                  newMap[_ruleSelectedCaliber] = newList;
-                                  _adminRules['epvat']?['custom_formulas'] = newMap;
-                                });
-                              },
-                              child: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     }),
                   ],
                   const SizedBox(height: 12),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            final newMap = Map<String, dynamic>.from(_adminRules['epvat']?['custom_formulas'] ?? {});
-                            final newList = List<dynamic>.from(newMap[_ruleSelectedCaliber] ?? []);
-                            newList.add({'name': 'Custom check', 'formula': 'P1 Mean @ 21 + 3 * P1 SD @ 21', 'operator': '<=', 'limit': '3800', 'unit': 'bar'});
-                            newMap[_ruleSelectedCaliber] = newList;
-                            _adminRules['epvat']?['custom_formulas'] = newMap;
-                          });
-                        },
-                        icon: const Icon(Icons.add, size: 14),
-                        label: const Text('Add Formula', style: TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF06B6D4),
-                          side: const BorderSide(color: Color(0xFF06B6D4)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                      ),
                       TextButton.icon(
                         onPressed: () {
                           showDialog(
@@ -5830,84 +6121,12 @@ class _MainShellState extends State<MainShell> {
                 ],
               );
             }),
-          ] else if (_selectedRuleTest == 'GP Transducers (GP1 & GP2)') ...[
+          ] else if (_selectedRuleTest == 'GP6 Transducers (EPVAT)' || _selectedRuleTest == 'GP Transducers (GP1 & GP2)' || _selectedRuleTest == 'GP6 Transducers') ...[
             const Text(
-              'Manage authorized GP Transducers for EPVAT testing (GP1 Chamber Transducer & GP2 Gas Port Transducer). Operators will select from these sensors during EPVAT ballistic inspections.',
+              'Manage authorized GP6 Transducers for EPVAT ballistic testing. All piezoelectric sensors registered here form a single unified inventory. In the test entry module, operators will select which sensor is mounted as GP6 (1) Chamber and which is GP6 (2) Gas Port.',
               style: TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3), height: 1.4),
             ),
             const SizedBox(height: 16.0),
-            
-            // Selector for GP1 vs GP2
-            Container(
-              padding: const EdgeInsets.all(4.0),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _ruleSelectedGPType = 'GP1'),
-                      borderRadius: BorderRadius.circular(6.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        decoration: BoxDecoration(
-                          color: _ruleSelectedGPType == 'GP1' ? const Color(0xFF06B6D4) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6.0),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.sensors, size: 16, color: _ruleSelectedGPType == 'GP1' ? Colors.white : const Color(0xFF8E96A3)),
-                            const SizedBox(width: 8),
-                            Text(
-                              'GP1 (Chamber / P1)',
-                              style: TextStyle(
-                                color: _ruleSelectedGPType == 'GP1' ? Colors.white : const Color(0xFF8E96A3),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4.0),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _ruleSelectedGPType = 'GP2'),
-                      borderRadius: BorderRadius.circular(6.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        decoration: BoxDecoration(
-                          color: _ruleSelectedGPType == 'GP2' ? const Color(0xFF6366F1) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6.0),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.sensors, size: 16, color: _ruleSelectedGPType == 'GP2' ? Colors.white : const Color(0xFF8E96A3)),
-                            const SizedBox(width: 8),
-                            Text(
-                              'GP2 (Gas Port / P2)',
-                              style: TextStyle(
-                                color: _ruleSelectedGPType == 'GP2' ? Colors.white : const Color(0xFF8E96A3),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14.0),
             
             Row(
               children: [
@@ -5916,16 +6135,14 @@ class _MainShellState extends State<MainShell> {
                     controller: _ruleNewGPTransducerCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 13.0, fontFamily: 'JetBrainsMono'),
                     decoration: InputDecoration(
-                      hintText: _ruleSelectedGPType == 'GP1'
-                          ? 'Enter GP1 Model / S.N. (e.g., GP1-005, PCB 119B SN#4120)'
-                          : 'Enter GP2 Model / S.N. (e.g., GP2-005, PCB 119B SN#4121)',
+                      hintText: 'Enter GP6 Transducer S.N. (e.g., GP6-001, PCB 119B SN#4120)',
                       hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12.0),
                       filled: true,
                       fillColor: Colors.black.withOpacity(0.2),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: _ruleSelectedGPType == 'GP1' ? const Color(0xFF06B6D4) : const Color(0xFF6366F1))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
                     ),
                   ),
                 ),
@@ -5934,38 +6151,63 @@ class _MainShellState extends State<MainShell> {
                   onPressed: () async {
                     final text = _ruleNewGPTransducerCtrl.text.trim();
                     if (text.isNotEmpty) {
-                      final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] ?? {});
-                      final key = _ruleSelectedGPType.toLowerCase();
-                      final list = List<String>.from(gpMap[key] ?? []);
-                      if (!list.contains(text)) {
-                        list.add(text);
-                        gpMap[key] = list;
-                        _adminRules['gp_transducers'] = gpMap;
+                      final gp6Transducers = List<String>.from(_adminRules['gp6_transducers'] as List<dynamic>? ?? []);
+                      if (!gp6Transducers.contains(text)) {
+                        gp6Transducers.add(text);
+                        _adminRules['gp6_transducers'] = gp6Transducers;
                       }
-                      if (key == 'gp1') {
-                        final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
-                        if (!gp1List.contains(text)) {
-                          gp1List.add(text);
-                          _adminRules['gp1_transducers'] = gp1List;
-                        }
-                      } else {
-                        final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
-                        if (!gp6List.contains(text)) {
-                          gp6List.add(text);
-                          _adminRules['gp6_serials'] = gp6List;
-                        }
+
+                      final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
+                      if (!gp1List.contains(text)) {
+                        gp1List.add(text);
+                        _adminRules['gp1_transducers'] = gp1List;
                       }
+
+                      final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
+                      if (!gp6List.contains(text)) {
+                        gp6List.add(text);
+                        _adminRules['gp6_serials'] = gp6List;
+                      }
+
+                      final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
+                      final gp1Internal = List<String>.from(gpMap['gp1'] as List<dynamic>? ?? []);
+                      if (!gp1Internal.contains(text)) {
+                        gp1Internal.add(text);
+                        gpMap['gp1'] = gp1Internal;
+                      }
+                      final gp2Internal = List<String>.from(gpMap['gp2'] as List<dynamic>? ?? []);
+                      if (!gp2Internal.contains(text)) {
+                        gp2Internal.add(text);
+                        gpMap['gp2'] = gp2Internal;
+                      }
+                      _adminRules['gp_transducers'] = gpMap;
+
                       await _storageService.saveRules(_adminRules);
                       setState(() {
                         _adminRules = Map<String, dynamic>.from(_adminRules);
                         _ruleNewGPTransducerCtrl.clear();
                       });
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                                const SizedBox(width: 8),
+                                Text('GP6 Sensor "$text" registered and saved successfully.'),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
                     }
                   },
                   icon: const Icon(Icons.add, size: 16),
-                  label: Text('Add $_ruleSelectedGPType'),
+                  label: const Text('Add GP6 Sensor'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _ruleSelectedGPType == 'GP1' ? const Color(0xFF06B6D4) : const Color(0xFF6366F1),
+                    backgroundColor: const Color(0xFF06B6D4),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
                   ),
@@ -5974,157 +6216,112 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 16.0),
             
-            // Side-by-side registered lists
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // GP1 List
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.speed, size: 14, color: Color(0xFF06B6D4)),
-                          SizedBox(width: 6),
-                          Text('Registered GP1 Transducers (P1):', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const SizedBox(height: 8.0),
-                      Builder(builder: (context) {
-                        final gpMap = _adminRules['gp_transducers'] ?? {};
-                        final list = List<String>.from(gpMap['gp1'] ?? []);
-                        if (list.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text('No GP1 transducers registered.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontStyle: FontStyle.italic)),
-                          );
-                        }
-                        return Container(
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(6.0),
-                            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            // Single unified list of registered GP6 transducers
+            Builder(builder: (context) {
+              final Set<String> allSensors = {};
+              for (final k in ['gp6_transducers', 'gp1_transducers', 'gp6_serials']) {
+                final l = _adminRules[k];
+                if (l is List) {
+                  for (final item in l) {
+                    final s = item.toString().trim();
+                    if (s.isNotEmpty) allSensors.add(s);
+                  }
+                }
+              }
+              final gpMap = _adminRules['gp_transducers'];
+              if (gpMap is Map) {
+                for (final sub in ['gp1', 'gp2']) {
+                  final l = gpMap[sub];
+                  if (l is List) {
+                    for (final item in l) {
+                      final s = item.toString().trim();
+                      if (s.isNotEmpty) allSensors.add(s);
+                    }
+                  }
+                }
+              }
+              final sensorList = allSensors.toList();
+
+              if (sensorList.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text('No GP6 transducers registered.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontStyle: FontStyle.italic)),
+                );
+              }
+
+              return Container(
+                constraints: const BoxConstraints(maxHeight: 280),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: sensorList.length,
+                  separatorBuilder: (_, __) => const Divider(color: Color(0xFF1F293D), height: 1),
+                  itemBuilder: (context, idx) {
+                    final name = sensorList[idx];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.sensors_rounded, size: 16, color: Color(0xFF06B6D4)),
+                              const SizedBox(width: 8),
+                              Text(name, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono')),
+                            ],
                           ),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: list.length,
-                            separatorBuilder: (_, __) => const Divider(color: Color(0xFF1F293D), height: 1),
-                            itemBuilder: (context, idx) {
-                              final name = list[idx];
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono')),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16),
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      onPressed: () async {
-                                        final updatedGp = Map<String, dynamic>.from(_adminRules['gp_transducers'] ?? {});
-                                        final updated = List<String>.from(updatedGp['gp1'] ?? []);
-                                        final removed = updated.removeAt(idx);
-                                        updatedGp['gp1'] = updated;
-                                        _adminRules['gp_transducers'] = updatedGp;
-                                        final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
-                                        gp1List.remove(removed);
-                                        _adminRules['gp1_transducers'] = gp1List;
-                                        await _storageService.saveRules(_adminRules);
-                                        setState(() {
-                                          _adminRules = Map<String, dynamic>.from(_adminRules);
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16),
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                            tooltip: 'Delete sensor',
+                            onPressed: () async {
+                              final gp6Transducers = List<String>.from(_adminRules['gp6_transducers'] as List<dynamic>? ?? []);
+                              gp6Transducers.remove(name);
+                              _adminRules['gp6_transducers'] = gp6Transducers;
+
+                              final gp1List = List<String>.from(_adminRules['gp1_transducers'] as List<dynamic>? ?? []);
+                              gp1List.remove(name);
+                              _adminRules['gp1_transducers'] = gp1List;
+
+                              final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
+                              gp6List.remove(name);
+                              _adminRules['gp6_serials'] = gp6List;
+
+                              final updatedGp = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map<dynamic, dynamic>? ?? {});
+                              final updated1 = List<String>.from(updatedGp['gp1'] ?? []);
+                              updated1.remove(name);
+                              updatedGp['gp1'] = updated1;
+                              final updated2 = List<String>.from(updatedGp['gp2'] ?? []);
+                              updated2.remove(name);
+                              updatedGp['gp2'] = updated2;
+                              _adminRules['gp_transducers'] = updatedGp;
+
+                              await _storageService.saveRules(_adminRules);
+                              setState(() {
+                                _adminRules = Map<String, dynamic>.from(_adminRules);
+                              });
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Sensor "$name" deleted and saved.'),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
                             },
                           ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14.0),
-                // GP2 List
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.speed, size: 14, color: Color(0xFF6366F1)),
-                          SizedBox(width: 6),
-                          Text('Registered GP2 Transducers (P2):', style: TextStyle(color: Color(0xFF6366F1), fontSize: 11.5, fontWeight: FontWeight.bold)),
                         ],
                       ),
-                      const SizedBox(height: 8.0),
-                      Builder(builder: (context) {
-                        final gpMap = _adminRules['gp_transducers'] ?? {};
-                        final list = List<String>.from(gpMap['gp2'] ?? []);
-                        if (list.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text('No GP2 transducers registered.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontStyle: FontStyle.italic)),
-                          );
-                        }
-                        return Container(
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(6.0),
-                            border: Border.all(color: Colors.white.withOpacity(0.06)),
-                          ),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: list.length,
-                            separatorBuilder: (_, __) => const Divider(color: Color(0xFF1F293D), height: 1),
-                            itemBuilder: (context, idx) {
-                              final name = list[idx];
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono')),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16),
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      onPressed: () async {
-                                        final updatedGp = Map<String, dynamic>.from(_adminRules['gp_transducers'] ?? {});
-                                        final updated = List<String>.from(updatedGp['gp2'] ?? []);
-                                        final removed = updated.removeAt(idx);
-                                        updatedGp['gp2'] = updated;
-                                        _adminRules['gp_transducers'] = updatedGp;
-                                        final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
-                                        gp6List.remove(removed);
-                                        _adminRules['gp6_serials'] = gp6List;
-                                        await _storageService.saveRules(_adminRules);
-                                        setState(() {
-                                          _adminRules = Map<String, dynamic>.from(_adminRules);
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              ],
-            ),
+              );
+            }),
           ] else if (_selectedRuleTest == 'Barrels' || _selectedRuleTest == 'Barrel Serial Numbers') ...[
             const Text(
               'Manage authorized Barrel Serial Numbers. Operators will pick from this list in Accuracy, EPVAT, and Terminal Effect tests.',
@@ -6924,10 +7121,12 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  InputDecoration _getFormulaFieldDecoration() {
+  InputDecoration _getFormulaFieldDecoration({String? hint}) {
     return InputDecoration(
       isDense: true,
       filled: true,
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11.5),
       fillColor: Colors.black.withOpacity(0.2),
       contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(4.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),

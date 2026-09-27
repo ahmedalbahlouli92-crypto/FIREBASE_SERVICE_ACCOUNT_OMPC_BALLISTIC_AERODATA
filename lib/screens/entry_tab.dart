@@ -551,46 +551,44 @@ class _EntryTabState extends State<EntryTab> {
     return ['B1001', 'B1002', 'B1003'];
   }
 
-  // GP Transducers lists from admin rules (all matched, purged of Kistler)
-  List<String> get _gp1Transducers {
+  // Unified GP6 Transducers pool (admin registers all in one field, user selects GP6 (1) and GP6 (2))
+  List<String> get _allGp6Transducers {
     final Set<String> result = {};
-    final list1 = widget.adminRules['gp1_transducers'];
-    if (list1 is List) {
-      for (final e in list1) {
+    final listUnified = widget.adminRules['gp6_transducers'];
+    if (listUnified is List) {
+      for (final e in listUnified) {
         final s = e.toString().trim();
-        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+        if (s.isNotEmpty) result.add(s);
       }
     }
-    final gp = widget.adminRules['gp_transducers']?['gp1'];
-    if (gp is List) {
-      for (final e in gp) {
-        final s = e.toString().trim();
-        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
+    for (final key in ['gp6_serials', 'gp1_transducers']) {
+      final list = widget.adminRules[key];
+      if (list is List) {
+        for (final e in list) {
+          final s = e.toString().trim();
+          if (s.isNotEmpty) result.add(s);
+        }
+      }
+    }
+    final gp = widget.adminRules['gp_transducers'];
+    if (gp is Map) {
+      for (final sub in ['gp1', 'gp2']) {
+        final list = gp[sub];
+        if (list is List) {
+          for (final e in list) {
+            final s = e.toString().trim();
+            if (s.isNotEmpty) result.add(s);
+          }
+        }
       }
     }
     if (result.isNotEmpty) return result.toList();
-    return ['GP1-001 (PCB 119B)', 'GP1-002 (PCB 119B)', 'GP1-003 (PCB 119B)'];
+    return ['GP6-001 (PCB 119B)', 'GP6-002 (PCB 119B)', 'GP6-003 (PCB 119B)'];
   }
 
-  List<String> get _gp2Transducers {
-    final Set<String> result = {};
-    final gp = widget.adminRules['gp_transducers']?['gp2'];
-    if (gp is List) {
-      for (final e in gp) {
-        final s = e.toString().trim();
-        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
-      }
-    }
-    final list6 = widget.adminRules['gp6_serials'];
-    if (list6 is List) {
-      for (final e in list6) {
-        final s = e.toString().trim();
-        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
-      }
-    }
-    if (result.isNotEmpty) return result.toList();
-    return ['GP2-001 (PCB 119B)', 'GP2-002 (PCB 119B)', 'GP2-003 (PCB 119B)'];
-  }
+  List<String> get _gp1Transducers => _allGp6Transducers;
+
+  List<String> get _gp2Transducers => _allGp6Transducers;
 
   // Equipment lists & Round counting
   List<String> get _accuracyBarrels {
@@ -655,25 +653,8 @@ class _EntryTabState extends State<EntryTab> {
     return ['EPVAT-B-201', 'EPVAT-B-202', 'EPVAT-B-203'];
   }
 
-  List<String> get _gp6Serials {
-    final Set<String> result = {};
-    final list = widget.adminRules['gp6_serials'];
-    if (list is List) {
-      for (final e in list) {
-        final s = e.toString().trim();
-        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
-      }
-    }
-    final gp2 = widget.adminRules['gp_transducers']?['gp2'];
-    if (gp2 is List) {
-      for (final e in gp2) {
-        final s = e.toString().trim();
-        if (s.isNotEmpty && !s.toLowerCase().contains('kistler')) result.add(s);
-      }
-    }
-    if (result.isNotEmpty) return result.toList();
-    return ['GP2-PCB-9901', 'GP2-PCB-9902', 'GP2-PCB-9903'];
-  }
+  List<String> get _gp6Serials => _allGp6Transducers;
+
 
   List<String> get _primerSuppliers {
     final list = widget.adminRules['primer_suppliers'];
@@ -7915,13 +7896,11 @@ class _EntryTabState extends State<EntryTab> {
       if (isRejected) return 'Rejected';
       
       final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
-      var list = List<dynamic>.from(formulasMap[_caliber] ?? []);
-      if (list.isEmpty) {
-        list = List<dynamic>.from(formulasMap['default'] ?? []);
-      }
-      if (list.isEmpty) {
-        list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: _epvatPressureType == 'Overall');
-      }
+      final list = EpvatFormulaHelper.getFormulasForCaliber(
+        formulasMap,
+        _caliber,
+        isThreeTemp: _epvatPressureType == 'Overall',
+      );
       
       final defaultTemp = _epvatPressureType == 'Overall'
           ? '21'
@@ -7949,13 +7928,11 @@ class _EntryTabState extends State<EntryTab> {
   Widget _buildEpvatCustomCalculationsCard() {
     final epv = widget.adminRules['epvat'] ?? {};
     final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
-    var list = List<dynamic>.from(formulasMap[_caliber] ?? []);
-    if (list.isEmpty) {
-      list = List<dynamic>.from(formulasMap['default'] ?? []);
-    }
-    if (list.isEmpty) {
-      list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: _epvatPressureType == 'Overall');
-    }
+    final list = EpvatFormulaHelper.getFormulasForCaliber(
+      formulasMap,
+      _caliber,
+      isThreeTemp: _epvatPressureType == 'Overall',
+    );
     
     if (list.isEmpty) return const SizedBox.shrink();
     
@@ -8897,33 +8874,43 @@ class _EntryTabState extends State<EntryTab> {
               flex: 3,
               label: 'GP6 (1) Chamber',
               isRequired: true,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _manualGP1Entry
-                        ? _buildTextField(
-                            controller: _epvatSensor1Controller,
-                            hint: 'e.g., GP1-001 (PCB 119B)',
-                          )
-                        : _buildDropdownField(
-                            value: _gp1Transducers.contains(_epvatSensor1Controller.text)
-                                ? _epvatSensor1Controller.text
-                                : (_gp1Transducers.isNotEmpty ? _gp1Transducers.first : ''),
-                            items: _gp1Transducers,
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(() => _epvatSensor1Controller.text = v);
-                              }
-                            },
-                          ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _manualGP1Entry
+                            ? _buildTextField(
+                                controller: _epvatSensor1Controller,
+                                hint: 'e.g., GP6-001 (PCB 119B)',
+                              )
+                            : _buildDropdownField(
+                                value: _gp1Transducers.contains(_epvatSensor1Controller.text)
+                                    ? _epvatSensor1Controller.text
+                                    : (_gp1Transducers.isNotEmpty ? _gp1Transducers.first : ''),
+                                items: _gp1Transducers,
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    setState(() => _epvatSensor1Controller.text = v);
+                                  }
+                                },
+                              ),
+                      ),
+                      const SizedBox(width: 4.0),
+                      IconButton(
+                        icon: Icon(_manualGP1Entry ? Icons.list : Icons.edit_note, size: 18, color: const Color(0xFF06B6D4)),
+                        tooltip: _manualGP1Entry ? 'Select from registered list' : 'Type custom transducer',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        onPressed: () => setState(() => _manualGP1Entry = !_manualGP1Entry),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4.0),
-                  IconButton(
-                    icon: Icon(_manualGP1Entry ? Icons.list : Icons.edit_note, size: 18, color: const Color(0xFF06B6D4)),
-                    tooltip: _manualGP1Entry ? 'Select from registered list' : 'Type custom transducer',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    onPressed: () => setState(() => _manualGP1Entry = !_manualGP1Entry),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    '${_getAssetRounds(_epvatSensor1Controller.text)} rounds fired',
+                    style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),

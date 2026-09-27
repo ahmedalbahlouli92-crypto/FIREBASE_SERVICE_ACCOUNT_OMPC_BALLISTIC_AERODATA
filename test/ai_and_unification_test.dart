@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ompc_ballistic_aerodata/models/ballistic_record.dart';
 import 'package:ompc_ballistic_aerodata/services/ai_analysis_service.dart';
+import 'package:ompc_ballistic_aerodata/services/epvat_formula_helper.dart';
+import 'package:ompc_ballistic_aerodata/services/storage_service.dart';
 
 BallisticRecord createTestRecord({
   required String timestamp,
@@ -22,6 +24,8 @@ BallisticRecord createTestRecord({
   String epvatSDPressure = '',
   String velMean = '',
   String velSD = '',
+  String epvatSensor1 = '',
+  String epvatSensor2 = '',
 }) {
   return BallisticRecord(
     timestamp: timestamp,
@@ -52,6 +56,8 @@ BallisticRecord createTestRecord({
     epvatSDPressure: epvatSDPressure,
     velMean: velMean,
     velSD: velSD,
+    epvatSensor1: epvatSensor1,
+    epvatSensor2: epvatSensor2,
   );
 }
 
@@ -191,6 +197,77 @@ void main() {
       expect(consolidated.first.cartridgeTemp, contains('+21°C'));
       expect(consolidated.first.cartridgeTemp, contains('-54°C'));
       expect(consolidated.first.cartridgeTemp, contains('+52°C'));
+    });
+
+    test('5. EpvatFormulaHelper resolves SS109 formulas seamlessly whether queried as 5.56x45 SS109 or SS109', () {
+      final customFormulas = {
+        '5.56x45 SS109': [
+          {
+            'name': 'P1 Max Individual (+21°C)',
+            'formula': 'P1_MAX_INDIVIDUAL',
+            'operator': '<=',
+            'limit': '4200',
+            'unit': 'bar',
+          },
+          {
+            'name': 'P1 Mean + 3SD (+21°C)',
+            'formula': 'P1_MEAN + 3 * P1_SD',
+            'operator': '<=',
+            'limit': '4200',
+            'unit': 'bar',
+          },
+        ]
+      };
+
+      // Query with full name
+      final formulasFull = EpvatFormulaHelper.getFormulasForCaliber(customFormulas, '5.56x45 SS109');
+      expect(formulasFull.length, equals(2));
+      expect(formulasFull.first['name'], equals('P1 Max Individual (+21°C)'));
+
+      // Query with short name
+      final formulasShort = EpvatFormulaHelper.getFormulasForCaliber(customFormulas, 'SS109');
+      expect(formulasShort.length, equals(2));
+      expect(formulasShort.first['name'], equals('P1 Max Individual (+21°C)'));
+
+      // Evaluate formula
+      final vars = {
+        'P1_MAX_INDIVIDUAL': 4150.0,
+        'P1_MEAN': 3800.0,
+        'P1_SD': 80.0,
+      };
+      final eval = EpvatFormulaHelper.evaluateFormulaItem(formulasFull.first, vars);
+      expect(eval.isPassed, isTrue);
+      expect(eval.calculatedValue, equals(4150.0));
+    });
+
+    test('6. Unified GP6 transducer tracks cumulative rounds whether mounted as GP6 (1) Chamber or GP6 (2) Port', () {
+      final r1 = createTestRecord(
+        timestamp: '2026-09-20 10:00:00',
+        testName: 'EPVAT test',
+        caliber: '5.56x45 SS109',
+        lotNo: 'LOT-01',
+        produced: 30,
+        epvatSensor1: 'GP6-Kistler-8801', // Mounted in Chamber (GP6-1)
+        epvatSensor2: 'GP6-PCB-9901',     // Mounted in Port (GP6-2)
+      );
+
+      final r2 = createTestRecord(
+        timestamp: '2026-09-21 10:00:00',
+        testName: 'EPVAT test',
+        caliber: '5.56x45 SS109',
+        lotNo: 'LOT-02',
+        produced: 20,
+        epvatSensor1: 'GP6-PCB-9901',     // Mounted in Chamber (GP6-1)
+        epvatSensor2: 'GP6-Kistler-8801', // Mounted in Port (GP6-2)
+      );
+
+      final List<BallisticRecord> records = [r1, r2];
+      final storage = StorageService();
+
+      // GP6-Kistler-8801 was used in r1 (30 rounds) and r2 (20 rounds) = 50 rounds total
+      expect(storage.calculateAssetRounds(records, 'GP6-Kistler-8801'), equals(50));
+      // GP6-PCB-9901 was used in r1 (30 rounds) and r2 (20 rounds) = 50 rounds total
+      expect(storage.calculateAssetRounds(records, 'GP6-PCB-9901'), equals(50));
     });
   });
 }

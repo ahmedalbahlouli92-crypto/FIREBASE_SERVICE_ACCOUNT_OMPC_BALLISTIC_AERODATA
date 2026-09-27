@@ -19,40 +19,30 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.5';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.5 (Caliber Barrel Registry, Inspection Log Rules, Modern Dashboard & Standalone Caliber Volume Export)';
-const BODY = `## OMPC Ballistic AeroData v1.5.5
+const TAG_NAME = 'v1.5.6';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.6 (SS109 Formula Fixes, Unified GP6 Transducers & Standalone Caliber Volume Export)';
+const BODY = `## OMPC Ballistic AeroData v1.5.6
 
-Major feature release delivering specialized laboratory quality rules, caliber-specific barrel management, inspection log result formatting, modern analytics dashboard component, standalone caliber volume exports, and dedicated Supabase admin input tables:
+Maintenance & stability update addressing formula sentencing persistence, unified transducer management, and streamlined caliber volume reporting:
 
 ### Key Highlights & Features:
-1. **Caliber-Specific EPVAT & Accuracy Barrel Registration**:
-   - Admin Control now registers EPVAT and Accuracy barrels separately per caliber.
-   - Entry Form automatically filters and prioritizes barrels assigned to the selected caliber.
-2. **Standardized Inspection Log Results Formatting**:
-   - Extraction force: Shows Min and Max values vertically above each other.
-   - Waterproof: Shows exclusively the number of leaks.
-   - Function test: Shows number of cracks and level (if 0 cracks, shows \`0 crack\`).
-   - Residual stress: Shows number of cracks and zone (if 0 cracks, shows \`0 crack\`).
-   - EPVAT & Propellant: Mean chamber pressure, mean port pressure, and mean velocity @ 21 °C.
-   - Accuracy for 7.62, SS109, 9mm, and .223: Shows Standard Deviation (SD) of X and Y.
-   - Accuracy for M193: Shows Mean Radius (MR) only.
-   - Primer sensitivity: Shows HM+5SD and HM-2SD exclusively.
-3. **Module & Caliber Matrix Updates**:
-   - Terminal Effect Test added to Daily Test (available for SS109 in both Lot Acceptance and Daily Test).
-   - Extraction Force Test disallowed for blank ammunition (M200 and M82).
-4. **Intelligent Sampling Location Defaults**:
-   - Lot Acceptance Test defaults to \`After Packing machine\` (user editable), except Primer Test which defaults to \`Priming machine\`.
-   - Daily Test defaults to \`PC530\` for Waterproof, Extraction, EPVAT, Function, Terminal Effect, Cyclic Rate, and Residual Stress.
-   - Daily Test defaults to \`PB31/14\` for Accuracy Test.
-5. **Modern Dashboard Component & Standalone Caliber Volume Export**:
-   - Intelligent modern dashboard component with soft icy-blue surface background (\`#edf4fc\`), sans-serif typography, vibrant sky blue accents (\`#4d99db\`), clean card containers, analytical metric boxes, and prominent action button.
-   - Standalone export of Tested Caliber Volume breakdown (HTML/Print/PDF & Excel .csv) directly from the card, the modern component, or the export dialog.
-6. **Dedicated Supabase Admin Control Input Tables**:
-   - Added dedicated tables for all Admin Control inputs: \`admin_weapons\`, \`admin_epvat_barrels\`, \`admin_accuracy_barrels\`, \`admin_gp1_transducers\`, \`admin_gp6_transducers\`, \`admin_propellant_suppliers\`, \`admin_primer_suppliers\`, \`admin_propellant_codes\`, \`admin_function_levels\`, \`admin_sampling_locations\`, \`admin_role_permissions\`, and \`admin_test_rules\`.
-   - Complete multi-table cloud sync in \`SupabaseService\` with guaranteed fallback to \`admin_control\` and zero data loss.
-7. **Cleaned Testing Accounts**:
-   - Deleted temporary test user accounts from Supabase and local registry while preserving all real laboratory personnel.
+1. **SS109 Custom Formula Persistence & Resilient Evaluation**:
+   - Fixed custom sentencing formula loss in Control module; rules and formulas now persist immediately upon registration.
+   - Smart merging in StorageService prevents empty cloud payloads from clearing registered formulas.
+   - Built-in default formulas seeded for \`5.56x45 SS109\`, \`SS109\`, and general EPVAT sentencing.
+   - Resilient case-insensitive token and caliber matching in EpvatFormulaHelper.
+2. **Formula Registration Stability ("App Closed Field by Himself" Fixed)**:
+   - Replaced fragile dynamic row forms with a dedicated, persistent formula registration card.
+   - Eliminates focus loss and keyboard dismissal during formula authoring.
+   - Added quick token chips (\`P1_MEAN\`, \`P1_SD\`, \`P1_MAX\`, \`VEL_MEAN\`) and instant save verification.
+3. **Unified GP6 Transducer Sensor Pool**:
+   - Admin registers all GP6 pressure transducers in one unified field (\`gp6_transducers\`).
+   - Operators select which sensor is mounted as GP6 (1) Chamber and GP6 (2) Port directly in the Entry tab.
+   - Automatic cumulative round count tracking counts rounds fired across either chamber or port positions.
+4. **Standalone Caliber Volume Export**:
+   - Tested Caliber Volume export strictly exports a clean 2-column table displaying only \`Caliber\` and \`Quantity Used\` (plus Total row) in both Excel CSV and HTML/PDF print views without extraneous KPI cards or charts.
+5. **Supabase Cloud Synchronization**:
+   - Full real-time synchronization with Supabase cloud configuration (\`admin_control\` and \`ballistic_records\` SYSTEM_CONFIG).
 `;
 
 function request(options, postData) {
@@ -162,7 +152,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.5.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.5.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.5.6.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.6.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
