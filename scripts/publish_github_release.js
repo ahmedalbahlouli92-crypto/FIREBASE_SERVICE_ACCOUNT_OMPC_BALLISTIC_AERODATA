@@ -19,30 +19,39 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.6';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.6 (SS109 Formula Fixes, Unified GP6 Transducers & Standalone Caliber Volume Export)';
-const BODY = `## OMPC Ballistic AeroData v1.5.6
+const TAG_NAME = 'v1.5.7';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.7 (Retest Parameter Pre-filling, Retest Remarks, Multi-Platform Releases)';
+const BODY = `## OMPC Ballistic AeroData v1.5.7
 
-Maintenance & stability update addressing formula sentencing persistence, unified transducer management, and streamlined caliber volume reporting:
+Major release introducing automated retest parameter pre-filling, editable retest remarks, multi-platform releases (Windows, Android APK, Web), and complete cloud synchronization:
 
 ### Key Highlights & Features:
-1. **SS109 Custom Formula Persistence & Resilient Evaluation**:
-   - Fixed custom sentencing formula loss in Control module; rules and formulas now persist immediately upon registration.
-   - Smart merging in StorageService prevents empty cloud payloads from clearing registered formulas.
-   - Built-in default formulas seeded for \`5.56x45 SS109\`, \`SS109\`, and general EPVAT sentencing.
-   - Resilient case-insensitive token and caliber matching in EpvatFormulaHelper.
-2. **Formula Registration Stability ("App Closed Field by Himself" Fixed)**:
-   - Replaced fragile dynamic row forms with a dedicated, persistent formula registration card.
-   - Eliminates focus loss and keyboard dismissal during formula authoring.
-   - Added quick token chips (\`P1_MEAN\`, \`P1_SD\`, \`P1_MAX\`, \`VEL_MEAN\`) and instant save verification.
-3. **Unified GP6 Transducer Sensor Pool**:
-   - Admin registers all GP6 pressure transducers in one unified field (\`gp6_transducers\`).
-   - Operators select which sensor is mounted as GP6 (1) Chamber and GP6 (2) Port directly in the Entry tab.
-   - Automatic cumulative round count tracking counts rounds fired across either chamber or port positions.
-4. **Standalone Caliber Volume Export**:
-   - Tested Caliber Volume export strictly exports a clean 2-column table displaying only \`Caliber\` and \`Quantity Used\` (plus Total row) in both Excel CSV and HTML/PDF print views without extraneous KPI cards or charts.
-5. **Supabase Cloud Synchronization**:
-   - Full real-time synchronization with Supabase cloud configuration (\`admin_control\` and \`ballistic_records\` SYSTEM_CONFIG).
+1. **Automated Retest Parameter Pre-filling**:
+   - All parameters from the original inspection report are automatically pre-populated when executing a retest across all 9 test types:
+     - **Waterproof**: Sample Qty, Total Leaks, Mouth Slow/Fast, Primer Slow/Fast.
+     - **Residual Stress**: Sample Qty, Total Splits, Room Temp, Neck/Shoulder/Body/Head Slow & Fast.
+     - **Extraction Force**: Sample Qty, Min Force (N), Mean Force (N), Force Type.
+     - **Accuracy & Velocity**: Sample Qty, Mean Radius, Largest Dist, SD X/Y, Mean/Min/Max/SD Velocity.
+     - **EPVAT / Propellant**: Sample Qty, Cartridge Temp, Action Time Mean, P1 Mean/Max/Min/SD, P2 Mean/Max, Velocity Mean/SD.
+     - **Function**: Sample Qty, Temp, Defect Details, Level 1–4 defects count.
+     - **Primer Sensitivity**: Sample Qty, Mean Height H̄, SD S, Min All-Fire H, Max No-Fire H.
+     - **Firing Rate Cycle**: Weapon Category, Cyclic Rate (RPM).
+     - **Terminal Effect**: Hole Diameter, Steel Penetration, Velocity.
+   - Inspectors can modify any parameter if retest values deviate from the initial run.
+2. **Dedicated Retest Remarks & Findings Area**:
+   - Multi-line textarea for capturing detailed retest findings, observations, and reasons for disposition.
+   - Outcome selector with 3 statuses: \`Approved (Retest Passed)\`, \`Approved with condition\`, \`Rejected (Retest Failed)\`.
+   - Automatic audit trail stamped: \`[RETEST by <inspector> on <timestamp> - Outcome: <status>]: <remarks>\`.
+3. **Comprehensive Report & Export Integration**:
+   - Formatted multiline remarks with \`white-space: pre-wrap\` preserved across HTML, PDF, and Word reports.
+   - Full remarks columns added to Excel CSV exports across all test modes including Waterproof and Residual Stress.
+4. **Supabase Cloud Synchronization & Zero Data Loss**:
+   - Schema-safe serialization ensures retest metadata is safely embedded into notes if dedicated columns are absent.
+   - Guaranteed zero data loss across local and remote Supabase tables.
+5. **Multi-Platform Deployment (Windows, Android APK, Web)**:
+   - **Android APK**: \`OMPC_Ballistic_AeroData.apk\` & \`OMPC_Ballistic_AeroData_v1.5.7.apk\` compiled with Android SDK 36.
+   - **Windows Desktop**: 1-Click Setup Installer (\`OMPC_Ballistic_AeroData_Setup.exe\`), Standalone Executable (\`OMPC_Ballistic_AeroData.exe\`), and Portable Archive (\`OMPC_Ballistic_AeroData_Portable.zip\`).
+   - **Web Application**: Live on Firebase Hosting at https://ompc-ballistic-aerodata.web.app.
 `;
 
 function request(options, postData) {
@@ -152,7 +161,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.6.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.6.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.5.7.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.7.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
