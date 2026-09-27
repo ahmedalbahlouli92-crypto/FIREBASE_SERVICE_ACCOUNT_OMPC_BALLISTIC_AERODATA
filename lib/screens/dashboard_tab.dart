@@ -1280,27 +1280,32 @@ class _DashboardTabState extends State<DashboardTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 3.5,
-                    height: 18.0,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4D99DB),
-                      borderRadius: BorderRadius.circular(2.0),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 3.5,
+                      height: 18.0,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4D99DB),
+                        borderRadius: BorderRadius.circular(2.0),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8.0),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15.0,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                      fontFamily: 'sans-serif',
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15.0,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                          fontFamily: 'sans-serif',
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               if (action != null) action,
             ],

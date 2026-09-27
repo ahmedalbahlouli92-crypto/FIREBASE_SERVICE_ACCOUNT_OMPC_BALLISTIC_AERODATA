@@ -29,8 +29,11 @@ void main() {
   });
 
   testWidgets('App initialization smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const OmpcBallisticAeroDataApp());
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const OmpcBallisticAeroDataApp());
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
   });
 
   testWidgets('Sidebar navigation to Log Test Entry', (WidgetTester tester) async {
@@ -54,48 +57,49 @@ void main() {
       
       // Pump again to reflect the state change and rebuild the UI
       await tester.pump();
-    });
 
-    // Authenticate as Admin via Unified Login
-    final usernameField = find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.obscureText == false,
-    );
-    expect(usernameField, findsOneWidget);
-    await tester.ensureVisible(usernameField);
-    await tester.enterText(usernameField, 'admin');
+      // Authenticate as Admin via Unified Login
+      final usernameField = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.obscureText == false,
+      );
+      expect(usernameField, findsOneWidget);
+      await tester.ensureVisible(usernameField);
+      await tester.enterText(usernameField, 'admin');
 
-    final passwordField = find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.obscureText == true,
-    );
-    expect(passwordField, findsOneWidget);
-    await tester.ensureVisible(passwordField);
-    await tester.enterText(passwordField, 'admin123');
+      final passwordField = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.obscureText == true,
+      );
+      expect(passwordField, findsOneWidget);
+      await tester.ensureVisible(passwordField);
+      await tester.enterText(passwordField, 'admin123');
 
-    final authButton = find.text('Enter Laboratory Workspace');
-    expect(authButton, findsOneWidget);
-    await tester.ensureVisible(authButton);
-    await tester.tap(authButton);
-    await tester.pumpAndSettle();
-
-    // Dismiss welcome modal dialog if present
-    final enterPortalButton = find.text('ENTER PORTAL');
-    if (enterPortalButton.evaluate().isNotEmpty) {
-      await tester.tap(enterPortalButton);
+      final authButton = find.text('Enter Laboratory Workspace');
+      expect(authButton, findsOneWidget);
+      await tester.ensureVisible(authButton);
+      await tester.tap(authButton);
       await tester.pumpAndSettle();
-    }
 
-    // Verify Dashboard tab is initially shown
-    expect(find.byType(DashboardTab), findsOneWidget);
+      // Dismiss welcome modal dialog if present
+      final enterPortalButton = find.text('ENTER PORTAL');
+      if (enterPortalButton.evaluate().isNotEmpty) {
+        await tester.tap(enterPortalButton);
+        await tester.pumpAndSettle();
+      }
 
-    // Tap on the 'Log Entry' text button in sub tab bar
-    final logEntryButton = find.text('Log Entry');
-    expect(logEntryButton, findsOneWidget);
-    await tester.ensureVisible(logEntryButton);
-    await tester.tap(logEntryButton);
-    await tester.pumpAndSettle();
+      // Verify Dashboard tab is initially shown
+      expect(find.byType(DashboardTab), findsOneWidget);
 
-    // Verify EntryTab is now shown
-    expect(find.byType(EntryTab), findsOneWidget);
+      // Tap on the 'Log Entry' text button in sub tab bar
+      final logEntryButton = find.text('Log Entry');
+      expect(logEntryButton, findsOneWidget);
+      await tester.ensureVisible(logEntryButton);
+      await tester.tap(logEntryButton);
+      await tester.pumpAndSettle();
+
+      // Verify EntryTab is now shown
+      expect(find.byType(EntryTab), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
   });
 
   group('BallisticRecord CSV Serialization Tests', () {

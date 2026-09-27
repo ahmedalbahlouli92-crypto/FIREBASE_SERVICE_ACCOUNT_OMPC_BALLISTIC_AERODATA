@@ -91,6 +91,7 @@ class EpvatFormulaHelper {
       // Assign suffixed variables
       vars['p1_mean_$sfx'] = p1Mean;
       vars['p1_max_$sfx'] = p1Max;
+      vars['p1_max_individual_$sfx'] = p1Max;
       vars['p1_min_$sfx'] = p1Min;
       vars['p1_range_$sfx'] = p1Range;
       vars['p1_sd_$sfx'] = p1Sd;
@@ -116,6 +117,7 @@ class EpvatFormulaHelper {
       // Also set default un-suffixed variables
       vars.putIfAbsent('p1_mean', () => p1Mean);
       vars.putIfAbsent('p1_max', () => p1Max);
+      vars.putIfAbsent('p1_max_individual', () => p1Max);
       vars.putIfAbsent('p1_min', () => p1Min);
       vars.putIfAbsent('p1_range', () => p1Range);
       vars.putIfAbsent('p1_sd', () => p1Sd);
@@ -136,19 +138,31 @@ class EpvatFormulaHelper {
       vars.putIfAbsent('action_time_sd', () => actSd);
 
       // If semicolon-separated rounds exist for multiple temperatures, compute per-temp variables
-      if (r.epvatPressureRounds.contains(';') || r.epvatVelRounds.contains(';')) {
+      if (r.epvatPressureRounds.contains(';') || r.epvatVelRounds.contains(';') || r.actionTimeRounds.contains(';')) {
         final p1Secs = r.epvatPressureRounds.split(';');
         final p2Secs = r.epvatP2PressureRounds.split(';');
         final velSecs = r.epvatVelRounds.split(';');
         final actSecs = r.actionTimeRounds.split(';');
 
-        final tempKeys = ['21', '52', '54'];
+        List<String> tempKeys = ['21', '52', '54'];
+        if (r.cartridgeTemp.isNotEmpty) {
+          final extractedKeys = r.cartridgeTemp
+              .split(',')
+              .map((s) => s.replaceAll(RegExp(r'[^0-9]'), '').trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (extractedKeys.isNotEmpty) {
+            tempKeys = extractedKeys;
+          }
+        }
+
         for (int i = 0; i < tempKeys.length; i++) {
           final curSfx = tempKeys[i];
           if (i < p1Secs.length && p1Secs[i].trim().isNotEmpty) {
             final st = computeStats(p1Secs[i]);
             vars['p1_mean_$curSfx'] = st['mean']!;
             vars['p1_max_$curSfx'] = st['max']!;
+            vars['p1_max_individual_$curSfx'] = st['max']!;
             vars['p1_min_$curSfx'] = st['min']!;
             vars['p1_range_$curSfx'] = st['range']!;
             vars['p1_sd_$curSfx'] = st['sd']!;
@@ -180,17 +194,48 @@ class EpvatFormulaHelper {
         }
       }
 
-      // Also parse notes for temperature metrics if available (e.g. "Temps: +21°C ...; +52°C ...")
+      // Also parse notes for temperature metrics (both legacy and rich summary formats)
       if (r.notes.contains('Temps:')) {
-        final matches = RegExp(r'([+-]?\d+)°C\s*\([^)]*P1=([\d.]+)[^)]*Max=([\d.]+)[^)]*V=([\d.]+)\)').allMatches(r.notes);
+        final matches = RegExp(r'([+-]?\d+)°C\s*\(([^)]+)\)').allMatches(r.notes);
         for (final m in matches) {
           final tRaw = m.group(1)?.replaceAll('+', '').replaceAll('-', '') ?? '21';
-          final p1m = double.tryParse(m.group(2) ?? '');
-          final p1mx = double.tryParse(m.group(3) ?? '');
-          final vm = double.tryParse(m.group(4) ?? '');
-          if (p1m != null && !vars.containsKey('p1_mean_$tRaw')) vars['p1_mean_$tRaw'] = p1m;
-          if (p1mx != null && !vars.containsKey('p1_max_$tRaw')) vars['p1_max_$tRaw'] = p1mx;
-          if (vm != null && !vars.containsKey('vel_mean_$tRaw')) vars['vel_mean_$tRaw'] = vm;
+          final inner = m.group(2) ?? '';
+
+          void extractMetric(String regexPattern, List<String> targetKeys) {
+            final match = RegExp(regexPattern, caseSensitive: false).firstMatch(inner);
+            if (match != null) {
+              final val = double.tryParse(match.group(1) ?? '');
+              if (val != null) {
+                for (final tk in targetKeys) {
+                  vars['${tk}_$tRaw'] = val;
+                }
+              }
+            }
+          }
+
+          // P1 Chamber Pressure
+          extractMetric(r'\bP1=([\d.]+)', ['p1_mean']);
+          extractMetric(r'\b(?:P1Max|Max)=([\d.]+)', ['p1_max', 'p1_max_individual']);
+          extractMetric(r'\b(?:P1Min|Min)=([\d.]+)', ['p1_min']);
+          extractMetric(r'\b(?:P1SD|SD)=([\d.]+)', ['p1_sd']);
+
+          // P2 Port Pressure
+          extractMetric(r'\bP2=([\d.]+)', ['p2_mean']);
+          extractMetric(r'\bP2Max=([\d.]+)', ['p2_max']);
+          extractMetric(r'\bP2Min=([\d.]+)', ['p2_min']);
+          extractMetric(r'\bP2SD=([\d.]+)', ['p2_sd']);
+
+          // Velocity
+          extractMetric(r'\b(?:V|Vel)=([\d.]+)', ['vel_mean']);
+          extractMetric(r'\b(?:VMax|VelMax)=([\d.]+)', ['vel_max']);
+          extractMetric(r'\b(?:VMin|VelMin)=([\d.]+)', ['vel_min']);
+          extractMetric(r'\b(?:VSD|VelSD)=([\d.]+)', ['vel_sd']);
+
+          // Action Time
+          extractMetric(r'\b(?:AT|ActionTime)=([\d.]+)', ['action_time_mean']);
+          extractMetric(r'\b(?:ATMax|ActionTimeMax)=([\d.]+)', ['action_time_max']);
+          extractMetric(r'\b(?:ATMin|ActionTimeMin)=([\d.]+)', ['action_time_min']);
+          extractMetric(r'\b(?:ATSD|ActionTimeSD)=([\d.]+)', ['action_time_sd']);
         }
       }
     }
@@ -201,6 +246,8 @@ class EpvatFormulaHelper {
   /// Normalizes natural language formula into machine-parsable expression.
   /// Supports:
   /// - `3SD` -> `3 * sd`
+  /// - `P1_MAX_INDIVIDUAL` -> `p1_max_$defaultTemp`
+  /// - `P1_MEAN + 3 * P1_SD` -> `p1_mean_$defaultTemp + 3 * p1_sd_$defaultTemp`
   /// - `P1 Mean @ 21` -> `p1_mean_21`
   /// - `Mean P1 @ 21` -> `p1_mean_21`
   /// - `P1 Mean` (without temp) -> `p1_mean_$defaultTemp`
@@ -213,49 +260,57 @@ class EpvatFormulaHelper {
     // 1. Convert pipe absolute syntax |A - B| into abs(A - B)
     expr = expr.replaceAllMapped(RegExp(r'\|([^|]+)\|'), (m) => 'abs(${m[1]})');
 
-    // 2. Handle implicit multiplication specifically for standalone numbers before SD, Sigma, or parenthesis:
+    // 2. Pre-normalize NATO individual max expressions
+    expr = expr.replaceAllMapped(
+      RegExp(r'\b(p1|p2)[\s_]+max[\s_]+individual\b', caseSensitive: false),
+      (m) => '${m[1]}_max',
+    );
+
+    // 3. Handle implicit multiplication specifically for standalone numbers before SD, Sigma, or parenthesis:
     // e.g. "3SD" or "3 SD" or "3sd" -> "3 * sd"
     // Use negative lookbehind so digits inside "P1" or "P2" do NOT trigger multiplication on following words!
     expr = expr.replaceAllMapped(
-      RegExp(r'(?<![a-zA-Z])(\d+)\s*(sd|sigma)\b', caseSensitive: false),
+      RegExp(r'(?<![a-zA-Z0-9_])(\d+)\s*(sd|sigma)\b', caseSensitive: false),
       (m) => '${m[1]} * ${m[2]}',
     );
     expr = expr.replaceAllMapped(
-      RegExp(r'(?<![a-zA-Z])(\d+)\s*\('),
+      RegExp(r'(?<![a-zA-Z0-9_])(\d+)\s*\('),
       (m) => '${m[1]} * (',
     );
 
-    // 3. Normalise compound tokens WITH temperature suffixes or without:
-    // e.g. "P1 Mean @ 21", "P1 Mean @ +21", "P1 Mean @52", "Mean P1 @ -54", "P1 SD @ 21", "P1 Mean"
+    // 4. Normalise compound tokens (both space and underscore separated):
+    // e.g. "P1_MEAN", "P1 Mean", "P1 Mean @ 21", "P1_MEAN_21", "P1 SD @ +21", "VEL_MEAN", "ACTION_TIME_MEAN", "Action Time Mean"
     expr = expr.replaceAllMapped(
-      RegExp(r'\b(p1|p2|vel(?:ocity)?|v|action_time|at)\s*(mean|sd|max|min|range)\s*(?:@\s*\+?(-?\d+))?\b', caseSensitive: false),
+      RegExp(r'\b(p1|p2|vel(?:ocity)?|v|action[\s_]+time|action_time|at)[\s_]+(mean|sd|sigma|max|min|range)(?:[\s_]*(?:@|at)?[\s_]*\+?(-?\d+))?\b', caseSensitive: false),
       (m) {
         final pRaw = m[1]!.toLowerCase();
-        final param = (pRaw.startsWith('v')) ? 'vel' : ((pRaw == 'at' || pRaw == 'action_time') ? 'action_time' : pRaw);
-        final metric = m[2]!.toLowerCase();
+        final param = (pRaw.startsWith('v')) ? 'vel' : ((pRaw == 'at' || pRaw.contains('action')) ? 'action_time' : pRaw);
+        final mRaw = m[2]!.toLowerCase();
+        final metric = (mRaw == 'sigma') ? 'sd' : mRaw;
         String temp = m[3] ?? cleanDefaultTemp;
         temp = temp.replaceAll('-', '').replaceAll('+', '');
         return '${param}_${metric}_$temp';
       },
     );
 
-    // Also inverted order: "Mean P1 @ 21", "SD P1 @ 52", "Mean P1", "SD P2"
+    // 5. Inverted order: "Mean P1 @ 21", "SD P1 @ 52", "Mean P1", "SD P2", "Mean Action Time"
     expr = expr.replaceAllMapped(
-      RegExp(r'\b(mean|sd|max|min|range)\s*(p1|p2|vel(?:ocity)?|v)\s*(?:@\s*\+?(-?\d+))?\b', caseSensitive: false),
+      RegExp(r'\b(mean|sd|sigma|max|min|range)[\s_]+(p1|p2|vel(?:ocity)?|v|action[\s_]+time|action_time|at)(?:[\s_]*(?:@|at)?[\s_]*\+?(-?\d+))?\b', caseSensitive: false),
       (m) {
-        final metric = m[1]!.toLowerCase();
+        final mRaw = m[1]!.toLowerCase();
+        final metric = (mRaw == 'sigma') ? 'sd' : mRaw;
         final pRaw = m[2]!.toLowerCase();
-        final param = pRaw.startsWith('v') ? 'vel' : pRaw;
+        final param = pRaw.startsWith('v') ? 'vel' : ((pRaw == 'at' || pRaw.contains('action')) ? 'action_time' : pRaw);
         String temp = m[3] ?? cleanDefaultTemp;
         temp = temp.replaceAll('-', '').replaceAll('+', '');
         return '${param}_${metric}_$temp';
       },
     );
 
-    // 4. Standalone parameter mentions without metric (e.g. "P1 @ 21", "P1", "P2 @ 52")
+    // 6. Standalone parameter mentions without metric (e.g. "P1 @ 21", "P1", "P2 @ 52")
     // Must NOT match already normalized tokens like p1_mean_21!
     expr = expr.replaceAllMapped(
-      RegExp(r'(?<![a-z0-9_])(p1|p2)(?!\s*_[a-z0-9_])\s*(?:@\s*\+?(-?\d+))?(?![a-z0-9_])', caseSensitive: false),
+      RegExp(r'(?<![a-z0-9_])(p1|p2)(?!\s*_[a-z0-9_])(?:\s*(?:@|at)\s*\+?(-?\d+))?(?![a-z0-9_])', caseSensitive: false),
       (m) {
         final param = m[1]!.toLowerCase();
         String temp = m[2] ?? cleanDefaultTemp;
@@ -264,10 +319,10 @@ class EpvatFormulaHelper {
       },
     );
 
-    // 5. Standalone "SD" or "Mean" or "Sigma" without parameter:
+    // 7. Standalone "SD" or "Mean" or "Sigma" without parameter:
     // e.g. "3 * SD" -> "3 * p1_sd_21"
     expr = expr.replaceAllMapped(
-      RegExp(r'(?<![a-z0-9_])(sd|mean|sigma)(?:\s*@\s*\+?(-?\d+))?(?![a-z0-9_])', caseSensitive: false),
+      RegExp(r'(?<![a-z0-9_])(sd|mean|sigma)(?:\s*(?:@|at)\s*\+?(-?\d+))?(?![a-z0-9_])', caseSensitive: false),
       (m) {
         final mRaw = m[1]!.toLowerCase();
         final metric = (mRaw == 'sigma' || mRaw == 'sd') ? 'sd' : 'mean';
@@ -287,13 +342,16 @@ class EpvatFormulaHelper {
   }
 
   /// Builds a human-readable arithmetic substitution string:
-  /// e.g. "3500 + 3 * 100 = 3800.00 bar"
+  /// e.g. "3500 + 3 * 100 = 3800.00"
   static String buildSubstitutedArithmetic(
     String originalFormula,
     Map<String, double> variables, {
     String defaultTemp = '21',
   }) {
-    final String norm = normalizeFormula(originalFormula, defaultTemp: defaultTemp);
+    String cleanDefaultTemp = defaultTemp.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanDefaultTemp.isEmpty) cleanDefaultTemp = '21';
+
+    final String norm = normalizeFormula(originalFormula, defaultTemp: cleanDefaultTemp);
     String substituted = norm;
 
     final Map<String, double> lowerVars = {};
@@ -301,11 +359,49 @@ class EpvatFormulaHelper {
       lowerVars[e.key.toLowerCase()] = e.value;
     }
 
+    // Expand lowerVars with fallbacks
+    final expanded = Map<String, double>.from(lowerVars);
+    for (final e in lowerVars.entries) {
+      final k = e.key;
+      final val = e.value;
+      final lastUnderscore = k.lastIndexOf('_');
+      if (lastUnderscore > 0) {
+        final sfx = k.substring(lastUnderscore + 1);
+        if (RegExp(r'^\d+$').hasMatch(sfx)) {
+          final base = k.substring(0, lastUnderscore);
+          expanded.putIfAbsent(base, () => val);
+          if (base.contains('max_individual')) {
+            final baseMax = base.replaceAll('max_individual', 'max');
+            expanded.putIfAbsent(baseMax, () => val);
+            expanded.putIfAbsent('${baseMax}_$sfx', () => val);
+          } else if (base.contains('max')) {
+            final baseInd = base.replaceAll('max', 'max_individual');
+            expanded.putIfAbsent(baseInd, () => val);
+            expanded.putIfAbsent('${baseInd}_$sfx', () => val);
+          }
+        }
+      } else {
+        expanded.putIfAbsent('${k}_21', () => val);
+        expanded.putIfAbsent('${k}_$cleanDefaultTemp', () => val);
+        if (k.contains('max_individual')) {
+          final baseMax = k.replaceAll('max_individual', 'max');
+          expanded.putIfAbsent(baseMax, () => val);
+          expanded.putIfAbsent('${baseMax}_21', () => val);
+          expanded.putIfAbsent('${baseMax}_$cleanDefaultTemp', () => val);
+        } else if (k.contains('max')) {
+          final baseInd = k.replaceAll('max', 'max_individual');
+          expanded.putIfAbsent(baseInd, () => val);
+          expanded.putIfAbsent('${baseInd}_21', () => val);
+          expanded.putIfAbsent('${baseInd}_$cleanDefaultTemp', () => val);
+        }
+      }
+    }
+
     // Sort variable keys by length descending to avoid partial replacement
-    final keys = lowerVars.keys.toList()..sort((a, b) => b.length.compareTo(a.length));
+    final keys = expanded.keys.toList()..sort((a, b) => b.length.compareTo(a.length));
     for (final k in keys) {
       if (substituted.toLowerCase().contains(k)) {
-        final val = lowerVars[k] ?? 0.0;
+        final val = expanded[k] ?? 0.0;
         final valStr = val == val.roundToDouble() && !val.isNaN && !val.isInfinite
             ? val.toInt().toString()
             : val.toStringAsFixed(2);
@@ -314,7 +410,7 @@ class EpvatFormulaHelper {
     }
 
     // Any remaining unresolved variable stems default to 0
-    substituted = substituted.replaceAll(RegExp(r'\b(p1|p2|vel)_[a-z0-9_]+\b'), '0');
+    substituted = substituted.replaceAll(RegExp(r'\b(p1|p2|vel|action_time|at)_[a-z0-9_]+\b'), '0');
 
     // Format display operators for clarity
     substituted = substituted.replaceAll('*', ' * ');
@@ -328,6 +424,11 @@ class EpvatFormulaHelper {
     final resStr = result == result.roundToDouble() && !result.isNaN && !result.isInfinite
         ? result.toInt().toString()
         : result.toStringAsFixed(2);
+
+    // If substituted is identical to resStr (single value), avoid "3800 = 3800" redundancy
+    if (substituted == resStr) {
+      return resStr;
+    }
 
     return '$substituted = $resStr';
   }
@@ -551,7 +652,38 @@ class EpvatFormulaHelper {
 
     final Map<String, double> lowerVars = {};
     for (final e in variables.entries) {
-      lowerVars[e.key.toLowerCase()] = e.value;
+      final k = e.key.toLowerCase();
+      final val = e.value;
+      lowerVars[k] = val;
+      
+      final lastUnderscore = k.lastIndexOf('_');
+      if (lastUnderscore > 0) {
+        final sfx = k.substring(lastUnderscore + 1);
+        if (RegExp(r'^\d+$').hasMatch(sfx)) {
+          final base = k.substring(0, lastUnderscore);
+          lowerVars.putIfAbsent(base, () => val);
+          if (base.contains('max_individual')) {
+            final baseMax = base.replaceAll('max_individual', 'max');
+            lowerVars.putIfAbsent(baseMax, () => val);
+            lowerVars.putIfAbsent('${baseMax}_$sfx', () => val);
+          } else if (base.contains('max')) {
+            final baseInd = base.replaceAll('max', 'max_individual');
+            lowerVars.putIfAbsent(baseInd, () => val);
+            lowerVars.putIfAbsent('${baseInd}_$sfx', () => val);
+          }
+        }
+      } else {
+        lowerVars.putIfAbsent('${k}_21', () => val);
+        if (k.contains('max_individual')) {
+          final baseMax = k.replaceAll('max_individual', 'max');
+          lowerVars.putIfAbsent(baseMax, () => val);
+          lowerVars.putIfAbsent('${baseMax}_21', () => val);
+        } else if (k.contains('max')) {
+          final baseInd = k.replaceAll('max', 'max_individual');
+          lowerVars.putIfAbsent(baseInd, () => val);
+          lowerVars.putIfAbsent('${baseInd}_21', () => val);
+        }
+      }
     }
 
     late double Function() parseExpression;
@@ -618,7 +750,55 @@ class EpvatFormulaHelper {
         return sign * numVal;
       }
 
-      final varVal = lowerVars[token] ?? 0.0;
+      double? getVarValue(String t) {
+        if (lowerVars.containsKey(t)) return lowerVars[t];
+        // 1. Try stripping temperature suffix: p1_mean_21 -> p1_mean
+        String unSuffixed = t;
+        final lastUnderscore = t.lastIndexOf('_');
+        if (lastUnderscore > 0) {
+          final sfx = t.substring(lastUnderscore + 1);
+          if (RegExp(r'^\d+$').hasMatch(sfx)) {
+            unSuffixed = t.substring(0, lastUnderscore);
+            if (lowerVars.containsKey(unSuffixed)) return lowerVars[unSuffixed];
+          }
+        }
+        // 2. Try adding default temperature suffix: p1_mean -> p1_mean_21
+        if (lowerVars.containsKey('${t}_21')) return lowerVars['${t}_21'];
+        if (lowerVars.containsKey('${unSuffixed}_21')) return lowerVars['${unSuffixed}_21'];
+
+        // 3. Bidirectional max <-> max_individual alias
+        if (t.contains('max_individual')) {
+          final mapped = t.replaceAll('max_individual', 'max');
+          if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
+          final baseMapped = mapped.replaceAll(RegExp(r'_\d+$'), '');
+          if (lowerVars.containsKey(baseMapped)) return lowerVars[baseMapped];
+        } else if (t.contains('max')) {
+          final mapped = t.replaceAll('max', 'max_individual');
+          if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
+          final baseMapped = mapped.replaceAll(RegExp(r'_\d+$'), '');
+          if (lowerVars.containsKey(baseMapped)) return lowerVars[baseMapped];
+        }
+
+        if (unSuffixed.contains('max_individual')) {
+          final mapped = unSuffixed.replaceAll('max_individual', 'max');
+          if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
+        } else if (unSuffixed.contains('max')) {
+          final mapped = unSuffixed.replaceAll('max', 'max_individual');
+          if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
+        }
+
+        // 4. Try action time alias: at_mean -> action_time_mean or vice versa
+        if (t.startsWith('at_')) {
+          final mapped = t.replaceFirst('at_', 'action_time_');
+          if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
+        } else if (t.startsWith('action_time_')) {
+          final mapped = t.replaceFirst('action_time_', 'at_');
+          if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
+        }
+        return null;
+      }
+
+      final varVal = getVarValue(token) ?? 0.0;
       return sign * varVal;
     };
 

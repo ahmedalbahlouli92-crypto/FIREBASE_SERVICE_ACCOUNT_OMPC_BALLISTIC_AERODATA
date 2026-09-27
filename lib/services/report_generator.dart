@@ -251,11 +251,12 @@ class ReportGenerator {
     final caliber = records[0].caliber;
     final epvRules = adminRules['epvat'] ?? {};
     final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-    var list = List<dynamic>.from(formulasMap[caliber] ?? []);
-    if (list.isEmpty) {
-      list = List<dynamic>.from(formulasMap['default'] ?? []);
-    }
     final bool isThreeTemp = records.map((r) => r.cartridgeTemp).toSet().length > 1;
+    var list = EpvatFormulaHelper.getFormulasForCaliber(
+      formulasMap,
+      caliber,
+      isThreeTemp: isThreeTemp,
+    );
     final String activePressureUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty
         ? records[0].epvatPressureUnit
         : 'bar';

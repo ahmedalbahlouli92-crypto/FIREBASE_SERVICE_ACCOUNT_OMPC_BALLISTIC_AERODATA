@@ -86,7 +86,10 @@ class ModernAnalyticsOverviewCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Wrap(
+                              spacing: 10.0,
+                              runSpacing: 4.0,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 const Text(
                                   'Ballistic Analytics & Fleet Volume',
@@ -98,7 +101,6 @@ class ModernAnalyticsOverviewCard extends StatelessWidget {
                                     letterSpacing: -0.2,
                                   ),
                                 ),
-                                const SizedBox(width: 10.0),
                                 // Sky blue status badge
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 9.0, vertical: 3.0),
