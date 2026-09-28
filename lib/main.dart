@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show rootBundle, SystemSound, SystemSoundType;
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'services/storage_service.dart';
 import 'models/ballistic_record.dart';
@@ -1038,11 +1038,18 @@ class _MainShellState extends State<MainShell> {
   String _selectedEpvatBarrelCaliber = '5.56x45 SS109';
   String _selectedAccuracyBarrelCaliber = '5.56x45 SS109';
 
-  // Collapsible control module sections
-  bool _isPersonnelCardExpanded = true;
-  bool _isPermissionsCardExpanded = true;
-  bool _isEquipmentCardExpanded = true;
+  // Collapsible control module sections (default collapsed so all fit on one page)
+  bool _isWorkspaceCardExpanded = false;
+  bool _isDiagnosticsCardExpanded = false;
+  bool _isPersonnelCardExpanded = false;
+  bool _isPermissionsCardExpanded = false;
+  bool _isEquipmentCardExpanded = false;
   bool _isRulesCardExpanded = false; // Collapsed by default as requested; admin will open it
+
+  // Report submission real-time alerting & audio chime tracking
+  final String _clientSessionId = DateTime.now().microsecondsSinceEpoch.toString();
+  final Set<String> _locallySubmittedRecordIds = {};
+  final Set<String> _recentlyAlertedRecordIds = {};
   int? _editingFormulaIndex;
   final Map<String, List<String>> _adminWeaponManufacturers = {
     'Pistol': ['Beretta', 'Glock', 'SIG Sauer', 'CZ', 'Smith & Wesson', 'Colt', 'Browning', 'Other'],
@@ -1503,6 +1510,27 @@ class _MainShellState extends State<MainShell> {
       try {
         _realtimeChannel = SupabaseService.client
             .channel('public:fleet_and_records_live')
+            .onBroadcast(
+              event: 'report_submitted',
+              callback: (payload) {
+                if (!mounted) return;
+                final senderSession = payload['session_id']?.toString() ?? '';
+                if (senderSession == _clientSessionId) return; // Ignore own broadcast
+                final recId = payload['rec_id']?.toString() ?? '';
+                final user = payload['user']?.toString() ?? 'User';
+                final test = payload['test']?.toString() ?? 'Inspection';
+                final lot = payload['lot']?.toString() ?? '';
+                final alertKey = '${recId}_${user}_$lot';
+                if (_recentlyAlertedRecordIds.contains(alertKey)) return;
+                _recentlyAlertedRecordIds.add(alertKey);
+                _flashRemoteSubmissionAlert(
+                  user: user,
+                  testName: test,
+                  lotNo: lot,
+                  status: payload['status']?.toString(),
+                );
+              },
+            )
             .onPostgresChanges(
               event: PostgresChangeEvent.all,
               schema: 'public',
@@ -1511,6 +1539,25 @@ class _MainShellState extends State<MainShell> {
                 if (mounted) {
                   _syncRecordsSilently();
                   _syncRulesSilently();
+                  if (payload.eventType == PostgresChangeEvent.insert) {
+                    final newRec = payload.newRecord;
+                    final recId = newRec['id']?.toString() ?? '';
+                    final user = (newRec['operators'] ?? newRec['operator'] ?? 'User').toString();
+                    final test = (newRec['test_name'] ?? 'Inspection').toString();
+                    final lot = (newRec['lot_no'] ?? '').toString();
+                    final status = newRec['status']?.toString();
+                    final alertKey = '${recId}_${user}_$lot';
+                    if (recId.isNotEmpty && _locallySubmittedRecordIds.contains(recId)) return;
+                    if (!_recentlyAlertedRecordIds.contains(alertKey)) {
+                      _recentlyAlertedRecordIds.add(alertKey);
+                      _flashRemoteSubmissionAlert(
+                        user: user,
+                        testName: test,
+                        lotNo: lot,
+                        status: status,
+                      );
+                    }
+                  }
                 }
               },
             )
@@ -1529,6 +1576,76 @@ class _MainShellState extends State<MainShell> {
         debugPrint("Notice: Realtime sync fallback to polling: $e");
       }
     });
+  }
+
+  void _flashRemoteSubmissionAlert({
+    required String user,
+    required String testName,
+    required String lotNo,
+    String? status,
+  }) {
+    if (!mounted) return;
+    try {
+      SystemSound.play(SystemSoundType.alert);
+    } catch (_) {}
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          side: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+        ),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0284C7).withOpacity(0.25),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.notifications_active_rounded, color: Color(0xFF38BDF8), size: 22.0),
+            ),
+            const SizedBox(width: 12.0),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$user submitted a report',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.0, color: Colors.white),
+                  ),
+                  const SizedBox(height: 2.0),
+                  Text(
+                    '$testName • Lot: $lotNo${status != null && status.isNotEmpty ? ' • Status: $status' : ''}',
+                    style: TextStyle(fontSize: 11.5, color: Colors.white.withOpacity(0.85)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                setState(() => _activeTabIndex = 2);
+              },
+              icon: const Icon(Icons.table_chart_outlined, size: 14.0, color: Colors.white),
+              label: const Text('View in Logs', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0284C7),
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _cancelRealtimeSubscription() {
@@ -2028,6 +2145,35 @@ class _MainShellState extends State<MainShell> {
   }
 
   Future<void> _handleNewRecord(BallisticRecord record) async {
+    // Play submission alert sound
+    try {
+      SystemSound.play(SystemSoundType.alert);
+    } catch (_) {}
+
+    // Track local ID to avoid alerting self
+    if (record.id != null && record.id!.isNotEmpty) {
+      _locallySubmittedRecordIds.add(record.id!);
+    }
+
+    // Broadcast submission event in real-time to other users
+    final opName = record.operators.isNotEmpty ? record.operators : (_currentUserEmail.isNotEmpty ? _currentUserEmail : 'User');
+    try {
+      _realtimeChannel?.sendBroadcastMessage(
+        event: 'report_submitted',
+        payload: {
+          'session_id': _clientSessionId,
+          'rec_id': record.id ?? '',
+          'user': opName,
+          'test': record.testName,
+          'lot': record.lotNo,
+          'status': record.status,
+          'time': DateTime.now().toIso8601String(),
+        },
+      );
+    } catch (e) {
+      debugPrint("Realtime broadcast note: $e");
+    }
+
     await _storageService.saveRecord(record, module: _currentModule);
     final updated = await _storageService.loadRecords(module: _currentModule);
     setState(() {
@@ -3334,164 +3480,275 @@ class _MainShellState extends State<MainShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Lab Control & Settings',
-            style: TextStyle(
-              fontSize: 26.0,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 4.0),
-          const Text(
-            'Native desktop hooks and reporting folder configurations',
-            style: TextStyle(
-              fontSize: 13.5,
-              color: Color(0xFF475569),
-            ),
-          ),
-          const SizedBox(height: 24.0),
-          
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final double cardWidth = constraints.maxWidth > 750
-                  ? (constraints.maxWidth - 20) / 2
-                  : constraints.maxWidth;
-                  
-              return Wrap(
-                spacing: 20.0,
-                runSpacing: 20.0,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Lab Control & Settings',
+                      style: TextStyle(
+                        fontSize: 24.0,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    SizedBox(height: 3.0),
+                    Text(
+                      'Native desktop hooks, personnel roles, equipment fleet, and ballistic rules',
+                      style: TextStyle(
+                        fontSize: 13.0,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Workspace Settings Card
-                  Container(
-                    width: cardWidth,
-                    padding: const EdgeInsets.all(24.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14.0),
-                      border: Border.all(color: const Color(0xFFB8CEE5)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0A1E3A8A),
-                          blurRadius: 14.0,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Active Workspace Logs',
-                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                        ),
-                        const SizedBox(height: 12.0),
-                        const Text(
-                          'Ballistic trial outcomes are logged to high-fidelity CSV files. These files are stored in your documents directory for integration with other analytics suites.',
-                          style: TextStyle(fontSize: 13.0, color: Color(0xFF334155), height: 1.4),
-                        ),
-                        const SizedBox(height: 20.0),
-                        Container(
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F6FB),
-                            borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: const Color(0xFFD6E4F0)),
-                          ),
-                          child: Text(
-                            'Target Path:\n$_storagePath',
-                            style: const TextStyle(fontSize: 12.0, color: Color(0xFF0284C7), fontFamily: 'JetBrainsMono'),
-                          ),
-                        ),
-                        const SizedBox(height: 24.0),
-                        if (isDesktop && _currentUserRole == UserRole.admin)
-                          SizedBox(
-                            width: double.infinity,
-                            height: 40.0,
-                            child: ElevatedButton.icon(
-                              onPressed: _openFolder,
-                              icon: const Icon(Icons.folder_open, size: 18.0),
-                              label: const Text('Open Logs Directory'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4D99DB),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                              ),
-                            ),
-                          ),
-                        if (_currentUserRole == UserRole.admin) ...[
-                          const SizedBox(height: 10.0),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 40.0,
-                            child: OutlinedButton.icon(
-                              onPressed: _handleClearDailyTestLogs,
-                              icon: const Icon(Icons.delete_sweep, size: 18.0, color: Color(0xFFEF4444)),
-                              label: const Text('Clear Daily Test Logs', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFEF4444)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isWorkspaceCardExpanded = false;
+                        _isDiagnosticsCardExpanded = false;
+                        _isPersonnelCardExpanded = false;
+                        _isPermissionsCardExpanded = false;
+                        _isEquipmentCardExpanded = false;
+                        _isRulesCardExpanded = false;
+                      });
+                    },
+                    icon: const Icon(Icons.unfold_less_rounded, size: 16.0, color: Color(0xFF475569)),
+                    label: const Text('Collapse All', style: TextStyle(color: Color(0xFF475569), fontSize: 12.0, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                     ),
                   ),
-                  
-                  // Diagnostics Card
-                  Container(
-                    width: cardWidth,
-                    padding: const EdgeInsets.all(24.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14.0),
-                      border: Border.all(color: const Color(0xFFB8CEE5)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0A1E3A8A),
-                          blurRadius: 14.0,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'System Diagnostics',
-                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                        ),
-                        const SizedBox(height: 16.0),
-                        _buildDiagnosticItem('Operating System', kIsWeb ? 'BROWSER' : Platform.operatingSystem.toUpperCase()),
-                        _buildDiagnosticItem('Execution Host', 'Flutter Native Engine'),
-                        _buildDiagnosticItem('Database Source', 'Local Flatfile (CSV)'),
-                        _buildDiagnosticItem('Daily Report File', _storageService.getDailyFileName()),
-                        _buildDiagnosticItem('Local Port Binding', 'None (Native Embedded Storage)'),
-                      ],
+                  const SizedBox(width: 8.0),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isWorkspaceCardExpanded = true;
+                        _isDiagnosticsCardExpanded = true;
+                        _isPersonnelCardExpanded = true;
+                        _isPermissionsCardExpanded = true;
+                        _isEquipmentCardExpanded = true;
+                        _isRulesCardExpanded = true;
+                      });
+                    },
+                    icon: const Icon(Icons.unfold_more_rounded, size: 16.0, color: Color(0xFF0284C7)),
+                    label: const Text('Expand All', style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.0, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF38BDF8)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                     ),
                   ),
-
-                  // Personnel & Role Management (Admin only)
-                  if (_currentUserRole == UserRole.admin)
-                    _buildOperatorManagementCard(cardWidth),
-
-                  // Role Permissions & Access Matrix (Admin only)
-                  if (_currentUserRole == UserRole.admin)
-                    _buildRolePermissionsCard(cardWidth),
-                  
-                  // Equipment Fleet & Round Tracking (Admin only)
-                  if (_currentUserRole == UserRole.admin)
-                    _buildEquipmentFleetCard(cardWidth),
-
-                  // Rules Management (Admin only or authorized roles)
-                  if (_currentUserRole == UserRole.admin || _hasPermission('can_manage_rules'))
-                    _buildRulesManagementCard(cardWidth),
                 ],
-              );
-            },
+              ),
+            ],
           ),
+          const SizedBox(height: 16.0),
+          
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Workspace Settings Card
+              _buildWorkspaceSettingsCard(isDesktop),
+              const SizedBox(height: 12.0),
+
+              // 2. Diagnostics Card
+              _buildDiagnosticsCard(),
+
+              // 3. Personnel & Role Management (Admin only)
+              if (_currentUserRole == UserRole.admin) ...[
+                const SizedBox(height: 12.0),
+                _buildOperatorManagementCard(double.infinity),
+                const SizedBox(height: 12.0),
+                // 4. Role Permissions & Access Matrix (Admin only)
+                _buildRolePermissionsCard(double.infinity),
+                const SizedBox(height: 12.0),
+                // 5. Equipment Fleet & Round Tracking (Admin only)
+                _buildEquipmentFleetCard(double.infinity),
+              ],
+
+              // 6. Rules Management (Admin only or authorized roles)
+              if (_currentUserRole == UserRole.admin || _hasPermission('can_manage_rules')) ...[
+                const SizedBox(height: 12.0),
+                _buildRulesManagementCard(double.infinity),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkspaceSettingsCard(bool isDesktop) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isWorkspaceCardExpanded ? 20.0 : 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isWorkspaceCardExpanded = !_isWorkspaceCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF4D99DB)),
+                  ),
+                  child: const Icon(Icons.folder_shared_rounded, color: Color(0xFF0284C7), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Active Workspace Logs',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(_isWorkspaceCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF0284C7)),
+                  onPressed: () => setState(() => _isWorkspaceCardExpanded = !_isWorkspaceCardExpanded),
+                ),
+              ],
+            ),
+          ),
+          if (_isWorkspaceCardExpanded) ...[
+            const SizedBox(height: 12.0),
+            const Text(
+              'Ballistic trial outcomes are logged to high-fidelity CSV files. These files are stored in your documents directory for integration with other analytics suites.',
+              style: TextStyle(fontSize: 13.0, color: Color(0xFF334155), height: 1.4),
+            ),
+            const SizedBox(height: 16.0),
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F6FB),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFFD6E4F0)),
+              ),
+              child: Text(
+                'Target Path:\n$_storagePath',
+                style: const TextStyle(fontSize: 12.0, color: Color(0xFF0284C7), fontFamily: 'JetBrainsMono'),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            if (isDesktop && _currentUserRole == UserRole.admin)
+              SizedBox(
+                width: double.infinity,
+                height: 40.0,
+                child: ElevatedButton.icon(
+                  onPressed: _openFolder,
+                  icon: const Icon(Icons.folder_open, size: 18.0),
+                  label: const Text('Open Logs Directory'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4D99DB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  ),
+                ),
+              ),
+            if (_currentUserRole == UserRole.admin) ...[
+              const SizedBox(height: 10.0),
+              SizedBox(
+                width: double.infinity,
+                height: 40.0,
+                child: OutlinedButton.icon(
+                  onPressed: _handleClearDailyTestLogs,
+                  icon: const Icon(Icons.delete_sweep, size: 18.0, color: Color(0xFFEF4444)),
+                  label: const Text('Clear Daily Test Logs', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFEF4444)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiagnosticsCard() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isDiagnosticsCardExpanded ? 20.0 : 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isDiagnosticsCardExpanded = !_isDiagnosticsCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF4D99DB)),
+                  ),
+                  child: const Icon(Icons.tune_rounded, color: Color(0xFF0284C7), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'System Diagnostics',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(_isDiagnosticsCardExpanded ? Icons.expand_less : Icons.expand_more, color: const Color(0xFF0284C7)),
+                  onPressed: () => setState(() => _isDiagnosticsCardExpanded = !_isDiagnosticsCardExpanded),
+                ),
+              ],
+            ),
+          ),
+          if (_isDiagnosticsCardExpanded) ...[
+            const SizedBox(height: 16.0),
+            _buildDiagnosticItem('Operating System', kIsWeb ? 'BROWSER' : Platform.operatingSystem.toUpperCase()),
+            _buildDiagnosticItem('Execution Host', 'Flutter Native Engine'),
+            _buildDiagnosticItem('Database Source', 'Local Flatfile (CSV)'),
+            _buildDiagnosticItem('Daily Report File', _storageService.getDailyFileName()),
+            _buildDiagnosticItem('Local Port Binding', 'None (Native Embedded Storage)'),
+          ],
         ],
       ),
     );
@@ -3513,7 +3770,7 @@ class _MainShellState extends State<MainShell> {
 
     return Container(
       width: width,
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isPersonnelCardExpanded ? 20.0 : 12.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.0),
@@ -3855,7 +4112,7 @@ class _MainShellState extends State<MainShell> {
 
     return Container(
       width: width,
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isPermissionsCardExpanded ? 20.0 : 12.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.0),
@@ -4070,7 +4327,7 @@ class _MainShellState extends State<MainShell> {
 
     return Container(
       width: width,
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isEquipmentCardExpanded ? 20.0 : 12.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.0),
@@ -5347,7 +5604,7 @@ class _MainShellState extends State<MainShell> {
   Widget _buildRulesManagementCard(double width) {
     return Container(
       width: width,
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isRulesCardExpanded ? 20.0 : 12.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.0),
@@ -5571,42 +5828,6 @@ class _MainShellState extends State<MainShell> {
             _buildRuleTextField('Max Target Velocity for $_ruleSelectedCaliber (m/s)', _ruleAccMaxVelCtrl),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _ruleAccInstructionsCtrl, isMultiline: true),
           ] else if (_selectedRuleTest == 'EPVAT Test') ...[
-            Text('Configure Temperature Specifications for $_ruleSelectedCaliber', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6.0),
-            Row(
-              children: ['+21', '+52', '-54'].map((temp) {
-                final isSel = _ruleSelectedEpvatTemp == temp;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    label: Text('$temp °C', style: TextStyle(color: isSel ? Colors.white : const Color(0xFF8E96A3), fontSize: 12.0)),
-                    selected: isSel,
-                    selectedColor: const Color(0xFF06B6D4),
-                    backgroundColor: Colors.black.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _ruleSelectedEpvatTemp = temp;
-                        });
-                        _syncRulesControllers();
-                      }
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16.0),
-            _buildRuleTextField('Min Velocity for $_ruleSelectedCaliber at $_ruleSelectedEpvatTemp °C (m/s)', _ruleEpvMinVelCtrl),
-            _buildRuleTextField('Max Velocity for $_ruleSelectedCaliber at $_ruleSelectedEpvatTemp °C (m/s)', _ruleEpvMaxVelCtrl),
-            _buildRuleTextField('Max P1 Chamber Pressure for $_ruleSelectedCaliber (bar)', _ruleEpvMaxP1Ctrl),
-            _buildRuleTextField('Min P2 Port Pressure for $_ruleSelectedCaliber (bar)', _ruleEpvMinP2Ctrl),
-            _buildRuleTextField('Max Action Time for $_ruleSelectedCaliber at $_ruleSelectedEpvatTemp °C (ms)', _ruleEpvMaxActionTimeCtrl),
-            _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _ruleEpvInstructionsCtrl, isMultiline: true),
-            const SizedBox(height: 4.0),
-            const Divider(color: Color(0xFF1F293D)),
-            const SizedBox(height: 8.0),
-
             // --- Bullet Mass for Kinetic Energy ---
             const Text(
               'PROJECTILE MASS & KINETIC ENERGY',
@@ -5619,80 +5840,6 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 10.0),
             _buildRuleTextField('Bullet Mass (grams) for $_ruleSelectedCaliber', _ruleEpvBulletMassCtrl),
-
-            const Divider(color: Color(0xFF1F293D)),
-            const SizedBox(height: 8.0),
-
-            // --- Extended Sentencing Flags ---
-            const Text(
-              'EXTENDED SENTENCING RULES',
-              style: TextStyle(fontSize: 10.0, fontWeight: FontWeight.bold, color: Color(0xFF6366F1), letterSpacing: 1.0),
-            ),
-            const SizedBox(height: 8.0),
-            // 3-Sigma Pressure Toggle
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Enable 3-Sigma Pressure Reject', style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 2.0),
-                        Text('Auto-reject if P1 Mean + 3×SD exceeds limit', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0)),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: _ruleEpvThreeSigmaEnabled,
-                    activeColor: const Color(0xFF6366F1),
-                    onChanged: (val) => setState(() => _ruleEpvThreeSigmaEnabled = val),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10.0),
-            // Temp Velocity Delta Toggle
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Enable Temp Velocity Delta Check', style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 2.0),
-                        Text('Reject if V(+52°C) − V(−54°C) > Max Delta', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0)),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: _ruleEpvTempDeltaEnabled,
-                    activeColor: const Color(0xFF6366F1),
-                    onChanged: (val) => setState(() => _ruleEpvTempDeltaEnabled = val),
-                  ),
-                ],
-              ),
-            ),
-            if (_ruleEpvTempDeltaEnabled) ...[
-              const SizedBox(height: 10.0),
-              _buildRuleTextField('Max Allowed Velocity Delta V(+21°C) − V(+52°C) (m/s)', _ruleEpvTempDeltaMaxCtrl),
-            ],
-            
             const SizedBox(height: 20.0),
             const Text('Custom Caliber Sentencing Calculations', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 13.0, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8.0),

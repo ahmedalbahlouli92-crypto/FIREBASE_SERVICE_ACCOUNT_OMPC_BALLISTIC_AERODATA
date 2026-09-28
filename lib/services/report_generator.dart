@@ -254,30 +254,29 @@ class ReportGenerator {
       final bg = i % 2 == 1 ? 'background-color: #f8fafc;' : '';
       final color = res.isPassed ? '#15803d' : '#b91c1c';
       final statusText = res.isPassed ? 'PASSED' : 'FAILED';
-      final safeSubstituted = res.substitutedText.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
       final displayOp = res.op == '<=' ? '&le;' : (res.op == '>=' ? '&ge;' : (res.op == '<' ? '&lt;' : (res.op == '>' ? '&gt;' : res.op)));
       rowsBuffer.writeln('''
       <tr style="$bg">
-        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${res.name}</td>
-        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #475569;">${res.formula}</td>
-        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: bold; color: #1e293b;">$safeSubstituted ${res.unit}</td>
-        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">$displayOp ${res.limitValue.toStringAsFixed(1)} ${res.unit}</td>
-        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: $color;">$statusText</td>
+        <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${res.name}</td>
+        <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #475569;">${res.formula}</td>
+        <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: bold; color: #1e293b;">${res.calculatedValue.toStringAsFixed(1)} ${res.unit}</td>
+        <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">$displayOp ${res.limitValue.toStringAsFixed(1)} ${res.unit}</td>
+        <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: $color;">$statusText</td>
       </tr>
       ''');
     }
 
     return '''
-    <div style="margin-top: 15px; margin-bottom: 15px;">
-      <h3 class="section-title" style="border-bottom: 2px solid #cbd5e1; padding-bottom: 4px; font-size: 12.5px; font-weight: bold; text-transform: uppercase;">Combined EPVAT Ballistic Analysis (Admin Adjustable Formulas)</h3>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+    <div style="margin-top: 8px; margin-bottom: 8px;">
+      <h3 class="section-title" style="border-bottom: 2px solid #cbd5e1; padding-bottom: 3px; font-size: 11.5px; font-weight: bold; text-transform: uppercase;">Combined EPVAT Ballistic Analysis (Admin Adjustable Formulas)</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
         <thead>
-          <tr style="background-color: #f1f5f9; color: #475569; font-size: 10.5px; font-weight: bold; text-align: left; text-transform: uppercase;">
-            <th style="padding: 6px 8px; border-bottom: 2px solid #cbd5e1;">Rule / Check Name</th>
-            <th style="padding: 6px 8px; border-bottom: 2px solid #cbd5e1;">Formula Expression</th>
-            <th style="padding: 6px 8px; border-bottom: 2px solid #cbd5e1;">Evaluated Calculation</th>
-            <th style="padding: 6px 8px; border-bottom: 2px solid #cbd5e1;">Configured Limit</th>
-            <th style="padding: 6px 8px; border-bottom: 2px solid #cbd5e1;">Status</th>
+          <tr style="background-color: #f1f5f9; color: #475569; font-size: 10px; font-weight: bold; text-align: left; text-transform: uppercase;">
+            <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Rule / Check Name</th>
+            <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Formula Expression</th>
+            <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Evaluated Calculation</th>
+            <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Configured Limit</th>
+            <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -285,7 +284,7 @@ class ReportGenerator {
           $keHtml
         </tbody>
       </table>
-      <div style="padding: 10px 12px; border: 1px solid ${allPassed ? '#bbf7d0' : '#fecaca'}; border-radius: 6px; background-color: ${allPassed ? '#f0fdf4' : '#fef2f2'}; font-size: 11.5px; font-weight: bold; line-height: 1.4; color: ${allPassed ? '#15803d' : '#b91c1c'};">
+      <div style="padding: 6px 10px; border: 1px solid ${allPassed ? '#bbf7d0' : '#fecaca'}; border-radius: 6px; background-color: ${allPassed ? '#f0fdf4' : '#fef2f2'}; font-size: 11px; font-weight: bold; line-height: 1.3; color: ${allPassed ? '#15803d' : '#b91c1c'};">
         <strong>Combined Sentencing Result:</strong> ${allPassed ? 'The lot satisfies all configured EPVAT ballistic criteria and is approved.' : 'The lot fails one or more configured EPVAT criteria and must be rejected.'}
       </div>
     </div>
@@ -306,12 +305,6 @@ class ReportGenerator {
         .toList();
     final remarksText = remarksList.join('<br/>');
 
-    final requirementList = records
-        .map((r) => r.requirement.trim())
-        .where((req) => req.isNotEmpty)
-        .toSet()
-        .toList();
-    final requirementText = requirementList.isNotEmpty ? requirementList.join(', ') : 'N/A';
 
     final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
@@ -594,16 +587,16 @@ class ReportGenerator {
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #1e293b;
-      padding: 15px 25px;
+      padding: 10px 16px;
       margin: 0;
       background-color: #ffffff;
     }
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 12px;
-      border-bottom: 3px solid #06b6d4;
-      padding-bottom: 10px;
+      margin-bottom: 8px;
+      border-bottom: 2.5px solid #06b6d4;
+      padding-bottom: 6px;
     }
     .header-table td {
       border: none !important;
@@ -612,12 +605,12 @@ class ReportGenerator {
     }
     .title-section {
       text-align: center;
-      margin-top: 5px;
-      margin-bottom: 10px;
+      margin-top: 3px;
+      margin-bottom: 8px;
     }
     .title-section h2 {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       color: #0f172a;
       text-transform: uppercase;
@@ -627,72 +620,72 @@ class ReportGenerator {
       height: 2px;
       width: 100%;
       background-color: #06b6d4;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 15px;
+      gap: 8px;
+      margin-bottom: 10px;
     }
     .summary-card {
       background-color: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 8px 12px;
+      border-radius: 6px;
+      padding: 6px 10px;
     }
     .summary-card .label {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .summary-card .val {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       color: #0f172a;
-      margin-top: 2px;
+      margin-top: 1px;
     }
     .section-title {
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 700;
       color: #0f172a;
-      border-bottom: 2px solid #cbd5e1;
-      padding-bottom: 4px;
-      margin-top: 14px;
-      margin-bottom: 8px;
+      border-bottom: 1.5px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-top: 8px;
+      margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .details-table {
       width: 100%;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .details-table td {
-      padding: 4px 8px;
-      font-size: 11.5px;
+      padding: 2.5px 6px;
+      font-size: 10.5px;
       border: none !important;
       background: none !important;
     }
     table.data-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
     }
     table.data-table th {
       background-color: #f1f5f9;
       color: #475569;
       text-align: left;
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 700;
-      padding: 6px 8px;
-      border-bottom: 2px solid #cbd5e1;
+      padding: 4px 6px;
+      border-bottom: 1.5px solid #cbd5e1;
       text-transform: uppercase;
     }
     table.data-table td {
-      padding: 6px 8px;
-      font-size: 10.5px;
+      padding: 4px 6px;
+      font-size: 10px;
       border-bottom: 1px solid #e2e8f0;
       color: #334155;
     }
@@ -700,9 +693,9 @@ class ReportGenerator {
       background-color: #f8fafc;
     }
     .badge {
-      padding: 3px 6px;
+      padding: 2px 5px;
       border-radius: 4px;
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: bold;
       display: inline-block;
       text-transform: uppercase;
@@ -714,18 +707,18 @@ class ReportGenerator {
     .badge-approved-with-condition { background-color: #ccfbf1; color: #0f766e; }
     
     .sentence-box {
-      padding: 10px 12px;
+      padding: 6px 10px;
       border: 1px solid #cbd5e1;
-      border-radius: 6px;
+      border-radius: 5px;
       background-color: #f8fafc;
-      font-size: 11.5px;
+      font-size: 10.5px;
       font-weight: bold;
-      line-height: 1.4;
+      line-height: 1.35;
       color: #1e293b;
       white-space: pre-wrap;
     }
     .signatures {
-      margin-top: 25px;
+      margin-top: 16px;
       display: flex;
       justify-content: space-between;
     }
@@ -733,14 +726,15 @@ class ReportGenerator {
       width: 40%;
       border-top: 1px solid #cbd5e1;
       text-align: center;
-      padding-top: 6px;
-      font-size: 11.5px;
+      padding-top: 4px;
+      font-size: 10.5px;
       color: #475569;
     }
     @media print {
-      @page { margin: 0; }
-      body { margin: 12mm 15mm; padding: 0; }
+      @page { margin: 6mm 8mm; size: A4 portrait; }
+      body { margin: 0; padding: 0; }
       .no-print { display: none; }
+      .summary-card, .data-table, .sentence-box, .signatures { page-break-inside: avoid; }
     }
   </style>
 </head>
@@ -992,39 +986,6 @@ class ReportGenerator {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
-        if (r.epvatPressureRounds.isNotEmpty) {
-          final roundsList = r.epvatPressureRounds.split(',');
-          final p2List = r.epvatP2PressureRounds.split(',');
-          final velList = r.epvatVelRounds.split(',');
-          final bufferRounds = StringBuffer();
-          bufferRounds.write('<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">');
-          bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
-          final chamberHeader = is9mm ? 'Chamber Pres' : 'GP1 (Chamber)';
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$chamberHeader (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
-          if (!is9mm) {
-            bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
-          }
-          bufferRounds.write('</tr>');
-          for (int idx = 0; idx < roundsList.length; idx++) {
-            final roundNo = idx + 1;
-            final velVal = idx < velList.length ? velList[idx] : '';
-            final p1Val = roundsList[idx];
-            final p2Val = idx < p2List.length ? p2List[idx] : '';
-            bufferRounds.write('<tr>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">Round $roundNo</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$velVal</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p1Val</td>');
-            if (!is9mm) {
-              bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p2Val</td>');
-            }
-            bufferRounds.write('</tr>');
-          }
-          bufferRounds.write('</table>');
-          buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f8fafc;">Individual Round Details</td></tr>');
-          buffer.writeln('<tr><td colspan="6" style="padding: 10px;">$bufferRounds</td></tr>');
-        }
 
         final p1Mean = r.epvatMeanPressure.trim().isNotEmpty ? r.epvatMeanPressure : '-';
         final p1Max = r.epvatMaxPressure.trim().isNotEmpty ? r.epvatMaxPressure : '-';
@@ -1077,6 +1038,24 @@ class ReportGenerator {
             <td>$vSD</td>
           </tr>
         ''');
+
+        if (r.actionTimeMean.trim().isNotEmpty || r.actionTimeMax.trim().isNotEmpty) {
+          final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
+          final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
+          final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
+          final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
+          final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
+          buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold;">Action Time (ms)</td>
+            <td>$atMean</td>
+            <td>$atMax</td>
+            <td>$atMin</td>
+            <td>$atRange</td>
+            <td>$atSD</td>
+          </tr>
+          ''');
+        }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
           buffer.writeln('<tr><td colspan="5" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
@@ -1196,14 +1175,6 @@ class ReportGenerator {
   $epvatCombinedSection
   $classificationImageSection
 
-  <!-- Requirement -->
-  <div>
-    <h3 class="section-title">Requirement</h3>
-    <div class="sentence-box" style="min-height: 40px;">
-      $requirementText
-    </div>
-  </div>
-
   <!-- Remarks -->
   <div>
     <h3 class="section-title">Remarks</h3>
@@ -1265,13 +1236,6 @@ class ReportGenerator {
         .toSet()
         .toList();
     final remarksText = remarksList.join('<br/>');
-
-    final requirementList = records
-        .map((r) => r.requirement.trim())
-        .where((req) => req.isNotEmpty)
-        .toSet()
-        .toList();
-    final requirementText = requirementList.isNotEmpty ? requirementList.join(', ') : 'N/A';
 
     final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
@@ -1784,39 +1748,6 @@ class ReportGenerator {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
-        if (r.epvatPressureRounds.isNotEmpty) {
-          final roundsList = r.epvatPressureRounds.split(',');
-          final p2List = r.epvatP2PressureRounds.split(',');
-          final velList = r.epvatVelRounds.split(',');
-          final bufferRounds = StringBuffer();
-          bufferRounds.write('<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">');
-          bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round</th>');
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
-          final chamberHeader = is9mm ? 'Chamber Pres' : 'GP1 (Chamber)';
-          bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$chamberHeader (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
-          if (!is9mm) {
-            bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</th>');
-          }
-          bufferRounds.write('</tr>');
-          for (int idx = 0; idx < roundsList.length; idx++) {
-            final roundNo = idx + 1;
-            final velVal = idx < velList.length ? velList[idx] : '';
-            final p1Val = roundsList[idx];
-            final p2Val = idx < p2List.length ? p2List[idx] : '';
-            bufferRounds.write('<tr>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">Round $roundNo</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$velVal</td>');
-            bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p1Val</td>');
-            if (!is9mm) {
-              bufferRounds.write('<td style="border: 1px solid #cbd5e1; padding: 4px;">$p2Val</td>');
-            }
-            bufferRounds.write('</tr>');
-          }
-          bufferRounds.write('</table>');
-          buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f8fafc;">Individual Round Details</td></tr>');
-          buffer.writeln('<tr><td colspan="6" style="padding: 10px;">$bufferRounds</td></tr>');
-        }
 
         final p1Mean = r.epvatMeanPressure.trim().isNotEmpty ? r.epvatMeanPressure : '-';
         final p1Max = r.epvatMaxPressure.trim().isNotEmpty ? r.epvatMaxPressure : '-';
@@ -1869,6 +1800,24 @@ class ReportGenerator {
             <td>$vSD</td>
           </tr>
         ''');
+
+        if (r.actionTimeMean.trim().isNotEmpty || r.actionTimeMax.trim().isNotEmpty) {
+          final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
+          final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
+          final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
+          final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
+          final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
+          buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold;">Action Time (ms)</td>
+            <td>$atMean</td>
+            <td>$atMax</td>
+            <td>$atMin</td>
+            <td>$atRange</td>
+            <td>$atSD</td>
+          </tr>
+          ''');
+        }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
           buffer.writeln('<tr><td colspan="5" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
@@ -1986,11 +1935,6 @@ class ReportGenerator {
 
   $epvatCombinedSection
   $classificationImageSection
-
-  <h2 class="section-title">Requirement</h2>
-  <div class="sentence-box" style="min-height: 40px;">
-    $requirementText
-  </div>
 
   <h2 class="section-title">Remarks</h2>
   <div class="sentence-box" style="min-height: 40px;">

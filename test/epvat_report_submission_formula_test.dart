@@ -245,17 +245,17 @@ void main() {
         adminRules: adminRules,
       );
 
-      expect(html.contains('3500 + 5 * 100 = 4000'), isTrue);
-      expect(html.contains('3800 = 3800'), isTrue);
-      expect(html.contains('3300 = 3300'), isTrue);
-      expect(html.contains('1200 - 3 * 10 = 1170'), isTrue);
-      expect(html.contains('1350 - 3 * 11 = 1317'), isTrue);
-      expect(html.contains('1070 = 1070'), isTrue);
-      expect(html.contains('1350 - 1200 = 150'), isTrue);
-      expect(html.contains('1070 - 1200 = -130'), isTrue);
-      expect(html.contains('925 - 915 = 10'), isTrue);
-      expect(html.contains('895 - 915 = -20'), isTrue);
-      expect(html.contains('0.38 + 5 * 0.05 = 0.63'), isTrue);
+      expect(html.contains('4000.0 bar'), isTrue);
+      expect(html.contains('3800.0 bar'), isTrue);
+      expect(html.contains('3300.0 bar'), isTrue);
+      expect(html.contains('1170.0 bar'), isTrue);
+      expect(html.contains('1317.0 bar'), isTrue);
+      expect(html.contains('1070.0 bar'), isTrue);
+      expect(html.contains('150.0 bar'), isTrue);
+      expect(html.contains('-130.0 bar'), isTrue);
+      expect(html.contains('10.0 m/s'), isTrue);
+      expect(html.contains('-20.0 m/s'), isTrue);
+      expect(html.contains('0.6 ms'), isTrue);
       expect(html.contains('0 52 54 Action Time'), isFalse);
     });
   });

@@ -2792,9 +2792,7 @@ class _EntryTabState extends State<EntryTab> {
         final baseActSD = _overallEpvatControllers[baselineTemp]!['action_time_sd']?.text.trim() ?? '';
 
         final customNotes = _notesController.text.trim();
-        final combinedNotes = tempDetails.isNotEmpty
-            ? (customNotes.isNotEmpty ? '$customNotes | ' : '') + 'Temps: ${tempDetails.join('; ')}'
-            : customNotes;
+        final combinedNotes = customNotes;
 
         final record = BallisticRecord(
           module: widget.currentModule,
@@ -2912,9 +2910,7 @@ class _EntryTabState extends State<EntryTab> {
         final overallStatus = _calculateFunctionTestStatus(l1: sumL1, l2: sumL2, l3: sumL3, l4: sumL4);
 
         final customNotes = _notesController.text.trim();
-        final combinedNotes = tempSummaries.isNotEmpty
-            ? (customNotes.isNotEmpty ? '$customNotes | ' : '') + 'Temps: ${tempSummaries.join('; ')}'
-            : customNotes;
+        final combinedNotes = customNotes;
 
         final record = BallisticRecord(
           module: widget.currentModule,
@@ -3411,7 +3407,7 @@ class _EntryTabState extends State<EntryTab> {
                     ),
                     _buildFlexibleField(
                       key: _shiftFieldKey,
-                      flex: 2,
+                      flex: 1,
                       label: 'Shift',
                       isRequired: true,
                       child: _buildDropdownField(
@@ -3469,7 +3465,7 @@ class _EntryTabState extends State<EntryTab> {
                     ),
                     _buildFlexibleField(
                       key: _caliberFieldKey,
-                      flex: 3,
+                      flex: 2,
                       label: 'Caliber Specification',
                       isRequired: true,
                       child: _buildDropdownField(
@@ -4147,7 +4143,18 @@ class _EntryTabState extends State<EntryTab> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Text('Cyclic Rate (RPM)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                          const Text.rich(
+                                            TextSpan(
+                                              text: 'Cyclic Rate (RPM)',
+                                              children: [
+                                                TextSpan(
+                                                  text: ' *',
+                                                  style: TextStyle(color: Color(0xFFEF4444), fontSize: 13.0, fontWeight: FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                            style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold),
+                                          ),
                                           const SizedBox(height: 6.0),
                                           _buildTextField(
                                             controller: _cyclicRateController,
@@ -4820,14 +4827,29 @@ class _EntryTabState extends State<EntryTab> {
                               SizedBox(width: 8.0),
                               Text(
                                 'EPVAT Pressure & Velocity Specifications',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16.0),
                           Row(
                             children: [
-                              const Text('Pressure Unit: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5)),
+                              RichText(
+                                text: const TextSpan(
+                                  text: 'Pressure Unit',
+                                  style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold),
+                                  children: [
+                                    TextSpan(
+                                      text: ' *',
+                                      style: TextStyle(color: Color(0xFFEF4444), fontSize: 14.0, fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(
+                                      text: ': ',
+                                      style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               const SizedBox(width: 12.0),
                               _buildEpvatUnitRadioButton('bar', 'bar'),
                               const SizedBox(width: 16.0),
@@ -4839,9 +4861,17 @@ class _EntryTabState extends State<EntryTab> {
                           const SizedBox(height: 20.0),
                           if (_epvatPressureType == 'Overall') ...[
                             // Overall mode layout: Tabbed container for temperatures +21, +52, -54
-                            const Text(
-                              'Overall Trial Parameters by Temperature',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.5, fontWeight: FontWeight.bold),
+                            Row(
+                              children: [
+                                const Text(
+                                  'Overall Trial Parameters by Temperature',
+                                  style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.5, fontWeight: FontWeight.bold),
+                                ),
+                                const Text(
+                                  ' *',
+                                  style: TextStyle(color: Color(0xFFEF4444), fontSize: 14.0, fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 12.0),
                             Row(
@@ -4859,9 +4889,9 @@ class _EntryTabState extends State<EntryTab> {
                                     margin: const EdgeInsets.only(right: 12.0),
                                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                                     decoration: BoxDecoration(
-                                      color: isSelected ? const Color(0xFF06B6D4) : Colors.white.withOpacity(0.05),
+                                      color: isSelected ? const Color(0xFF06B6D4) : const Color(0xFFE2E8F0),
                                       borderRadius: BorderRadius.circular(20.0),
-                                      border: Border.all(color: isSelected ? Colors.transparent : Colors.white.withOpacity(0.1)),
+                                      border: Border.all(color: isSelected ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1)),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -4869,14 +4899,14 @@ class _EntryTabState extends State<EntryTab> {
                                         Text(
                                           labels[idx],
                                           style: TextStyle(
-                                            color: isSelected ? Colors.black : Colors.white,
+                                            color: isSelected ? Colors.white : const Color(0xFF0F172A),
                                             fontWeight: FontWeight.bold,
                                             fontSize: 12.0,
                                           ),
                                         ),
                                         if (hasData) ...[
                                           const SizedBox(width: 6.0),
-                                          Icon(Icons.check_circle, size: 14.0, color: isSelected ? Colors.black : const Color(0xFF10B981)),
+                                          Icon(Icons.check_circle, size: 14.0, color: isSelected ? Colors.white : const Color(0xFF10B981)),
                                         ],
                                       ],
                                     ),
@@ -5367,45 +5397,11 @@ class _EntryTabState extends State<EntryTab> {
                   ),
                   const SizedBox(height: 20.0),
 
-                  // Requirement (Optional)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Requirement (Optional)',
-                        style: TextStyle(
-                          color: Color(0xFF8E96A3),
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-                      TextFormField(
-                        controller: _requirementController,
-                        maxLines: 2,
-                        style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5),
-                        decoration: InputDecoration(
-                          hintText: 'Enter any manual requirement text...',
-                          hintStyle: const TextStyle(color: Color(0xFF6495BF)),
-                          filled: true,
-                          fillColor: const Color(0xFFE0F2FE),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Function Test Cartridge Classification Reference Diagram below Remarks
+                  if (_testName == 'Function Test') ...[
+                    _buildFunctionCartridgeReferenceDiagram(),
+                    const SizedBox(height: 20.0),
+                  ],
                   if (_testName == 'Extraction Force Test' && (_caliber.contains('M200') || _caliber.contains('M82'))) ...[
                     Container(
                       width: double.infinity,
@@ -6138,50 +6134,7 @@ class _EntryTabState extends State<EntryTab> {
               ),
             ),
           ],
-          const SizedBox(height: 16.0),
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F9FF),
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(Icons.photo_outlined, color: Color(0xFF0284C7), size: 16.0),
-                    SizedBox(width: 8.0),
-                    Text(
-                      'Cartridge Classification Reference Diagram',
-                      style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8.0),
-                Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6.0),
-                    child: Image.asset(
-                      _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
-                      height: 180,
-                      fit: BoxFit.contain,
-                      errorBuilder: (c, e, s) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4.0),
-                Center(
-                  child: Text(
-                    _isCaliber9mm ? '9mm Cartridge Reference' : '5.56 / 7.62 Cartridge Reference',
-                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.0, fontStyle: FontStyle.italic),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
       ),
     );
   }
@@ -7206,7 +7159,7 @@ class _EntryTabState extends State<EntryTab> {
           Radio<String>(
             value: unit,
             groupValue: _epvatPressureUnit,
-            activeColor: const Color(0xFF06B6D4),
+            activeColor: const Color(0xFF0284C7),
             onChanged: (val) {
               if (val != null) _onPressureUnitChanged(val);
             },
@@ -7214,9 +7167,55 @@ class _EntryTabState extends State<EntryTab> {
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : const Color(0xFF8E96A3),
+              color: const Color(0xFF0F172A),
               fontSize: 13.0,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFunctionCartridgeReferenceDiagram() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFFBAE6FD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.photo_outlined, color: Color(0xFF0284C7), size: 18.0),
+              SizedBox(width: 8.0),
+              Text(
+                'Cartridge Classification Reference Diagram',
+                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8.0),
+              child: Image.asset(
+                _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
+                height: 220,
+                fit: BoxFit.contain,
+                errorBuilder: (c, e, s) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6.0),
+          Center(
+            child: Text(
+              _isCaliber9mm ? '9mm Cartridge Reference Diagram' : '5.56 / 7.62 Cartridge Reference Diagram',
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0, fontStyle: FontStyle.italic),
             ),
           ),
         ],
@@ -8466,121 +8465,35 @@ class _EntryTabState extends State<EntryTab> {
           autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
         } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
           final epv = widget.adminRules['epvat'] ?? {};
-          final bool threeSigmaEnabled = epv['enable_three_sigma_pressure'] == true;
-          final bool tempDeltaEnabled = epv['enable_temp_velocity_delta'] == true;
-          final double maxTempDelta = ((epv['temp_velocity_delta_max'] ?? 30.0) as num).toDouble();
+          final bool isThreeTemp = _epvatPressureType == 'Overall';
+
+          // Evaluate custom formulas configured in Control module (COMBINED EPVAT BALLISTIC ANALYSIS)
+          final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
+          final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(formulasMap, _caliber, isThreeTemp: isThreeTemp);
           
-          if (_epvatPressureType == 'Overall') {
-            final temps = ['+21', '+52', '-54'];
-            final activeTemp = temps[_activeEpvatTempTabIndex];
-            final activeEpv = _getEpvatRulesForCaliber(activeTemp);
-            
-            final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
-            final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
-            final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
-            final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
-            
-            final double? vMean = double.tryParse(_overallEpvatControllers[activeTemp]!['vel_mean']!.text.trim());
-            final double? p1MaxVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_max']!.text.trim());
-            final double? p2MinVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p2_min']!.text.trim());
-            final double? p1MeanVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_mean']!.text.trim());
-            final double? p1SdVal = double.tryParse(_overallEpvatControllers[activeTemp]!['p1_sd']!.text.trim());
-            
-            bool rejected = false;
-            
-            if ((vMean != null && (vMean < velMin || vMean > velMax)) ||
-                (p1MaxVal != null && p1MaxVal > p1Max) ||
-                (p2MinVal != null && p2MinVal < p2Min)) {
-              rejected = true;
-            }
-            
-            if (!rejected && threeSigmaEnabled && p1MeanVal != null && p1SdVal != null) {
-              if ((p1MeanVal + 3.0 * p1SdVal) > p1Max) {
+          bool rejected = false;
+          if (customFormulas.isNotEmpty) {
+            final defaultTemp = isThreeTemp
+                ? '21'
+                : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
+                    ? '21'
+                    : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
+            final vars = _getEpvatVariablesMap();
+            for (final f in customFormulas) {
+              final res = EpvatFormulaHelper.evaluateFormulaItem(
+                Map<String, dynamic>.from(f as Map),
+                vars,
+                defaultTemp: defaultTemp,
+                activePressureUnit: _epvatPressureUnit,
+              );
+              if (!res.isPassed) {
                 rejected = true;
+                break;
               }
             }
-            
-            if (!rejected && tempDeltaEnabled) {
-              final double? v52 = double.tryParse(_overallEpvatControllers['+52']!['vel_mean']!.text.trim());
-              final double? v54 = double.tryParse(_overallEpvatControllers['-54']!['vel_mean']!.text.trim());
-              if (v52 != null && v54 != null && (v52 - v54).abs() > maxTempDelta) {
-                rejected = true;
-              }
-            }
-
-            // Evaluate custom formulas configured in Control module
-            final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
-            final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(formulasMap, _caliber, isThreeTemp: true);
-            if (!rejected && customFormulas.isNotEmpty) {
-              final vars = _getEpvatVariablesMap();
-              for (final f in customFormulas) {
-                final res = EpvatFormulaHelper.evaluateFormulaItem(
-                  Map<String, dynamic>.from(f as Map),
-                  vars,
-                  defaultTemp: '21',
-                  activePressureUnit: _epvatPressureUnit,
-                );
-                if (!res.isPassed) {
-                  rejected = true;
-                  break;
-                }
-              }
-            }
-            
-            autoStatus = rejected ? 'Rejected' : 'Approved';
-          } else {
-            final tempKey = _cartridgeTempController.text.trim();
-            final activeEpv = _getEpvatRulesForCaliber(tempKey);
-            
-            final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
-            final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
-            final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
-            final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
-            
-            final double? vMean = double.tryParse(_meanVelController.text.trim());
-            final double? p1MaxVal = double.tryParse(_epvatMaxPressureController.text.trim());
-            final double? p2MinVal = double.tryParse(_epvatP2MinPressureController.text.trim());
-            final double? p1MeanVal = double.tryParse(_epvatMeanPressureController.text.trim());
-            final double? p1SdVal = double.tryParse(_epvatSDPressureController.text.trim());
-            
-            bool rejected = false;
-            
-            if ((vMean != null && (vMean < velMin || vMean > velMax)) ||
-                (p1MaxVal != null && p1MaxVal > p1Max) ||
-                (p2MinVal != null && p2MinVal < p2Min)) {
-              rejected = true;
-            }
-            
-            if (!rejected && threeSigmaEnabled && p1MeanVal != null && p1SdVal != null) {
-              if ((p1MeanVal + 3.0 * p1SdVal) > p1Max) {
-                rejected = true;
-              }
-            }
-
-            // Evaluate custom formulas configured in Control module
-            final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
-            final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(formulasMap, _caliber, isThreeTemp: false);
-            if (!rejected && customFormulas.isNotEmpty) {
-              final defaultTemp = _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
-                  ? '21'
-                  : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim();
-              final vars = _getEpvatVariablesMap();
-              for (final f in customFormulas) {
-                final res = EpvatFormulaHelper.evaluateFormulaItem(
-                  Map<String, dynamic>.from(f as Map),
-                  vars,
-                  defaultTemp: defaultTemp,
-                  activePressureUnit: _epvatPressureUnit,
-                );
-                if (!res.isPassed) {
-                  rejected = true;
-                  break;
-                }
-              }
-            }
-            
-            autoStatus = rejected ? 'Rejected' : 'Approved';
           }
+          
+          autoStatus = rejected ? 'Rejected' : 'Approved';
         }
 
         if (autoStatus != null && _status != autoStatus) {
@@ -8618,12 +8531,39 @@ class _EntryTabState extends State<EntryTab> {
         return _buildFlexibleField(
           flex: flex,
           label: 'Quality Status',
+          isRequired: true,
           child: DropdownButtonFormField<String>(
             value: _status,
             isExpanded: true,
             dropdownColor: const Color(0xFF1E293B),
             icon: Icon(Icons.arrow_drop_down, color: statusTextColor),
             style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+            selectedItemBuilder: (BuildContext context) {
+              return ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(color: statusTextColor, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          s,
+                          overflow: TextOverflow.visible,
+                          softWrap: false,
+                          style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList();
+            },
             decoration: InputDecoration(
               filled: true,
               fillColor: statusBgColor,
@@ -8680,10 +8620,11 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
-  Widget _buildSampleLocationField({int flex = 3}) {
+  Widget _buildSampleLocationField({int flex = 2}) {
     return _buildFlexibleField(
       flex: flex,
       label: 'Sampling Location',
+      isRequired: true,
       child: Row(
         children: [
           Expanded(
@@ -8724,7 +8665,7 @@ class _EntryTabState extends State<EntryTab> {
       return _buildFormRow([
         _buildFlexibleField(
           key: _producedFieldKey,
-          flex: 3,
+          flex: 2,
           label: 'Quantity Tested (Rounds)',
           isRequired: true,
           child: _buildTextField(
@@ -8741,7 +8682,7 @@ class _EntryTabState extends State<EntryTab> {
           ),
         ),
         _buildFlexibleField(
-          flex: 3,
+          flex: 2,
           label: 'Viscosity (seconds)',
           child: _buildTextField(
             controller: _viscosityController,
@@ -8750,9 +8691,9 @@ class _EntryTabState extends State<EntryTab> {
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
           ),
         ),
-        _buildSampleLocationField(flex: 4),
+        _buildSampleLocationField(flex: 2),
         _buildFlexibleField(
-          flex: 3,
+          flex: 2,
           label: 'Pressure (Bar) - Caliber Fixed',
           child: _buildTextField(
             controller: _pressureController,
@@ -8760,7 +8701,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5',
           ),
         ),
-        _buildQualityStatusField(flex: 3),
+        _buildQualityStatusField(flex: 6),
       ], lockSingleRow: true);
     }
 
@@ -8768,7 +8709,7 @@ class _EntryTabState extends State<EntryTab> {
       return _buildFormRow([
         _buildFlexibleField(
           key: _producedFieldKey,
-          flex: 3,
+          flex: 2,
           label: 'Quantity Tested (Rounds)',
           isRequired: true,
           child: _buildTextField(
@@ -8786,7 +8727,7 @@ class _EntryTabState extends State<EntryTab> {
         ),
         _buildFlexibleField(
           key: _barrelFieldKey,
-          flex: 4,
+          flex: 3,
           label: 'Accuracy Barrel Test Serial',
           isRequired: true,
           child: Column(
@@ -8812,7 +8753,7 @@ class _EntryTabState extends State<EntryTab> {
             ],
           ),
         ),
-        _buildSampleLocationField(flex: 3),
+        _buildSampleLocationField(flex: 2),
         _buildFlexibleField(
           key: _distanceFieldKey,
           flex: 2,
@@ -8824,7 +8765,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: 'e.g., 25',
           ),
         ),
-        _buildQualityStatusField(flex: 3),
+        _buildQualityStatusField(flex: 6),
       ], lockSingleRow: true);
     }
 
@@ -9033,7 +8974,7 @@ class _EntryTabState extends State<EntryTab> {
           _buildFormRow([
             _buildFlexibleField(
               key: _barrelFieldKey,
-              flex: 3,
+              flex: 2,
               label: 'Barrel Serial No.',
               isRequired: true,
               child: Column(
@@ -9060,7 +9001,7 @@ class _EntryTabState extends State<EntryTab> {
               ),
             ),
             _buildFlexibleField(
-              flex: 3,
+              flex: 2,
               label: 'GP6 (1) Chamber',
               isRequired: true,
               child: Column(
@@ -9107,7 +9048,7 @@ class _EntryTabState extends State<EntryTab> {
             if (!_isCaliber9mm)
               _buildFlexibleField(
                 key: _gp6FieldKey,
-                flex: 3,
+                flex: 2,
                 label: 'GP6 (2) Port',
                 isRequired: true,
                 child: Column(
@@ -9136,7 +9077,7 @@ class _EntryTabState extends State<EntryTab> {
                   ],
                 ),
               ),
-            _buildSampleLocationField(flex: 3),
+            _buildSampleLocationField(flex: 2),
             _buildFlexibleField(
               key: _distanceFieldKey,
               flex: 2,
@@ -9148,7 +9089,7 @@ class _EntryTabState extends State<EntryTab> {
                 hint: 'e.g., 25',
               ),
             ),
-            _buildQualityStatusField(flex: 3),
+            _buildQualityStatusField(flex: 6),
           ], lockSingleRow: true),
         ],
       );
@@ -9158,7 +9099,7 @@ class _EntryTabState extends State<EntryTab> {
       return _buildFormRow([
         _buildFlexibleField(
           key: _producedFieldKey,
-          flex: 3,
+          flex: 2,
           label: 'Quantity Tested (Rounds)',
           isRequired: true,
           child: _buildTextField(
@@ -9190,9 +9131,9 @@ class _EntryTabState extends State<EntryTab> {
             },
           ),
         ),
-        _buildSampleLocationField(flex: 3),
+        _buildSampleLocationField(flex: 2),
         _buildFlexibleField(
-          flex: 4,
+          flex: 3,
           label: 'Temperature Evaluation Mode',
           child: _buildDropdownField(
             value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
@@ -9211,7 +9152,7 @@ class _EntryTabState extends State<EntryTab> {
         ),
         if (!_isThreeTemperatureMode)
           _buildFlexibleField(
-            flex: 3,
+            flex: 2,
             label: 'Selected Temperature',
             child: _buildDropdownField(
               value: _selectedTemperatureDisplay,
@@ -9221,7 +9162,7 @@ class _EntryTabState extends State<EntryTab> {
               },
             ),
           ),
-        _buildQualityStatusField(flex: 3),
+        _buildQualityStatusField(flex: 6),
       ], lockSingleRow: true);
     }
 
@@ -9229,7 +9170,7 @@ class _EntryTabState extends State<EntryTab> {
     return _buildFormRow([
       _buildFlexibleField(
         key: _producedFieldKey,
-        flex: 3,
+        flex: 2,
         label: 'Quantity Tested (Rounds)',
         isRequired: true,
         child: _buildTextField(
@@ -9245,10 +9186,10 @@ class _EntryTabState extends State<EntryTab> {
           },
         ),
       ),
-      _buildSampleLocationField(flex: 3),
+      _buildSampleLocationField(flex: 2),
       if (_testHasTemperatureEvaluation) ...[
         _buildFlexibleField(
-          flex: 4,
+          flex: 3,
           label: 'Temperature Evaluation Mode',
           child: _buildDropdownField(
             value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
@@ -9267,7 +9208,7 @@ class _EntryTabState extends State<EntryTab> {
         ),
         if (!_isThreeTemperatureMode)
           _buildFlexibleField(
-            flex: 3,
+            flex: 2,
             label: 'Selected Temperature',
             child: _buildDropdownField(
               value: _selectedTemperatureDisplay,
@@ -9278,7 +9219,7 @@ class _EntryTabState extends State<EntryTab> {
             ),
           ),
       ],
-      _buildQualityStatusField(flex: 3),
+      _buildQualityStatusField(flex: 6),
     ], lockSingleRow: true);
   }
 

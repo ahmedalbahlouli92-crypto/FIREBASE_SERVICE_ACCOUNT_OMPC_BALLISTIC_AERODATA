@@ -2316,7 +2316,7 @@ class _HistoryTabState extends State<HistoryTab> {
                 vertical: 24.0,
               ),
               child: Container(
-                width: math.min(1000.0, MediaQuery.of(context).size.width * 0.94),
+                width: math.min(1450.0, MediaQuery.of(context).size.width * 0.98),
                 height: math.min(850.0, MediaQuery.of(context).size.height * 0.90),
                 padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 14.0 : 24.0),
                 child: Column(
@@ -2490,6 +2490,8 @@ class _HistoryTabState extends State<HistoryTab> {
                                     ),
                                     child: DataTable(
                                       headingRowColor: MaterialStateProperty.all(const Color(0xFF263852)),
+                                      columnSpacing: 16.0,
+                                      horizontalMargin: 12.0,
                                       columns: [
                                         const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
@@ -2506,6 +2508,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                         if (selectedReportTest == 'All') ...[
                                           const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('DETAILS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'Waterproof Test') ...[
                                           const DataColumn(label: Text('PRESSURE', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('VISCOSITY', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
@@ -2513,6 +2516,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                           const DataColumn(label: Text('LOCATION', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('MOUTH LEAKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('PRIMER LEAKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         ] else if (selectedReportTest == 'Residual Stress Test') ...[
                                           const DataColumn(label: Text('ROOM TEMP', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('NECK (I)', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
@@ -2578,6 +2582,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                             if (selectedReportTest == 'All') ...[
                                               DataCell(Text(r.testName, style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)))),
                                               DataCell(_buildResultCell(r)),
+                                              DataCell(Text(r.notes.isNotEmpty ? r.notes : '-', style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else if (selectedReportTest == 'Waterproof Test') ...[
                                               DataCell(Text(r.pressureBar.isEmpty ? '-' : '${r.pressureBar} bar', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.viscosity.isEmpty ? '-' : r.viscosity, style: const TextStyle(color: Colors.white))),
@@ -2585,6 +2590,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                               DataCell(Text(r.samplingLocation.isEmpty ? '-' : r.samplingLocation, style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('S: ${r.mouthSlow} | F: ${r.mouthFast}', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('S: ${r.primerSlow} | F: ${r.primerFast}', style: const TextStyle(color: Colors.white))),
+                                              DataCell(Text(r.notes.isNotEmpty ? r.notes : '-', style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             ] else if (selectedReportTest == 'Residual Stress Test') ...[
                                               DataCell(Text(r.roomTemp.isEmpty ? '-' : '${r.roomTemp} °C', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('Min: ${r.neckSlow} | Maj: ${r.neckFast}', style: const TextStyle(color: Colors.white))),
