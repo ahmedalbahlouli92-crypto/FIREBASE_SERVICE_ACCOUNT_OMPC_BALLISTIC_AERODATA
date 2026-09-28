@@ -31,6 +31,102 @@ void main() async {
   runApp(const OmpcBallisticAeroDataApp());
 }
 
+class _SlowBlinkingGreeting extends StatefulWidget {
+  final String englishGreeting;
+  const _SlowBlinkingGreeting({Key? key, required this.englishGreeting}) : super(key: key);
+
+  @override
+  State<_SlowBlinkingGreeting> createState() => _SlowBlinkingGreetingState();
+}
+
+class _SlowBlinkingGreetingState extends State<_SlowBlinkingGreeting> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    );
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.10).chain(CurveTween(curve: Curves.easeInOut)), weight: 50),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.10, end: 1.0).chain(CurveTween(curve: Curves.easeInOut)), weight: 50),
+    ]).animate(_controller);
+
+    _opacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0.85, end: 1.0).chain(CurveTween(curve: Curves.easeInOut)), weight: 50),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.0).chain(CurveTween(curve: Curves.easeInOut)), weight: 50),
+    ]).animate(_controller);
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Opacity(
+            opacity: _opacityAnimation.value,
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0284C7).withOpacity(0.18),
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.6), width: 1.5),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'السَّلَامُ عَلَيْكُمْ',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24.0,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF38BDF8),
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 6.0),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.wb_sunny_rounded, color: Color(0xFF38BDF8), size: 18.0),
+                const SizedBox(width: 8.0),
+                Text(
+                  widget.englishGreeting,
+                  style: const TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF7DD3FC),
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class OmpcBallisticAeroDataApp extends StatelessWidget {
   const OmpcBallisticAeroDataApp({Key? key}) : super(key: key);
 
@@ -755,183 +851,570 @@ final Map<String, dynamic> _defaultRules = {
     'classification_image': '',
     'calibers': {
       '5.56x45 SS109': {
+        'schema_type': 'levels',
         'level1': {
           'max_allowed': 0,
-          'description': 'Blown primer, Split case, Perforated primer, Bullet lodged in bore',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Split case at points K, L or M',
+            'Bullet in Bore',
+            'Blown primer',
+            'Primer puncture',
+            'Misfire',
+            'Hangfire',
+            'Complete case rupture',
+            'Primer through',
+            'Primer drop',
+            'Loose primer',
+            'Pierced primer',
+            'No fire',
+            'Primer protrusion',
+          ],
+          'description': 'Split case at points K, L or M, Bullet in Bore, Blown primer, Primer puncture, Misfire, Hangfire, Complete case rupture, Primer through, Primer drop, Loose primer, Pierced primer, No fire, Primer protrusion',
         },
         'level2': {
           'max_allowed': 0,
-          'description': 'Failure to extract, Failure to eject, Failure to feed, Misfeed, Hangfire',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Hard Extraction',
+            'Fail to eject',
+            'Fail to Extract',
+            'Fail to cock',
+            'Split case at points A, B, C, D, E, F, G, H, I or J',
+            'Perforated primer',
+            'Bolt over case',
+          ],
+          'description': 'Hard Extraction, Fail to eject, Fail to Extract, Fail to cock, Split case at points A, B, C, D, E, F, G, H, I or J, Perforated primer, Bolt over case',
         },
         'level3': {
           'max_allowed': 2,
-          'description': 'Mild case dent, Minor extractor mark, Light primer indentation',
+          'retest_limit': 2,
+          'reject_limit': 3,
+          'items': [
+            'Double Feed',
+            'Fail to fire',
+            'Fail to feed',
+            'Fail to chamber',
+            'Fail to unlock',
+            'Light strike',
+          ],
+          'description': 'Double Feed, Fail to fire, Fail to feed, Fail to chamber, Fail to unlock, Light strike',
         },
         'level4': {
           'max_allowed': 5,
-          'description': 'Superficial scratches, Minor cosmetic blemish, Slight discoloration',
+          'retest_limit': 4,
+          'reject_limit': 6,
+          'items': [
+            'Dented case',
+            'Scratched case',
+            'Damaged bullet',
+            'Damaged tip',
+          ],
+          'description': 'Dented case, Scratched case, Damaged bullet, Damaged tip',
         },
       },
-      '5.56x45 M193': {
+      '.223 Rem': {
+        'schema_type': 'levels',
         'level1': {
           'max_allowed': 0,
-          'description': 'Blown primer, Split case, Perforated primer, Bullet lodged in bore',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Split case at points K, L or M',
+            'Bullet in Bore',
+            'Blown primer',
+            'Primer puncture',
+            'Misfire',
+            'Hangfire',
+            'Complete case rupture',
+            'Primer through',
+            'Primer drop',
+            'Loose primer',
+            'Pierced primer',
+            'No fire',
+            'Primer protrusion',
+          ],
+          'description': 'Split case at points K, L or M, Bullet in Bore, Blown primer, Primer puncture, Misfire, Hangfire, Complete case rupture, Primer through, Primer drop, Loose primer, Pierced primer, No fire, Primer protrusion',
         },
         'level2': {
           'max_allowed': 0,
-          'description': 'Failure to extract, Failure to eject, Failure to feed, Misfeed, Hangfire',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Hard Extraction',
+            'Fail to eject',
+            'Fail to Extract',
+            'Fail to cock',
+            'Split case at points A, B, C, D, E, F, G, H, I or J',
+            'Perforated primer',
+            'Bolt over case',
+          ],
+          'description': 'Hard Extraction, Fail to eject, Fail to Extract, Fail to cock, Split case at points A, B, C, D, E, F, G, H, I or J, Perforated primer, Bolt over case',
         },
         'level3': {
           'max_allowed': 2,
-          'description': 'Mild case dent, Minor extractor mark, Light primer indentation',
+          'retest_limit': 2,
+          'reject_limit': 3,
+          'items': [
+            'Double Feed',
+            'Fail to fire',
+            'Fail to feed',
+            'Fail to chamber',
+            'Fail to unlock',
+            'Light strike',
+          ],
+          'description': 'Double Feed, Fail to fire, Fail to feed, Fail to chamber, Fail to unlock, Light strike',
         },
         'level4': {
           'max_allowed': 5,
-          'description': 'Superficial scratches, Minor cosmetic blemish, Slight discoloration',
-        },
-      },
-      '5.56x45 M200 Blank': {
-        'level1': {
-          'max_allowed': 0,
-          'description': 'Blown primer, Case rupture, Plug dislodged, Misfire',
-        },
-        'level2': {
-          'max_allowed': 0,
-          'description': 'Failure to cycle, Failure to eject, Short recoil, Double feed',
-        },
-        'level3': {
-          'max_allowed': 2,
-          'description': 'Rose petal crimp tear, Mouth deformity, Minor denting',
-        },
-        'level4': {
-          'max_allowed': 5,
-          'description': 'Cosmetic discoloration, Scratches on blank body',
+          'retest_limit': 4,
+          'reject_limit': 6,
+          'items': [
+            'Dented case',
+            'Scratched case',
+            'Damaged bullet',
+            'Damaged tip',
+          ],
+          'description': 'Dented case, Scratched case, Damaged bullet, Damaged tip',
         },
       },
       '7.62x51 M80': {
+        'schema_type': 'levels',
         'level1': {
           'max_allowed': 0,
-          'description': 'Blown primer, Split case, Perforated primer, Bullet lodged in bore',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Split case at points K, L or M',
+            'Bullet in Bore',
+            'Blown primer',
+            'Primer puncture',
+            'Misfire',
+            'Hangfire',
+            'Complete case rupture',
+            'Primer through',
+            'Primer drop',
+            'Loose primer',
+            'Pierced primer',
+            'No fire',
+            'Primer protrusion',
+          ],
+          'description': 'Split case at points K, L or M, Bullet in Bore, Blown primer, Primer puncture, Misfire, Hangfire, Complete case rupture, Primer through, Primer drop, Loose primer, Pierced primer, No fire, Primer protrusion',
         },
         'level2': {
           'max_allowed': 0,
-          'description': 'Failure to extract, Failure to eject, Failure to feed, Misfeed, Hangfire',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Hard Extraction',
+            'Fail to eject',
+            'Fail to Extract',
+            'Fail to cock',
+            'Split case at points A, B, C, D, E, F, G, H, I or J',
+            'Perforated primer',
+            'Bolt over case',
+          ],
+          'description': 'Hard Extraction, Fail to eject, Fail to Extract, Fail to cock, Split case at points A, B, C, D, E, F, G, H, I or J, Perforated primer, Bolt over case',
         },
         'level3': {
           'max_allowed': 2,
-          'description': 'Mild case dent, Minor extractor mark, Light primer indentation',
+          'retest_limit': 2,
+          'reject_limit': 3,
+          'items': [
+            'Double Feed',
+            'Fail to fire',
+            'Fail to feed',
+            'Fail to chamber',
+            'Fail to unlock',
+            'Light strike',
+          ],
+          'description': 'Double Feed, Fail to fire, Fail to feed, Fail to chamber, Fail to unlock, Light strike',
         },
         'level4': {
           'max_allowed': 5,
-          'description': 'Superficial scratches, Minor cosmetic blemish, Slight discoloration',
+          'retest_limit': 4,
+          'reject_limit': 6,
+          'items': [
+            'Dented case',
+            'Scratched case',
+            'Damaged bullet',
+            'Damaged tip',
+          ],
+          'description': 'Dented case, Scratched case, Damaged bullet, Damaged tip',
+        },
+      },
+      '9x19mm Parabellum': {
+        'schema_type': 'levels',
+        'level1': {
+          'max_allowed': 0,
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Split case at points K, L or M',
+            'Bullet in Bore',
+            'Blown primer',
+            'Primer puncture',
+            'Misfire',
+            'Hangfire',
+            'Complete case rupture',
+            'Primer through',
+            'Primer drop',
+            'Loose primer',
+            'Pierced primer',
+            'No fire',
+            'Primer protrusion',
+          ],
+          'description': 'Split case at points K, L or M, Bullet in Bore, Blown primer, Primer puncture, Misfire, Hangfire, Complete case rupture, Primer through, Primer drop, Loose primer, Pierced primer, No fire, Primer protrusion',
+        },
+        'level2': {
+          'max_allowed': 0,
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Hard Extraction',
+            'Fail to eject',
+            'Fail to Extract',
+            'Fail to cock',
+            'Split case at points A, B, C, D, E, F, G, H, I or J',
+            'Perforated primer',
+            'Bolt over case',
+          ],
+          'description': 'Hard Extraction, Fail to eject, Fail to Extract, Fail to cock, Split case at points A, B, C, D, E, F, G, H, I or J, Perforated primer, Bolt over case',
+        },
+        'level3': {
+          'max_allowed': 2,
+          'retest_limit': 2,
+          'reject_limit': 3,
+          'items': [
+            'Double Feed',
+            'Fail to fire',
+            'Fail to feed',
+            'Fail to chamber',
+            'Fail to unlock',
+            'Light strike',
+          ],
+          'description': 'Double Feed, Fail to fire, Fail to feed, Fail to chamber, Fail to unlock, Light strike',
+        },
+        'level4': {
+          'max_allowed': 5,
+          'retest_limit': 4,
+          'reject_limit': 6,
+          'items': [
+            'Dented case',
+            'Scratched case',
+            'Damaged bullet',
+            'Damaged tip',
+          ],
+          'description': 'Dented case, Scratched case, Damaged bullet, Damaged tip',
         },
       },
       '7.62x51 M82': {
-        'level1': {
-          'max_allowed': 0,
-          'description': 'Blown primer, Case rupture, Rosette petal separation',
+        'schema_type': 'categories',
+        'categories': {
+          'Primer Defect': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Loose primer', 'Pierced primer', 'Blown primer', 'Primer puncture'],
+            'description': 'Loose primer, Pierced primer, Blown primer, Primer puncture',
+          },
+          'Case Defect': {
+            'retest_limit': 1,
+            'reject_limit': 2,
+            'items': ['Split case', 'Separated case', 'Ruptured case', 'Dented case', 'Corroded case'],
+            'description': 'Split case, Separated case, Ruptured case, Dented case, Corroded case',
+          },
+          'Weapon Stoppage': {
+            'retest_limit': 1,
+            'reject_limit': 2,
+            'items': ['Fail to feed', 'Fail to chamber', 'Fail to fire', 'Fail to extract', 'Fail to eject', 'Double feed', 'Bolt over base'],
+            'description': 'Fail to feed, Fail to chamber, Fail to fire, Fail to extract, Fail to eject, Double feed, Bolt over base',
+          },
+          'Misfire': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Misfire'],
+            'description': 'Misfire',
+          },
+          'Hangfire': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Hangfire'],
+            'description': 'Hangfire',
+          },
         },
-        'level2': {
-          'max_allowed': 0,
-          'description': 'Failure to cycle, Failure to feed, Failure to extract',
+      },
+      '5.56x45 M200 Blank': {
+        'schema_type': 'categories',
+        'categories': {
+          'Primer Defect': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Loose primer', 'Pierced primer', 'Blown primer', 'Primer puncture'],
+            'description': 'Loose primer, Pierced primer, Blown primer, Primer puncture',
+          },
+          'Case Defect': {
+            'retest_limit': 1,
+            'reject_limit': 2,
+            'items': ['Split case', 'Separated case', 'Ruptured case', 'Dented case', 'Corroded case'],
+            'description': 'Split case, Separated case, Ruptured case, Dented case, Corroded case',
+          },
+          'Weapon Stoppage': {
+            'retest_limit': 1,
+            'reject_limit': 2,
+            'items': ['Fail to feed', 'Fail to chamber', 'Fail to fire', 'Fail to extract', 'Fail to eject', 'Double feed', 'Bolt over base'],
+            'description': 'Fail to feed, Fail to chamber, Fail to fire, Fail to extract, Fail to eject, Double feed, Bolt over base',
+          },
+          'Misfire': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Misfire'],
+            'description': 'Misfire',
+          },
+          'Hangfire': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Hangfire'],
+            'description': 'Hangfire',
+          },
         },
-        'level3': {
-          'max_allowed': 2,
-          'description': 'Crimp damage, Sluggish extraction, Minor deformation',
-        },
-        'level4': {
-          'max_allowed': 5,
-          'description': 'Surface scratches, Slight tarnish',
+      },
+      '5.56x45 M193': {
+        'schema_type': 'categories',
+        'categories': {
+          'Misfire': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Misfire'],
+            'description': 'Misfire',
+          },
+          'Bullet Remaining in bore': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Bullet in Bore'],
+            'description': 'Bullet in Bore',
+          },
+          'Primer Leak': {
+            'retest_limit': 0,
+            'reject_limit': 1,
+            'items': ['Primer Leak'],
+            'description': 'Primer Leak',
+          },
+          'Case casualties': {
+            'retest_limit': 1,
+            'reject_limit': 2,
+            'items': ['Ruptured case', 'Separated case', 'Split case body', 'Split case mouth'],
+            'description': 'Ruptured case, Separated case, Split case body, Split case mouth',
+          },
+          'Failure to extract': {
+            'retest_limit': 1,
+            'reject_limit': 2,
+            'items': ['Failure to extract'],
+            'description': 'Failure to extract',
+          },
+          'Weapon Stoppage': {
+            'retest_limit': 1,
+            'reject_limit': 2,
+            'items': ['Fail to feed', 'Fail to chamber', 'Fail to lock', 'Fail to fire', 'Fail to unlock', 'Fail to extract', 'Fail to eject', 'Fail to cock'],
+            'description': 'Fail to feed, Fail to chamber, Fail to lock, Fail to fire, Fail to unlock, Fail to extract, Fail to eject, Fail to cock',
+          },
         },
       },
       '7.62x51 M62 Tracer': {
+        'schema_type': 'levels',
         'level1': {
           'max_allowed': 0,
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Split case at points K, L or M',
+            'Bullet in Bore',
+            'Blown primer',
+            'Blind tracer',
+          ],
           'description': 'Blown primer, Split case, Bullet lodged in bore, Blind tracer',
         },
         'level2': {
           'max_allowed': 0,
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': ['Failure to extract', 'Failure to eject', 'Failure to feed', 'Short trace'],
           'description': 'Failure to extract, Failure to eject, Failure to feed, Short trace',
         },
         'level3': {
           'max_allowed': 2,
+          'retest_limit': 2,
+          'reject_limit': 3,
+          'items': ['Mild case dent', 'Extractor mark', 'Light primer strike'],
           'description': 'Mild case dent, Extractor mark, Light primer strike',
         },
         'level4': {
           'max_allowed': 5,
+          'retest_limit': 4,
+          'reject_limit': 6,
+          'items': ['Cosmetic markings', 'Scratches'],
           'description': 'Cosmetic markings, Scratches',
         },
       },
-      '9x19mm Parabellum': {
-        'level1': {
-          'max_allowed': 0,
-          'description': 'Blown primer, Split case, Perforated primer, Squib load',
-        },
-        'level2': {
-          'max_allowed': 0,
-          'description': 'Stovepipe, Failure to extract, Failure to feed, Misfire',
-        },
-        'level3': {
-          'max_allowed': 2,
-          'description': 'Rim burr, Light primer mark, Case mouth ding',
-        },
-        'level4': {
-          'max_allowed': 5,
-          'description': 'Minor scratch, Slight surface tarnish',
-        },
-      },
       '12.7x99 NATO': {
+        'schema_type': 'levels',
         'level1': {
           'max_allowed': 0,
-          'description': 'Blown primer, Split case head, Perforated primer, Squib',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': ['Blown primer', 'Case rupture', 'Split case', 'Bullet in Bore'],
+          'description': 'Blown primer, Case rupture, Split case, Bullet lodged in bore',
         },
         'level2': {
           'max_allowed': 0,
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': ['Failure to extract', 'Failure to eject', 'Misfeed', 'Hangfire'],
           'description': 'Failure to extract, Failure to eject, Misfeed, Hangfire',
         },
         'level3': {
           'max_allowed': 2,
-          'description': 'Mild case body dent, Extractor mark, Rim dent',
+          'retest_limit': 2,
+          'reject_limit': 3,
+          'items': ['Heavy extractor mark', 'Mild dent', 'Primer leak'],
+          'description': 'Heavy extractor mark, Mild dent, Primer leak',
         },
         'level4': {
           'max_allowed': 5,
-          'description': 'Surface scratching, Minor cosmetic blemish',
+          'retest_limit': 4,
+          'reject_limit': 6,
+          'items': ['Surface scratches', 'Cosmetic imperfections'],
+          'description': 'Surface scratches, Cosmetic imperfections',
         },
       },
       'default': {
+        'schema_type': 'levels',
         'level1': {
           'max_allowed': 0,
-          'description': 'Blown primer, Split case, Perforated primer, Bullet lodged in bore',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Split case at points K, L or M',
+            'Bullet in Bore',
+            'Blown primer',
+            'Primer puncture',
+            'Misfire',
+            'Hangfire',
+            'Complete case rupture',
+            'Primer through',
+            'Primer drop',
+            'Loose primer',
+            'Pierced primer',
+            'No fire',
+            'Primer protrusion',
+          ],
+          'description': 'Split case at points K, L or M, Bullet in Bore, Blown primer, Primer puncture, Misfire, Hangfire, Complete case rupture, Primer through, Primer drop, Loose primer, Pierced primer, No fire, Primer protrusion',
         },
         'level2': {
           'max_allowed': 0,
-          'description': 'Failure to extract, Failure to eject, Failure to feed, Misfeed, Hangfire',
+          'retest_limit': 0,
+          'reject_limit': 1,
+          'items': [
+            'Hard Extraction',
+            'Fail to eject',
+            'Fail to Extract',
+            'Fail to cock',
+            'Split case at points A, B, C, D, E, F, G, H, I or J',
+            'Perforated primer',
+            'Bolt over case',
+          ],
+          'description': 'Hard Extraction, Fail to eject, Fail to Extract, Fail to cock, Split case at points A, B, C, D, E, F, G, H, I or J, Perforated primer, Bolt over case',
         },
         'level3': {
           'max_allowed': 2,
-          'description': 'Mild case dent, Minor extractor mark, Light primer indentation',
+          'retest_limit': 2,
+          'reject_limit': 3,
+          'items': [
+            'Double Feed',
+            'Fail to fire',
+            'Fail to feed',
+            'Fail to chamber',
+            'Fail to unlock',
+            'Light strike',
+          ],
+          'description': 'Double Feed, Fail to fire, Fail to feed, Fail to chamber, Fail to unlock, Light strike',
         },
         'level4': {
           'max_allowed': 5,
-          'description': 'Superficial scratches, Minor cosmetic blemish, Slight discoloration',
+          'retest_limit': 4,
+          'reject_limit': 6,
+          'items': [
+            'Dented case',
+            'Scratched case',
+            'Damaged bullet',
+            'Damaged tip',
+          ],
+          'description': 'Dented case, Scratched case, Damaged bullet, Damaged tip',
         },
       },
     },
     'level1': {
       'max_allowed': 0,
-      'description': 'Blown primer, Split case, Perforated primer, Bullet lodged in bore',
+      'retest_limit': 0,
+      'reject_limit': 1,
+      'items': [
+        'Split case at points K, L or M',
+        'Bullet in Bore',
+        'Blown primer',
+        'Primer puncture',
+        'Misfire',
+        'Hangfire',
+        'Complete case rupture',
+        'Primer through',
+        'Primer drop',
+        'Loose primer',
+        'Pierced primer',
+        'No fire',
+        'Primer protrusion',
+      ],
+      'description': 'Split case at points K, L or M, Bullet in Bore, Blown primer, Primer puncture, Misfire, Hangfire, Complete case rupture, Primer through, Primer drop, Loose primer, Pierced primer, No fire, Primer protrusion',
     },
     'level2': {
       'max_allowed': 0,
-      'description': 'Failure to extract, Failure to eject, Failure to feed, Misfeed, Hangfire',
+      'retest_limit': 0,
+      'reject_limit': 1,
+      'items': [
+        'Hard Extraction',
+        'Fail to eject',
+        'Fail to Extract',
+        'Fail to cock',
+        'Split case at points A, B, C, D, E, F, G, H, I or J',
+        'Perforated primer',
+        'Bolt over case',
+      ],
+      'description': 'Hard Extraction, Fail to eject, Fail to Extract, Fail to cock, Split case at points A, B, C, D, E, F, G, H, I or J, Perforated primer, Bolt over case',
     },
     'level3': {
       'max_allowed': 2,
-      'description': 'Mild case dent, Minor extractor mark, Light primer indentation',
+      'retest_limit': 2,
+      'reject_limit': 3,
+      'items': [
+        'Double Feed',
+        'Fail to fire',
+        'Fail to feed',
+        'Fail to chamber',
+        'Fail to unlock',
+        'Light strike',
+      ],
+      'description': 'Double Feed, Fail to fire, Fail to feed, Fail to chamber, Fail to unlock, Light strike',
     },
     'level4': {
       'max_allowed': 5,
-      'description': 'Superficial scratches, Minor cosmetic blemish, Slight discoloration',
+      'retest_limit': 4,
+      'reject_limit': 6,
+      'items': [
+        'Dented case',
+        'Scratched case',
+        'Damaged bullet',
+        'Damaged tip',
+      ],
+      'description': 'Dented case, Scratched case, Damaged bullet, Damaged tip',
     },
   },
   'role_permissions': {
@@ -1134,68 +1617,133 @@ class _MainShellState extends State<MainShell> {
   // Function Test rule controllers
   String _ruleSelectedFuncCaliber = '5.56x45 SS109';
   final TextEditingController _ruleFuncL1MaxCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL1RetestCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL1RejectCtrl = TextEditingController();
   final TextEditingController _ruleFuncL1DescCtrl = TextEditingController();
+
   final TextEditingController _ruleFuncL2MaxCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL2RetestCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL2RejectCtrl = TextEditingController();
   final TextEditingController _ruleFuncL2DescCtrl = TextEditingController();
+
   final TextEditingController _ruleFuncL3MaxCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL3RetestCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL3RejectCtrl = TextEditingController();
   final TextEditingController _ruleFuncL3DescCtrl = TextEditingController();
+
   final TextEditingController _ruleFuncL4MaxCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL4RetestCtrl = TextEditingController();
+  final TextEditingController _ruleFuncL4RejectCtrl = TextEditingController();
   final TextEditingController _ruleFuncL4DescCtrl = TextEditingController();
+
+  final Map<String, TextEditingController> _ruleFuncCatRetestCtrls = {};
+  final Map<String, TextEditingController> _ruleFuncCatRejectCtrls = {};
+  final Map<String, TextEditingController> _ruleFuncCatDescCtrls = {};
+
   final TextEditingController _ruleNewFuncWeaponCtrl = TextEditingController();
 
   void _loadFunctionCaliberRules(String caliber) {
     final func = _adminRules['function_test'] ?? {};
     final calibersMap = Map<String, dynamic>.from(func['calibers'] ?? {});
     final calRules = Map<String, dynamic>.from(calibersMap[caliber] ?? calibersMap['default'] ?? func);
-    
+
     final l1 = calRules['level1'] ?? func['level1'] ?? {};
     final l2 = calRules['level2'] ?? func['level2'] ?? {};
     final l3 = calRules['level3'] ?? func['level3'] ?? {};
     final l4 = calRules['level4'] ?? func['level4'] ?? {};
 
     _ruleFuncL1MaxCtrl.text = (l1['max_allowed'] ?? 0).toString();
-    _ruleFuncL1DescCtrl.text = (l1['description'] ?? 'Blown primer, Split case, Perforated primer, Bullet lodged in bore').toString();
+    _ruleFuncL1RetestCtrl.text = (l1['retest_limit'] ?? 0).toString();
+    _ruleFuncL1RejectCtrl.text = (l1['reject_limit'] ?? 1).toString();
+    _ruleFuncL1DescCtrl.text = (l1['description'] ?? '').toString();
 
     _ruleFuncL2MaxCtrl.text = (l2['max_allowed'] ?? 0).toString();
-    _ruleFuncL2DescCtrl.text = (l2['description'] ?? 'Failure to extract, Failure to eject, Misfeed, Hangfire').toString();
+    _ruleFuncL2RetestCtrl.text = (l2['retest_limit'] ?? 0).toString();
+    _ruleFuncL2RejectCtrl.text = (l2['reject_limit'] ?? 1).toString();
+    _ruleFuncL2DescCtrl.text = (l2['description'] ?? '').toString();
 
     _ruleFuncL3MaxCtrl.text = (l3['max_allowed'] ?? 2).toString();
-    _ruleFuncL3DescCtrl.text = (l3['description'] ?? 'Mild case dent, Minor extractor mark, Light primer indentation').toString();
+    _ruleFuncL3RetestCtrl.text = (l3['retest_limit'] ?? 2).toString();
+    _ruleFuncL3RejectCtrl.text = (l3['reject_limit'] ?? 3).toString();
+    _ruleFuncL3DescCtrl.text = (l3['description'] ?? '').toString();
 
     _ruleFuncL4MaxCtrl.text = (l4['max_allowed'] ?? 5).toString();
-    _ruleFuncL4DescCtrl.text = (l4['description'] ?? 'Superficial scratches, Minor cosmetic blemish, Slight discoloration').toString();
+    _ruleFuncL4RetestCtrl.text = (l4['retest_limit'] ?? 4).toString();
+    _ruleFuncL4RejectCtrl.text = (l4['reject_limit'] ?? 6).toString();
+    _ruleFuncL4DescCtrl.text = (l4['description'] ?? '').toString();
+
+    // Load category-based rules if applicable
+    if (calRules['categories'] is Map) {
+      final cats = Map<String, dynamic>.from(calRules['categories'] as Map);
+      cats.forEach((catKey, catVal) {
+        if (catVal is Map) {
+          _ruleFuncCatRetestCtrls.putIfAbsent(catKey, () => TextEditingController()).text = (catVal['retest_limit'] ?? 0).toString();
+          _ruleFuncCatRejectCtrls.putIfAbsent(catKey, () => TextEditingController()).text = (catVal['reject_limit'] ?? 1).toString();
+          _ruleFuncCatDescCtrls.putIfAbsent(catKey, () => TextEditingController()).text = (catVal['description'] ?? '').toString();
+        }
+      });
+    }
   }
 
   void _saveCurrentFunctionCaliberRules() {
     final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
     final calibersMap = Map<String, dynamic>.from(func['calibers'] ?? {});
-    
-    final currentRules = {
-      'level1': {
-        'max_allowed': int.tryParse(_ruleFuncL1MaxCtrl.text.trim()) ?? 0,
-        'description': _ruleFuncL1DescCtrl.text.trim(),
-      },
-      'level2': {
-        'max_allowed': int.tryParse(_ruleFuncL2MaxCtrl.text.trim()) ?? 0,
-        'description': _ruleFuncL2DescCtrl.text.trim(),
-      },
-      'level3': {
-        'max_allowed': int.tryParse(_ruleFuncL3MaxCtrl.text.trim()) ?? 2,
-        'description': _ruleFuncL3DescCtrl.text.trim(),
-      },
-      'level4': {
-        'max_allowed': int.tryParse(_ruleFuncL4MaxCtrl.text.trim()) ?? 5,
-        'description': _ruleFuncL4DescCtrl.text.trim(),
-      },
-    };
+    final existingCalRule = Map<String, dynamic>.from(calibersMap[_ruleSelectedFuncCaliber] ?? {});
+    final String schemaType = existingCalRule['schema_type'] ?? 'levels';
 
-    calibersMap[_ruleSelectedFuncCaliber] = currentRules;
+    if (schemaType == 'categories') {
+      final currentCats = Map<String, dynamic>.from(existingCalRule['categories'] ?? {});
+      _ruleFuncCatRetestCtrls.forEach((catKey, ctrl) {
+        final catMap = Map<String, dynamic>.from(currentCats[catKey] ?? {});
+        catMap['retest_limit'] = int.tryParse(ctrl.text.trim()) ?? 0;
+        catMap['reject_limit'] = int.tryParse(_ruleFuncCatRejectCtrls[catKey]?.text.trim() ?? '') ?? 1;
+        catMap['description'] = _ruleFuncCatDescCtrls[catKey]?.text.trim() ?? '';
+        catMap['items'] = catMap['description'].toString().split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+        currentCats[catKey] = catMap;
+      });
+      existingCalRule['categories'] = currentCats;
+      calibersMap[_ruleSelectedFuncCaliber] = existingCalRule;
+    } else {
+      final currentRules = {
+        'schema_type': 'levels',
+        'level1': {
+          'max_allowed': int.tryParse(_ruleFuncL1MaxCtrl.text.trim()) ?? 0,
+          'retest_limit': int.tryParse(_ruleFuncL1RetestCtrl.text.trim()) ?? 0,
+          'reject_limit': int.tryParse(_ruleFuncL1RejectCtrl.text.trim()) ?? 1,
+          'description': _ruleFuncL1DescCtrl.text.trim(),
+          'items': _ruleFuncL1DescCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        },
+        'level2': {
+          'max_allowed': int.tryParse(_ruleFuncL2MaxCtrl.text.trim()) ?? 0,
+          'retest_limit': int.tryParse(_ruleFuncL2RetestCtrl.text.trim()) ?? 0,
+          'reject_limit': int.tryParse(_ruleFuncL2RejectCtrl.text.trim()) ?? 1,
+          'description': _ruleFuncL2DescCtrl.text.trim(),
+          'items': _ruleFuncL2DescCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        },
+        'level3': {
+          'max_allowed': int.tryParse(_ruleFuncL3MaxCtrl.text.trim()) ?? 2,
+          'retest_limit': int.tryParse(_ruleFuncL3RetestCtrl.text.trim()) ?? 2,
+          'reject_limit': int.tryParse(_ruleFuncL3RejectCtrl.text.trim()) ?? 3,
+          'description': _ruleFuncL3DescCtrl.text.trim(),
+          'items': _ruleFuncL3DescCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        },
+        'level4': {
+          'max_allowed': int.tryParse(_ruleFuncL4MaxCtrl.text.trim()) ?? 5,
+          'retest_limit': int.tryParse(_ruleFuncL4RetestCtrl.text.trim()) ?? 4,
+          'reject_limit': int.tryParse(_ruleFuncL4RejectCtrl.text.trim()) ?? 6,
+          'description': _ruleFuncL4DescCtrl.text.trim(),
+          'items': _ruleFuncL4DescCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        },
+      };
+
+      calibersMap[_ruleSelectedFuncCaliber] = currentRules;
+      func['level1'] = currentRules['level1'];
+      func['level2'] = currentRules['level2'];
+      func['level3'] = currentRules['level3'];
+      func['level4'] = currentRules['level4'];
+    }
+
     func['calibers'] = calibersMap;
-    func['level1'] = currentRules['level1'];
-    func['level2'] = currentRules['level2'];
-    func['level3'] = currentRules['level3'];
-    func['level4'] = currentRules['level4'];
-
     _adminRules['function_test'] = func;
   }
 
@@ -1924,6 +2472,16 @@ class _MainShellState extends State<MainShell> {
         }
         if (func['calibers'] == null) {
           func['calibers'] = Map<String, dynamic>.from(_defaultRules['function_test']['calibers']);
+        } else {
+          final defCalibers = Map<String, dynamic>.from(_defaultRules['function_test']['calibers']);
+          final curCalibers = Map<String, dynamic>.from(func['calibers'] as Map);
+          defCalibers.forEach((k, v) {
+            if (!curCalibers.containsKey(k) || curCalibers[k]['schema_type'] == null) {
+              curCalibers[k] = v;
+              schemaMigrated = true;
+            }
+          });
+          func['calibers'] = curCalibers;
         }
         if (func['classification_image'] == null) func['classification_image'] = '';
         if (func['level1'] == null) func['level1'] = Map<String, dynamic>.from(_defaultRules['function_test']['level1']);
@@ -2443,33 +3001,7 @@ class _MainShellState extends State<MainShell> {
                   child: const Icon(Icons.verified_user_outlined, color: Color(0xFF38BDF8), size: 48.0),
                 ),
                 const SizedBox(height: 18.0),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(20.0),
-                    border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.6)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.wb_sunny_rounded, color: Color(0xFF38BDF8), size: 16.0),
-                      const SizedBox(width: 8.0),
-                      Flexible(
-                        child: Text(
-                          _getTimeBasedGreeting(),
-                          style: const TextStyle(
-                            fontSize: 13.0,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF38BDF8),
-                            letterSpacing: 0.5,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _SlowBlinkingGreeting(englishGreeting: _getTimeBasedGreeting()),
                 const SizedBox(height: 18.0),
                 Text(
                   'WELCOME, ${name.toUpperCase()}!',
@@ -7308,40 +7840,77 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 16.0),
 
-            _buildFunctionLevelConfigCard(
-              title: 'Level 1: Critical Defect',
-              badgeColor: const Color(0xFFEF4444),
-              maxLimitCtrl: _ruleFuncL1MaxCtrl,
-              descCtrl: _ruleFuncL1DescCtrl,
-              ruleNote: 'Exceeding threshold results in automatic REJECTED status.',
-            ),
-            const SizedBox(height: 12.0),
+            Builder(builder: (context) {
+              final func = _adminRules['function_test'] ?? {};
+              final calibersMap = Map<String, dynamic>.from(func['calibers'] ?? {});
+              final calRule = Map<String, dynamic>.from(calibersMap[_ruleSelectedFuncCaliber] ?? {});
+              final bool isCategories = calRule['schema_type'] == 'categories';
 
-            _buildFunctionLevelConfigCard(
-              title: 'Level 2: Major Defect',
-              badgeColor: const Color(0xFFF97316),
-              maxLimitCtrl: _ruleFuncL2MaxCtrl,
-              descCtrl: _ruleFuncL2DescCtrl,
-              ruleNote: 'Exceeding threshold results in automatic REJECTED status.',
-            ),
-            const SizedBox(height: 12.0),
+              if (isCategories) {
+                final cats = Map<String, dynamic>.from(calRule['categories'] ?? {});
+                final catKeys = cats.keys.toList();
+                return Column(
+                  children: catKeys.map((catKey) {
+                    final retestCtrl = _ruleFuncCatRetestCtrls.putIfAbsent(catKey, () => TextEditingController(text: (cats[catKey]?['retest_limit'] ?? 0).toString()));
+                    final rejectCtrl = _ruleFuncCatRejectCtrls.putIfAbsent(catKey, () => TextEditingController(text: (cats[catKey]?['reject_limit'] ?? 1).toString()));
+                    final descCtrl = _ruleFuncCatDescCtrls.putIfAbsent(catKey, () => TextEditingController(text: (cats[catKey]?['description'] ?? '').toString()));
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: _buildFunctionCategoryConfigCard(
+                        categoryName: catKey,
+                        retestLimitCtrl: retestCtrl,
+                        rejectLimitCtrl: rejectCtrl,
+                        descCtrl: descCtrl,
+                      ),
+                    );
+                  }).toList(),
+                );
+              }
 
-            _buildFunctionLevelConfigCard(
-              title: 'Level 3: Minor Defect',
-              badgeColor: const Color(0xFFFBBF24),
-              maxLimitCtrl: _ruleFuncL3MaxCtrl,
-              descCtrl: _ruleFuncL3DescCtrl,
-              ruleNote: 'Exceeding threshold triggers RETEST status.',
-            ),
-            const SizedBox(height: 12.0),
-
-            _buildFunctionLevelConfigCard(
-              title: 'Level 4: Level 4 Defect',
-              badgeColor: const Color(0xFF38BDF8),
-              maxLimitCtrl: _ruleFuncL4MaxCtrl,
-              descCtrl: _ruleFuncL4DescCtrl,
-              ruleNote: 'Exceeding threshold triggers RETEST status.',
-            ),
+              return Column(
+                children: [
+                  _buildFunctionLevelConfigCard(
+                    title: 'Level 1: Critical Defect',
+                    badgeColor: const Color(0xFFEF4444),
+                    maxLimitCtrl: _ruleFuncL1MaxCtrl,
+                    retestLimitCtrl: _ruleFuncL1RetestCtrl,
+                    rejectLimitCtrl: _ruleFuncL1RejectCtrl,
+                    descCtrl: _ruleFuncL1DescCtrl,
+                    ruleNote: 'Exceeding reject limit results in REJECTED status. Exceeding retest limit results in RETEST.',
+                  ),
+                  const SizedBox(height: 12.0),
+                  _buildFunctionLevelConfigCard(
+                    title: 'Level 2: Major Defect',
+                    badgeColor: const Color(0xFFF97316),
+                    maxLimitCtrl: _ruleFuncL2MaxCtrl,
+                    retestLimitCtrl: _ruleFuncL2RetestCtrl,
+                    rejectLimitCtrl: _ruleFuncL2RejectCtrl,
+                    descCtrl: _ruleFuncL2DescCtrl,
+                    ruleNote: 'Exceeding reject limit results in REJECTED status. Exceeding retest limit results in RETEST.',
+                  ),
+                  const SizedBox(height: 12.0),
+                  _buildFunctionLevelConfigCard(
+                    title: 'Level 3: Minor Defect',
+                    badgeColor: const Color(0xFFFBBF24),
+                    maxLimitCtrl: _ruleFuncL3MaxCtrl,
+                    retestLimitCtrl: _ruleFuncL3RetestCtrl,
+                    rejectLimitCtrl: _ruleFuncL3RejectCtrl,
+                    descCtrl: _ruleFuncL3DescCtrl,
+                    ruleNote: 'Exceeding retest limit triggers RETEST status.',
+                  ),
+                  const SizedBox(height: 12.0),
+                  _buildFunctionLevelConfigCard(
+                    title: 'Level 4: Cosmetic / Minor Defect',
+                    badgeColor: const Color(0xFF38BDF8),
+                    maxLimitCtrl: _ruleFuncL4MaxCtrl,
+                    retestLimitCtrl: _ruleFuncL4RetestCtrl,
+                    rejectLimitCtrl: _ruleFuncL4RejectCtrl,
+                    descCtrl: _ruleFuncL4DescCtrl,
+                    ruleNote: 'Exceeding retest limit triggers RETEST status.',
+                  ),
+                ],
+              );
+            }),
             const SizedBox(height: 18.0),
             const Divider(color: Color(0xFF1F293D)),
             const SizedBox(height: 14.0),
@@ -7512,6 +8081,8 @@ class _MainShellState extends State<MainShell> {
     required String title,
     required Color badgeColor,
     required TextEditingController maxLimitCtrl,
+    required TextEditingController retestLimitCtrl,
+    required TextEditingController rejectLimitCtrl,
     required TextEditingController descCtrl,
     required String ruleNote,
   }) {
@@ -7554,16 +8125,16 @@ class _MainShellState extends State<MainShell> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 140,
+                width: 105,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Max Allowed Defects', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                    const Text('Retest Limit', style: TextStyle(color: Color(0xFFFBBF24), fontSize: 10.5, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4.0),
                     TextField(
-                      controller: maxLimitCtrl,
+                      controller: retestLimitCtrl,
                       keyboardType: TextInputType.number,
-                      style: TextStyle(color: badgeColor, fontSize: 13.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                      style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 13.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
                       decoration: InputDecoration(
                         hintText: '0',
                         hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
@@ -7572,7 +8143,33 @@ class _MainShellState extends State<MainShell> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: badgeColor)),
+                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(6.0)), borderSide: BorderSide(color: Color(0xFFFBBF24))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              SizedBox(
+                width: 105,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Reject Limit', style: TextStyle(color: Color(0xFFEF4444), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4.0),
+                    TextField(
+                      controller: rejectLimitCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                      decoration: InputDecoration(
+                        hintText: '1',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.2),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(6.0)), borderSide: BorderSide(color: Color(0xFFEF4444))),
                       ),
                     ),
                   ],
@@ -7587,16 +8184,153 @@ class _MainShellState extends State<MainShell> {
                     const SizedBox(height: 4.0),
                     TextField(
                       controller: descCtrl,
-                      style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                      style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                      maxLines: 2,
                       decoration: InputDecoration(
-                        hintText: 'e.g., Blown primer, Split case, Perforated primer...',
+                        hintText: 'Comma-separated defect types...',
                         hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.2),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: badgeColor)),
+                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(6.0)), borderSide: BorderSide(color: Color(0xFF6366F1))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFunctionCategoryConfigCard({
+    required String categoryName,
+    required TextEditingController retestLimitCtrl,
+    required TextEditingController rejectLimitCtrl,
+    required TextEditingController descCtrl,
+  }) {
+    Color catColor = const Color(0xFF0284C7);
+    if (categoryName.contains('Misfire') || categoryName.contains('bore') || categoryName.contains('Hangfire')) {
+      catColor = const Color(0xFFEF4444);
+    } else if (categoryName.contains('Primer') || categoryName.contains('Case') || categoryName.contains('casualties')) {
+      catColor = const Color(0xFFF97316);
+    } else if (categoryName.contains('Stoppage') || categoryName.contains('extract')) {
+      catColor = const Color(0xFFFBBF24);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14.0),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: catColor.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                decoration: BoxDecoration(
+                  color: catColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4.0),
+                  border: Border.all(color: catColor.withOpacity(0.35)),
+                ),
+                child: Text(
+                  categoryName,
+                  style: TextStyle(color: catColor, fontSize: 12.0, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 10.0),
+              const Expanded(
+                child: Text(
+                  'Configured limits and sub-defect items for this category.',
+                  style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 105,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Retest Limit', style: TextStyle(color: Color(0xFFFBBF24), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4.0),
+                    TextField(
+                      controller: retestLimitCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 13.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                      decoration: InputDecoration(
+                        hintText: '0',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.2),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(6.0)), borderSide: BorderSide(color: Color(0xFFFBBF24))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              SizedBox(
+                width: 105,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Reject Limit', style: TextStyle(color: Color(0xFFEF4444), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4.0),
+                    TextField(
+                      controller: rejectLimitCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                      decoration: InputDecoration(
+                        hintText: '1',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.2),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(6.0)), borderSide: BorderSide(color: Color(0xFFEF4444))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Included Sub-Defects (Comma-separated)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4.0),
+                    TextField(
+                      controller: descCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        hintText: 'Enter defects (e.g. Misfire, Split case)...',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.2),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(6.0)), borderSide: BorderSide(color: Color(0xFF6366F1))),
                       ),
                     ),
                   ],

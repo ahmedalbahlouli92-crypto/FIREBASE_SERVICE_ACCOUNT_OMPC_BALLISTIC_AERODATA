@@ -1,8 +1,29 @@
 import 'package:intl/intl.dart';
 import '../models/ballistic_record.dart';
 import 'epvat_formula_helper.dart';
+import 'default_cartridge_assets.dart';
 
 class ReportGenerator {
+  static String getStatusColor(String status) {
+    final s = status.trim().toLowerCase();
+    if (s == 'approved') return '#15803d';
+    if (s.contains('condition')) return '#0284c7';
+    if (s == 'retest' || s == 'pending review') return '#b45309';
+    return '#b91c1c';
+  }
+
+  static String formatCartridgeTemp(String raw) {
+    if (raw.trim().isEmpty) return '';
+    String s = raw.replaceAll('&deg;C', '°C').trim();
+    while (s.endsWith('°C °C') || s.endsWith('°C°C')) {
+      s = s.substring(0, s.lastIndexOf('°C')).trim();
+    }
+    if (!s.contains('°C')) {
+      s = '$s &deg;C';
+    }
+    return s;
+  }
+
   static String _formatImageSrc(String raw) {
     if (raw.startsWith('data:')) return raw;
     return 'data:image/png;base64,$raw';
@@ -327,45 +348,40 @@ class ReportGenerator {
 
     // Classification reference image section (Residual Stress and Function Test)
     String classificationImageSection = '';
-    if (adminRules.isNotEmpty) {
-      final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
-      final String fallbackCartridgeImg = isCaliber9mm
-          ? (adminRules['default_cartridge_9mm'] as String? ?? '').trim()
-          : (adminRules['default_cartridge_bottleneck'] as String? ?? '').trim();
+    final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
+    final String defaultImg = isCaliber9mm ? DefaultCartridgeAssets.cartridge9mmBase64 : DefaultCartridgeAssets.cartridgeBottleneckBase64;
+    final String fallbackCartridgeImg = isCaliber9mm
+        ? (adminRules['default_cartridge_9mm'] as String? ?? '').trim()
+        : (adminRules['default_cartridge_bottleneck'] as String? ?? '').trim();
 
-      if (testName == 'Residual Stress Test') {
-        final rsImg = (adminRules['residual_stress']?['classification_image'] as String? ?? '').trim();
-        final imgToUse = rsImg.isNotEmpty ? rsImg : fallbackCartridgeImg;
-        if (imgToUse.isNotEmpty) {
-          final src = _formatImageSrc(imgToUse);
-          final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
-          classificationImageSection = '''
-          <div style="margin-top: 15px; margin-bottom: 15px;">
-            <h3 class="section-title">Residual Stress Classification Reference</h3>
-            <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-              <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
-              <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
-            </div>
-          </div>
-          ''';
-        }
-      } else if (testName == 'Function Test') {
-        final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
-        final imgToUse = funcImg.isNotEmpty ? funcImg : fallbackCartridgeImg;
-        if (imgToUse.isNotEmpty) {
-          final src = _formatImageSrc(imgToUse);
-          final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
-          classificationImageSection = '''
-          <div style="margin-top: 15px; margin-bottom: 15px;">
-            <h3 class="section-title">Defect Classification Reference Guide</h3>
-            <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-              <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Function Test Reference" />
-              <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
-            </div>
-          </div>
-          ''';
-        }
-      }
+    if (testName == 'Residual Stress Test') {
+      final rsImg = (adminRules['residual_stress']?['classification_image'] as String? ?? '').trim();
+      final imgToUse = rsImg.isNotEmpty ? rsImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
+      final src = _formatImageSrc(imgToUse);
+      final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
+      classificationImageSection = '''
+      <div style="margin-top: 15px; margin-bottom: 15px;">
+        <h3 class="section-title">Residual Stress Classification Reference</h3>
+        <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+          <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
+          <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
+        </div>
+      </div>
+      ''';
+    } else if (testName == 'Function Test') {
+      final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
+      final imgToUse = funcImg.isNotEmpty ? funcImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
+      final src = _formatImageSrc(imgToUse);
+      final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
+      classificationImageSection = '''
+      <div style="margin-top: 15px; margin-bottom: 15px;">
+        <h3 class="section-title">Defect Classification Reference Guide</h3>
+        <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+          <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Function Test Reference" />
+          <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
+        </div>
+      </div>
+      ''';
     }
 
     // Attachments & Evidence section
@@ -415,16 +431,19 @@ class ReportGenerator {
     final hasRejected = records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
     final hasRetest = records.any((r) => r.status.toLowerCase() == 'retest');
     final hasPending = records.any((r) => r.status.toLowerCase() == 'pending review');
+    final hasCondition = records.any((r) => r.status.toLowerCase().contains('condition'));
 
     String sentenceRequirement = '';
     if (records.isEmpty) {
       sentenceRequirement = 'No records available to evaluate sentence requirements.';
     } else if (hasRejected) {
-      sentenceRequirement = 'The inspected lot fails to satisfy waterproof test and ballistic specification criteria. The lot is officially REJECTED and quarantined.';
+      sentenceRequirement = 'The inspected lot fails to satisfy quality and ballistic specification criteria. The lot is officially REJECTED and quarantined.';
     } else if (hasRetest) {
-      sentenceRequirement = 'Test results indicate marginal waterproof tolerances. The lot is sentenced to a mandatory RETEST under supervision.';
+      sentenceRequirement = 'Test results indicate marginal quality tolerances. The lot is sentenced to a mandatory RETEST under supervision.';
     } else if (hasPending) {
       sentenceRequirement = 'Evaluation in progress. The batch status remains PENDING REVIEW until supervisor verification is complete.';
+    } else if (hasCondition) {
+      sentenceRequirement = 'The inspected lot meets operational parameters with accepted variances. The lot is officially APPROVED WITH CONDITION.';
     } else {
       sentenceRequirement = 'The lot meets all quality and ballistic specifications and is approved for final packaging and shipment.';
     }
@@ -486,29 +505,21 @@ class ReportGenerator {
       epvatRows.write('</tr>');
       epvatRows.write('<tr>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
-      epvatRows.write('<td>${records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty ? '${records[0].cartridgeTemp} &deg;C' : ''}</td>');
+      epvatRows.write('<td>${records.isNotEmpty ? formatCartridgeTemp(records[0].cartridgeTemp) : ''}</td>');
       epvatRows.write('<td></td><td></td>');
       epvatRows.write('</tr>');
+    }
 
-      // Add Kinetic Energy row if adminRules has bullet mass for this caliber
-      if (adminRules.isNotEmpty) {
-        final epvR = adminRules['epvat'] ?? {};
-        final massMap = epvR['bullet_mass_grams'] ?? {};
-        final String cal = records.isNotEmpty ? records[0].caliber : '';
-        final double? massG = (massMap[cal] as num?)?.toDouble();
-        // Use +21°C record velocity if multi-temp, else single-record mean vel
-        final r21 = records.firstWhere((r) => r.cartridgeTemp == '+21', orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty());
-        final double? vMean = double.tryParse(r21.velMean);
-        if (massG != null && vMean != null && vMean > 0) {
-          final double ke = 0.5 * (massG / 1000.0) * vMean * vMean;
-          epvatRows.write('<tr style="background-color: #f0f4ff;">');
-          epvatRows.write('<td style="font-weight: bold; color: #4f46e5;">&bull; Kinetic Energy (+21&deg;C):</td>');
-          epvatRows.write('<td style="font-family: monospace; font-weight: bold; color: #4f46e5;">${ke.toStringAsFixed(1)} J</td>');
-          epvatRows.write('<td style="color: #64748b; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMean.toStringAsFixed(1)} m/s</td>');
-          epvatRows.write('<td></td>');
-          epvatRows.write('</tr>');
-        }
-      }
+    final functionRows = StringBuffer();
+    if (testName == 'Function Test') {
+      final weaponName = records.isNotEmpty ? records[0].cyclicRateWeaponType : '';
+      final rawTemp = records.isNotEmpty ? records[0].cartridgeTemp : '';
+      functionRows.write('<tr>');
+      functionRows.write('<td style="font-weight: bold; color: #475569;">Rifles / Weapons:</td>');
+      functionRows.write('<td>${weaponName.isNotEmpty ? weaponName : '-'}</td>');
+      functionRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
+      functionRows.write('<td>${rawTemp.isNotEmpty ? formatCartridgeTemp(rawTemp) : '-'}</td>');
+      functionRows.write('</tr>');
     }
 
     final cyclicRows = StringBuffer();
@@ -704,7 +715,7 @@ class ReportGenerator {
     .badge-retest { background-color: #fef3c7; color: #b45309; }
     .badge-rejected { background-color: #fee2e2; color: #b91c1c; }
     .badge-pending { background-color: #fef3c7; color: #b45309; }
-    .badge-approved-with-condition { background-color: #ccfbf1; color: #0f766e; }
+    .badge-approved-with-condition { background-color: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
     
     .sentence-box {
       padding: 6px 10px;
@@ -782,12 +793,13 @@ class ReportGenerator {
         <td style="font-weight: bold; color: #475569;">Quantity Tested:</td>
         <td>$totalQty rounds</td>
         <td style="font-weight: bold; color: #475569;">Test Result:</td>
-        <td style="font-weight: bold; color: ${batchResult.toLowerCase() == 'approved' ? '#15803d' : (batchResult.toLowerCase() == 'retest' ? '#b45309' : '#b91c1c')};">$batchResult</td>
+        <td style="font-weight: bold; color: ${getStatusColor(batchResult)};">$batchResult</td>
       </tr>
       ${testName == 'Waterproof Test' ? waterproofRows.toString() : ''}
       ${testName == 'Residual Stress Test' ? residualStressRows.toString() : ''}
       ${testName == 'Accuracy Test' ? accuracyRows.toString() : ''}
       ${testName == 'EPVAT test' || testName == 'Propellant Test' ? epvatRows.toString() : ''}
+      ${testName == 'Function Test' ? functionRows.toString() : ''}
       ${testName == 'Firing Rate Cycle Test' ? cyclicRows.toString() : ''}
       ${testName == 'Terminal Effect Test' ? terminalRows.toString() : ''}
       ${testName == 'Primer Sensitivity Test' ? primerRows.toString() : ''}
@@ -816,7 +828,7 @@ class ReportGenerator {
         <th>Head Splits (Min/Maj)</th>
         <th>Total Splits</th>
       ''');
-    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test' || testName == 'Propellant Test') {
+    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test') {
       buffer.writeln('''
         <th>Coordinate / Parameter</th>
         <th>Mean</th>
@@ -824,6 +836,16 @@ class ReportGenerator {
         <th>Min</th>
         <th>Range</th>
         <th>SD</th>
+      ''');
+    } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+      final bool is9mm = records.isNotEmpty && (records[0].caliber.toLowerCase().contains('9mm') || records[0].caliber.toLowerCase().startsWith('9x19'));
+      final pUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty ? records[0].epvatPressureUnit : 'Bar';
+      buffer.writeln('''
+        <th>Parameter</th>
+        <th>P1 Chamber ($pUnit)</th>
+        ${!is9mm ? '<th>P2 Port pressure ($pUnit)</th>' : ''}
+        <th>Action Time (ms)</th>
+        <th>Velocity (m/s)</th>
       ''');
     } else if (testName == 'Primer Sensitivity Test') {
       buffer.writeln('''
@@ -984,9 +1006,7 @@ class ReportGenerator {
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
-        final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
-        buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
-
+        // Side parameters: Mean, Max, Min, Range, SD
         final p1Mean = r.epvatMeanPressure.trim().isNotEmpty ? r.epvatMeanPressure : '-';
         final p1Max = r.epvatMaxPressure.trim().isNotEmpty ? r.epvatMaxPressure : '-';
         final p1Min = r.epvatMinPressure.trim().isNotEmpty ? r.epvatMinPressure : '-';
@@ -999,62 +1019,76 @@ class ReportGenerator {
         final p2Range = r.epvatP2RangePressure.trim().isNotEmpty ? r.epvatP2RangePressure : '-';
         final p2SD = r.epvatP2SDPressure.trim().isNotEmpty ? r.epvatP2SDPressure : '-';
 
+        final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
+        final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
+        final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
+        final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
+        final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
+
         final vMean = r.velMean.trim().isNotEmpty ? r.velMean : '-';
         final vMax = r.velMax.trim().isNotEmpty ? r.velMax : '-';
         final vMin = r.velMin.trim().isNotEmpty ? r.velMin : '-';
         final vRange = r.velRange.trim().isNotEmpty ? r.velRange : '-';
         final vSD = r.velSD.trim().isNotEmpty ? r.velSD : '-';
 
-        final chamberRowLabel = is9mm ? 'Chamber Pressure' : 'GP1 (Chamber)';
         buffer.writeln('''
           <tr>
-            <td style="font-weight: bold;">$chamberRowLabel (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
+            <td style="font-weight: bold;">Mean</td>
             <td>$p1Mean</td>
-            <td>$p1Max</td>
-            <td>$p1Min</td>
-            <td>$p1Range</td>
-            <td>$p1SD</td>
-          </tr>
-        ''');
-        if (!is9mm) {
-          buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
-            <td>$p2Mean</td>
-            <td>$p2Max</td>
-            <td>$p2Min</td>
-            <td>$p2Range</td>
-            <td>$p2SD</td>
-          </tr>
-          ''');
-        }
-        buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Velocity (m/s)</td>
+            ${!is9mm ? '<td>$p2Mean</td>' : ''}
+            <td>$atMean</td>
             <td>$vMean</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Max</td>
+            <td>$p1Max</td>
+            ${!is9mm ? '<td>$p2Max</td>' : ''}
+            <td>$atMax</td>
             <td>$vMax</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Min</td>
+            <td>$p1Min</td>
+            ${!is9mm ? '<td>$p2Min</td>' : ''}
+            <td>$atMin</td>
             <td>$vMin</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Range</td>
+            <td>$p1Range</td>
+            ${!is9mm ? '<td>$p2Range</td>' : ''}
+            <td>$atRange</td>
             <td>$vRange</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">SD</td>
+            <td>$p1SD</td>
+            ${!is9mm ? '<td>$p2SD</td>' : ''}
+            <td>$atSD</td>
             <td>$vSD</td>
           </tr>
         ''');
 
-        if (r.actionTimeMean.trim().isNotEmpty || r.actionTimeMax.trim().isNotEmpty) {
-          final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
-          final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
-          final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
-          final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
-          final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
-          buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Action Time (ms)</td>
-            <td>$atMean</td>
-            <td>$atMax</td>
-            <td>$atMin</td>
-            <td>$atRange</td>
-            <td>$atSD</td>
-          </tr>
-          ''');
+        // Kinetic Energy immediately following after Action Time / Velocity
+        if (adminRules.isNotEmpty) {
+          final epvR = adminRules['epvat'] ?? {};
+          final massMap = epvR['bullet_mass_grams'] ?? {};
+          final double? massG = (massMap[r.caliber] as num?)?.toDouble();
+          final r21 = records.firstWhere((rec) => rec.cartridgeTemp == '+21', orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty());
+          final double? vMeanVal = double.tryParse(r21.velMean.isNotEmpty ? r21.velMean : r.velMean);
+          if (massG != null && vMeanVal != null && vMeanVal > 0) {
+            final double ke = 0.5 * (massG / 1000.0) * vMeanVal * vMeanVal;
+            final colspan = is9mm ? 4 : 5;
+            buffer.writeln('''
+            <tr style="background-color: #f0f4ff;">
+              <td colspan="$colspan" style="padding: 7px 10px; font-size: 10.5px; border-top: 1.5px solid #cbd5e1; border-bottom: 1.5px solid #cbd5e1;">
+                <strong style="color: #4f46e5;">&bull; Kinetic Energy (+21&deg;C):</strong>
+                <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
+                <span style="color: #475569; margin-left: 10px; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMeanVal.toStringAsFixed(1)} m/s</span>
+              </td>
+            </tr>
+            ''');
+          }
         }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
@@ -1113,9 +1147,7 @@ class ReportGenerator {
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f8fafc;">Round-by-Round Penetration & Velocity Details</td></tr>');
         buffer.writeln('<tr><td colspan="6" style="padding: 10px;">$bufferRounds</td></tr>');
       } else if (testName == 'Function Test') {
-        final weaponStr = r.cyclicRateWeaponType.isNotEmpty ? ' &nbsp;|&nbsp; Weapon: ${r.cyclicRateWeaponType}' : '';
-        final tempStr = r.cartridgeTemp.isNotEmpty ? ' &nbsp;|&nbsp; Temp: ${r.cartridgeTemp}' : '';
-        buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}$weaponStr$tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
+// Function Test record banner removed
         final l1Color = r.functionLevel1 > 0 ? '#b91c1c' : '#15803d';
         final l2Color = r.functionLevel2 > 0 ? '#b91c1c' : '#15803d';
         final l3Color = r.functionLevel3 > 2 ? '#b45309' : '#15803d';
@@ -1204,13 +1236,17 @@ class ReportGenerator {
     return buffer.toString();
   }
 
-  static String _buildWordTableHeader(String testName) {
+  static String _buildWordTableHeader(String testName, [List<BallisticRecord> records = const []]) {
     if (testName == 'Waterproof Test') {
       return '<th>Mouth Leaks (S/F)</th><th>Primer Leaks (S/F)</th>';
     } else if (testName == 'Residual Stress Test') {
       return '<th>Neck Splits (Min/Maj)</th><th>Shoulder Splits (Min/Maj)</th><th>Body Splits (Min/Maj)</th><th>Head Splits (Min/Maj)</th><th>Total Splits</th>';
-    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test' || testName == 'EPVAT test' || testName == 'Propellant Test') {
+    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test') {
       return '<th>Coordinate / Parameter</th><th>Mean</th><th>Max</th><th>Min</th><th>Range</th><th>SD</th>';
+    } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+      final bool is9mm = records.isNotEmpty && (records[0].caliber.toLowerCase().contains('9mm') || records[0].caliber.toLowerCase().startsWith('9x19'));
+      final pUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty ? records[0].epvatPressureUnit : 'Bar';
+      return '<th>Parameter</th><th>P1 Chamber ($pUnit)</th>${!is9mm ? '<th>P2 Port pressure ($pUnit)</th>' : ''}<th>Action Time (ms)</th><th>Velocity (m/s)</th>';
     } else if (testName == 'Primer Sensitivity Test') {
       return '<th>H̄ (Mean Height)</th><th>SD (Standard Deviation)</th><th>All Fire Height (H̄ + 5S)</th><th>No Fire Height (H̄ - 2S)</th><th>Remarks</th>';
     } else if (testName == 'Firing Rate Cycle Test') {
@@ -1256,53 +1292,48 @@ class ReportGenerator {
 
     // Classification reference image section (Residual Stress and Function Test)
     String classificationImageSection = '';
-    if (adminRules.isNotEmpty) {
-      final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
-      final String fallbackCartridgeImg = isCaliber9mm
-          ? (adminRules['default_cartridge_9mm'] as String? ?? '').trim()
-          : (adminRules['default_cartridge_bottleneck'] as String? ?? '').trim();
+    final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
+    final String defaultImg = isCaliber9mm ? DefaultCartridgeAssets.cartridge9mmBase64 : DefaultCartridgeAssets.cartridgeBottleneckBase64;
+    final String fallbackCartridgeImg = isCaliber9mm
+        ? (adminRules['default_cartridge_9mm'] as String? ?? '').trim()
+        : (adminRules['default_cartridge_bottleneck'] as String? ?? '').trim();
 
-      if (testName == 'Residual Stress Test') {
-        final rsImg = (adminRules['residual_stress']?['classification_image'] as String? ?? '').trim();
-        final imgToUse = rsImg.isNotEmpty ? rsImg : fallbackCartridgeImg;
-        if (imgToUse.isNotEmpty) {
-          final src = _formatImageSrc(imgToUse);
-          final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
-          classificationImageSection = '''
-          <div style="margin-top: 15px; margin-bottom: 15px;">
-            <h2 class="section-title">Residual Stress Classification Reference</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
-                  <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Residual Stress Classification Reference" />
-                  <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
-                </td>
-              </tr>
-            </table>
-          </div>
-          ''';
-        }
-      } else if (testName == 'Function Test') {
-        final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
-        final imgToUse = funcImg.isNotEmpty ? funcImg : fallbackCartridgeImg;
-        if (imgToUse.isNotEmpty) {
-          final src = _formatImageSrc(imgToUse);
-          final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
-          classificationImageSection = '''
-          <div style="margin-top: 15px; margin-bottom: 15px;">
-            <h2 class="section-title">Defect Classification Reference Guide</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
-                  <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Defect Classification Reference" />
-                  <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
-                </td>
-              </tr>
-            </table>
-          </div>
-          ''';
-        }
-      }
+    if (testName == 'Residual Stress Test') {
+      final rsImg = (adminRules['residual_stress']?['classification_image'] as String? ?? '').trim();
+      final imgToUse = rsImg.isNotEmpty ? rsImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
+      final src = _formatImageSrc(imgToUse);
+      final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
+      classificationImageSection = '''
+      <div style="margin-top: 15px; margin-bottom: 15px;">
+        <h2 class="section-title">Residual Stress Classification Reference</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
+              <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Residual Stress Classification Reference" />
+              <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+      ''';
+    } else if (testName == 'Function Test') {
+      final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
+      final imgToUse = funcImg.isNotEmpty ? funcImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
+      final src = _formatImageSrc(imgToUse);
+      final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
+      classificationImageSection = '''
+      <div style="margin-top: 15px; margin-bottom: 15px;">
+        <h2 class="section-title">Defect Classification Reference Guide</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
+              <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Defect Classification Reference" />
+              <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+      ''';
     }
 
     // Attachments & Evidence section for Word
@@ -1353,16 +1384,19 @@ class ReportGenerator {
     final hasRejected = records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
     final hasRetest = records.any((r) => r.status.toLowerCase() == 'retest');
     final hasPending = records.any((r) => r.status.toLowerCase() == 'pending review');
+    final hasCondition = records.any((r) => r.status.toLowerCase().contains('condition'));
 
     String sentenceRequirement = '';
     if (records.isEmpty) {
       sentenceRequirement = 'No records available to evaluate sentence requirements.';
     } else if (hasRejected) {
-      sentenceRequirement = 'The inspected lot fails to satisfy waterproof test and ballistic specification criteria. The lot is officially REJECTED and quarantined.';
+      sentenceRequirement = 'The inspected lot fails to satisfy quality and ballistic specification criteria. The lot is officially REJECTED and quarantined.';
     } else if (hasRetest) {
-      sentenceRequirement = 'Test results indicate marginal waterproof tolerances. The lot is sentenced to a mandatory RETEST under supervision.';
+      sentenceRequirement = 'Test results indicate marginal quality tolerances. The lot is sentenced to a mandatory RETEST under supervision.';
     } else if (hasPending) {
       sentenceRequirement = 'Evaluation in progress. The batch status remains PENDING REVIEW until supervisor verification is complete.';
+    } else if (hasCondition) {
+      sentenceRequirement = 'The inspected lot meets operational parameters with accepted variances. The lot is officially APPROVED WITH CONDITION.';
     } else {
       sentenceRequirement = 'The lot meets all quality and ballistic specifications and is approved for final packaging and shipment.';
     }
@@ -1424,9 +1458,21 @@ class ReportGenerator {
       epvatRows.write('</tr>');
       epvatRows.write('<tr>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
-      epvatRows.write('<td>${records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty ? '${records[0].cartridgeTemp} &deg;C' : ''}</td>');
+      epvatRows.write('<td>${records.isNotEmpty ? formatCartridgeTemp(records[0].cartridgeTemp) : ''}</td>');
       epvatRows.write('<td></td><td></td>');
       epvatRows.write('</tr>');
+    }
+
+    final functionRows = StringBuffer();
+    if (testName == 'Function Test') {
+      final weaponName = records.isNotEmpty ? records[0].cyclicRateWeaponType : '';
+      final rawTemp = records.isNotEmpty ? records[0].cartridgeTemp : '';
+      functionRows.write('<tr>');
+      functionRows.write('<td style="font-weight: bold; color: #475569;">Rifles / Weapons:</td>');
+      functionRows.write('<td>${weaponName.isNotEmpty ? weaponName : '-'}</td>');
+      functionRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
+      functionRows.write('<td>${rawTemp.isNotEmpty ? formatCartridgeTemp(rawTemp) : '-'}</td>');
+      functionRows.write('</tr>');
     }
 
     final cyclicRows = StringBuffer();
@@ -1614,12 +1660,13 @@ class ReportGenerator {
       <td style="font-weight: bold; color: #475569;">Quantity Tested:</td>
       <td>$totalQty rounds</td>
       <td style="font-weight: bold; color: #475569;">Test Result:</td>
-      <td style="font-weight: bold; color: ${batchResult.toLowerCase() == 'approved' ? '#15803d' : (batchResult.toLowerCase() == 'retest' ? '#b45309' : '#b91c1c')};">$batchResult</td>
+      <td style="font-weight: bold; color: ${getStatusColor(batchResult)};">$batchResult</td>
     </tr>
     ${testName == 'Waterproof Test' ? waterproofRows.toString() : ''}
     ${testName == 'Residual Stress Test' ? residualStressRows.toString() : ''}
     ${testName == 'Accuracy Test' ? accuracyRows.toString() : ''}
     ${testName == 'EPVAT test' || testName == 'Propellant Test' ? epvatRows.toString() : ''}
+    ${testName == 'Function Test' ? functionRows.toString() : ''}
     ${testName == 'Firing Rate Cycle Test' ? cyclicRows.toString() : ''}
     ${testName == 'Terminal Effect Test' ? terminalRows.toString() : ''}
     ${testName == 'Primer Sensitivity Test' ? primerRows.toString() : ''}
@@ -1629,7 +1676,8 @@ class ReportGenerator {
   <h2 class="section-title">Parameters/Results</h2>
   <table class="data-table">
     <thead>
-        ${_buildWordTableHeader(testName)}
+      <tr>
+        ${_buildWordTableHeader(testName, records)}
       </tr>
     </thead>
     <tbody>
@@ -1746,9 +1794,6 @@ class ReportGenerator {
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
-        final tempStr = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp} &deg;C' : 'N/A';
-        buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp} &nbsp;|&nbsp; Temp: $tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
-
         final p1Mean = r.epvatMeanPressure.trim().isNotEmpty ? r.epvatMeanPressure : '-';
         final p1Max = r.epvatMaxPressure.trim().isNotEmpty ? r.epvatMaxPressure : '-';
         final p1Min = r.epvatMinPressure.trim().isNotEmpty ? r.epvatMinPressure : '-';
@@ -1761,62 +1806,75 @@ class ReportGenerator {
         final p2Range = r.epvatP2RangePressure.trim().isNotEmpty ? r.epvatP2RangePressure : '-';
         final p2SD = r.epvatP2SDPressure.trim().isNotEmpty ? r.epvatP2SDPressure : '-';
 
+        final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
+        final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
+        final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
+        final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
+        final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
+
         final vMean = r.velMean.trim().isNotEmpty ? r.velMean : '-';
         final vMax = r.velMax.trim().isNotEmpty ? r.velMax : '-';
         final vMin = r.velMin.trim().isNotEmpty ? r.velMin : '-';
         final vRange = r.velRange.trim().isNotEmpty ? r.velRange : '-';
         final vSD = r.velSD.trim().isNotEmpty ? r.velSD : '-';
 
-        final chamberRowLabel = is9mm ? 'Chamber Pressure' : 'GP1 (Chamber)';
         buffer.writeln('''
           <tr>
-            <td style="font-weight: bold;">$chamberRowLabel (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
+            <td style="font-weight: bold;">Mean</td>
             <td>$p1Mean</td>
-            <td>$p1Max</td>
-            <td>$p1Min</td>
-            <td>$p1Range</td>
-            <td>$p1SD</td>
-          </tr>
-        ''');
-        if (!is9mm) {
-          buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">GP2 (Port) (${r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar'})</td>
-            <td>$p2Mean</td>
-            <td>$p2Max</td>
-            <td>$p2Min</td>
-            <td>$p2Range</td>
-            <td>$p2SD</td>
-          </tr>
-          ''');
-        }
-        buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Velocity (m/s)</td>
+            ${!is9mm ? '<td>$p2Mean</td>' : ''}
+            <td>$atMean</td>
             <td>$vMean</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Max</td>
+            <td>$p1Max</td>
+            ${!is9mm ? '<td>$p2Max</td>' : ''}
+            <td>$atMax</td>
             <td>$vMax</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Min</td>
+            <td>$p1Min</td>
+            ${!is9mm ? '<td>$p2Min</td>' : ''}
+            <td>$atMin</td>
             <td>$vMin</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Range</td>
+            <td>$p1Range</td>
+            ${!is9mm ? '<td>$p2Range</td>' : ''}
+            <td>$atRange</td>
             <td>$vRange</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">SD</td>
+            <td>$p1SD</td>
+            ${!is9mm ? '<td>$p2SD</td>' : ''}
+            <td>$atSD</td>
             <td>$vSD</td>
           </tr>
         ''');
 
-        if (r.actionTimeMean.trim().isNotEmpty || r.actionTimeMax.trim().isNotEmpty) {
-          final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
-          final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
-          final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
-          final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
-          final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
-          buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Action Time (ms)</td>
-            <td>$atMean</td>
-            <td>$atMax</td>
-            <td>$atMin</td>
-            <td>$atRange</td>
-            <td>$atSD</td>
-          </tr>
-          ''');
+        if (adminRules.isNotEmpty) {
+          final epvR = adminRules['epvat'] ?? {};
+          final massMap = epvR['bullet_mass_grams'] ?? {};
+          final double? massG = (massMap[r.caliber] as num?)?.toDouble();
+          final r21 = records.firstWhere((rec) => rec.cartridgeTemp == '+21', orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty());
+          final double? vMeanVal = double.tryParse(r21.velMean.isNotEmpty ? r21.velMean : r.velMean);
+          if (massG != null && vMeanVal != null && vMeanVal > 0) {
+            final double ke = 0.5 * (massG / 1000.0) * vMeanVal * vMeanVal;
+            final colspan = is9mm ? 4 : 5;
+            buffer.writeln('''
+            <tr style="background-color: #f0f4ff;">
+              <td colspan="$colspan" style="padding: 7px 10px; font-size: 10.5px; border-top: 1.5px solid #cbd5e1; border-bottom: 1.5px solid #cbd5e1;">
+                <strong style="color: #4f46e5;">&bull; Kinetic Energy (+21&deg;C):</strong>
+                <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
+                <span style="color: #475569; margin-left: 10px; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMeanVal.toStringAsFixed(1)} m/s</span>
+              </td>
+            </tr>
+            ''');
+          }
         }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
@@ -1875,9 +1933,7 @@ class ReportGenerator {
         buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f8fafc;">Round-by-Round Penetration & Velocity Details</td></tr>');
         buffer.writeln('<tr><td colspan="6" style="padding: 10px;">$bufferRounds</td></tr>');
       } else if (testName == 'Function Test') {
-        final weaponStr = r.cyclicRateWeaponType.isNotEmpty ? ' &nbsp;|&nbsp; Weapon: ${r.cyclicRateWeaponType}' : '';
-        final tempStr = r.cartridgeTemp.isNotEmpty ? ' &nbsp;|&nbsp; Temp: ${r.cartridgeTemp}' : '';
-        buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}$weaponStr$tempStr &nbsp;|&nbsp; Status: ${r.status}</td></tr>');
+// Function Test record banner removed
         final l1Color = r.functionLevel1 > 0 ? '#b91c1c' : '#15803d';
         final l2Color = r.functionLevel2 > 0 ? '#b91c1c' : '#15803d';
         final l3Color = r.functionLevel3 > 2 ? '#b45309' : '#15803d';

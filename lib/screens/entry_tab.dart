@@ -467,6 +467,8 @@ class _EntryTabState extends State<EntryTab> {
     final calibersMap = Map<String, dynamic>.from(func['calibers'] ?? {});
     final calRules = Map<String, dynamic>.from(calibersMap[_caliber] ?? calibersMap['default'] ?? func);
     return {
+      'schema_type': calRules['schema_type'] ?? 'levels',
+      'categories': calRules['categories'] ?? {},
       'level1': calRules['level1'] ?? func['level1'] ?? {},
       'level2': calRules['level2'] ?? func['level2'] ?? {},
       'level3': calRules['level3'] ?? func['level3'] ?? {},
@@ -527,14 +529,65 @@ class _EntryTabState extends State<EntryTab> {
     return entries.join(', ');
   }
 
+  void _updateCategoryBasedDefects() {
+    int sum = 0;
+    _funcDefectItemCounts.forEach((k, v) => sum += v);
+    _defectsController.text = '$sum';
+  }
+
   String _calculateFunctionTestStatus({required int l1, required int l2, required int l3, required int l4}) {
     final rules = _currentFunctionCaliberRules;
-    final int l1Limit = rules['level1']?['max_allowed'] ?? 0;
-    final int l2Limit = rules['level2']?['max_allowed'] ?? 0;
-    final int l3Limit = rules['level3']?['max_allowed'] ?? 2;
-    final int l4Limit = rules['level4']?['max_allowed'] ?? 5;
-    if (l1 > l1Limit || l2 > l2Limit) return 'Rejected';
-    if (l3 > l3Limit || l4 > l4Limit) return 'Retest';
+    final schemaType = rules['schema_type'] ?? 'levels';
+
+    if (schemaType == 'categories') {
+      final categories = Map<String, dynamic>.from(rules['categories'] ?? {});
+      bool hasReject = false;
+      bool hasRetest = false;
+
+      categories.forEach((catName, catData) {
+        if (catData is Map) {
+          final retestLim = (catData['retest_limit'] as num?)?.toInt() ?? 0;
+          final rejectLim = (catData['reject_limit'] as num?)?.toInt() ?? 1;
+          final items = (catData['items'] as List?)?.map((e) => e.toString()).toList() ??
+              catData['description'].toString().split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+          int catCount = 0;
+          for (var it in items) {
+            _funcDefectItemCounts.forEach((k, v) {
+              final rawName = k.contains(':') ? k.split(':')[1] : k;
+              if (rawName == it) {
+                catCount += v;
+              }
+            });
+          }
+          if (rejectLim > 0 && catCount >= rejectLim) hasReject = true;
+          if (retestLim > 0 && catCount >= retestLim) hasRetest = true;
+        }
+      });
+      if (hasReject) return 'Rejected';
+      if (hasRetest) return 'Retest';
+      return 'Approved';
+    }
+
+    final int l1Retest = rules['level1']?['retest_limit'] ?? 0;
+    final int l1Reject = rules['level1']?['reject_limit'] ?? 1;
+    final int l2Retest = rules['level2']?['retest_limit'] ?? 0;
+    final int l2Reject = rules['level2']?['reject_limit'] ?? 1;
+    final int l3Retest = rules['level3']?['retest_limit'] ?? 2;
+    final int l3Reject = rules['level3']?['reject_limit'] ?? 3;
+    final int l4Retest = rules['level4']?['retest_limit'] ?? 4;
+    final int l4Reject = rules['level4']?['reject_limit'] ?? 6;
+
+    if (l1 >= l1Reject || l2 >= l2Reject || l3 >= l3Reject || l4 >= l4Reject) return 'Rejected';
+    if ((l1Retest > 0 && l1 >= l1Retest) || (l2Retest > 0 && l2 >= l2Retest) || (l3Retest > 0 && l3 >= l3Retest) || (l4Retest > 0 && l4 >= l4Retest)) {
+      return 'Retest';
+    }
+
+    final int l1Max = rules['level1']?['max_allowed'] ?? 0;
+    final int l2Max = rules['level2']?['max_allowed'] ?? 0;
+    final int l3Max = rules['level3']?['max_allowed'] ?? 2;
+    final int l4Max = rules['level4']?['max_allowed'] ?? 5;
+    if (l1 > l1Max || l2 > l2Max) return 'Rejected';
+    if (l3 > l3Max || l4 > l4Max) return 'Retest';
     return 'Approved';
   }
 
@@ -6302,6 +6355,11 @@ class _EntryTabState extends State<EntryTab> {
         totalAllDefects += (l1 + l2 + l3 + l4);
         totalAllProduced += p;
       }
+      if (_currentFunctionCaliberRules['schema_type'] == 'categories') {
+        int catTotal = 0;
+        _funcDefectItemCounts.forEach((k, v) => catTotal += v);
+        totalAllDefects = catTotal;
+      }
 
       return Container(
         padding: const EdgeInsets.all(16.0),
@@ -6390,47 +6448,66 @@ class _EntryTabState extends State<EntryTab> {
             ]),
             const SizedBox(height: 14.0),
 
-            _buildFormRow([
-              _buildDefectLevelTile(
-                label: 'Level 1: Critical Defect (Max: $l1Max)',
-                hint: '0',
-                controller: activeL1Ctrl,
-                color: const Color(0xFFEF4444),
-                subtitle: l1Desc,
-                level: 1,
-                tempKey: activeTempKey,
-              ),
-              _buildDefectLevelTile(
-                label: 'Level 2: Major Defect (Max: $l2Max)',
-                hint: '0',
-                controller: activeL2Ctrl,
-                color: const Color(0xFFF59E0B),
-                subtitle: l2Desc,
-                level: 2,
-                tempKey: activeTempKey,
-              ),
-            ]),
-            const SizedBox(height: 12.0),
-            _buildFormRow([
-              _buildDefectLevelTile(
-                label: 'Level 3: Minor Defect (Max: $l3Max)',
-                hint: '0',
-                controller: activeL3Ctrl,
-                color: const Color(0xFF3B82F6),
-                subtitle: l3Desc,
-                level: 3,
-                tempKey: activeTempKey,
-              ),
-              _buildDefectLevelTile(
-                label: 'Level 4: Level 4 Defect (Max: $l4Max)',
-                hint: '0',
-                controller: activeL4Ctrl,
-                color: const Color(0xFF10B981),
-                subtitle: l4Desc,
-                level: 4,
-                tempKey: activeTempKey,
-              ),
-            ]),
+            if (_currentFunctionCaliberRules['schema_type'] == 'categories') ...[
+              ...((_currentFunctionCaliberRules['categories'] as Map? ?? {}).entries.map((entry) {
+                final catName = entry.key.toString();
+                final catData = entry.value as Map? ?? {};
+                final items = (catData['items'] as List?)?.map((e) => e.toString()).toList() ??
+                    catData['description'].toString().split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                final retestLimit = (catData['retest_limit'] as num?)?.toInt() ?? 0;
+                final rejectLimit = (catData['reject_limit'] as num?)?.toInt() ?? 1;
+                return _buildDefectCategoryTile(
+                  categoryName: catName,
+                  defectItems: items,
+                  color: catName.contains('Misfire') || catName.contains('bore') ? const Color(0xFFEF4444) : (catName.contains('Primer') || catName.contains('Case') ? const Color(0xFFF97316) : const Color(0xFF6366F1)),
+                  retestLimit: retestLimit,
+                  rejectLimit: rejectLimit,
+                  tempKey: activeTempKey,
+                );
+              }).toList())
+            ] else ...[
+              _buildFormRow([
+                _buildDefectLevelTile(
+                  label: 'Level 1: Critical Defect (Max: $l1Max)',
+                  hint: '0',
+                  controller: activeL1Ctrl,
+                  color: const Color(0xFFEF4444),
+                  subtitle: l1Desc,
+                  level: 1,
+                  tempKey: activeTempKey,
+                ),
+                _buildDefectLevelTile(
+                  label: 'Level 2: Major Defect (Max: $l2Max)',
+                  hint: '0',
+                  controller: activeL2Ctrl,
+                  color: const Color(0xFFF59E0B),
+                  subtitle: l2Desc,
+                  level: 2,
+                  tempKey: activeTempKey,
+                ),
+              ]),
+              const SizedBox(height: 12.0),
+              _buildFormRow([
+                _buildDefectLevelTile(
+                  label: 'Level 3: Minor Defect (Max: $l3Max)',
+                  hint: '0',
+                  controller: activeL3Ctrl,
+                  color: const Color(0xFF3B82F6),
+                  subtitle: l3Desc,
+                  level: 3,
+                  tempKey: activeTempKey,
+                ),
+                _buildDefectLevelTile(
+                  label: 'Level 4: Level 4 Defect (Max: $l4Max)',
+                  hint: '0',
+                  controller: activeL4Ctrl,
+                  color: const Color(0xFF10B981),
+                  subtitle: l4Desc,
+                  level: 4,
+                  tempKey: activeTempKey,
+                ),
+              ]),
+            ],
             const Divider(color: Colors.white12, height: 24.0),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -6440,7 +6517,15 @@ class _EntryTabState extends State<EntryTab> {
                   style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 13.0, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  '${(int.tryParse(activeL1Ctrl.text) ?? 0) + (int.tryParse(activeL2Ctrl.text) ?? 0) + (int.tryParse(activeL3Ctrl.text) ?? 0) + (int.tryParse(activeL4Ctrl.text) ?? 0)}',
+                  _currentFunctionCaliberRules['schema_type'] == 'categories'
+                      ? () {
+                          int catCount = 0;
+                          _funcDefectItemCounts.forEach((k, v) {
+                            if (k.startsWith('$activeTempKey:')) catCount += v;
+                          });
+                          return '$catCount';
+                        }()
+                      : '${(int.tryParse(activeL1Ctrl.text) ?? 0) + (int.tryParse(activeL2Ctrl.text) ?? 0) + (int.tryParse(activeL3Ctrl.text) ?? 0) + (int.tryParse(activeL4Ctrl.text) ?? 0)}',
                   style: const TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
                 ),
               ],
@@ -6474,47 +6559,67 @@ class _EntryTabState extends State<EntryTab> {
           ),
           const SizedBox(height: 6.0),
           Text(
-            'Caliber: $_caliber • Level 1 (Max: $l1Max) • Level 2 (Max: $l2Max) • Level 3 (Max: $l3Max) • Level 4 (Max: $l4Max)',
+            _currentFunctionCaliberRules['schema_type'] == 'categories'
+                ? 'Caliber: $_caliber • Defect Categories'
+                : 'Caliber: $_caliber • Level 1 (Max: $l1Max) • Level 2 (Max: $l2Max) • Level 3 (Max: $l3Max) • Level 4 (Max: $l4Max)',
             style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5),
           ),
           const SizedBox(height: 16.0),
-          _buildFormRow([
-            _buildDefectLevelTile(
-              label: 'Level 1: Critical Defect (Max: $l1Max)',
-              hint: '0',
-              controller: _functionLevel1Controller,
-              color: const Color(0xFFEF4444),
-              subtitle: l1Desc,
-              level: 1,
-            ),
-            _buildDefectLevelTile(
-              label: 'Level 2: Major Defect (Max: $l2Max)',
-              hint: '0',
-              controller: _functionLevel2Controller,
-              color: const Color(0xFFF59E0B),
-              subtitle: l2Desc,
-              level: 2,
-            ),
-          ]),
-          const SizedBox(height: 12.0),
-          _buildFormRow([
-            _buildDefectLevelTile(
-              label: 'Level 3: Minor Defect (Max: $l3Max)',
-              hint: '0',
-              controller: _functionLevel3Controller,
-              color: const Color(0xFF3B82F6),
-              subtitle: l3Desc,
-              level: 3,
-            ),
-            _buildDefectLevelTile(
-              label: 'Level 4: Level 4 Defect (Max: $l4Max)',
-              hint: '0',
-              controller: _functionLevel4Controller,
-              color: const Color(0xFF10B981),
-              subtitle: l4Desc,
-              level: 4,
-            ),
-          ]),
+          if (_currentFunctionCaliberRules['schema_type'] == 'categories') ...[
+            ...((_currentFunctionCaliberRules['categories'] as Map? ?? {}).entries.map((entry) {
+              final catName = entry.key.toString();
+              final catData = entry.value as Map? ?? {};
+              final items = (catData['items'] as List?)?.map((e) => e.toString()).toList() ??
+                  catData['description'].toString().split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+              final retestLimit = (catData['retest_limit'] as num?)?.toInt() ?? 0;
+              final rejectLimit = (catData['reject_limit'] as num?)?.toInt() ?? 1;
+              return _buildDefectCategoryTile(
+                categoryName: catName,
+                defectItems: items,
+                color: catName.contains('Misfire') || catName.contains('bore') ? const Color(0xFFEF4444) : (catName.contains('Primer') || catName.contains('Case') ? const Color(0xFFF97316) : const Color(0xFF6366F1)),
+                retestLimit: retestLimit,
+                rejectLimit: rejectLimit,
+              );
+            }).toList())
+          ] else ...[
+            _buildFormRow([
+              _buildDefectLevelTile(
+                label: 'Level 1: Critical Defect (Max: $l1Max)',
+                hint: '0',
+                controller: _functionLevel1Controller,
+                color: const Color(0xFFEF4444),
+                subtitle: l1Desc,
+                level: 1,
+              ),
+              _buildDefectLevelTile(
+                label: 'Level 2: Major Defect (Max: $l2Max)',
+                hint: '0',
+                controller: _functionLevel2Controller,
+                color: const Color(0xFFF59E0B),
+                subtitle: l2Desc,
+                level: 2,
+              ),
+            ]),
+            const SizedBox(height: 12.0),
+            _buildFormRow([
+              _buildDefectLevelTile(
+                label: 'Level 3: Minor Defect (Max: $l3Max)',
+                hint: '0',
+                controller: _functionLevel3Controller,
+                color: const Color(0xFF3B82F6),
+                subtitle: l3Desc,
+                level: 3,
+              ),
+              _buildDefectLevelTile(
+                label: 'Level 4: Level 4 Defect (Max: $l4Max)',
+                hint: '0',
+                controller: _functionLevel4Controller,
+                color: const Color(0xFF10B981),
+                subtitle: l4Desc,
+                level: 4,
+              ),
+            ]),
+          ],
           const Divider(color: Colors.white12, height: 24.0),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -6524,10 +6629,153 @@ class _EntryTabState extends State<EntryTab> {
                 style: TextStyle(color: Color(0xFF8E96A3), fontSize: 13.0, fontWeight: FontWeight.w600),
               ),
               Text(
-                '${(int.tryParse(_functionLevel1Controller.text) ?? 0) + (int.tryParse(_functionLevel2Controller.text) ?? 0) + (int.tryParse(_functionLevel3Controller.text) ?? 0) + (int.tryParse(_functionLevel4Controller.text) ?? 0)}',
+                _currentFunctionCaliberRules['schema_type'] == 'categories'
+                    ? () {
+                        int catTotal = 0;
+                        _funcDefectItemCounts.forEach((k, v) {
+                          if (!k.contains(':')) catTotal += v;
+                        });
+                        return '$catTotal';
+                      }()
+                    : '${(int.tryParse(_functionLevel1Controller.text) ?? 0) + (int.tryParse(_functionLevel2Controller.text) ?? 0) + (int.tryParse(_functionLevel3Controller.text) ?? 0) + (int.tryParse(_functionLevel4Controller.text) ?? 0)}',
                 style: const TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDefectCategoryTile({
+    required String categoryName,
+    required List<String> defectItems,
+    required Color color,
+    required int retestLimit,
+    required int rejectLimit,
+    String tempKey = '',
+  }) {
+    int catCount = 0;
+    for (var it in defectItems) {
+      catCount += _getDefectCount(it, tempKey);
+    }
+    final bool isReject = rejectLimit > 0 && catCount >= rejectLimit;
+    final bool isRetest = retestLimit > 0 && catCount >= retestLimit;
+    final Color statusCol = isReject ? const Color(0xFFEF4444) : (isRetest ? const Color(0xFFFBBF24) : color);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: statusCol.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(color: statusCol, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    categoryName,
+                    style: TextStyle(color: statusCol, fontSize: 13.0, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '(Retest: >=$retestLimit, Reject: >=$rejectLimit)',
+                    style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                decoration: BoxDecoration(
+                  color: statusCol.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4.0),
+                  border: Border.all(color: statusCol.withOpacity(0.4)),
+                ),
+                child: Text(
+                  '$catCount defects',
+                  style: TextStyle(color: statusCol, fontSize: 12.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10.0),
+          Wrap(
+            spacing: 6.0,
+            runSpacing: 6.0,
+            children: defectItems.map((item) {
+              final count = _getDefectCount(item, tempKey);
+              final isSelected = count > 0;
+              return Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? color.withOpacity(0.25) : Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: isSelected ? color : Colors.white.withOpacity(0.1)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
+                        fontSize: 11.5,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
+                        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10.0)),
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () {
+                          final key = tempKey.isNotEmpty ? '$tempKey:$item' : item;
+                          setState(() {
+                            if (count == 1) {
+                              _funcDefectItemCounts.remove(key);
+                            } else {
+                              _funcDefectItemCounts[key] = count - 1;
+                            }
+                            _updateCategoryBasedDefects();
+                          });
+                        },
+                        child: const Icon(Icons.remove_circle_outline, size: 15, color: Colors.white70),
+                      ),
+                    ],
+                    const SizedBox(width: 4),
+                    InkWell(
+                      onTap: () {
+                        final key = tempKey.isNotEmpty ? '$tempKey:$item' : item;
+                        setState(() {
+                          _funcDefectItemCounts[key] = count + 1;
+                          _updateCategoryBasedDefects();
+                        });
+                      },
+                      child: Icon(Icons.add_circle_outline, size: 15, color: isSelected ? Colors.white : const Color(0xFF94A3B8)),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -6649,6 +6897,20 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   void _updateFunctionTestTotalDefects() {
+    if (_currentFunctionCaliberRules['schema_type'] == 'categories') {
+      int catTotal = 0;
+      _funcDefectItemCounts.forEach((k, v) => catTotal += v);
+      _defectsController.text = '$catTotal';
+      if (_functionTempMode == 'All') {
+        int totalProd = 0;
+        for (var t in _functionTempList) {
+          final p = int.tryParse(_funcAllProducedControllers[t]?.text.trim() ?? '') ?? 0;
+          totalProd += p;
+        }
+        if (totalProd > 0) _producedController.text = '$totalProd';
+      }
+      return;
+    }
     if (_functionTempMode == 'All') {
       int total = 0;
       int totalProd = 0;
@@ -7893,6 +8155,19 @@ class _EntryTabState extends State<EntryTab> {
     }
     
     if (_testName == 'Function Test') {
+      if (_functionTempMode == 'All') {
+        int sumL1 = 0;
+        int sumL2 = 0;
+        int sumL3 = 0;
+        int sumL4 = 0;
+        for (var t in _functionTempList) {
+          sumL1 += int.tryParse(_funcAllL1Controllers[t]?.text.trim() ?? '') ?? 0;
+          sumL2 += int.tryParse(_funcAllL2Controllers[t]?.text.trim() ?? '') ?? 0;
+          sumL3 += int.tryParse(_funcAllL3Controllers[t]?.text.trim() ?? '') ?? 0;
+          sumL4 += int.tryParse(_funcAllL4Controllers[t]?.text.trim() ?? '') ?? 0;
+        }
+        return _calculateFunctionTestStatus(l1: sumL1, l2: sumL2, l3: sumL3, l4: sumL4);
+      }
       final l1 = int.tryParse(_functionLevel1Controller.text.trim()) ?? 0;
       final l2 = int.tryParse(_functionLevel2Controller.text.trim()) ?? 0;
       final l3 = int.tryParse(_functionLevel3Controller.text.trim()) ?? 0;
@@ -8458,11 +8733,25 @@ class _EntryTabState extends State<EntryTab> {
             autoStatus = 'Approved';
           }
         } else if (_testName == 'Function Test') {
-          final l1 = int.tryParse(_functionLevel1Controller.text.trim()) ?? 0;
-          final l2 = int.tryParse(_functionLevel2Controller.text.trim()) ?? 0;
-          final l3 = int.tryParse(_functionLevel3Controller.text.trim()) ?? 0;
-          final l4 = int.tryParse(_functionLevel4Controller.text.trim()) ?? 0;
-          autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
+          if (_functionTempMode == 'All') {
+            int sumL1 = 0;
+            int sumL2 = 0;
+            int sumL3 = 0;
+            int sumL4 = 0;
+            for (var t in _functionTempList) {
+              sumL1 += int.tryParse(_funcAllL1Controllers[t]?.text.trim() ?? '') ?? 0;
+              sumL2 += int.tryParse(_funcAllL2Controllers[t]?.text.trim() ?? '') ?? 0;
+              sumL3 += int.tryParse(_funcAllL3Controllers[t]?.text.trim() ?? '') ?? 0;
+              sumL4 += int.tryParse(_funcAllL4Controllers[t]?.text.trim() ?? '') ?? 0;
+            }
+            autoStatus = _calculateFunctionTestStatus(l1: sumL1, l2: sumL2, l3: sumL3, l4: sumL4);
+          } else {
+            final l1 = int.tryParse(_functionLevel1Controller.text.trim()) ?? 0;
+            final l2 = int.tryParse(_functionLevel2Controller.text.trim()) ?? 0;
+            final l3 = int.tryParse(_functionLevel3Controller.text.trim()) ?? 0;
+            final l4 = int.tryParse(_functionLevel4Controller.text.trim()) ?? 0;
+            autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
+          }
         } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
           final epv = widget.adminRules['epvat'] ?? {};
           final bool isThreeTemp = _epvatPressureType == 'Overall';
@@ -8540,6 +8829,7 @@ class _EntryTabState extends State<EntryTab> {
             style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
             selectedItemBuilder: (BuildContext context) {
               return ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
+                final double fontSize = s == 'Approved with condition' ? 12.0 : 13.5;
                 return Align(
                   alignment: Alignment.centerLeft,
                   child: Row(
@@ -8550,14 +8840,12 @@ class _EntryTabState extends State<EntryTab> {
                         height: 8,
                         decoration: BoxDecoration(color: statusTextColor, shape: BoxShape.circle),
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          s,
-                          overflow: TextOverflow.visible,
-                          softWrap: false,
-                          style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
-                        ),
+                      const SizedBox(width: 6),
+                      Text(
+                        s,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(color: statusTextColor, fontSize: fontSize, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),

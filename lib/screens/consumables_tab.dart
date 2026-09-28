@@ -117,6 +117,43 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
     });
   }
 
+  bool _needsStockInitialization(List<Map<String, dynamic>> list) {
+    if (list.isEmpty) return true;
+    if (_isLegacyData(list)) return true;
+    final totalQty = list.fold<num>(0, (sum, it) => sum + ((it['quantity'] ?? 0) as num));
+    if (totalQty == 0) return true;
+    return false;
+  }
+
+  List<Map<String, dynamic>> _mergeWithDefaultCatalog(List<Map<String, dynamic>> currentItems) {
+    final defaults = getDefaultConsumablesCatalog();
+    final Map<String, Map<String, dynamic>> itemMap = {};
+    for (var it in currentItems) {
+      final key = '${it['name']}_${it['serial']}'.toLowerCase();
+      itemMap[key] = Map<String, dynamic>.from(it);
+    }
+
+    final List<Map<String, dynamic>> merged = [];
+    for (var def in defaults) {
+      final key = '${def['name']}_${def['serial']}'.toLowerCase();
+      if (itemMap.containsKey(key)) {
+        final existing = itemMap[key]!;
+        final num currentQty = (existing['quantity'] ?? 0) as num;
+        final num currentUsage = ((existing['usageLog'] as List?)?.length ?? 0);
+        if (currentQty == 0 && currentUsage == 0 && ((def['quantity'] ?? 0) as num) > 0) {
+          existing['quantity'] = def['quantity'];
+          existing['initialStock'] = def['quantity'];
+        }
+        merged.add(existing);
+        itemMap.remove(key);
+      } else {
+        merged.add(Map<String, dynamic>.from(def));
+      }
+    }
+    merged.addAll(itemMap.values);
+    return merged;
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
@@ -130,7 +167,7 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
 
       // 1. Load local cache
       final local = await _storageService.loadConsumables();
-      if (_isLegacyData(local)) {
+      if (_needsStockInitialization(local)) {
         final fresh = _getDefaultInitialItems();
         if (mounted) {
           setState(() {
@@ -142,9 +179,10 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
         return;
       }
 
-      if (local.isNotEmpty && mounted) {
+      final mergedLocal = _mergeWithDefaultCatalog(local);
+      if (mounted) {
         setState(() {
-          _items = local;
+          _items = mergedLocal;
           _isLoading = false;
         });
       }
@@ -152,19 +190,20 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       // 2. Fetch from Supabase Cloud
       final cloud = await SupabaseService.fetchConsumablesFromCloud();
       if (cloud != null && mounted) {
-        if (_isLegacyData(cloud)) {
-          final fresh = _getDefaultInitialItems();
+        if (_needsStockInitialization(cloud)) {
+          final merged = _mergeWithDefaultCatalog(cloud);
           setState(() {
-            _items = fresh;
+            _items = merged;
             _isLoading = false;
           });
           await _saveData();
         } else {
+          final merged = _mergeWithDefaultCatalog(cloud);
           setState(() {
-            _items = cloud;
+            _items = merged;
             _isLoading = false;
           });
-          await _storageService.saveConsumables(cloud);
+          await _storageService.saveConsumables(merged);
         }
       } else if (local.isEmpty && mounted) {
         _items = _getDefaultInitialItems();
