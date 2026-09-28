@@ -5,7 +5,8 @@ import 'report_helper.dart';
 class ReportHelperImpl implements ReportHelper {
   @override
   Future<void> downloadCsv({required String content, required String filename}) async {
-    final base64Content = base64Encode(utf8.encode(content));
+    final bomContent = content.startsWith('\uFEFF') ? content : '\uFEFF$content';
+    final base64Content = base64Encode(utf8.encode(bomContent));
     js.context.callMethod('eval', [
       '''
       (function() {
@@ -31,7 +32,8 @@ class ReportHelperImpl implements ReportHelper {
 
   @override
   Future<void> downloadDoc({required String content, required String filename}) async {
-    final base64Content = base64Encode(utf8.encode(content));
+    final bomContent = content.startsWith('\uFEFF') ? content : '\uFEFF$content';
+    final base64Content = base64Encode(utf8.encode(bomContent));
     js.context.callMethod('eval', [
       '''
       (function() {
@@ -61,7 +63,12 @@ class ReportHelperImpl implements ReportHelper {
     js.context.callMethod('eval', [
       '''
       (function() {
-        var html = atob('$base64Html');
+        var bin = atob('$base64Html');
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) {
+          bytes[i] = bin.charCodeAt(i);
+        }
+        var html = new TextDecoder('utf-8').decode(bytes);
         var iframe = document.getElementById('__ompc_print_frame__');
         if (!iframe) {
           iframe = document.createElement('iframe');

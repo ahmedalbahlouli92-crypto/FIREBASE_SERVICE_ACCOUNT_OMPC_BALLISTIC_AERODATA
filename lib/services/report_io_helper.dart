@@ -13,7 +13,8 @@ class ReportHelperImpl implements ReportHelper {
       await reportsDir.create(recursive: true);
     }
     final file = File('${reportsDir.path}/$filename');
-    await file.writeAsString(content, flush: true);
+    final bomContent = content.startsWith('\uFEFF') ? content : '\uFEFF$content';
+    await file.writeAsString(bomContent, flush: true);
   }
 
   @override
@@ -24,7 +25,8 @@ class ReportHelperImpl implements ReportHelper {
       await reportsDir.create(recursive: true);
     }
     final file = File('${reportsDir.path}/$filename');
-    await file.writeAsString(content, flush: true);
+    final bomContent = content.startsWith('\uFEFF') ? content : '\uFEFF$content';
+    await file.writeAsString(bomContent, flush: true);
   }
 
   @override

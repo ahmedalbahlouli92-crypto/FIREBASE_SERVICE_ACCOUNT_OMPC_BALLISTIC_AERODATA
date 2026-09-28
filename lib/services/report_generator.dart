@@ -54,13 +54,10 @@ class ReportGenerator {
       final temp = r.roomTemp.isNotEmpty ? '${r.roomTemp} °C' : '-';
       return '$total splits, Room Temp: $temp';
     } else if (r.testName == 'Accuracy Test') {
-      String s = 'Mean Radius: ${r.accMeanRadius} mm, X: ${r.accMeanX}, Y: ${r.accMeanY}';
-      if ((double.tryParse(r.accLargestDistance) ?? 0) > 0) {
-        s += ', Largest Dist: ${r.accLargestDistance} mm';
-      }
-      return s;
+      return 'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm, SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm, Mean Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
     } else if (r.testName == 'EPVAT test') {
-      return 'P1: ${r.epvatMeanPressure} ${r.epvatPressureUnit}, Vel: ${r.velMean} m/s, Temp: ${r.cartridgeTemp} °C';
+      final u = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
+      return 'Mean Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $u, Mean Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $u, Mean Vel (+21 °C): ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
     } else if (r.testName == 'Extraction Force Test') {
       return 'Mean: ${r.accMeanX} N, Min: ${r.accMinX} N';
     } else if (r.testName == 'Function Test') {
@@ -210,20 +207,17 @@ class ReportGenerator {
     final caliber = records[0].caliber;
     final epvRules = adminRules['epvat'] ?? {};
     final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-    var list = List<dynamic>.from(formulasMap[caliber] ?? []);
-    if (list.isEmpty) {
-      list = List<dynamic>.from(formulasMap['default'] ?? []);
-    }
-    final bool isThreeTemp = records.map((r) => r.cartridgeTemp).toSet().length > 1;
+    final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
+        records.map((r) => r.cartridgeTemp).toSet().length > 1;
+    var list = EpvatFormulaHelper.getFormulasForCaliber(
+      formulasMap,
+      caliber,
+      isThreeTemp: isThreeTemp,
+    );
     final String activePressureUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty
         ? records[0].epvatPressureUnit
         : 'bar';
-    final String defaultTemp = records.isNotEmpty && records[0].cartridgeTemp.isNotEmpty
-        ? records[0].cartridgeTemp.replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim()
-        : '21';
-    if (list.isEmpty) {
-      list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: isThreeTemp);
-    }
+    final String defaultTemp = '21';
 
     final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
     final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
@@ -246,7 +240,7 @@ class ReportGenerator {
         keHtml = '''
         <tr style="background-color: #f0f4ff;">
           <td colspan="5" style="padding: 8px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0;">
-            <strong style="color:#4f46e5;">⚡ Kinetic Energy (+21 °C):</strong>
+            <strong style="color:#4f46e5;">&bull; Kinetic Energy (+21 &deg;C):</strong>
             <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
             <span style="color: #64748b; margin-left: 8px;">(Bullet mass = ${massG.toStringAsFixed(2)} g, Mean velocity = ${vMean.toStringAsFixed(1)} m/s)</span>
           </td>
@@ -260,12 +254,14 @@ class ReportGenerator {
       final bg = i % 2 == 1 ? 'background-color: #f8fafc;' : '';
       final color = res.isPassed ? '#15803d' : '#b91c1c';
       final statusText = res.isPassed ? 'PASSED' : 'FAILED';
+      final safeSubstituted = res.substitutedText.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+      final displayOp = res.op == '<=' ? '&le;' : (res.op == '>=' ? '&ge;' : (res.op == '<' ? '&lt;' : (res.op == '>' ? '&gt;' : res.op)));
       rowsBuffer.writeln('''
       <tr style="$bg">
         <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${res.name}</td>
         <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #475569;">${res.formula}</td>
-        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: bold; color: #1e293b;">${res.substitutedText} ${res.unit}</td>
-        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">${res.op} ${res.limitValue.toStringAsFixed(1)} ${res.unit}</td>
+        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: bold; color: #1e293b;">$safeSubstituted ${res.unit}</td>
+        <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">$displayOp ${res.limitValue.toStringAsFixed(1)} ${res.unit}</td>
         <td style="padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: $color;">$statusText</td>
       </tr>
       ''');
@@ -513,7 +509,7 @@ class ReportGenerator {
         if (massG != null && vMean != null && vMean > 0) {
           final double ke = 0.5 * (massG / 1000.0) * vMean * vMean;
           epvatRows.write('<tr style="background-color: #f0f4ff;">');
-          epvatRows.write('<td style="font-weight: bold; color: #4f46e5;">⚡ Kinetic Energy (+21°C):</td>');
+          epvatRows.write('<td style="font-weight: bold; color: #4f46e5;">&bull; Kinetic Energy (+21&deg;C):</td>');
           epvatRows.write('<td style="font-family: monospace; font-weight: bold; color: #4f46e5;">${ke.toStringAsFixed(1)} J</td>');
           epvatRows.write('<td style="color: #64748b; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMean.toStringAsFixed(1)} m/s</td>');
           epvatRows.write('<td></td>');
@@ -1538,6 +1534,7 @@ class ReportGenerator {
     final buffer = StringBuffer();
     buffer.writeln('''<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta charset="utf-8">
   <style>
     body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; }

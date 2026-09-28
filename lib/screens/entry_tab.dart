@@ -1433,10 +1433,6 @@ class _EntryTabState extends State<EntryTab> {
           notifyMissing('Primer Supplier');
           return false;
         }
-        if (_primerLotController.text.trim().isEmpty) {
-          notifyMissing('Primer Lot Number');
-          return false;
-        }
         if (_primerInsertionDepthController.text.trim().isEmpty) {
           notifyMissing('Average Insertion Depth');
           return false;
@@ -2746,10 +2742,27 @@ class _EntryTabState extends State<EntryTab> {
         for (var t in tempsToSave) {
           final count = _epvatOverallRoundCount[t] ?? 30;
           totalProduced += count;
-          final p1m = _overallEpvatControllers[t]!['p1_mean']!.text.trim();
-          final p1max = _overallEpvatControllers[t]!['p1_max']!.text.trim();
-          final vm = _overallEpvatControllers[t]!['vel_mean']!.text.trim();
-          tempDetails.add('$t°C ($count rds: P1=$p1m, Max=$p1max, V=$vm)');
+          final p1m = _overallEpvatControllers[t]?['p1_mean']?.text.trim() ?? '';
+          final p1max = _overallEpvatControllers[t]?['p1_max']?.text.trim() ?? '';
+          final p1min = _overallEpvatControllers[t]?['p1_min']?.text.trim() ?? '';
+          final p1sd = _overallEpvatControllers[t]?['p1_sd']?.text.trim() ?? '';
+
+          final p2m = _overallEpvatControllers[t]?['p2_mean']?.text.trim() ?? '';
+          final p2max = _overallEpvatControllers[t]?['p2_max']?.text.trim() ?? '';
+          final p2min = _overallEpvatControllers[t]?['p2_min']?.text.trim() ?? '';
+          final p2sd = _overallEpvatControllers[t]?['p2_sd']?.text.trim() ?? '';
+
+          final vm = _overallEpvatControllers[t]?['vel_mean']?.text.trim() ?? '';
+          final vmax = _overallEpvatControllers[t]?['vel_max']?.text.trim() ?? '';
+          final vmin = _overallEpvatControllers[t]?['vel_min']?.text.trim() ?? '';
+          final vsd = _overallEpvatControllers[t]?['vel_sd']?.text.trim() ?? '';
+
+          final atm = _overallEpvatControllers[t]?['action_time_mean']?.text.trim() ?? '';
+          final atmax = _overallEpvatControllers[t]?['action_time_max']?.text.trim() ?? '';
+          final atmin = _overallEpvatControllers[t]?['action_time_min']?.text.trim() ?? '';
+          final atsd = _overallEpvatControllers[t]?['action_time_sd']?.text.trim() ?? '';
+
+          tempDetails.add('$t°C ($count rds: P1=$p1m, Max=$p1max, P1Min=$p1min, SD=$p1sd, P2=$p2m, P2Max=$p2max, P2Min=$p2min, P2SD=$p2sd, V=$vm, VMax=$vmax, VMin=$vmin, VSD=$vsd, AT=$atm, ATMax=$atmax, ATMin=$atmin, ATSD=$atsd)');
         }
 
         // Primary baseline temp (+21 or first)
@@ -3071,7 +3084,7 @@ class _EntryTabState extends State<EntryTab> {
           attachmentBase64: _attachmentBase64,
           functionDefectDetails: _testName == 'Function Test' ? _functionDefectDetails : '',
           primerLot: (_testName == 'Primer Sensitivity Test' || _testName == 'EPVAT test')
-              ? (_selectedComponentPrimerLot ?? _primerLotController.text.trim())
+              ? (_selectedComponentPrimerLot ?? (_primerLotController.text.trim().isNotEmpty ? _primerLotController.text.trim() : _lotController.text.trim()))
               : '',
           primerSupplier: (_testName == 'Primer Sensitivity Test' || _testName == 'EPVAT test')
               ? _primerSupplier
@@ -7436,36 +7449,107 @@ class _EntryTabState extends State<EntryTab> {
         final sfx = suffixMap[t]!;
         final metricsMap = _overallEpvatControllers[t] ?? {};
         metricsMap.forEach((key, ctrl) {
-          variables['${key}_${sfx}'] = double.tryParse(ctrl.text.trim()) ?? 0.0;
+          final val = double.tryParse(ctrl.text.trim()) ?? 0.0;
+          variables['${key}_${sfx}'] = val;
+          if (sfx == '21') {
+            variables.putIfAbsent(key, () => val);
+          }
+          if (key.startsWith('action_time_')) {
+            final atKey = key.replaceFirst('action_time_', 'at_');
+            variables['${atKey}_${sfx}'] = val;
+            if (sfx == '21') {
+              variables.putIfAbsent(atKey, () => val);
+            }
+          }
         });
       }
     } else {
       final activeTemp = _cartridgeTempController.text.trim();
       final String sfx = activeTemp.contains('52') ? '52' : (activeTemp.contains('32') ? '32' : (activeTemp.contains('54') ? '54' : '21'));
       
-      variables['p1_mean_$sfx'] = double.tryParse(_epvatMeanPressureController.text.trim()) ?? 0.0;
-      variables['p1_max_$sfx'] = double.tryParse(_epvatMaxPressureController.text.trim()) ?? 0.0;
-      variables['p1_min_$sfx'] = double.tryParse(_epvatMinPressureController.text.trim()) ?? 0.0;
-      variables['p1_range_$sfx'] = double.tryParse(_epvatRangePressureController.text.trim()) ?? 0.0;
-      variables['p1_sd_$sfx'] = double.tryParse(_epvatSDPressureController.text.trim()) ?? 0.0;
+      final p1Mean = double.tryParse(_epvatMeanPressureController.text.trim()) ?? 0.0;
+      final p1Max = double.tryParse(_epvatMaxPressureController.text.trim()) ?? 0.0;
+      final p1Min = double.tryParse(_epvatMinPressureController.text.trim()) ?? 0.0;
+      final p1Range = double.tryParse(_epvatRangePressureController.text.trim()) ?? 0.0;
+      final p1Sd = double.tryParse(_epvatSDPressureController.text.trim()) ?? 0.0;
 
-      variables['p2_mean_$sfx'] = double.tryParse(_epvatP2MeanPressureController.text.trim()) ?? 0.0;
-      variables['p2_max_$sfx'] = double.tryParse(_epvatP2MaxPressureController.text.trim()) ?? 0.0;
-      variables['p2_min_$sfx'] = double.tryParse(_epvatP2MinPressureController.text.trim()) ?? 0.0;
-      variables['p2_range_$sfx'] = double.tryParse(_epvatP2RangePressureController.text.trim()) ?? 0.0;
-      variables['p2_sd_$sfx'] = double.tryParse(_epvatP2SDPressureController.text.trim()) ?? 0.0;
+      final p2Mean = double.tryParse(_epvatP2MeanPressureController.text.trim()) ?? 0.0;
+      final p2Max = double.tryParse(_epvatP2MaxPressureController.text.trim()) ?? 0.0;
+      final p2Min = double.tryParse(_epvatP2MinPressureController.text.trim()) ?? 0.0;
+      final p2Range = double.tryParse(_epvatP2RangePressureController.text.trim()) ?? 0.0;
+      final p2Sd = double.tryParse(_epvatP2SDPressureController.text.trim()) ?? 0.0;
 
-      variables['vel_mean_$sfx'] = double.tryParse(_meanVelController.text.trim()) ?? 0.0;
-      variables['vel_max_$sfx'] = double.tryParse(_maxVelController.text.trim()) ?? 0.0;
-      variables['vel_min_$sfx'] = double.tryParse(_minVelController.text.trim()) ?? 0.0;
-      variables['vel_range_$sfx'] = double.tryParse(_rangeVelController.text.trim()) ?? 0.0;
-      variables['vel_sd_$sfx'] = double.tryParse(_sdVelController.text.trim()) ?? 0.0;
+      final velMean = double.tryParse(_meanVelController.text.trim()) ?? 0.0;
+      final velMax = double.tryParse(_maxVelController.text.trim()) ?? 0.0;
+      final velMin = double.tryParse(_minVelController.text.trim()) ?? 0.0;
+      final velRange = double.tryParse(_rangeVelController.text.trim()) ?? 0.0;
+      final velSd = double.tryParse(_sdVelController.text.trim()) ?? 0.0;
 
-      variables['action_time_mean_$sfx'] = double.tryParse(_actionTimeMeanController.text.trim()) ?? 0.0;
-      variables['action_time_max_$sfx'] = double.tryParse(_actionTimeMaxController.text.trim()) ?? 0.0;
-      variables['action_time_min_$sfx'] = double.tryParse(_actionTimeMinController.text.trim()) ?? 0.0;
-      variables['action_time_range_$sfx'] = double.tryParse(_actionTimeRangeController.text.trim()) ?? 0.0;
-      variables['action_time_sd_$sfx'] = double.tryParse(_actionTimeSDController.text.trim()) ?? 0.0;
+      final actMean = double.tryParse(_actionTimeMeanController.text.trim()) ?? 0.0;
+      final actMax = double.tryParse(_actionTimeMaxController.text.trim()) ?? 0.0;
+      final actMin = double.tryParse(_actionTimeMinController.text.trim()) ?? 0.0;
+      final actRange = double.tryParse(_actionTimeRangeController.text.trim()) ?? 0.0;
+      final actSd = double.tryParse(_actionTimeSDController.text.trim()) ?? 0.0;
+
+      variables['p1_mean_$sfx'] = p1Mean;
+      variables['p1_max_$sfx'] = p1Max;
+      variables['p1_max_individual_$sfx'] = p1Max;
+      variables['p1_min_$sfx'] = p1Min;
+      variables['p1_range_$sfx'] = p1Range;
+      variables['p1_sd_$sfx'] = p1Sd;
+
+      variables['p2_mean_$sfx'] = p2Mean;
+      variables['p2_max_$sfx'] = p2Max;
+      variables['p2_min_$sfx'] = p2Min;
+      variables['p2_range_$sfx'] = p2Range;
+      variables['p2_sd_$sfx'] = p2Sd;
+
+      variables['vel_mean_$sfx'] = velMean;
+      variables['vel_max_$sfx'] = velMax;
+      variables['vel_min_$sfx'] = velMin;
+      variables['vel_range_$sfx'] = velRange;
+      variables['vel_sd_$sfx'] = velSd;
+
+      variables['action_time_mean_$sfx'] = actMean;
+      variables['action_time_max_$sfx'] = actMax;
+      variables['action_time_min_$sfx'] = actMin;
+      variables['action_time_range_$sfx'] = actRange;
+      variables['action_time_sd_$sfx'] = actSd;
+
+      // Un-suffixed fallbacks
+      variables['p1_mean'] = p1Mean;
+      variables['p1_max'] = p1Max;
+      variables['p1_max_individual'] = p1Max;
+      variables['p1_min'] = p1Min;
+      variables['p1_range'] = p1Range;
+      variables['p1_sd'] = p1Sd;
+
+      variables['p2_mean'] = p2Mean;
+      variables['p2_max'] = p2Max;
+      variables['p2_min'] = p2Min;
+      variables['p2_range'] = p2Range;
+      variables['p2_sd'] = p2Sd;
+
+      variables['vel_mean'] = velMean;
+      variables['vel_max'] = velMax;
+      variables['vel_min'] = velMin;
+      variables['vel_range'] = velRange;
+      variables['vel_sd'] = velSd;
+
+      variables['action_time_mean'] = actMean;
+      variables['action_time_max'] = actMax;
+      variables['action_time_min'] = actMin;
+      variables['action_time_range'] = actRange;
+      variables['action_time_sd'] = actSd;
+
+      variables.putIfAbsent('p1_mean_21', () => p1Mean);
+      variables.putIfAbsent('p1_sd_21', () => p1Sd);
+      variables.putIfAbsent('p2_mean_21', () => p2Mean);
+      variables.putIfAbsent('p2_sd_21', () => p2Sd);
+      variables.putIfAbsent('vel_mean_21', () => velMean);
+      variables.putIfAbsent('vel_sd_21', () => velSd);
+      variables.putIfAbsent('action_time_mean_21', () => actMean);
+      variables.putIfAbsent('action_time_sd_21', () => actSd);
     }
     return variables;
   }
@@ -7645,14 +7729,18 @@ class _EntryTabState extends State<EntryTab> {
     }
     final is762 = _caliber.contains('7.62') || _caliber.contains('M80') || _caliber.contains('.308');
     final is9mm = _caliber.contains('9x19') || _caliber.contains('Para') || _caliber.contains('Luger');
+    final double defaultAllFire = is762 ? 500.0 : (is9mm ? 350.0 : 450.0);
+    final double defaultNoFire = 75.0;
     return {
       'drop_weight': is762 ? 110.0 : 55.0,
-      'hbar_min': is9mm ? 200.0 : (is762 ? 300.0 : 250.0),
-      'hbar_max': is9mm ? 400.0 : (is762 ? 500.0 : 450.0),
-      'all_fire_h': is9mm ? 450.0 : (is762 ? 550.0 : 500.0),
-      'no_fire_h': is9mm ? 120.0 : (is762 ? 200.0 : 150.0),
+      'hbar_min': is9mm ? 140.0 : (is762 ? 160.0 : 150.0),
+      'hbar_max': is9mm ? 280.0 : (is762 ? 320.0 : 300.0),
+      'all_fire_h': defaultAllFire,
+      'min_all_fire_height': defaultAllFire,
+      'no_fire_h': defaultNoFire,
+      'max_no_fire_height': defaultNoFire,
       'max_sd': is762 ? 70.0 : (is9mm ? 50.0 : 60.0),
-      'instructions': ps['instructions'] ?? 'Perform drop ball sensitivity test. Record drop height (mm) and Fire/Misfire outcome for each round.',
+      'instructions': ps['instructions'] ?? 'Primer sensitivity test: HM+5SD and HM-2SD evaluations.',
     };
   }
 
@@ -7815,30 +7903,26 @@ class _EntryTabState extends State<EntryTab> {
 
     if (_testName == 'Primer Sensitivity Test') {
       final prRules = _getPrimerRulesForCaliber();
-      final double hbarMin = (prRules['hbar_min'] ?? 250.0).toDouble();
-      final double hbarMax = (prRules['hbar_max'] ?? 450.0).toDouble();
-      final double allFireLimit = (prRules['all_fire_h'] ?? 500.0).toDouble();
-      final double noFireLimit = (prRules['no_fire_h'] ?? 150.0).toDouble();
-      final double maxSD = (prRules['max_sd'] ?? 60.0).toDouble();
+      final is762 = _caliber.contains('7.62') || _caliber.contains('M80') || _caliber.contains('.308');
+      final is9mm = _caliber.contains('9x19') || _caliber.contains('Para') || _caliber.contains('Luger');
+      final double defaultAllFire = is762 ? 500.0 : (is9mm ? 350.0 : 450.0);
+      final double defaultNoFire = 75.0;
+
+      final double allFireLimit = ((prRules['all_fire_h'] ?? prRules['min_all_fire_height'] ?? defaultAllFire) as num).toDouble();
+      final double noFireLimit = ((prRules['no_fire_h'] ?? prRules['max_no_fire_height'] ?? defaultNoFire) as num).toDouble();
 
       final double? hbar = double.tryParse(_primerHbarController.text.trim());
       final double? sd = double.tryParse(_primerSDController.text.trim());
-      final double? allFireH = double.tryParse(_primerHbarPlus5SController.text.trim());
-      final double? noFireH = double.tryParse(_primerHbarMinus2SController.text.trim());
-      final int misfires = int.tryParse(_primerMisfiresCountController.text.trim()) ?? 0;
 
-      if (hbar == null || sd == null || allFireH == null || noFireH == null) {
+      if (hbar == null || sd == null) {
         return 'Approved';
       }
 
-      if (hbar < hbarMin || hbar > hbarMax || allFireH > allFireLimit || noFireH < noFireLimit) {
+      final allFireH = hbar + (5 * sd);
+      final noFireH = hbar - (2 * sd);
+
+      if (allFireH > allFireLimit || noFireH < noFireLimit) {
         return 'Rejected';
-      }
-      if (sd > maxSD) {
-        return 'Retest';
-      }
-      if (misfires > 0 || sd > maxSD * 0.85) {
-        return 'Approved with condition';
       }
       return 'Approved';
     }
@@ -8181,22 +8265,10 @@ class _EntryTabState extends State<EntryTab> {
                   Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 18.0),
                   SizedBox(width: 8.0),
                   Text(
-                    'Primer Sensitivity Test (Drop Ball Method)',
+                    'Primer Sensitivity Test',
                     style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                   ),
                 ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF06B6D4).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
-                ),
-                child: Text(
-                  'Spec: ${defaultDropWeight.toStringAsFixed(1)}g Ball',
-                  style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
-                ),
               ),
             ],
           ),
@@ -8227,39 +8299,11 @@ class _EntryTabState extends State<EntryTab> {
           _buildFormRow([
             _buildFlexibleField(
               flex: 1,
-              label: 'Drop Ball Weight (grams)',
-              child: _buildTextField(
-                controller: _primerDropWeightController,
-                readOnly: isLotPrimerLocked,
-                hint: 'e.g. 55.0 or 111.86',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (val) {
-                  _scheduleAutoSave();
-                  setState(() {});
-                },
-              ),
-            ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Total Test Rounds Recorded',
+              label: 'Total Test Rounds Recorded (Sample Size)',
               child: _buildTextField(
                 controller: _producedController,
                 readOnly: isLotPrimerLocked,
                 hint: '50',
-                keyboardType: TextInputType.number,
-                onChanged: (val) {
-                  _scheduleAutoSave();
-                  setState(() {});
-                },
-              ),
-            ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Misfires Count',
-              child: _buildTextField(
-                controller: _primerMisfiresCountController,
-                readOnly: isLotPrimerLocked,
-                hint: '0',
                 keyboardType: TextInputType.number,
                 onChanged: (val) {
                   _scheduleAutoSave();
@@ -8470,8 +8514,13 @@ class _EntryTabState extends State<EntryTab> {
             if (!rejected && customFormulas.isNotEmpty) {
               final vars = _getEpvatVariablesMap();
               for (final f in customFormulas) {
-                final res = EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), vars, defaultTemp: '21');
-                if (res != null && !res.isPassed) {
+                final res = EpvatFormulaHelper.evaluateFormulaItem(
+                  Map<String, dynamic>.from(f as Map),
+                  vars,
+                  defaultTemp: '21',
+                  activePressureUnit: _epvatPressureUnit,
+                );
+                if (!res.isPassed) {
                   rejected = true;
                   break;
                 }
@@ -8517,8 +8566,13 @@ class _EntryTabState extends State<EntryTab> {
                   : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim();
               final vars = _getEpvatVariablesMap();
               for (final f in customFormulas) {
-                final res = EpvatFormulaHelper.evaluateFormulaItem(Map<String, dynamic>.from(f as Map), vars, defaultTemp: defaultTemp);
-                if (res != null && !res.isPassed) {
+                final res = EpvatFormulaHelper.evaluateFormulaItem(
+                  Map<String, dynamic>.from(f as Map),
+                  vars,
+                  defaultTemp: defaultTemp,
+                  activePressureUnit: _epvatPressureUnit,
+                );
+                if (!res.isPassed) {
                   rejected = true;
                   break;
                 }
@@ -9398,16 +9452,6 @@ class _EntryTabState extends State<EntryTab> {
                         ),
                       ),
                   ],
-                ),
-              ),
-              _buildFlexibleField(
-                flex: 1,
-                label: 'Primer Lot Number',
-                isRequired: true,
-                child: _buildTextField(
-                  controller: _primerLotController,
-                  hint: 'Type primer lot number (e.g., PR-2026-01)',
-                  onChanged: (_) => _scheduleAutoSave(),
                 ),
               ),
             ]),
