@@ -19,9 +19,34 @@ class ReportGenerator {
       s = s.substring(0, s.lastIndexOf('°C')).trim();
     }
     if (!s.contains('°C')) {
-      s = '$s &deg;C';
+      s = '$s&nbsp;°C';
+    }
+    s = s.replaceAll(RegExp(r'\s+°C'), '&nbsp;°C');
+    return '<span style="white-space: nowrap;">$s</span>';
+  }
+
+  static String cleanRemarks(String raw) {
+    if (raw.trim().isEmpty) return '';
+    String s = raw.trim();
+    if (s.contains('Temps:')) {
+      final idx = s.indexOf('Temps:');
+      s = s.substring(0, idx).trim();
+      if (s.endsWith('|')) {
+        s = s.substring(0, s.length - 1).trim();
+      }
     }
     return s;
+  }
+
+  static String formatWeapons(String raw) {
+    if (raw.trim().isEmpty) return '-';
+    final items = raw
+        .split(RegExp(r',\s*|;\s*|\n+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (items.isEmpty) return '-';
+    return items.join('<br/>');
   }
 
   static String _formatImageSrc(String raw) {
@@ -249,23 +274,25 @@ class ReportGenerator {
     )).toList();
     final bool allPassed = results.every((r) => r.isPassed);
 
-    // Kinetic Energy row if applicable
-    String keHtml = '';
-    final r21 = records.firstWhere((r) => r.cartridgeTemp == '+21', orElse: () => BallisticRecord.empty());
-    if (adminRules.isNotEmpty && r21.velMean.isNotEmpty) {
+    // Kinetic Energy box if applicable
+    String keBox = '';
+    final r21 = records.firstWhere(
+      (r) => r.cartridgeTemp.contains('21'),
+      orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty(),
+    );
+    final effectiveVel = r21.velMean.isNotEmpty ? r21.velMean : (records.isNotEmpty ? records[0].velMean : '');
+    if (adminRules.isNotEmpty && effectiveVel.isNotEmpty) {
       final massMap = epvRules['bullet_mass_grams'] ?? {};
       final double? massG = (massMap[caliber] as num?)?.toDouble();
-      final double? vMean = double.tryParse(r21.velMean);
+      final double? vMean = double.tryParse(effectiveVel);
       if (massG != null && vMean != null && vMean > 0) {
         final double ke = 0.5 * (massG / 1000.0) * vMean * vMean;
-        keHtml = '''
-        <tr style="background-color: #f0f4ff;">
-          <td colspan="5" style="padding: 8px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0;">
-            <strong style="color:#4f46e5;">&bull; Kinetic Energy (+21 &deg;C):</strong>
-            <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
-            <span style="color: #64748b; margin-left: 8px;">(Bullet mass = ${massG.toStringAsFixed(2)} g, Mean velocity = ${vMean.toStringAsFixed(1)} m/s)</span>
-          </td>
-        </tr>''';
+        keBox = '''
+        <div style="margin-top: 6px; margin-bottom: 6px; padding: 6px 10px; background-color: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 6px; font-size: 10.5px;">
+          <strong style="color: #4f46e5;">&bull; Kinetic Energy (+21&deg;C):</strong>
+          <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
+          <span style="color: #475569; margin-left: 10px; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMean.toStringAsFixed(1)} m/s</span>
+        </div>''';
       }
     }
 
@@ -302,9 +329,9 @@ class ReportGenerator {
         </thead>
         <tbody>
           ${rowsBuffer.toString()}
-          $keHtml
         </tbody>
       </table>
+      $keBox
       <div style="padding: 6px 10px; border: 1px solid ${allPassed ? '#bbf7d0' : '#fecaca'}; border-radius: 6px; background-color: ${allPassed ? '#f0fdf4' : '#fef2f2'}; font-size: 11px; font-weight: bold; line-height: 1.3; color: ${allPassed ? '#15803d' : '#b91c1c'};">
         <strong>Combined Sentencing Result:</strong> ${allPassed ? 'The lot satisfies all configured EPVAT ballistic criteria and is approved.' : 'The lot fails one or more configured EPVAT criteria and must be rejected.'}
       </div>
@@ -320,12 +347,11 @@ class ReportGenerator {
         : '';
 
     final remarksList = records
-        .map((r) => r.notes.trim())
+        .map((r) => cleanRemarks(r.notes))
         .where((n) => n.isNotEmpty && n.toLowerCase() != 'clear')
         .toSet()
         .toList();
-    final remarksText = remarksList.join('<br/>');
-
+    final remarksText = remarksList.isNotEmpty ? remarksList.join('<br/>') : 'No remarks recorded.';
 
     final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
@@ -346,8 +372,8 @@ class ReportGenerator {
       );
     }
 
-    // Classification reference image section (Residual Stress and Function Test)
-    String classificationImageSection = '';
+    // Classification reference image tag (Residual Stress and Function Test) - Minimized 2x
+    String classificationImageTag = '';
     final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
     final String defaultImg = isCaliber9mm ? DefaultCartridgeAssets.cartridge9mmBase64 : DefaultCartridgeAssets.cartridgeBottleneckBase64;
     final String fallbackCartridgeImg = isCaliber9mm
@@ -359,26 +385,51 @@ class ReportGenerator {
       final imgToUse = rsImg.isNotEmpty ? rsImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
-      classificationImageSection = '''
-      <div style="margin-top: 15px; margin-bottom: 15px;">
-        <h3 class="section-title">Residual Stress Classification Reference</h3>
-        <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-          <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
-          <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
+      classificationImageTag = '''
+        <div style="text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px;">
+          <img src="$src" style="max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
+          <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
         </div>
-      </div>
       ''';
     } else if (testName == 'Function Test') {
       final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
       final imgToUse = funcImg.isNotEmpty ? funcImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
-      classificationImageSection = '''
-      <div style="margin-top: 15px; margin-bottom: 15px;">
-        <h3 class="section-title">Defect Classification Reference Guide</h3>
-        <div style="text-align: center; margin: 10px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-          <img src="$src" style="max-width: 100%; max-height: 380px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" alt="Function Test Reference" />
-          <div style="font-size: 10.5px; color: #64748b; margin-top: 6px; font-style: italic;">$title</div>
+      classificationImageTag = '''
+        <div style="text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px;">
+          <img src="$src" style="max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Function Test Reference" />
+          <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
+        </div>
+      ''';
+    }
+
+    String remarksAndDiagramSection = '';
+    if (classificationImageTag.isNotEmpty) {
+      remarksAndDiagramSection = '''
+      <div style="margin-top: 10px; margin-bottom: 10px;">
+        <table style="width: 100%; border: none; border-collapse: collapse;">
+          <tr>
+            <td style="width: 52%; vertical-align: top; border: none; padding-right: 12px; padding-left: 0; padding-top: 0; padding-bottom: 0;">
+              <h3 class="section-title" style="margin-top: 0; margin-bottom: 6px;">Remarks</h3>
+              <div class="sentence-box" style="min-height: 140px;">
+                $remarksText
+              </div>
+            </td>
+            <td style="width: 48%; vertical-align: top; border: none; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0;">
+              <h3 class="section-title" style="margin-top: 0; margin-bottom: 6px;">Defect Classification Reference Guide</h3>
+              $classificationImageTag
+            </td>
+          </tr>
+        </table>
+      </div>
+      ''';
+    } else {
+      remarksAndDiagramSection = '''
+      <div>
+        <h3 class="section-title">Remarks</h3>
+        <div class="sentence-box" style="min-height: 50px;">
+          $remarksText
         </div>
       </div>
       ''';
@@ -515,10 +566,10 @@ class ReportGenerator {
       final weaponName = records.isNotEmpty ? records[0].cyclicRateWeaponType : '';
       final rawTemp = records.isNotEmpty ? records[0].cartridgeTemp : '';
       functionRows.write('<tr>');
-      functionRows.write('<td style="font-weight: bold; color: #475569;">Rifles / Weapons:</td>');
-      functionRows.write('<td>${weaponName.isNotEmpty ? weaponName : '-'}</td>');
-      functionRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
-      functionRows.write('<td>${rawTemp.isNotEmpty ? formatCartridgeTemp(rawTemp) : '-'}</td>');
+      functionRows.write('<td style="font-weight: bold; color: #475569; vertical-align: top;">Rifles / Weapons:</td>');
+      functionRows.write('<td style="vertical-align: top;">${formatWeapons(weaponName)}</td>');
+      functionRows.write('<td style="font-weight: bold; color: #475569; vertical-align: top;">Cartridge Temp:</td>');
+      functionRows.write('<td style="white-space: nowrap; vertical-align: top;">${rawTemp.isNotEmpty ? formatCartridgeTemp(rawTemp) : '-'}</td>');
       functionRows.write('</tr>');
     }
 
@@ -1068,28 +1119,6 @@ class ReportGenerator {
             <td>$vSD</td>
           </tr>
         ''');
-
-        // Kinetic Energy immediately following after Action Time / Velocity
-        if (adminRules.isNotEmpty) {
-          final epvR = adminRules['epvat'] ?? {};
-          final massMap = epvR['bullet_mass_grams'] ?? {};
-          final double? massG = (massMap[r.caliber] as num?)?.toDouble();
-          final r21 = records.firstWhere((rec) => rec.cartridgeTemp == '+21', orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty());
-          final double? vMeanVal = double.tryParse(r21.velMean.isNotEmpty ? r21.velMean : r.velMean);
-          if (massG != null && vMeanVal != null && vMeanVal > 0) {
-            final double ke = 0.5 * (massG / 1000.0) * vMeanVal * vMeanVal;
-            final colspan = is9mm ? 4 : 5;
-            buffer.writeln('''
-            <tr style="background-color: #f0f4ff;">
-              <td colspan="$colspan" style="padding: 7px 10px; font-size: 10.5px; border-top: 1.5px solid #cbd5e1; border-bottom: 1.5px solid #cbd5e1;">
-                <strong style="color: #4f46e5;">&bull; Kinetic Energy (+21&deg;C):</strong>
-                <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
-                <span style="color: #475569; margin-left: 10px; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMeanVal.toStringAsFixed(1)} m/s</span>
-              </td>
-            </tr>
-            ''');
-          }
-        }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
           buffer.writeln('<tr><td colspan="5" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
@@ -1205,15 +1234,7 @@ class ReportGenerator {
   </div>
 
   $epvatCombinedSection
-  $classificationImageSection
-
-  <!-- Remarks -->
-  <div>
-    <h3 class="section-title">Remarks</h3>
-    <div class="sentence-box" style="min-height: 50px;">
-      $remarksText
-    </div>
-  </div>
+  $remarksAndDiagramSection
 
   <!-- Recommendation -->
   <div>
@@ -1267,11 +1288,11 @@ class ReportGenerator {
         : '';
 
     final remarksList = records
-        .map((r) => r.notes.trim())
+        .map((r) => cleanRemarks(r.notes))
         .where((n) => n.isNotEmpty && n.toLowerCase() != 'clear')
         .toSet()
         .toList();
-    final remarksText = remarksList.join('<br/>');
+    final remarksText = remarksList.isNotEmpty ? remarksList.join('<br/>') : 'No remarks recorded.';
 
     final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
@@ -1290,8 +1311,8 @@ class ReportGenerator {
       );
     }
 
-    // Classification reference image section (Residual Stress and Function Test)
-    String classificationImageSection = '';
+    // Classification reference image tag (Residual Stress and Function Test) - Minimized 2x
+    String classificationImageTag = '';
     final bool isCaliber9mm = caliber.toLowerCase().contains('9mm') || caliber.toLowerCase().startsWith('9x19');
     final String defaultImg = isCaliber9mm ? DefaultCartridgeAssets.cartridge9mmBase64 : DefaultCartridgeAssets.cartridgeBottleneckBase64;
     final String fallbackCartridgeImg = isCaliber9mm
@@ -1303,35 +1324,52 @@ class ReportGenerator {
       final imgToUse = rsImg.isNotEmpty ? rsImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
-      classificationImageSection = '''
-      <div style="margin-top: 15px; margin-bottom: 15px;">
-        <h2 class="section-title">Residual Stress Classification Reference</h2>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
-              <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Residual Stress Classification Reference" />
-              <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
-            </td>
-          </tr>
-        </table>
-      </div>
+      classificationImageTag = '''
+        <div style="text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px;">
+          <img src="$src" width="250" style="max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Residual Stress Reference" />
+          <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
+        </div>
       ''';
     } else if (testName == 'Function Test') {
       final funcImg = (adminRules['function_test']?['classification_image'] as String? ?? '').trim();
       final imgToUse = funcImg.isNotEmpty ? funcImg : (fallbackCartridgeImg.isNotEmpty ? fallbackCartridgeImg : defaultImg);
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
-      classificationImageSection = '''
-      <div style="margin-top: 15px; margin-bottom: 15px;">
-        <h2 class="section-title">Defect Classification Reference Guide</h2>
-        <table style="width: 100%; border-collapse: collapse;">
+      classificationImageTag = '''
+        <div style="text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px;">
+          <img src="$src" width="250" style="max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Function Test Reference" />
+          <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
+        </div>
+      ''';
+    }
+
+    String remarksAndDiagramSection = '';
+    if (classificationImageTag.isNotEmpty) {
+      remarksAndDiagramSection = '''
+      <div style="margin-top: 10px; margin-bottom: 10px;">
+        <table style="width: 100%; border: none; border-collapse: collapse;">
           <tr>
-            <td style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px;">
-              <img src="$src" width="500" style="max-width: 100%; height: auto;" alt="Defect Classification Reference" />
-              <p style="font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic;">$title</p>
+            <td style="width: 52%; vertical-align: top; border: none; padding-right: 12px; padding-left: 0; padding-top: 0; padding-bottom: 0;">
+              <h2 class="section-title" style="margin-top: 0; margin-bottom: 6px;">Remarks</h2>
+              <div class="sentence-box" style="min-height: 140px;">
+                $remarksText
+              </div>
+            </td>
+            <td style="width: 48%; vertical-align: top; border: none; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0;">
+              <h2 class="section-title" style="margin-top: 0; margin-bottom: 6px;">Defect Classification Reference Guide</h2>
+              $classificationImageTag
             </td>
           </tr>
         </table>
+      </div>
+      ''';
+    } else {
+      remarksAndDiagramSection = '''
+      <div>
+        <h2 class="section-title">Remarks</h2>
+        <div class="sentence-box" style="min-height: 40px;">
+          $remarksText
+        </div>
       </div>
       ''';
     }
@@ -1468,10 +1506,10 @@ class ReportGenerator {
       final weaponName = records.isNotEmpty ? records[0].cyclicRateWeaponType : '';
       final rawTemp = records.isNotEmpty ? records[0].cartridgeTemp : '';
       functionRows.write('<tr>');
-      functionRows.write('<td style="font-weight: bold; color: #475569;">Rifles / Weapons:</td>');
-      functionRows.write('<td>${weaponName.isNotEmpty ? weaponName : '-'}</td>');
-      functionRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
-      functionRows.write('<td>${rawTemp.isNotEmpty ? formatCartridgeTemp(rawTemp) : '-'}</td>');
+      functionRows.write('<td style="font-weight: bold; color: #475569; vertical-align: top;">Rifles / Weapons:</td>');
+      functionRows.write('<td style="vertical-align: top;">${formatWeapons(weaponName)}</td>');
+      functionRows.write('<td style="font-weight: bold; color: #475569; vertical-align: top;">Cartridge Temp:</td>');
+      functionRows.write('<td style="white-space: nowrap; vertical-align: top;">${rawTemp.isNotEmpty ? formatCartridgeTemp(rawTemp) : '-'}</td>');
       functionRows.write('</tr>');
     }
 
@@ -1852,30 +1890,8 @@ class ReportGenerator {
             <td>$p1SD</td>
             ${!is9mm ? '<td>$p2SD</td>' : ''}
             <td>$atSD</td>
-            <td>$vSD</td>
           </tr>
         ''');
-
-        if (adminRules.isNotEmpty) {
-          final epvR = adminRules['epvat'] ?? {};
-          final massMap = epvR['bullet_mass_grams'] ?? {};
-          final double? massG = (massMap[r.caliber] as num?)?.toDouble();
-          final r21 = records.firstWhere((rec) => rec.cartridgeTemp == '+21', orElse: () => records.isNotEmpty ? records[0] : BallisticRecord.empty());
-          final double? vMeanVal = double.tryParse(r21.velMean.isNotEmpty ? r21.velMean : r.velMean);
-          if (massG != null && vMeanVal != null && vMeanVal > 0) {
-            final double ke = 0.5 * (massG / 1000.0) * vMeanVal * vMeanVal;
-            final colspan = is9mm ? 4 : 5;
-            buffer.writeln('''
-            <tr style="background-color: #f0f4ff;">
-              <td colspan="$colspan" style="padding: 7px 10px; font-size: 10.5px; border-top: 1.5px solid #cbd5e1; border-bottom: 1.5px solid #cbd5e1;">
-                <strong style="color: #4f46e5;">&bull; Kinetic Energy (+21&deg;C):</strong>
-                <span style="font-family: monospace; font-weight: bold; color: #4f46e5; margin-left: 6px;">${ke.toStringAsFixed(1)} J</span>
-                <span style="color: #475569; margin-left: 10px; font-size: 10px;">m = ${massG.toStringAsFixed(2)} g, v = ${vMeanVal.toStringAsFixed(1)} m/s</span>
-              </td>
-            </tr>
-            ''');
-          }
-        }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
           buffer.writeln('<tr><td colspan="5" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
@@ -1990,12 +2006,7 @@ class ReportGenerator {
   </table>
 
   $epvatCombinedSection
-  $classificationImageSection
-
-  <h2 class="section-title">Remarks</h2>
-  <div class="sentence-box" style="min-height: 40px;">
-    $remarksText
-  </div>
+  $remarksAndDiagramSection
 
   <h2 class="section-title">Recommendation</h2>
   <div class="sentence-box">

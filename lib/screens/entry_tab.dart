@@ -29,6 +29,25 @@ class ActionTimeInputFormatter extends TextInputFormatter {
   }
 }
 
+/// Formatter allowing signed decimal numbers (e.g. -12.5, -0.8, 5.2, -, etc.)
+class SignedDecimalInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty || text == '-') {
+      return newValue;
+    }
+    final regExp = RegExp(r'^-?\d*\.?\d*$');
+    if (regExp.hasMatch(text)) {
+      return newValue;
+    }
+    return oldValue;
+  }
+}
+
 class EntryTab extends StatefulWidget {
   final String currentModule;
   final Future<void> Function(BallisticRecord) onSubmit;
@@ -2845,7 +2864,9 @@ class _EntryTabState extends State<EntryTab> {
         final baseActSD = _overallEpvatControllers[baselineTemp]!['action_time_sd']?.text.trim() ?? '';
 
         final customNotes = _notesController.text.trim();
-        final combinedNotes = customNotes;
+        final combinedNotes = tempDetails.isNotEmpty
+            ? (customNotes.isNotEmpty ? '$customNotes | Temps: ${tempDetails.join(', ')}' : 'Temps: ${tempDetails.join(', ')}')
+            : customNotes;
 
         final record = BallisticRecord(
           module: widget.currentModule,
@@ -2963,7 +2984,9 @@ class _EntryTabState extends State<EntryTab> {
         final overallStatus = _calculateFunctionTestStatus(l1: sumL1, l2: sumL2, l3: sumL3, l4: sumL4);
 
         final customNotes = _notesController.text.trim();
-        final combinedNotes = customNotes;
+        final combinedNotes = tempSummaries.isNotEmpty
+            ? (customNotes.isNotEmpty ? '$customNotes | Temps: ${tempSummaries.join(', ')}' : 'Temps: ${tempSummaries.join(', ')}')
+            : customNotes;
 
         final record = BallisticRecord(
           module: widget.currentModule,
@@ -4544,7 +4567,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _meanXController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4553,7 +4576,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _maxXController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4562,7 +4585,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _minXController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4572,7 +4595,7 @@ class _EntryTabState extends State<EntryTab> {
                                   controller: _rangeXController,
                                   hint: '0.0',
                                   readOnly: true,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4581,7 +4604,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _sdXController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                   onChanged: (val) => setState(() {}),
                                 ),
                               ),
@@ -4599,7 +4622,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _meanYController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4608,7 +4631,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _maxYController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4617,7 +4640,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _minYController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4627,7 +4650,7 @@ class _EntryTabState extends State<EntryTab> {
                                   controller: _rangeYController,
                                   hint: '0.0',
                                   readOnly: true,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                 ),
                               ),
                               _buildFlexibleField(
@@ -4636,7 +4659,7 @@ class _EntryTabState extends State<EntryTab> {
                                 child: _buildTextField(
                                   controller: _sdYController,
                                   hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                   onChanged: (val) => setState(() {}),
                                 ),
                               ),
@@ -7096,9 +7119,11 @@ class _EntryTabState extends State<EntryTab> {
       inputFormatters: inputFormatters ?? (
         keyboardType == TextInputType.number
             ? [FilteringTextInputFormatter.digitsOnly]
-            : (keyboardType == const TextInputType.numberWithOptions(decimal: true) || keyboardType.decimal == true)
-                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
-                : null
+            : (keyboardType.signed == true)
+                ? [SignedDecimalInputFormatter()]
+                : (keyboardType == const TextInputType.numberWithOptions(decimal: true) || keyboardType.decimal == true)
+                    ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
+                    : null
       ),
       readOnly: readOnly,
       onChanged: onChanged,
@@ -8829,23 +8854,31 @@ class _EntryTabState extends State<EntryTab> {
             style: TextStyle(color: statusTextColor, fontSize: 13.5, fontWeight: FontWeight.bold),
             selectedItemBuilder: (BuildContext context) {
               return ['Approved', 'Approved with condition', 'Pending Review', 'Rejected', 'Retest'].map((s) {
-                final double fontSize = s == 'Approved with condition' ? 12.0 : 13.5;
+                final double fontSize = s == 'Approved with condition' ? 11.5 : 13.0;
                 return Align(
                   alignment: Alignment.centerLeft,
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: 7,
+                        height: 7,
                         decoration: BoxDecoration(color: statusTextColor, shape: BoxShape.circle),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        s,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        style: TextStyle(color: statusTextColor, fontSize: fontSize, fontWeight: FontWeight.bold),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            s,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: statusTextColor,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -8855,7 +8888,7 @@ class _EntryTabState extends State<EntryTab> {
             decoration: InputDecoration(
               filled: true,
               fillColor: statusBgColor,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide(color: statusBorderColor),
@@ -8989,7 +9022,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5',
           ),
         ),
-        _buildQualityStatusField(flex: 6),
+        _buildQualityStatusField(flex: 8),
       ], lockSingleRow: true);
     }
 
@@ -9053,7 +9086,7 @@ class _EntryTabState extends State<EntryTab> {
             hint: 'e.g., 25',
           ),
         ),
-        _buildQualityStatusField(flex: 6),
+        _buildQualityStatusField(flex: 8),
       ], lockSingleRow: true);
     }
 
@@ -9377,7 +9410,7 @@ class _EntryTabState extends State<EntryTab> {
                 hint: 'e.g., 25',
               ),
             ),
-            _buildQualityStatusField(flex: 6),
+            _buildQualityStatusField(flex: 8),
           ], lockSingleRow: true),
         ],
       );
@@ -9450,7 +9483,7 @@ class _EntryTabState extends State<EntryTab> {
               },
             ),
           ),
-        _buildQualityStatusField(flex: 6),
+        _buildQualityStatusField(flex: 8),
       ], lockSingleRow: true);
     }
 
@@ -9507,7 +9540,7 @@ class _EntryTabState extends State<EntryTab> {
             ),
           ),
       ],
-      _buildQualityStatusField(flex: 6),
+      _buildQualityStatusField(flex: 8),
     ], lockSingleRow: true);
   }
 

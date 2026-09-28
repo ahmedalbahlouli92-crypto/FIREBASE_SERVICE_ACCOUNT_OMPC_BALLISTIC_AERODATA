@@ -2312,12 +2312,12 @@ class _HistoryTabState extends State<HistoryTab> {
                 side: const BorderSide(color: Color(0xFF1E3A8A)),
               ),
               insetPadding: EdgeInsets.symmetric(
-                horizontal: MediaQuery.of(context).size.width < 600 ? 12.0 : 40.0,
-                vertical: 24.0,
+                horizontal: MediaQuery.of(context).size.width < 600 ? 12.0 : 30.0,
+                vertical: 20.0,
               ),
               child: Container(
-                width: math.min(1450.0, MediaQuery.of(context).size.width * 0.98),
-                height: math.min(850.0, MediaQuery.of(context).size.height * 0.90),
+                width: math.min(singleRecord != null ? 1050.0 : 1450.0, MediaQuery.of(context).size.width * 0.98),
+                height: math.min(singleRecord != null ? 820.0 : 850.0, MediaQuery.of(context).size.height * 0.90),
                 padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 14.0 : 24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2480,7 +2480,9 @@ class _HistoryTabState extends State<HistoryTab> {
                                   style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.0),
                                 ),
                               )
-                            : SingleChildScrollView(
+                            : singleRecord != null
+                                ? _buildIndividualReportPreview(singleRecord)
+                                : SingleChildScrollView(
                                 scrollDirection: Axis.vertical,
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
@@ -2490,7 +2492,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                     ),
                                     child: DataTable(
                                       headingRowColor: MaterialStateProperty.all(const Color(0xFF263852)),
-                                      columnSpacing: 16.0,
+                                      columnSpacing: 14.0,
                                       horizontalMargin: 12.0,
                                       columns: [
                                         const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
@@ -2570,6 +2572,17 @@ class _HistoryTabState extends State<HistoryTab> {
                                         ],
                                       ],
                                       rows: reportRecords.map((r) {
+                                        final cleanedNotes = ReportGenerator.cleanRemarks(r.notes);
+                                        final notesWidget = Container(
+                                          constraints: const BoxConstraints(maxWidth: 240.0),
+                                          child: Text(
+                                            cleanedNotes.isNotEmpty ? cleanedNotes : '-',
+                                            style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+
                                         return DataRow(
                                           cells: [
                                             DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF94A3B8)))),
@@ -2582,7 +2595,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                             if (selectedReportTest == 'All') ...[
                                               DataCell(Text(r.testName, style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)))),
                                               DataCell(_buildResultCell(r)),
-                                              DataCell(Text(r.notes.isNotEmpty ? r.notes : '-', style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'Waterproof Test') ...[
                                               DataCell(Text(r.pressureBar.isEmpty ? '-' : '${r.pressureBar} bar', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.viscosity.isEmpty ? '-' : r.viscosity, style: const TextStyle(color: Colors.white))),
@@ -2590,7 +2603,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                               DataCell(Text(r.samplingLocation.isEmpty ? '-' : r.samplingLocation, style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('S: ${r.mouthSlow} | F: ${r.mouthFast}', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('S: ${r.primerSlow} | F: ${r.primerFast}', style: const TextStyle(color: Colors.white))),
-                                              DataCell(Text(r.notes.isNotEmpty ? r.notes : '-', style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'Residual Stress Test') ...[
                                               DataCell(Text(r.roomTemp.isEmpty ? '-' : '${r.roomTemp} °C', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('Min: ${r.neckSlow} | Maj: ${r.neckFast}', style: const TextStyle(color: Colors.white))),
@@ -2598,24 +2611,24 @@ class _HistoryTabState extends State<HistoryTab> {
                                               DataCell(Text('Min: ${r.bodySlow} | Maj: ${r.bodyFast}', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('Min: ${r.headSlow} | Maj: ${r.headFast}', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text('${r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast}', style: const TextStyle(color: Colors.white))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'Accuracy Test') ...[
                                               DataCell(Text(r.barrelSN.isEmpty ? '-' : r.barrelSN, style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.accSDX.isEmpty ? '-' : r.accSDX, style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.accSDY.isEmpty ? '-' : r.accSDY, style: const TextStyle(color: Colors.white))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'EPVAT test') ...[
                                               DataCell(Text(r.barrelSN.isEmpty ? '-' : r.barrelSN, style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.cartridgeTemp.isEmpty ? '-' : '${r.cartridgeTemp} °C', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.epvatMeanPressure.isEmpty ? '-' : 'P1: ${r.epvatMeanPressure} / P2: ${r.epvatP2MeanPressure.isEmpty ? "-" : r.epvatP2MeanPressure} ${r.epvatPressureUnit}', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Colors.white))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'Extraction Force Test') ...[
                                               DataCell(Text(r.extractionForceType.isEmpty ? '-' : r.extractionForceType, style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.accMinX.isEmpty ? '-' : '${r.accMinX} N', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.accMeanX.isEmpty ? '-' : '${r.accMeanX} N', style: const TextStyle(color: Colors.white))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'Function Test') ...[
                                               DataCell(Text(r.cyclicRateWeaponType.isEmpty ? '-' : r.cyclicRateWeaponType, style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Colors.white))),
                                               DataCell(Text(r.cartridgeTemp.isEmpty ? '-' : r.cartridgeTemp, style: const TextStyle(fontSize: 11.0, fontFamily: 'JetBrainsMono', color: Colors.white))),
@@ -2624,23 +2637,23 @@ class _HistoryTabState extends State<HistoryTab> {
                                               DataCell(Text('${r.functionLevel3}', style: TextStyle(fontWeight: r.functionLevel3 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel3 > 0 ? const Color(0xFFFBBF24) : Colors.white))),
                                               DataCell(Text('${r.functionLevel4}', style: TextStyle(fontWeight: r.functionLevel4 > 0 ? FontWeight.bold : FontWeight.normal, color: r.functionLevel4 > 0 ? const Color(0xFF38BDF8) : Colors.white))),
                                               DataCell(Text('${r.defects}', style: TextStyle(fontWeight: FontWeight.bold, color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'Primer Sensitivity Test') ...[
                                               DataCell(Text(r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : '-'), style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.primerSupplier.isNotEmpty ? r.primerSupplier : '-', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.primerInsertionDepth.isNotEmpty ? '${r.primerInsertionDepth} mm' : '-', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.primerHbar.isNotEmpty ? '${r.primerHbar} cm' : '-', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-', style: const TextStyle(color: Colors.white))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else if (selectedReportTest == 'Propellant Test') ...[
                                               DataCell(Text(r.propellantLot.isNotEmpty ? r.propellantLot : (r.lotNo.isNotEmpty ? r.lotNo : '-'), style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.propellantSupplier.isNotEmpty ? r.propellantSupplier : '-', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.propellantCode.isNotEmpty ? r.propellantCode : '-', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.epvatMeanPressure.isEmpty ? '-' : 'P1: ${r.epvatMeanPressure} / P2: ${r.epvatP2MeanPressure.isEmpty ? "-" : r.epvatP2MeanPressure} ${r.epvatPressureUnit}', style: const TextStyle(color: Colors.white))),
                                               DataCell(Text(r.velMean.isEmpty ? '-' : '${r.velMean} m/s', style: const TextStyle(color: Colors.white))),
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ] else ...[
-                                              DataCell(Text(r.notes, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                              DataCell(notesWidget),
                                             ],
                                           ],
                                         );
@@ -2775,5 +2788,365 @@ class _HistoryTabState extends State<HistoryTab> {
         ),
       ],
     );
+  }
+
+  Widget _buildIndividualReportPreview(BallisticRecord r) {
+    final cleanedNotes = ReportGenerator.cleanRemarks(r.notes);
+    final hasNotes = cleanedNotes.trim().isNotEmpty && cleanedNotes.trim().toLowerCase() != 'clear';
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Top Identification Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: const Color(0xFF1E3A8A)),
+            ),
+            child: Wrap(
+              spacing: 16.0,
+              runSpacing: 10.0,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          r.testName,
+                          style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 16.0, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 10.0),
+                        _buildStatusBadge(r.status),
+                      ],
+                    ),
+                    const SizedBox(height: 4.0),
+                    Text(
+                      'Caliber: ${r.caliber} | Lot: ${r.lotNo}${r.hopperNo.isNotEmpty ? " (Hopper: ${r.hopperNo})" : ""}${r.boxNo.isNotEmpty ? " (Box: ${r.boxNo})" : ""}',
+                      style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: 14.0,
+                  runSpacing: 6.0,
+                  children: [
+                    _buildCompactMeta('INSPECTOR', r.operators),
+                    if (r.shift.isNotEmpty) _buildCompactMeta('SHIFT', r.shift),
+                    _buildCompactMeta('TIME', r.testTime.isNotEmpty ? r.testTime : r.timestamp),
+                    _buildCompactMeta('TESTED', '${r.produced} rounds'),
+                    _buildCompactMeta('DEFECTS', '${r.defects}', valColor: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14.0),
+
+          // 2. Test Measurements & Specifications
+          const Text(
+            'TEST MEASUREMENTS & SPECIFICATION PARAMETERS',
+            style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 8.0),
+          Wrap(
+            spacing: 10.0,
+            runSpacing: 10.0,
+            children: _buildTestMetricTiles(r),
+          ),
+          const SizedBox(height: 16.0),
+
+          // 3. REMARKS & OBSERVATIONS SECTION (Always completely visible on screen)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.6), width: 1.2),
+              boxShadow: [
+                BoxShadow(color: const Color(0xFF0284C7).withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.notes_rounded, color: Color(0xFF38BDF8), size: 18.0),
+                    SizedBox(width: 8.0),
+                    Text(
+                      'INSPECTOR REMARKS & OBSERVATIONS',
+                      style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  hasNotes ? cleanedNotes.trim() : 'No specific inspector remarks recorded for this test.',
+                  style: TextStyle(
+                    color: hasNotes ? Colors.white : const Color(0xFF94A3B8),
+                    fontSize: 13.0,
+                    height: 1.45,
+                    fontStyle: hasNotes ? FontStyle.normal : FontStyle.italic,
+                  ),
+                ),
+                if (r.functionDefectDetails.isNotEmpty) ...[
+                  const SizedBox(height: 10.0),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(6.0),
+                      border: Border.all(color: const Color(0xFFFBBF24).withOpacity(0.4)),
+                    ),
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 12.0),
+                        children: [
+                          const TextSpan(text: 'Specific Defects: ', style: TextStyle(color: Color(0xFFFBBF24), fontWeight: FontWeight.bold)),
+                          TextSpan(text: r.functionDefectDetails, style: const TextStyle(color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (r.isRetest || r.retestNotes.isNotEmpty) ...[
+                  const SizedBox(height: 10.0),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(6.0),
+                      border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5)),
+                    ),
+                    child: Text(
+                      'Retest Verification: ${r.retestNotes} (by ${r.retestOperator} on ${r.retestTimestamp})',
+                      style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 12.0),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14.0),
+
+          // 4. RECOMMENDATION / DISPOSITION SECTION
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: const Color(0xFF334155)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'RECOMMENDATION',
+                  style: TextStyle(color: Color(0xFF10B981), fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 4.0),
+                Text(
+                  _getRecommendationSentence(r),
+                  style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12.0, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildTestMetricTiles(BallisticRecord r) {
+    final tName = r.testName;
+    if (tName == 'Waterproof Test') {
+      final totalLeaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
+      return [
+        _buildMetricTile('Test Pressure', r.pressureBar.isNotEmpty ? '${r.pressureBar} bar' : '-'),
+        _buildMetricTile('Viscosity', r.viscosity.isNotEmpty ? r.viscosity : '-'),
+        _buildMetricTile('Test Time', r.testTime.isNotEmpty ? r.testTime : '-'),
+        _buildMetricTile('Sampling Location', r.samplingLocation.isNotEmpty ? r.samplingLocation : '-'),
+        _buildMetricTile('Mouth Leaks (Slow / Fast)', '${r.mouthSlow} / ${r.mouthFast}'),
+        _buildMetricTile('Primer Leaks (Slow / Fast)', '${r.primerSlow} / ${r.primerFast}'),
+        _buildMetricTile('Total Leaks Found', '$totalLeaks', valueColor: totalLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+      ];
+    } else if (tName == 'Residual Stress Test') {
+      final neck = r.neckSlow + r.neckFast;
+      final shoulder = r.shoulderSlow + r.shoulderFast;
+      final body = r.bodySlow + r.bodyFast;
+      final head = r.headSlow + r.headFast;
+      final total = neck + shoulder + body + head;
+      return [
+        _buildMetricTile('Room Temperature', r.roomTemp.isNotEmpty ? '${r.roomTemp} °C' : '-'),
+        _buildMetricTile('Sampling Location', r.samplingLocation.isNotEmpty ? r.samplingLocation : '-'),
+        _buildMetricTile('Neck Splits (Zone I)', 'Min: ${r.neckSlow} | Maj: ${r.neckFast}'),
+        _buildMetricTile('Shoulder Splits (Zone S)', 'Min: ${r.shoulderSlow} | Maj: ${r.shoulderFast}'),
+        _buildMetricTile('Body Splits (Zone J/K)', 'Min: ${r.bodySlow} | Maj: ${r.bodyFast}'),
+        _buildMetricTile('Head Splits (Zone L/M)', 'Min: ${r.headSlow} | Maj: ${r.headFast}'),
+        _buildMetricTile('Total Splits Found', '$total', valueColor: total > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+      ];
+    } else if (tName == 'Accuracy Test') {
+      return [
+        _buildMetricTile('Barrel S.N.', r.barrelSN.isNotEmpty ? r.barrelSN : '-'),
+        _buildMetricTile('Velocity Distance', r.velocityDistance.isNotEmpty ? '${r.velocityDistance} m' : '-'),
+        _buildMetricTile('Mean Velocity', r.velMean.isNotEmpty ? '${r.velMean} m/s' : '-'),
+        _buildMetricTile('Velocity Range (Min / Max / SD)', 'Min: ${r.velMin.isNotEmpty ? r.velMin : "-"} | Max: ${r.velMax.isNotEmpty ? r.velMax : "-"} | SD: ${r.velSD.isNotEmpty ? r.velSD : "-"}'),
+        _buildMetricTile('Accuracy SD X', r.accSDX.isNotEmpty ? '${r.accSDX} mm' : '-'),
+        _buildMetricTile('Accuracy SD Y', r.accSDY.isNotEmpty ? '${r.accSDY} mm' : '-'),
+        _buildMetricTile('Mean Radius (MR)', r.accMeanRadius.isNotEmpty ? '${r.accMeanRadius} mm' : '-'),
+        _buildMetricTile('Largest Distance', r.accLargestDistance.isNotEmpty ? '${r.accLargestDistance} mm' : '-'),
+      ];
+    } else if (tName == 'EPVAT test') {
+      final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
+      return [
+        _buildMetricTile('Barrel S.N.', r.barrelSN.isNotEmpty ? r.barrelSN : '-'),
+        _buildMetricTile('Velocity Distance', r.velocityDistance.isNotEmpty ? '${r.velocityDistance} m' : '-'),
+        _buildMetricTile('Cartridge Temperature', r.cartridgeTemp.isNotEmpty ? r.cartridgeTemp : '-'),
+        _buildMetricTile('Chamber Press P1 (Mean)', r.epvatMeanPressure.isNotEmpty ? '${r.epvatMeanPressure} $unit' : '-'),
+        _buildMetricTile('P1 (Min / Max / SD)', 'Min: ${r.epvatMinPressure.isNotEmpty ? r.epvatMinPressure : "-"} | Max: ${r.epvatMaxPressure.isNotEmpty ? r.epvatMaxPressure : "-"} | SD: ${r.epvatSDPressure.isNotEmpty ? r.epvatSDPressure : "-"}'),
+        _buildMetricTile('Port Press P2 (Mean / Max)', 'Mean: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} | Max: ${r.epvatP2MaxPressure.isNotEmpty ? r.epvatP2MaxPressure : "-"} $unit'),
+        _buildMetricTile('Action Time (Mean)', r.actionTimeMean.isNotEmpty ? '${r.actionTimeMean} ms' : '-'),
+        _buildMetricTile('Mean Velocity (+21°C)', r.velMean.isNotEmpty ? '${r.velMean} m/s' : '-'),
+      ];
+    } else if (tName == 'Function Test') {
+      return [
+        _buildMetricTile('Rifles / Weapons', r.cyclicRateWeaponType.isNotEmpty ? r.cyclicRateWeaponType : '-'),
+        _buildMetricTile('Cartridge Temperature', r.cartridgeTemp.isNotEmpty ? r.cartridgeTemp : '-'),
+        _buildMetricTile('Level 1 (Critical)', '${r.functionLevel1}', valueColor: r.functionLevel1 > 0 ? const Color(0xFFEF4444) : Colors.white),
+        _buildMetricTile('Level 2 (Major)', '${r.functionLevel2}', valueColor: r.functionLevel2 > 0 ? const Color(0xFFF97316) : Colors.white),
+        _buildMetricTile('Level 3 (Minor)', '${r.functionLevel3}', valueColor: r.functionLevel3 > 0 ? const Color(0xFFFBBF24) : Colors.white),
+        _buildMetricTile('Level 4', '${r.functionLevel4}', valueColor: const Color(0xFF38BDF8)),
+        _buildMetricTile('Total Defects', '${r.defects}', valueColor: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+      ];
+    } else if (tName == 'Extraction Force Test') {
+      return [
+        _buildMetricTile('Test Mode / Type', r.extractionForceType.isNotEmpty ? r.extractionForceType : '-'),
+        _buildMetricTile('Min Extraction Force', r.accMinX.isNotEmpty ? '${r.accMinX} N' : '-'),
+        _buildMetricTile('Mean Extraction Force', r.accMeanX.isNotEmpty ? '${r.accMeanX} N' : '-'),
+        _buildMetricTile('Max Extraction Force', r.accMaxX.isNotEmpty ? '${r.accMaxX} N' : '-'),
+      ];
+    } else if (tName == 'Primer Sensitivity Test') {
+      return [
+        _buildMetricTile('Primer Lot', r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : '-')),
+        _buildMetricTile('Primer Supplier', r.primerSupplier.isNotEmpty ? r.primerSupplier : '-'),
+        _buildMetricTile('Avg Insertion Depth', r.primerInsertionDepth.isNotEmpty ? '${r.primerInsertionDepth} mm' : '-'),
+        _buildMetricTile('Mean Height (H̄)', r.primerHbar.isNotEmpty ? '${r.primerHbar} cm' : '-'),
+        _buildMetricTile('Standard Deviation (SD)', r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-'),
+        _buildMetricTile('All-Fire (H̄+5SD)', r.primerAllFireH.isNotEmpty ? '${r.primerAllFireH} cm' : '-'),
+        _buildMetricTile('No-Fire (H̄-2SD)', r.primerNoFireH.isNotEmpty ? '${r.primerNoFireH} cm' : '-'),
+      ];
+    } else if (tName == 'Propellant Test') {
+      final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
+      return [
+        _buildMetricTile('Propellant Lot', r.propellantLot.isNotEmpty ? r.propellantLot : (r.lotNo.isNotEmpty ? r.lotNo : '-')),
+        _buildMetricTile('Propellant Supplier', r.propellantSupplier.isNotEmpty ? r.propellantSupplier : '-'),
+        _buildMetricTile('Propellant Code', r.propellantCode.isNotEmpty ? r.propellantCode : '-'),
+        _buildMetricTile('Chamber Press (P1)', r.epvatMeanPressure.isNotEmpty ? '${r.epvatMeanPressure} $unit' : '-'),
+        _buildMetricTile('Port Pressure (P2)', r.epvatP2MeanPressure.isNotEmpty ? '${r.epvatP2MeanPressure} $unit' : '-'),
+        _buildMetricTile('Mean Velocity', r.velMean.isNotEmpty ? '${r.velMean} m/s' : '-'),
+      ];
+    } else if (tName == 'Firing Rate Cycle Test') {
+      return [
+        _buildMetricTile('Weapon Model', r.cyclicRateWeaponType.isNotEmpty ? r.cyclicRateWeaponType : '-'),
+        _buildMetricTile('Ammunition Type', r.cyclicRateAmmoType.isNotEmpty ? r.cyclicRateAmmoType : '-'),
+        _buildMetricTile('Measured Firing Rate', r.cyclicRateValue.isNotEmpty ? '${r.cyclicRateValue} RPM' : '-'),
+        _buildMetricTile('Allowed Rate Range', 'Min: ${r.cyclicRateMin.isNotEmpty ? r.cyclicRateMin : "-"} RPM | Max: ${r.cyclicRateMax.isNotEmpty ? r.cyclicRateMax : "No limit"}'),
+      ];
+    } else if (tName == 'Terminal Effect Test') {
+      return [
+        _buildMetricTile('Barrel S.N.', r.barrelSN.isNotEmpty ? r.barrelSN : '-'),
+        _buildMetricTile('Velocity Distance', r.velocityDistance.isNotEmpty ? '${r.velocityDistance} m' : '-'),
+        _buildMetricTile('Terminal Velocity', r.terminalVelocity.isNotEmpty ? '${r.terminalVelocity} m/s' : (r.velMean.isNotEmpty ? '${r.velMean} m/s' : '-')),
+        _buildMetricTile('Target Hole Diameter', r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : '-'),
+        _buildMetricTile('Steel Plate Penetration', r.terminalSteelPenetration.isNotEmpty ? r.terminalSteelPenetration : '-'),
+      ];
+    }
+    return [
+      _buildMetricTile('Test Parameters', r.notes.isNotEmpty ? r.notes : '-'),
+    ];
+  }
+
+  Widget _buildMetricTile(String label, String value, {Color? valueColor}) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 150.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(color: const Color(0xFF334155)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 3.0),
+          Text(
+            value.isNotEmpty ? value : '-',
+            style: TextStyle(
+              color: valueColor ?? Colors.white,
+              fontSize: 12.0,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'JetBrainsMono',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactMeta(String label, String val, {Color? valColor}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.0, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 2.0),
+        Text(
+          val.isNotEmpty ? val : '-',
+          style: TextStyle(
+            color: valColor ?? Colors.white,
+            fontSize: 12.0,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'JetBrainsMono',
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getRecommendationSentence(BallisticRecord r) {
+    final st = r.status.toLowerCase();
+    if (st == 'rejected' || st == 'failed') {
+      return 'The inspected lot fails to satisfy quality and ballistic specification criteria. The lot is officially REJECTED and quarantined.';
+    } else if (st.contains('retest')) {
+      return 'Test results indicate marginal quality tolerances. The lot is sentenced to a mandatory RETEST under supervision.';
+    } else if (st.contains('pending')) {
+      return 'Evaluation in progress. The batch status remains PENDING REVIEW until supervisor verification is complete.';
+    } else if (st.contains('condition')) {
+      return 'The inspected lot meets operational parameters with accepted variances. The lot is officially APPROVED WITH CONDITION.';
+    } else {
+      return 'The lot meets all quality and ballistic specifications and is approved for final packaging and shipment.';
+    }
   }
 }

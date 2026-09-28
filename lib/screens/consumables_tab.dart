@@ -144,6 +144,13 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           existing['quantity'] = def['quantity'];
           existing['initialStock'] = def['quantity'];
         }
+        if (def['category'] != null && def['category'].toString().isNotEmpty) {
+          final defCat = def['category'].toString();
+          final exCat = (existing['category'] ?? '').toString();
+          if (exCat != defCat) {
+            existing['category'] = defCat;
+          }
+        }
         merged.add(existing);
         itemMap.remove(key);
       } else {
