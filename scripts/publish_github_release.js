@@ -19,39 +19,32 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.7';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.7 (Retest Parameter Pre-filling, Retest Remarks, Multi-Platform Releases)';
-const BODY = `## OMPC Ballistic AeroData v1.5.7
+const TAG_NAME = 'v1.5.8';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.8 (EPVAT Report Formatting, Inspection Log Results Order, Primer Sensitivity Rules)';
+const BODY = `## OMPC Ballistic AeroData v1.5.8
 
-Major release introducing automated retest parameter pre-filling, editable retest remarks, multi-platform releases (Windows, Android APK, Web), and complete cloud synchronization:
+Production release with EPVAT exported report formatting fixes, inspection log display order alignments, and customized Primer Sensitivity evaluation rules:
 
 ### Key Highlights & Features:
-1. **Automated Retest Parameter Pre-filling**:
-   - All parameters from the original inspection report are automatically pre-populated when executing a retest across all 9 test types:
-     - **Waterproof**: Sample Qty, Total Leaks, Mouth Slow/Fast, Primer Slow/Fast.
-     - **Residual Stress**: Sample Qty, Total Splits, Room Temp, Neck/Shoulder/Body/Head Slow & Fast.
-     - **Extraction Force**: Sample Qty, Min Force (N), Mean Force (N), Force Type.
-     - **Accuracy & Velocity**: Sample Qty, Mean Radius, Largest Dist, SD X/Y, Mean/Min/Max/SD Velocity.
-     - **EPVAT / Propellant**: Sample Qty, Cartridge Temp, Action Time Mean, P1 Mean/Max/Min/SD, P2 Mean/Max, Velocity Mean/SD.
-     - **Function**: Sample Qty, Temp, Defect Details, Level 1–4 defects count.
-     - **Primer Sensitivity**: Sample Qty, Mean Height H̄, SD S, Min All-Fire H, Max No-Fire H.
-     - **Firing Rate Cycle**: Weapon Category, Cyclic Rate (RPM).
-     - **Terminal Effect**: Hole Diameter, Steel Penetration, Velocity.
-   - Inspectors can modify any parameter if retest values deviate from the initial run.
-2. **Dedicated Retest Remarks & Findings Area**:
-   - Multi-line textarea for capturing detailed retest findings, observations, and reasons for disposition.
-   - Outcome selector with 3 statuses: \`Approved (Retest Passed)\`, \`Approved with condition\`, \`Rejected (Retest Failed)\`.
-   - Automatic audit trail stamped: \`[RETEST by <inspector> on <timestamp> - Outcome: <status>]: <remarks>\`.
-3. **Comprehensive Report & Export Integration**:
-   - Formatted multiline remarks with \`white-space: pre-wrap\` preserved across HTML, PDF, and Word reports.
-   - Full remarks columns added to Excel CSV exports across all test modes including Waterproof and Residual Stress.
-4. **Supabase Cloud Synchronization & Zero Data Loss**:
-   - Schema-safe serialization ensures retest metadata is safely embedded into notes if dedicated columns are absent.
-   - Guaranteed zero data loss across local and remote Supabase tables.
-5. **Multi-Platform Deployment (Windows, Android APK, Web)**:
-   - **Android APK**: \`OMPC_Ballistic_AeroData.apk\` & \`OMPC_Ballistic_AeroData_v1.5.7.apk\` compiled with Android SDK 36.
-   - **Windows Desktop**: 1-Click Setup Installer (\`OMPC_Ballistic_AeroData_Setup.exe\`), Standalone Executable (\`OMPC_Ballistic_AeroData.exe\`), and Portable Archive (\`OMPC_Ballistic_AeroData_Portable.zip\`).
+1. **Clean EPVAT Exported Reports**:
+   - Resolved all unknown/corrupted characters across HTML, PDF, and Microsoft Word export formats.
+   - Replaced raw emojis with clean HTML entities and standardized temperature formatting.
+   - Fully escaped comparison operators (\`&le;\`, \`&ge;\`, \`&lt;\`, \`&gt;\`) preventing tag-parsing corruptions.
+   - Enforced UTF-8 BOM encoding for seamless Microsoft Word and Excel opening.
+2. **Inspection Log Display Ordering**:
+   - **Accuracy Test**: Displays \`SD X\` result, followed below by \`SD Y\` result, and \`Mean Velocity\` at the bottom.
+   - **EPVAT Test & Propellant Test**: Displays \`Mean Chamber\` pressure, followed below by \`Mean Port\` pressure, and \`Mean Velocity (+21 °C)\` at the bottom.
+3. **Caliber-Specific Primer Sensitivity Rules**:
+   - **7.62x51**: \`HM + 5*SD <= 500\` and \`HM - 2*SD >= 75\`.
+   - **5.56x45**: \`HM + 5*SD <= 450\` and \`HM - 2*SD >= 75\`.
+   - **9x19mm**: \`HM + 5*SD <= 350\` and \`HM - 2*SD >= 75\`.
+   - User enters HM and SD manually; all-fire, no-fire, and quality status are auto-calculated in real time.
+   - Removed obsolete Ball Weight, Misfire, and duplicate Primer Lot fields from the entry form.
+4. **Multi-Platform Deployment**:
+   - **Windows Desktop**: 1-Click Installer (\`OMPC_Ballistic_AeroData_Setup.exe\`), Standalone Executable, and Portable ZIP.
+   - **Android APK**: Compiled release APKs (\`OMPC_Ballistic_AeroData.apk\`, \`OMPC_Ballistic_AeroData_v1.5.8.apk\`).
    - **Web Application**: Live on Firebase Hosting at https://ompc-ballistic-aerodata.web.app.
+   - **Supabase**: Fully verified schema compatibility and data synchronization.
 `;
 
 function request(options, postData) {
@@ -161,7 +154,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.7.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.7.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.5.8.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.8.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
