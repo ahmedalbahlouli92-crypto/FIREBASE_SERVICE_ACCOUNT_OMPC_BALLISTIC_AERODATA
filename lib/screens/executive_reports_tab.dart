@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/ballistic_record.dart';
 import '../services/storage_service.dart';
 import '../services/report_helper.dart';
+import '../services/report_generator.dart';
 
 class ExecutiveReportsTab extends StatefulWidget {
   final List<BallisticRecord> lotAcceptanceRecords;
@@ -667,7 +668,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                         child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10.5, fontWeight: FontWeight.bold)),
                       ),
                     ),
-                    DataCell(Text(r.notes.isNotEmpty ? r.notes : '-')),
+                    DataCell(Builder(
+                      builder: (_) {
+                        final clean = ReportGenerator.cleanRemarks(r.notes).trim();
+                        return Text(clean.isNotEmpty ? clean : '-');
+                      },
+                    )),
                   ]);
                 }).toList(),
               ),
@@ -785,7 +791,8 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       final m = entry['module'] as String;
       final r = entry['record'] as BallisticRecord;
       final lotOrHopper = m == 'Daily Test' ? r.hopperNo : r.lotNo;
-      buffer.writeln('"$m","${r.timestamp}","${r.operators}","${r.testName}","${r.caliber}","$lotOrHopper","${r.status}","${r.produced}","${r.notes.replaceAll('"', '""')}"');
+      final cleanNotes = ReportGenerator.cleanRemarks(r.notes);
+      buffer.writeln('"$m","${r.timestamp}","${r.operators}","${r.testName}","${r.caliber}","$lotOrHopper","${r.status}","${r.produced}","${cleanNotes.replaceAll('"', '""')}"');
     }
     buffer.writeln('');
 
@@ -912,7 +919,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             '<td>${r.caliber}</td>'
             '<td>$lotOrHop</td>'
             '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
-            '<td>${r.notes}</td>'
+            '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
             '</tr>';
       }).join('')}
     </tbody>

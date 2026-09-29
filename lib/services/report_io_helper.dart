@@ -30,13 +30,14 @@ class ReportHelperImpl implements ReportHelper {
   }
 
   @override
-  Future<void> printHtml({required String htmlContent}) async {
+  Future<void> printHtml({required String htmlContent, String? filename}) async {
     final dirPath = await _storage.getDirectoryPath();
     final reportsDir = Directory('$dirPath/reports');
     if (!await reportsDir.exists()) {
       await reportsDir.create(recursive: true);
     }
-    final file = File('${reportsDir.path}/report_preview.html');
+    final name = (filename != null && filename.isNotEmpty) ? '$filename.html' : 'report_preview.html';
+    final file = File('${reportsDir.path}/$name');
     await file.writeAsString(htmlContent, flush: true);
   }
 

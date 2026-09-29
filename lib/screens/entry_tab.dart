@@ -2159,7 +2159,7 @@ class _EntryTabState extends State<EntryTab> {
         if (draft['selectedComponentPrimerLot'] != null) _selectedComponentPrimerLot = draft['selectedComponentPrimerLot'];
         if (draft['selectedFunctionWeapons'] is List) {
           _selectedFunctionWeapons = List<String>.from(draft['selectedFunctionWeapons']);
-          _functionWeapon = _selectedFunctionWeapons.join(', ');
+          _functionWeapon = _selectedFunctionWeapons.join('; ');
         }
         if (draft['produced'] != null) _producedController.text = draft['produced'];
         if (draft['defects'] != null) _defectsController.text = draft['defects'];
@@ -2864,9 +2864,7 @@ class _EntryTabState extends State<EntryTab> {
         final baseActSD = _overallEpvatControllers[baselineTemp]!['action_time_sd']?.text.trim() ?? '';
 
         final customNotes = _notesController.text.trim();
-        final combinedNotes = tempDetails.isNotEmpty
-            ? (customNotes.isNotEmpty ? '$customNotes | Temps: ${tempDetails.join(', ')}' : 'Temps: ${tempDetails.join(', ')}')
-            : customNotes;
+        final combinedNotes = customNotes;
 
         String getOverallP1Rounds(String t) {
           final rds = (_overallEpvatP1RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',');
@@ -3049,9 +3047,7 @@ class _EntryTabState extends State<EntryTab> {
         final overallStatus = _calculateFunctionTestStatus(l1: sumL1, l2: sumL2, l3: sumL3, l4: sumL4);
 
         final customNotes = _notesController.text.trim();
-        final combinedNotes = tempSummaries.isNotEmpty
-            ? (customNotes.isNotEmpty ? '$customNotes | Temps: ${tempSummaries.join(', ')}' : 'Temps: ${tempSummaries.join(', ')}')
-            : customNotes;
+        final combinedNotes = customNotes;
 
         final record = BallisticRecord(
           module: widget.currentModule,
@@ -3079,8 +3075,8 @@ class _EntryTabState extends State<EntryTab> {
           boxNo: '',
           requirement: _requirementController.text.trim(),
           cartridgeTemp: tempsToSave.map((t) => '$t °C').join(', '),
-          cyclicRateWeaponType: _selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join(', ') : _functionWeapon,
-          barrelSN: _selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join(', ') : _functionWeapon,
+          cyclicRateWeaponType: _selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join('; ') : _functionWeapon,
+          barrelSN: _selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join('; ') : _functionWeapon,
           functionLevel1: sumL1,
           functionLevel2: sumL2,
           functionLevel3: sumL3,
@@ -3129,7 +3125,7 @@ class _EntryTabState extends State<EntryTab> {
           boxNo: '',
           requirement: _requirementController.text.trim(),
           barrelSN: _testName == 'Function Test'
-              ? (_selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join(', ') : _functionWeapon)
+              ? (_selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join('; ') : _functionWeapon)
               : (_testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _barrelSNController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalBarrelSNController.text.trim() : '')),
           barrelType: '',
           velocityDistance: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _distanceController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalDistanceController.text.trim() : ''),
@@ -3185,7 +3181,7 @@ class _EntryTabState extends State<EntryTab> {
           epvatSensor2: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _epvatSensor2Controller.text.trim() : '',
           cyclicRateWeaponType: _testName == 'Firing Rate Cycle Test'
               ? _cyclicRateWeaponType
-              : (_testName == 'Function Test' ? _functionWeapon : ''),
+              : (_testName == 'Function Test' ? (_selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join('; ') : _functionWeapon) : ''),
           cyclicRateAmmoType: _testName == 'Firing Rate Cycle Test' ? _cyclicRateAmmoType : '',
           cyclicRateValue: _testName == 'Firing Rate Cycle Test' ? _cyclicRateController.text.trim() : '',
           cyclicRateMin: _testName == 'Firing Rate Cycle Test' ? (() {
@@ -5934,7 +5930,7 @@ class _EntryTabState extends State<EntryTab> {
                   onPressed: () {
                     setState(() {
                       _selectedFunctionWeapons = List<String>.from(tempSelected);
-                      _functionWeapon = _selectedFunctionWeapons.join(', ');
+                      _functionWeapon = _selectedFunctionWeapons.join('; ');
                     });
                     Navigator.pop(dialogCtx);
                   },
@@ -6153,7 +6149,7 @@ class _EntryTabState extends State<EntryTab> {
                         if (!_selectedFunctionWeapons.contains(toAdd)) {
                           _selectedFunctionWeapons.add(toAdd);
                         }
-                        _functionWeapon = _selectedFunctionWeapons.join(', ');
+                        _functionWeapon = _selectedFunctionWeapons.join('; ');
                       });
                     }
                   },
@@ -6245,7 +6241,7 @@ class _EntryTabState extends State<EntryTab> {
                   onDeleted: () {
                     setState(() {
                       _selectedFunctionWeapons.remove(weapon);
-                      _functionWeapon = _selectedFunctionWeapons.join(', ');
+                      _functionWeapon = _selectedFunctionWeapons.join('; ');
                     });
                   },
                   side: const BorderSide(color: Color(0xFFBAE6FD)),
@@ -8367,7 +8363,7 @@ class _EntryTabState extends State<EntryTab> {
           defaultTemp: defaultTemp,
           activePressureUnit: _epvatPressureUnit,
         );
-        if (!res.isPassed) {
+        if (res.isApplicable && !res.isPassed) {
           return 'Rejected';
         }
       }
@@ -8519,14 +8515,32 @@ class _EntryTabState extends State<EntryTab> {
           ),
           const SizedBox(height: 12.0),
           ...results.map((res) {
+            final isApp = res.isApplicable;
             final passed = res.isPassed;
+            final Color cardBg = !isApp
+                ? const Color(0xFF64748B).withOpacity(0.06)
+                : (passed ? const Color(0xFF10B981).withOpacity(0.05) : const Color(0xFFEF4444).withOpacity(0.05));
+            final Color cardBorder = !isApp
+                ? const Color(0xFF64748B).withOpacity(0.2)
+                : (passed ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFFEF4444).withOpacity(0.25));
+            final Color badgeBg = !isApp
+                ? const Color(0xFF64748B).withOpacity(0.15)
+                : (passed ? const Color(0xFF10B981).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15));
+            final Color badgeBorder = !isApp
+                ? const Color(0xFF64748B).withOpacity(0.4)
+                : (passed ? const Color(0xFF10B981).withOpacity(0.4) : const Color(0xFFEF4444).withOpacity(0.4));
+            final Color badgeText = !isApp
+                ? const Color(0xFF94A3B8)
+                : (passed ? const Color(0xFF10B981) : const Color(0xFFEF4444));
+            final String statusLabel = !isApp ? 'NOT TESTED' : (passed ? 'PASSED' : 'FAILED');
+
             return Container(
               margin: const EdgeInsets.only(bottom: 10.0),
               padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
               decoration: BoxDecoration(
-                color: passed ? const Color(0xFF10B981).withOpacity(0.05) : const Color(0xFFEF4444).withOpacity(0.05),
+                color: cardBg,
                 borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: passed ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFFEF4444).withOpacity(0.25)),
+                border: Border.all(color: cardBorder),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -8557,19 +8571,27 @@ class _EntryTabState extends State<EntryTab> {
                         RichText(
                           text: TextSpan(
                             style: const TextStyle(fontSize: 12.0, fontFamily: 'JetBrainsMono'),
-                            children: [
-                              const TextSpan(text: 'Calculation: ', style: TextStyle(color: Color(0xFF8E96A3))),
-                              TextSpan(
-                                text: res.substitutedText,
-                                style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
-                              ),
-                              TextSpan(
-                                text: res.op == '±' || res.op == '+/-'
-                                    ? ' ${res.unit} (Limit: ±${res.limitValue.toStringAsFixed(1)} ${res.unit})'
-                                    : ' ${res.unit} ${res.op} ${res.limitValue.toStringAsFixed(1)} ${res.unit}',
-                                style: TextStyle(color: passed ? const Color(0xFF8E96A3) : const Color(0xFFF87171), fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                            children: isApp
+                                ? [
+                                    const TextSpan(text: 'Calculation: ', style: TextStyle(color: Color(0xFF8E96A3))),
+                                    TextSpan(
+                                      text: res.substitutedText,
+                                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(
+                                      text: res.op == '±' || res.op == '+/-'
+                                          ? ' ${res.unit} (Limit: ±${res.limitValue.toStringAsFixed(1)} ${res.unit})'
+                                          : ' ${res.unit} ${res.op} ${res.limitValue.toStringAsFixed(1)} ${res.unit}',
+                                      style: TextStyle(color: passed ? const Color(0xFF8E96A3) : const Color(0xFFF87171), fontWeight: FontWeight.w600),
+                                    ),
+                                  ]
+                                : [
+                                    const TextSpan(text: 'Calculation: ', style: TextStyle(color: Color(0xFF8E96A3))),
+                                    const TextSpan(
+                                      text: 'Not Tested (Temperature condition not evaluated in this entry)',
+                                      style: TextStyle(color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
+                                    ),
+                                  ],
                           ),
                         ),
                       ],
@@ -8579,14 +8601,14 @@ class _EntryTabState extends State<EntryTab> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
                     decoration: BoxDecoration(
-                      color: passed ? const Color(0xFF10B981).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15),
+                      color: badgeBg,
                       borderRadius: BorderRadius.circular(6.0),
-                      border: Border.all(color: passed ? const Color(0xFF10B981).withOpacity(0.4) : const Color(0xFFEF4444).withOpacity(0.4)),
+                      border: Border.all(color: badgeBorder),
                     ),
                     child: Text(
-                      passed ? 'PASSED' : 'FAILED',
+                      statusLabel,
                       style: TextStyle(
-                        color: passed ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        color: badgeText,
                         fontSize: 11.0,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
@@ -8865,7 +8887,7 @@ class _EntryTabState extends State<EntryTab> {
                 defaultTemp: defaultTemp,
                 activePressureUnit: _epvatPressureUnit,
               );
-              if (!res.isPassed) {
+              if (res.isApplicable && !res.isPassed) {
                 rejected = true;
                 break;
               }

@@ -10,6 +10,7 @@ class EpvatFormulaResult {
   final double limitValue;
   final String unit;
   final bool isPassed;
+  final bool isApplicable;
 
   const EpvatFormulaResult({
     required this.name,
@@ -20,6 +21,7 @@ class EpvatFormulaResult {
     required this.limitValue,
     required this.unit,
     required this.isPassed,
+    this.isApplicable = true,
   });
 }
 
@@ -283,6 +285,8 @@ class EpvatFormulaHelper {
   /// - `|expr|` -> `abs(expr)`
   static String normalizeFormula(String input, {String defaultTemp = '21'}) {
     String expr = input.trim();
+    // Clean degree symbols and notations (e.g. °C, °c, degC, °)
+    expr = expr.replaceAll(RegExp(r'°\s*c|°|deg\s*c', caseSensitive: false), '');
     final match = RegExp(r'\d+').firstMatch(defaultTemp);
     final cleanDefaultTemp = match != null ? match.group(0)! : '21';
 
@@ -391,14 +395,30 @@ class EpvatFormulaHelper {
   }) {
     final match = RegExp(r'\d+').firstMatch(defaultTemp);
     final cleanDefaultTemp = match != null ? match.group(0)! : '21';
-
     final String norm = normalizeFormula(originalFormula, defaultTemp: cleanDefaultTemp);
-    String substituted = norm;
 
     final Map<String, double> lowerVars = {};
     for (final e in variables.entries) {
       lowerVars[e.key.toLowerCase()] = e.value;
     }
+
+    final varMatches = RegExp(r'\b(?:p1|p2|vel|action_time|at)_(?:mean|max|min|range|sd|max_individual)_(\d+)\b').allMatches(norm.toLowerCase());
+    final requiredTemps = varMatches.map((m) => m.group(1)!).toSet();
+    bool hasTempData(String t) {
+      if (t == cleanDefaultTemp) {
+        if (lowerVars.keys.any((k) => !k.contains('_21') && !k.contains('_52') && !k.contains('_54') && !k.contains('_32') && (lowerVars[k] ?? 0.0) != 0.0)) {
+          return true;
+        }
+        if (lowerVars.keys.any((k) => k.endsWith('_$t') && (lowerVars[k] ?? 0.0) != 0.0)) {
+          return true;
+        }
+      }
+      return lowerVars.keys.any((k) => k.endsWith('_$t') && (lowerVars[k] ?? 0.0) != 0.0);
+    }
+    if (requiredTemps.isNotEmpty && !requiredTemps.every((t) => hasTempData(t))) {
+      return 'Not Tested';
+    }
+    String substituted = norm;
 
     // Expand lowerVars with fallbacks and aliases
     final expanded = Map<String, double>.from(lowerVars);
@@ -522,6 +542,60 @@ class EpvatFormulaHelper {
         limitValue: 0.0,
         unit: displayUnit,
         isPassed: true,
+      );
+    }
+
+    final match = RegExp(r'\d+').firstMatch(defaultTemp);
+    final cleanDefaultTemp = match != null ? match.group(0)! : '21';
+    final normalized = normalizeFormula(formula, defaultTemp: cleanDefaultTemp);
+
+    final Map<String, double> lowerVars = {};
+    for (final e in variables.entries) {
+      lowerVars[e.key.toLowerCase()] = e.value;
+    }
+
+    // Identify required temperatures
+    final varMatches = RegExp(r'\b(?:p1|p2|vel|action_time|at)_(?:mean|max|min|range|sd|max_individual)_(\d+)\b').allMatches(normalized.toLowerCase());
+    final requiredTemps = varMatches.map((m) => m.group(1)!).toSet();
+
+    bool hasTempData(String t) {
+      if (t == cleanDefaultTemp) {
+        if (lowerVars.keys.any((k) => !k.contains('_21') && !k.contains('_52') && !k.contains('_54') && !k.contains('_32') && (lowerVars[k] ?? 0.0) != 0.0)) {
+          return true;
+        }
+        if (lowerVars.keys.any((k) => k.endsWith('_$t') && (lowerVars[k] ?? 0.0) != 0.0)) {
+          return true;
+        }
+      }
+      return lowerVars.keys.any((k) => k.endsWith('_$t') && (lowerVars[k] ?? 0.0) != 0.0);
+    }
+
+    final bool isApplicable = requiredTemps.isEmpty || requiredTemps.every((t) => hasTempData(t));
+
+    if (!isApplicable) {
+      double limitVal = 0.0;
+      final targetTolMatch = RegExp(r'^([\d\.\-]+)\s*(?:±|\+\/-)\s*([\d\.]+)$').firstMatch(limitStr);
+      if (targetTolMatch != null) {
+        limitVal = double.tryParse(targetTolMatch.group(2)!) ?? 0.0;
+        if (isPressure && rawUnit != activePressureUnit) {
+          limitVal = convertPressure(limitVal, rawUnit, activePressureUnit);
+        }
+      } else {
+        limitVal = evaluate(limitStr.replaceAll('±', '').replaceAll('+/-', '').trim(), variables, defaultTemp: defaultTemp);
+        if (isPressure && rawUnit != activePressureUnit) {
+          limitVal = convertPressure(limitVal, rawUnit, activePressureUnit);
+        }
+      }
+      return EpvatFormulaResult(
+        name: name,
+        formula: formula,
+        substitutedText: 'Not Tested',
+        calculatedValue: 0.0,
+        op: op,
+        limitValue: limitVal,
+        unit: displayUnit,
+        isPassed: true,
+        isApplicable: false,
       );
     }
 

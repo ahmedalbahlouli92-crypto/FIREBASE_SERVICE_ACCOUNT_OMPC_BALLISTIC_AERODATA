@@ -58,8 +58,9 @@ class ReportHelperImpl implements ReportHelper {
   }
 
   @override
-  Future<void> printHtml({required String htmlContent}) async {
+  Future<void> printHtml({required String htmlContent, String? filename}) async {
     final base64Html = base64Encode(utf8.encode(htmlContent));
+    final safeFilename = (filename ?? '').replaceAll("'", "\\'").replaceAll('"', '\\"');
     js.context.callMethod('eval', [
       '''
       (function() {
@@ -86,9 +87,24 @@ class ReportHelperImpl implements ReportHelper {
         doc.open();
         doc.write(html);
         doc.close();
+
+        var desiredTitle = '$safeFilename';
+        if (desiredTitle) {
+          doc.title = desiredTitle;
+        }
+        var origTitle = document.title;
+        if (desiredTitle) {
+          document.title = desiredTitle;
+        }
+
         setTimeout(function() {
           iframe.contentWindow.focus();
           iframe.contentWindow.print();
+          if (desiredTitle) {
+            setTimeout(function() {
+              document.title = origTitle;
+            }, 3000);
+          }
         }, 500);
       })()
       '''

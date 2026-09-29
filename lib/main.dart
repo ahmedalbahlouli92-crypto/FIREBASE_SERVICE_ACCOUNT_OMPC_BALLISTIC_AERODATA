@@ -94,13 +94,13 @@ class _SlowBlinkingGreetingState extends State<_SlowBlinkingGreeting> with Singl
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'السَّلَامُ عَلَيْكُمْ',
+              'السلام عليكم',
               textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
               style: TextStyle(
                 fontSize: 24.0,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF38BDF8),
-                letterSpacing: 1.0,
               ),
             ),
             const SizedBox(height: 6.0),
@@ -2824,11 +2824,11 @@ class _MainShellState extends State<MainShell> {
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
     if (hour >= 4 && hour < 12) {
-      return 'Alsalamu Alaikum - Good Morning';
+      return 'Good Morning';
     } else if (hour >= 12 && hour < 17) {
-      return 'Alsalamu Alaikum - Good Afternoon';
+      return 'Good Afternoon';
     } else {
-      return 'Alsalamu Alaikum - Good Evening';
+      return 'Good Evening';
     }
   }
 

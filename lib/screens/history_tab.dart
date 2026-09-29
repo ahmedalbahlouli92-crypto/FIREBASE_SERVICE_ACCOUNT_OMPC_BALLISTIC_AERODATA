@@ -281,10 +281,18 @@ class _HistoryTabState extends State<HistoryTab> {
                                 Expanded(child: Text('Original Defects: ${r.defects}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
                               ],
                             ),
-                            if (r.notes.isNotEmpty) ...[
-                              const SizedBox(height: 4.0),
-                              Text('Original Remarks: ${r.notes}', style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11.5)),
-                            ],
+                            Builder(
+                              builder: (_) {
+                                final origRemarks = ReportGenerator.cleanRemarks(r.notes);
+                                if (origRemarks.isNotEmpty) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text('Original Remarks: $origRemarks', style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11.5)),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
                           ],
                         ),
                       ),
@@ -623,56 +631,94 @@ class _HistoryTabState extends State<HistoryTab> {
                         ? (newRemarks.isNotEmpty ? '${r.notes}\n$remarksHeader: $newRemarks' : '${r.notes}\n$remarksHeader')
                         : (newRemarks.isNotEmpty ? '$remarksHeader: $newRemarks' : remarksHeader);
 
+                    final retestMetricsMap = <String, dynamic>{
+                      if (r.testName == 'Waterproof Test') ...{
+                        'mouthSlow': int.tryParse(mouthSlowCtrl.text.trim()) ?? 0,
+                        'mouthFast': int.tryParse(mouthFastCtrl.text.trim()) ?? 0,
+                        'primerSlow': int.tryParse(primerSlowCtrl.text.trim()) ?? 0,
+                        'primerFast': int.tryParse(primerFastCtrl.text.trim()) ?? 0,
+                      } else if (r.testName == 'Function Test') ...{
+                        'functionLevel1': int.tryParse(funcL1Ctrl.text.trim()) ?? 0,
+                        'functionLevel2': int.tryParse(funcL2Ctrl.text.trim()) ?? 0,
+                        'functionLevel3': int.tryParse(funcL3Ctrl.text.trim()) ?? 0,
+                        'functionLevel4': int.tryParse(funcL4Ctrl.text.trim()) ?? 0,
+                        'functionDefectDetails': funcDetailsCtrl.text.trim(),
+                        'cartridgeTemp': epvCartridgeTempCtrl.text.trim(),
+                      } else if (r.testName == 'Residual Stress Test') ...{
+                        'neckSlow': int.tryParse(neckSlowCtrl.text.trim()) ?? 0,
+                        'neckFast': int.tryParse(neckFastCtrl.text.trim()) ?? 0,
+                        'shoulderSlow': int.tryParse(shoulderSlowCtrl.text.trim()) ?? 0,
+                        'shoulderFast': int.tryParse(shoulderFastCtrl.text.trim()) ?? 0,
+                        'bodySlow': int.tryParse(bodySlowCtrl.text.trim()) ?? 0,
+                        'bodyFast': int.tryParse(bodyFastCtrl.text.trim()) ?? 0,
+                        'headSlow': int.tryParse(headSlowCtrl.text.trim()) ?? 0,
+                        'headFast': int.tryParse(headFastCtrl.text.trim()) ?? 0,
+                        'roomTemp': roomTempCtrl.text.trim(),
+                      } else if (r.testName == 'Accuracy Test') ...{
+                        'accMeanRadius': accRadiusCtrl.text.trim(),
+                        'accSDX': accSDXCtrl.text.trim(),
+                        'accSDY': accSDYCtrl.text.trim(),
+                        'accLargestDistance': accMaxDistCtrl.text.trim(),
+                        'velMean': velMeanCtrl.text.trim(),
+                        'velMin': velMinCtrl.text.trim(),
+                        'velMax': velMaxCtrl.text.trim(),
+                        'velSD': velSDCtrl.text.trim(),
+                      } else if (r.testName == 'EPVAT test' || r.testName == 'Propellant Test') ...{
+                        'epvatMeanPressure': epvMeanP1Ctrl.text.trim(),
+                        'epvatMaxPressure': epvMaxP1Ctrl.text.trim(),
+                        'epvatMinPressure': epvMinP1Ctrl.text.trim(),
+                        'epvatSDPressure': epvSDP1Ctrl.text.trim(),
+                        'epvatP2MeanPressure': epvMeanP2Ctrl.text.trim(),
+                        'epvatP2MaxPressure': epvMaxP2Ctrl.text.trim(),
+                        'actionTimeMean': epvActionTimeMeanCtrl.text.trim(),
+                        'velMean': velMeanCtrl.text.trim(),
+                        'velSD': velSDCtrl.text.trim(),
+                        'cartridgeTemp': epvCartridgeTempCtrl.text.trim(),
+                      } else if (r.testName == 'Primer Sensitivity Test') ...{
+                        'primerHbar': primerHbarCtrl.text.trim(),
+                        'primerSD': primerSDCtrl.text.trim(),
+                        'primerAllFireH': primerAllFireCtrl.text.trim(),
+                        'primerNoFireH': primerNoFireCtrl.text.trim(),
+                      } else if (r.testName == 'Extraction Force Test') ...{
+                        'accMinX': extMinForceCtrl.text.trim(),
+                        'extractionForceType': extTypeCtrl.text.trim(),
+                      } else if (r.testName == 'Firing Rate Cycle Test') ...{
+                        'cyclicRateWeaponType': cyclicWeaponCtrl.text.trim(),
+                        'cyclicRateValue': cyclicRateValCtrl.text.trim(),
+                      } else if (r.testName == 'Terminal Effect Test') ...{
+                        'terminalHoleDiameter': termHoleCtrl.text.trim(),
+                        'terminalSteelPenetration': termSteelCtrl.text.trim(),
+                        'terminalVelocity': termVelCtrl.text.trim(),
+                      }
+                    };
+                    final retestMetricsJson = jsonEncode(retestMetricsMap);
+
+                    final parsedRetestProduced = int.tryParse(retestProducedCtrl.text.trim()) ?? (r.retestProduced > 0 ? r.retestProduced : r.produced);
+                    final int calculatedRetestDefects;
+                    if (r.testName == 'Waterproof Test') {
+                      calculatedRetestDefects = (retestMetricsMap['mouthSlow'] as int? ?? 0) +
+                          (retestMetricsMap['mouthFast'] as int? ?? 0) +
+                          (retestMetricsMap['primerSlow'] as int? ?? 0) +
+                          (retestMetricsMap['primerFast'] as int? ?? 0);
+                    } else if (r.testName == 'Function Test') {
+                      calculatedRetestDefects = (retestMetricsMap['functionLevel1'] as int? ?? 0) +
+                          (retestMetricsMap['functionLevel2'] as int? ?? 0) +
+                          (retestMetricsMap['functionLevel3'] as int? ?? 0) +
+                          (retestMetricsMap['functionLevel4'] as int? ?? 0);
+                    } else if (r.testName == 'Residual Stress Test') {
+                      calculatedRetestDefects = (retestMetricsMap['neckSlow'] as int? ?? 0) +
+                          (retestMetricsMap['neckFast'] as int? ?? 0) +
+                          (retestMetricsMap['shoulderSlow'] as int? ?? 0) +
+                          (retestMetricsMap['shoulderFast'] as int? ?? 0) +
+                          (retestMetricsMap['bodySlow'] as int? ?? 0) +
+                          (retestMetricsMap['bodyFast'] as int? ?? 0) +
+                          (retestMetricsMap['headSlow'] as int? ?? 0) +
+                          (retestMetricsMap['headFast'] as int? ?? 0);
+                    } else {
+                      calculatedRetestDefects = int.tryParse(retestDefectsCtrl.text.trim()) ?? 0;
+                    }
+
                     final updatedRecord = r.copyWith(
-                      operators: op,
-                      shift: shift,
-                      produced: int.tryParse(retestProducedCtrl.text.trim()) ?? r.produced,
-                      defects: int.tryParse(retestDefectsCtrl.text.trim()) ?? r.defects,
-                      mouthSlow: int.tryParse(mouthSlowCtrl.text.trim()) ?? r.mouthSlow,
-                      mouthFast: int.tryParse(mouthFastCtrl.text.trim()) ?? r.mouthFast,
-                      primerSlow: int.tryParse(primerSlowCtrl.text.trim()) ?? r.primerSlow,
-                      primerFast: int.tryParse(primerFastCtrl.text.trim()) ?? r.primerFast,
-                      neckSlow: int.tryParse(neckSlowCtrl.text.trim()) ?? r.neckSlow,
-                      neckFast: int.tryParse(neckFastCtrl.text.trim()) ?? r.neckFast,
-                      shoulderSlow: int.tryParse(shoulderSlowCtrl.text.trim()) ?? r.shoulderSlow,
-                      shoulderFast: int.tryParse(shoulderFastCtrl.text.trim()) ?? r.shoulderFast,
-                      bodySlow: int.tryParse(bodySlowCtrl.text.trim()) ?? r.bodySlow,
-                      bodyFast: int.tryParse(bodyFastCtrl.text.trim()) ?? r.bodyFast,
-                      headSlow: int.tryParse(headSlowCtrl.text.trim()) ?? r.headSlow,
-                      headFast: int.tryParse(headFastCtrl.text.trim()) ?? r.headFast,
-                      roomTemp: roomTempCtrl.text.trim().isNotEmpty ? roomTempCtrl.text.trim() : r.roomTemp,
-                      accMinX: extMinForceCtrl.text.trim().isNotEmpty ? extMinForceCtrl.text.trim() : r.accMinX,
-                      extractionForceType: extTypeCtrl.text.trim().isNotEmpty ? extTypeCtrl.text.trim() : r.extractionForceType,
-                      accMeanRadius: accRadiusCtrl.text.trim().isNotEmpty ? accRadiusCtrl.text.trim() : r.accMeanRadius,
-                      accSDX: accSDXCtrl.text.trim().isNotEmpty ? accSDXCtrl.text.trim() : r.accSDX,
-                      accSDY: accSDYCtrl.text.trim().isNotEmpty ? accSDYCtrl.text.trim() : r.accSDY,
-                      accLargestDistance: accMaxDistCtrl.text.trim().isNotEmpty ? accMaxDistCtrl.text.trim() : r.accLargestDistance,
-                      velMean: velMeanCtrl.text.trim().isNotEmpty ? velMeanCtrl.text.trim() : r.velMean,
-                      velMin: velMinCtrl.text.trim().isNotEmpty ? velMinCtrl.text.trim() : r.velMin,
-                      velMax: velMaxCtrl.text.trim().isNotEmpty ? velMaxCtrl.text.trim() : r.velMax,
-                      velSD: velSDCtrl.text.trim().isNotEmpty ? velSDCtrl.text.trim() : r.velSD,
-                      cartridgeTemp: epvCartridgeTempCtrl.text.trim().isNotEmpty ? epvCartridgeTempCtrl.text.trim() : r.cartridgeTemp,
-                      epvatMeanPressure: epvMeanP1Ctrl.text.trim().isNotEmpty ? epvMeanP1Ctrl.text.trim() : r.epvatMeanPressure,
-                      epvatMaxPressure: epvMaxP1Ctrl.text.trim().isNotEmpty ? epvMaxP1Ctrl.text.trim() : r.epvatMaxPressure,
-                      epvatMinPressure: epvMinP1Ctrl.text.trim().isNotEmpty ? epvMinP1Ctrl.text.trim() : r.epvatMinPressure,
-                      epvatSDPressure: epvSDP1Ctrl.text.trim().isNotEmpty ? epvSDP1Ctrl.text.trim() : r.epvatSDPressure,
-                      epvatP2MeanPressure: epvMeanP2Ctrl.text.trim().isNotEmpty ? epvMeanP2Ctrl.text.trim() : r.epvatP2MeanPressure,
-                      epvatP2MaxPressure: epvMaxP2Ctrl.text.trim().isNotEmpty ? epvMaxP2Ctrl.text.trim() : r.epvatP2MaxPressure,
-                      actionTimeMean: epvActionTimeMeanCtrl.text.trim().isNotEmpty ? epvActionTimeMeanCtrl.text.trim() : r.actionTimeMean,
-                      functionLevel1: int.tryParse(funcL1Ctrl.text.trim()) ?? r.functionLevel1,
-                      functionLevel2: int.tryParse(funcL2Ctrl.text.trim()) ?? r.functionLevel2,
-                      functionLevel3: int.tryParse(funcL3Ctrl.text.trim()) ?? r.functionLevel3,
-                      functionLevel4: int.tryParse(funcL4Ctrl.text.trim()) ?? r.functionLevel4,
-                      functionDefectDetails: funcDetailsCtrl.text.trim().isNotEmpty ? funcDetailsCtrl.text.trim() : r.functionDefectDetails,
-                      primerHbar: primerHbarCtrl.text.trim().isNotEmpty ? primerHbarCtrl.text.trim() : r.primerHbar,
-                      primerSD: primerSDCtrl.text.trim().isNotEmpty ? primerSDCtrl.text.trim() : r.primerSD,
-                      primerAllFireH: primerAllFireCtrl.text.trim().isNotEmpty ? primerAllFireCtrl.text.trim() : r.primerAllFireH,
-                      primerNoFireH: primerNoFireCtrl.text.trim().isNotEmpty ? primerNoFireCtrl.text.trim() : r.primerNoFireH,
-                      cyclicRateWeaponType: cyclicWeaponCtrl.text.trim().isNotEmpty ? cyclicWeaponCtrl.text.trim() : r.cyclicRateWeaponType,
-                      cyclicRateValue: cyclicRateValCtrl.text.trim().isNotEmpty ? cyclicRateValCtrl.text.trim() : r.cyclicRateValue,
-                      terminalHoleDiameter: termHoleCtrl.text.trim().isNotEmpty ? termHoleCtrl.text.trim() : r.terminalHoleDiameter,
-                      terminalSteelPenetration: termSteelCtrl.text.trim().isNotEmpty ? termSteelCtrl.text.trim() : r.terminalSteelPenetration,
-                      terminalVelocity: termVelCtrl.text.trim().isNotEmpty ? termVelCtrl.text.trim() : r.terminalVelocity,
                       isRetest: true,
                       retestTimestamp: timestamp,
                       retestOperator: op,
@@ -681,6 +727,9 @@ class _HistoryTabState extends State<HistoryTab> {
                       originalStatus: r.originalStatus.isNotEmpty ? r.originalStatus : r.status,
                       status: finalStatus,
                       notes: updatedNotes,
+                      retestProduced: parsedRetestProduced,
+                      retestDefects: calculatedRetestDefects,
+                      retestMetrics: retestMetricsJson,
                     );
 
                     Navigator.of(ctx).pop();
@@ -919,11 +968,14 @@ class _HistoryTabState extends State<HistoryTab> {
   }
 
   void _showEditRecordDialog(BallisticRecord r) {
+    // 1. Basic Metadata Controllers
     final operatorsController = TextEditingController(text: r.operators);
     final lotNoController = TextEditingController(text: r.lotNo);
     final producedController = TextEditingController(text: '${r.produced}');
     final defectsController = TextEditingController(text: '${r.defects}');
     final notesController = TextEditingController(text: ReportGenerator.cleanRemarks(r.notes));
+
+    // 2. Waterproof Test
     final pressureController = TextEditingController(text: r.pressureBar);
     final viscosityController = TextEditingController(text: r.viscosity);
     final locationController = TextEditingController(text: r.samplingLocation);
@@ -931,15 +983,98 @@ class _HistoryTabState extends State<HistoryTab> {
     final mouthFastController = TextEditingController(text: '${r.mouthFast}');
     final primerSlowController = TextEditingController(text: '${r.primerSlow}');
     final primerFastController = TextEditingController(text: '${r.primerFast}');
-    final velMeanController = TextEditingController(text: r.velMean);
-    final barrelSNController = TextEditingController(text: r.barrelSN);
+
+    // 3. Residual Stress Test
     final roomTempController = TextEditingController(text: r.roomTemp);
+    final neckSlowController = TextEditingController(text: '${r.neckSlow}');
+    final neckFastController = TextEditingController(text: '${r.neckFast}');
+    final shoulderSlowController = TextEditingController(text: '${r.shoulderSlow}');
+    final shoulderFastController = TextEditingController(text: '${r.shoulderFast}');
+    final bodySlowController = TextEditingController(text: '${r.bodySlow}');
+    final bodyFastController = TextEditingController(text: '${r.bodyFast}');
+    final headSlowController = TextEditingController(text: '${r.headSlow}');
+    final headFastController = TextEditingController(text: '${r.headFast}');
+
+    // 4. Accuracy Test
+    final barrelSNController = TextEditingController(text: r.barrelSN);
+    final barrelTypeController = TextEditingController(text: r.barrelType);
+    final velocityDistanceController = TextEditingController(text: r.velocityDistance);
+    final accRadiusController = TextEditingController(text: r.accMeanRadius);
+    final accMaxDistController = TextEditingController(text: r.accLargestDistance);
+    final accSDXController = TextEditingController(text: r.accSDX);
+    final accSDYController = TextEditingController(text: r.accSDY);
+    final accMeanXController = TextEditingController(text: r.accMeanX);
+    final accMeanYController = TextEditingController(text: r.accMeanY);
+    final velMeanController = TextEditingController(text: r.velMean);
+    final velMinController = TextEditingController(text: r.velMin);
+    final velMaxController = TextEditingController(text: r.velMax);
+    final velSDController = TextEditingController(text: r.velSD);
+
+    // 5. EPVAT Test
+    final epvCartridgeTempController = TextEditingController(text: r.cartridgeTemp);
+    final epvPressureUnitController = TextEditingController(text: r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar');
+    final epvPressureTypeController = TextEditingController(text: r.epvatPressureType);
+    final epvMeanP1Controller = TextEditingController(text: r.epvatMeanPressure);
+    final epvMaxP1Controller = TextEditingController(text: r.epvatMaxPressure);
+    final epvMinP1Controller = TextEditingController(text: r.epvatMinPressure);
+    final epvSDP1Controller = TextEditingController(text: r.epvatSDPressure);
+    final epvMeanP2Controller = TextEditingController(text: r.epvatP2MeanPressure);
+    final epvMaxP2Controller = TextEditingController(text: r.epvatP2MaxPressure);
+    final epvMinP2Controller = TextEditingController(text: r.epvatP2MinPressure);
+    final epvSDP2Controller = TextEditingController(text: r.epvatP2SDPressure);
+    final epvActionTimeMeanController = TextEditingController(text: r.actionTimeMean);
+    final epvActionTimeSDController = TextEditingController(text: r.actionTimeSD);
+    final epvSensor1Controller = TextEditingController(text: r.epvatSensor1);
+    final epvSensor2Controller = TextEditingController(text: r.epvatSensor2);
+
+    // 6. Function Test
+    final funcL1Controller = TextEditingController(text: '${r.functionLevel1}');
+    final funcL2Controller = TextEditingController(text: '${r.functionLevel2}');
+    final funcL3Controller = TextEditingController(text: '${r.functionLevel3}');
+    final funcL4Controller = TextEditingController(text: '${r.functionLevel4}');
+    final funcDetailsController = TextEditingController(text: r.functionDefectDetails);
+
+    // 7. Extraction Force Test
+    final extTypeController = TextEditingController(text: r.extractionForceType.isNotEmpty ? r.extractionForceType : 'Bullet');
+    final extMinForceController = TextEditingController(text: r.accMinX);
+    final extMeanForceController = TextEditingController(text: r.accMeanX);
+    final extMaxForceController = TextEditingController(text: r.accMaxX);
+    final extSDForceController = TextEditingController(text: r.accSDX);
+
+    // 8. Primer Sensitivity Test
     final primerLotController = TextEditingController(text: r.primerLot);
     final primerSupplierController = TextEditingController(text: r.primerSupplier);
     final primerInsertionDepthController = TextEditingController(text: r.primerInsertionDepth);
+    final primerHbarController = TextEditingController(text: r.primerHbar);
+    final primerSDController = TextEditingController(text: r.primerSD);
+    final primerAllFireController = TextEditingController(text: r.primerAllFireH);
+    final primerNoFireController = TextEditingController(text: r.primerNoFireH);
+
+    // 9. Propellant Test
     final propellantLotController = TextEditingController(text: r.propellantLot);
     final propellantSupplierController = TextEditingController(text: r.propellantSupplier);
     final propellantCodeController = TextEditingController(text: r.propellantCode);
+    final propellantChargeController = TextEditingController(text: r.propellantCharge);
+
+    // 10. Cyclic Rate Test
+    final cyclicWeaponController = TextEditingController(text: r.cyclicRateWeaponType);
+    final cyclicAmmoController = TextEditingController(text: r.cyclicRateAmmoType.isNotEmpty ? r.cyclicRateAmmoType : 'Linked');
+    final cyclicRateValController = TextEditingController(text: r.cyclicRateValue);
+    final cyclicMinController = TextEditingController(text: r.cyclicRateMin);
+    final cyclicMaxController = TextEditingController(text: r.cyclicRateMax);
+
+    // 11. Terminal Effect Test
+    final termHoleController = TextEditingController(text: r.terminalHoleDiameter);
+    final termSteelController = TextEditingController(text: r.terminalSteelPenetration);
+    final termAlumController = TextEditingController(text: r.terminalAluminumPenetration);
+    final termVelController = TextEditingController(text: r.terminalVelocity);
+
+    // 12. Retest Fields
+    final retestOpController = TextEditingController(text: r.retestOperator);
+    final retestNotesController = TextEditingController(text: ReportGenerator.cleanRemarks(r.retestNotes));
+    final retestProducedController = TextEditingController(text: '${r.retestProduced > 0 ? r.retestProduced : r.produced}');
+    final retestDefectsController = TextEditingController(text: '${r.retestDefects}');
+    String editRetestStatus = r.retestStatus.isNotEmpty ? r.retestStatus : 'Approved';
 
     String editShift = r.shift;
     String editStatus = r.status;
@@ -966,7 +1101,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       color: const Color(0xFF2C415E),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    child: const Icon(Icons.edit_note_rounded, color: Color(0xFF38BDF8), size: 22.0),
+                    child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF38BDF8), size: 24.0),
                   ),
                   const SizedBox(width: 12.0),
                   Expanded(
@@ -974,11 +1109,11 @@ class _HistoryTabState extends State<HistoryTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Edit Inspection Log Entry',
+                          'Edit Inspection Report Entry',
                           style: TextStyle(fontSize: 17.0, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         Text(
-                          '${r.testName} • ${r.timestamp}',
+                          '${r.testName} • ${r.timestamp} • Admin Authority',
                           style: const TextStyle(fontSize: 12.0, color: Color(0xFF38BDF8), fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -987,7 +1122,7 @@ class _HistoryTabState extends State<HistoryTab> {
                 ],
               ),
               content: Container(
-                width: math.min(650.0, MediaQuery.of(context).size.width * 0.94),
+                width: math.min(700.0, MediaQuery.of(context).size.width * 0.95),
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
                 child: SingleChildScrollView(
                   child: Column(
@@ -1183,117 +1318,357 @@ class _HistoryTabState extends State<HistoryTab> {
                         child: _buildDialogTextField(controller: notesController, maxLines: 2),
                       ),
 
-                      // Test-specific quick edits
+                      // Section 5: Comprehensive Test Parameters & Values (Admin Override)
+                      const SizedBox(height: 16.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.tune_rounded, color: Color(0xFF38BDF8), size: 16.0),
+                            const SizedBox(width: 8.0),
+                            Expanded(
+                              child: Text(
+                                '${r.testName.toUpperCase()} — MEASUREMENT PARAMETERS',
+                                style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12.0),
+
                       if (r.testName == 'Waterproof Test') ...[
-                        const SizedBox(height: 12.0),
-                        if (isMobile) ...[
-                          Row(
-                            children: [
-                              Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
-                              const SizedBox(width: 12.0),
-                              Expanded(child: _buildDialogField(label: 'Viscosity', child: _buildDialogTextField(controller: viscosityController))),
-                            ],
-                          ),
-                          const SizedBox(height: 10.0),
-                          _buildDialogField(label: 'Location', child: _buildDialogTextField(controller: locationController)),
-                          const SizedBox(height: 10.0),
-                          Row(
-                            children: [
-                              Expanded(child: _buildDialogField(label: 'Mouth Slow', child: _buildDialogTextField(controller: mouthSlowController, keyboardType: TextInputType.number))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Mouth Fast', child: _buildDialogTextField(controller: mouthFastController, keyboardType: TextInputType.number))),
-                            ],
-                          ),
-                          const SizedBox(height: 10.0),
-                          Row(
-                            children: [
-                              Expanded(child: _buildDialogField(label: 'Primer Slow', child: _buildDialogTextField(controller: primerSlowController, keyboardType: TextInputType.number))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
-                            ],
-                          ),
-                        ] else ...[
-                          Row(
-                            children: [
-                              Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
-                              const SizedBox(width: 12.0),
-                              Expanded(child: _buildDialogField(label: 'Viscosity', child: _buildDialogTextField(controller: viscosityController))),
-                              const SizedBox(width: 12.0),
-                              Expanded(child: _buildDialogField(label: 'Location', child: _buildDialogTextField(controller: locationController))),
-                            ],
-                          ),
-                          const SizedBox(height: 10.0),
-                          Row(
-                            children: [
-                              Expanded(child: _buildDialogField(label: 'Mouth Slow', child: _buildDialogTextField(controller: mouthSlowController, keyboardType: TextInputType.number))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Mouth Fast', child: _buildDialogTextField(controller: mouthFastController, keyboardType: TextInputType.number))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Primer Slow', child: _buildDialogTextField(controller: primerSlowController, keyboardType: TextInputType.number))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
-                            ],
-                          ),
-                        ],
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Viscosity', child: _buildDialogTextField(controller: viscosityController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Location', child: _buildDialogTextField(controller: locationController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mouth Slow', child: _buildDialogTextField(controller: mouthSlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Mouth Fast', child: _buildDialogTextField(controller: mouthFastController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Primer Slow', child: _buildDialogTextField(controller: primerSlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
+                          ],
+                        ),
                       ] else if (r.testName == 'Residual Stress Test') ...[
-                        const SizedBox(height: 12.0),
-                        _buildDialogField(label: 'Room Temperature (°C)', child: _buildDialogTextField(controller: roomTempController)),
-                      ] else if (r.testName == 'Accuracy Test' || r.testName == 'EPVAT test' || r.testName == 'Propellant Test') ...[
-                        const SizedBox(height: 12.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Room Temperature (°C)', child: _buildDialogTextField(controller: roomTempController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Sampling Location', child: _buildDialogTextField(controller: locationController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Neck Slow', child: _buildDialogTextField(controller: neckSlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Neck Fast', child: _buildDialogTextField(controller: neckFastController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Shoulder Slow', child: _buildDialogTextField(controller: shoulderSlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Shoulder Fast', child: _buildDialogTextField(controller: shoulderFastController, keyboardType: TextInputType.number))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Body Slow', child: _buildDialogTextField(controller: bodySlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Body Fast', child: _buildDialogTextField(controller: bodyFastController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Head Slow', child: _buildDialogTextField(controller: headSlowController, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Head Fast', child: _buildDialogTextField(controller: headFastController, keyboardType: TextInputType.number))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'Accuracy Test') ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
-                            const SizedBox(width: 12.0),
-                            Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Barrel Type', child: _buildDialogTextField(controller: barrelTypeController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Distance (m)', child: _buildDialogTextField(controller: velocityDistanceController))),
                           ],
                         ),
-                        if (r.testName == 'Propellant Test') ...[
-                          const SizedBox(height: 10.0),
-                          if (isMobile) ...[
-                            _buildDialogField(label: 'Propellant Lot', child: _buildDialogTextField(controller: propellantLotController)),
-                            const SizedBox(height: 10.0),
-                            Row(
-                              children: [
-                                Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: propellantSupplierController))),
-                                const SizedBox(width: 8.0),
-                                Expanded(child: _buildDialogField(label: 'Code', child: _buildDialogTextField(controller: propellantCodeController))),
-                              ],
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mean Radius (MR mm)', child: _buildDialogTextField(controller: accRadiusController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Largest Dist (ES mm)', child: _buildDialogTextField(controller: accMaxDistController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'SD X (mm)', child: _buildDialogTextField(controller: accSDXController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'SD Y (mm)', child: _buildDialogTextField(controller: accSDYController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mean Vel (m/s)', child: _buildDialogTextField(controller: velMeanController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Min Vel (m/s)', child: _buildDialogTextField(controller: velMinController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Max Vel (m/s)', child: _buildDialogTextField(controller: velMaxController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Vel SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'EPVAT test') ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Cartridge Temp (°C)', child: _buildDialogTextField(controller: epvCartridgeTempController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Pressure Unit', child: _buildDialogTextField(controller: epvPressureUnitController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Test Regimen / Type', child: _buildDialogTextField(controller: epvPressureTypeController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mean P1 Chamber', child: _buildDialogTextField(controller: epvMeanP1Controller))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Max P1', child: _buildDialogTextField(controller: epvMaxP1Controller))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Min P1', child: _buildDialogTextField(controller: epvMinP1Controller))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'SD P1', child: _buildDialogTextField(controller: epvSDP1Controller))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mean P2 Port', child: _buildDialogTextField(controller: epvMeanP2Controller))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Max P2 Port', child: _buildDialogTextField(controller: epvMaxP2Controller))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Min P2 Port', child: _buildDialogTextField(controller: epvMinP2Controller))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'SD P2 Port', child: _buildDialogTextField(controller: epvSDP2Controller))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Velocity SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Action Time Mean (ms)', child: _buildDialogTextField(controller: epvActionTimeMeanController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Action Time SD (ms)', child: _buildDialogTextField(controller: epvActionTimeSDController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Sensor 1 S.N.', child: _buildDialogTextField(controller: epvSensor1Controller))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Sensor 2 S.N.', child: _buildDialogTextField(controller: epvSensor2Controller))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'Function Test') ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Weapons / Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Cartridge Temp (°C)', child: _buildDialogTextField(controller: epvCartridgeTempController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Level 1 (Critical)', child: _buildDialogTextField(controller: funcL1Controller, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Level 2 (Major)', child: _buildDialogTextField(controller: funcL2Controller, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Level 3 (Minor)', child: _buildDialogTextField(controller: funcL3Controller, keyboardType: TextInputType.number))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Level 4', child: _buildDialogTextField(controller: funcL4Controller, keyboardType: TextInputType.number))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        _buildDialogField(label: 'Specific Defect Details', child: _buildDialogTextField(controller: funcDetailsController)),
+                      ] else if (r.testName == 'Extraction Force Test') ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Force Mode / Type', child: _buildDialogTextField(controller: extTypeController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Min Extraction Force (N)', child: _buildDialogTextField(controller: extMinForceController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Mean Extraction Force (N)', child: _buildDialogTextField(controller: extMeanForceController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Max Extraction Force (N)', child: _buildDialogTextField(controller: extMaxForceController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Force SD (N)', child: _buildDialogTextField(controller: extSDForceController))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'Primer Sensitivity Test') ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Primer Lot', child: _buildDialogTextField(controller: primerLotController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: primerSupplierController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Avg Insertion Depth (mm)', child: _buildDialogTextField(controller: primerInsertionDepthController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mean Fire Height H̄ (cm)', child: _buildDialogTextField(controller: primerHbarController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Standard Dev SD (cm)', child: _buildDialogTextField(controller: primerSDController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'All-Fire H̄+5SD (cm)', child: _buildDialogTextField(controller: primerAllFireController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'No-Fire H̄-2SD (cm)', child: _buildDialogTextField(controller: primerNoFireController))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'Propellant Test') ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Propellant Lot', child: _buildDialogTextField(controller: propellantLotController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: propellantSupplierController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Code', child: _buildDialogTextField(controller: propellantCodeController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Charge (g)', child: _buildDialogTextField(controller: propellantChargeController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Chamber Press P1', child: _buildDialogTextField(controller: epvMeanP1Controller))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Port Press P2', child: _buildDialogTextField(controller: epvMeanP2Controller))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Velocity SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'Firing Rate Cycle Test') ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Weapon Model', child: _buildDialogTextField(controller: cyclicWeaponController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Ammo Feed Type', child: _buildDialogTextField(controller: cyclicAmmoController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Measured Rate (RPM)', child: _buildDialogTextField(controller: cyclicRateValController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Min Allowed (RPM)', child: _buildDialogTextField(controller: cyclicMinController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Max Allowed (RPM)', child: _buildDialogTextField(controller: cyclicMaxController))),
+                          ],
+                        ),
+                      ] else if (r.testName == 'Terminal Effect Test') ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Target Distance (m)', child: _buildDialogTextField(controller: velocityDistanceController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Hole Diameter', child: _buildDialogTextField(controller: termHoleController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Steel Penetration', child: _buildDialogTextField(controller: termSteelController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Aluminum Penetration', child: _buildDialogTextField(controller: termAlumController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Terminal Velocity (m/s)', child: _buildDialogTextField(controller: termVelController))),
+                          ],
+                        ),
+                      ],
+
+                      // Section 6: Retest Overrides (if record is a retest)
+                      if (r.isRetest) ...[
+                        const SizedBox(height: 16.0),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B),
+                            borderRadius: BorderRadius.circular(6.0),
+                            border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5)),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.replay_circle_filled_rounded, color: Color(0xFFF59E0B), size: 16.0),
+                              SizedBox(width: 8.0),
+                              Text(
+                                'RETEST VERIFICATION METRICS (ADMIN OVERRIDE)',
+                                style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11.5, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(label: 'Retest Operator', child: _buildDialogTextField(controller: retestOpController)),
                             ),
-                          ] else ...[
-                            Row(
-                              children: [
-                                Expanded(child: _buildDialogField(label: 'Propellant Lot', child: _buildDialogTextField(controller: propellantLotController))),
-                                const SizedBox(width: 8.0),
-                                Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: propellantSupplierController))),
-                                const SizedBox(width: 8.0),
-                                Expanded(child: _buildDialogField(label: 'Code', child: _buildDialogTextField(controller: propellantCodeController))),
-                              ],
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(
+                                label: 'Retest Status',
+                                child: DropdownButtonFormField<String>(
+                                  value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editRetestStatus) ? editRetestStatus : 'Approved',
+                                  dropdownColor: const Color(0xFF1A2035),
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                  decoration: _dialogInputDecoration(),
+                                  items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                  onChanged: (v) => setDialogState(() => editRetestStatus = v!),
+                                ),
+                              ),
                             ),
                           ],
-                        ],
-                      ] else if (r.testName == 'Primer Sensitivity Test') ...[
-                        const SizedBox(height: 12.0),
-                        if (isMobile) ...[
-                          Row(
-                            children: [
-                              Expanded(child: _buildDialogField(label: 'Primer Lot', child: _buildDialogTextField(controller: primerLotController))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: primerSupplierController))),
-                            ],
-                          ),
-                          const SizedBox(height: 10.0),
-                          _buildDialogField(label: 'Avg Insertion Depth (mm)', child: _buildDialogTextField(controller: primerInsertionDepthController)),
-                        ] else ...[
-                          Row(
-                            children: [
-                              Expanded(child: _buildDialogField(label: 'Primer Lot', child: _buildDialogTextField(controller: primerLotController))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Supplier', child: _buildDialogTextField(controller: primerSupplierController))),
-                              const SizedBox(width: 8.0),
-                              Expanded(child: _buildDialogField(label: 'Avg Insertion Depth (mm)', child: _buildDialogTextField(controller: primerInsertionDepthController))),
-                            ],
-                          ),
-                        ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildDialogField(label: 'Retest Quantity Tested', child: _buildDialogTextField(controller: retestProducedController, keyboardType: TextInputType.number)),
+                            ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              child: _buildDialogField(label: 'Retest Defects Found', child: _buildDialogTextField(controller: retestDefectsController, keyboardType: TextInputType.number)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        _buildDialogField(label: 'Retest Notes / Remarks', child: _buildDialogTextField(controller: retestNotesController, maxLines: 2)),
                       ],
                     ],
                   ),
@@ -1307,17 +1682,28 @@ class _HistoryTabState extends State<HistoryTab> {
                 ElevatedButton.icon(
                   onPressed: () {
                     final int produced = int.tryParse(producedController.text.trim()) ?? r.produced;
-                    final int defects = int.tryParse(defectsController.text.trim()) ?? r.defects;
+                    int defects = int.tryParse(defectsController.text.trim()) ?? r.defects;
+
                     final int mouthSlow = int.tryParse(mouthSlowController.text.trim()) ?? r.mouthSlow;
                     final int mouthFast = int.tryParse(mouthFastController.text.trim()) ?? r.mouthFast;
                     final int primerSlow = int.tryParse(primerSlowController.text.trim()) ?? r.primerSlow;
                     final int primerFast = int.tryParse(primerFastController.text.trim()) ?? r.primerFast;
 
-                    String savedNotes = notesController.text.trim();
-                    if (r.notes.contains('Temps:')) {
-                      final tempsPart = r.notes.substring(r.notes.indexOf('Temps:')).trim();
-                      savedNotes = savedNotes.isNotEmpty ? '$savedNotes | $tempsPart' : tempsPart;
-                    }
+                    final int neckSlow = int.tryParse(neckSlowController.text.trim()) ?? r.neckSlow;
+                    final int neckFast = int.tryParse(neckFastController.text.trim()) ?? r.neckFast;
+                    final int shoulderSlow = int.tryParse(shoulderSlowController.text.trim()) ?? r.shoulderSlow;
+                    final int shoulderFast = int.tryParse(shoulderFastController.text.trim()) ?? r.shoulderFast;
+                    final int bodySlow = int.tryParse(bodySlowController.text.trim()) ?? r.bodySlow;
+                    final int bodyFast = int.tryParse(bodyFastController.text.trim()) ?? r.bodyFast;
+                    final int headSlow = int.tryParse(headSlowController.text.trim()) ?? r.headSlow;
+                    final int headFast = int.tryParse(headFastController.text.trim()) ?? r.headFast;
+
+                    final int funcL1 = int.tryParse(funcL1Controller.text.trim()) ?? r.functionLevel1;
+                    final int funcL2 = int.tryParse(funcL2Controller.text.trim()) ?? r.functionLevel2;
+                    final int funcL3 = int.tryParse(funcL3Controller.text.trim()) ?? r.functionLevel3;
+                    final int funcL4 = int.tryParse(funcL4Controller.text.trim()) ?? r.functionLevel4;
+
+                    final String savedNotes = notesController.text.trim();
 
                     final updated = r.copyWith(
                       operators: operatorsController.text.trim(),
@@ -1328,6 +1714,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       defects: defects,
                       status: editStatus,
                       notes: savedNotes,
+                      // Waterproof
                       pressureBar: pressureController.text.trim(),
                       viscosity: viscosityController.text.trim(),
                       samplingLocation: locationController.text.trim(),
@@ -1335,15 +1722,86 @@ class _HistoryTabState extends State<HistoryTab> {
                       mouthFast: mouthFast,
                       primerSlow: primerSlow,
                       primerFast: primerFast,
-                      barrelSN: barrelSNController.text.trim(),
-                      velMean: velMeanController.text.trim(),
+                      // Residual Stress
                       roomTemp: roomTempController.text.trim(),
+                      neckSlow: neckSlow,
+                      neckFast: neckFast,
+                      shoulderSlow: shoulderSlow,
+                      shoulderFast: shoulderFast,
+                      bodySlow: bodySlow,
+                      bodyFast: bodyFast,
+                      headSlow: headSlow,
+                      headFast: headFast,
+                      // Accuracy & Extraction
+                      barrelSN: barrelSNController.text.trim(),
+                      barrelType: barrelTypeController.text.trim(),
+                      velocityDistance: velocityDistanceController.text.trim(),
+                      accMeanRadius: accRadiusController.text.trim(),
+                      accLargestDistance: accMaxDistController.text.trim(),
+                      accSDX: r.testName == 'Extraction Force Test' ? extSDForceController.text.trim() : accSDXController.text.trim(),
+                      accSDY: accSDYController.text.trim(),
+                      accMeanX: r.testName == 'Extraction Force Test' ? extMeanForceController.text.trim() : accMeanXController.text.trim(),
+                      accMeanY: accMeanYController.text.trim(),
+                      accMinX: r.testName == 'Extraction Force Test' ? extMinForceController.text.trim() : r.accMinX,
+                      accMaxX: r.testName == 'Extraction Force Test' ? extMaxForceController.text.trim() : r.accMaxX,
+                      velMean: velMeanController.text.trim(),
+                      velMin: velMinController.text.trim(),
+                      velMax: velMaxController.text.trim(),
+                      velSD: velSDController.text.trim(),
+                      // EPVAT
+                      cartridgeTemp: epvCartridgeTempController.text.trim(),
+                      epvatPressureUnit: epvPressureUnitController.text.trim(),
+                      epvatPressureType: epvPressureTypeController.text.trim(),
+                      epvatMeanPressure: epvMeanP1Controller.text.trim(),
+                      epvatMaxPressure: epvMaxP1Controller.text.trim(),
+                      epvatMinPressure: epvMinP1Controller.text.trim(),
+                      epvatSDPressure: epvSDP1Controller.text.trim(),
+                      epvatP2MeanPressure: epvMeanP2Controller.text.trim(),
+                      epvatP2MaxPressure: epvMaxP2Controller.text.trim(),
+                      epvatP2MinPressure: epvMinP2Controller.text.trim(),
+                      epvatP2SDPressure: epvSDP2Controller.text.trim(),
+                      actionTimeMean: epvActionTimeMeanController.text.trim(),
+                      actionTimeSD: epvActionTimeSDController.text.trim(),
+                      epvatSensor1: epvSensor1Controller.text.trim(),
+                      epvatSensor2: epvSensor2Controller.text.trim(),
+                      // Function
+                      functionLevel1: funcL1,
+                      functionLevel2: funcL2,
+                      functionLevel3: funcL3,
+                      functionLevel4: funcL4,
+                      functionDefectDetails: funcDetailsController.text.trim(),
+                      // Extraction Force
+                      extractionForceType: extTypeController.text.trim(),
+                      // Primer
                       primerLot: primerLotController.text.trim(),
                       primerSupplier: primerSupplierController.text.trim(),
                       primerInsertionDepth: primerInsertionDepthController.text.trim(),
+                      primerHbar: primerHbarController.text.trim(),
+                      primerSD: primerSDController.text.trim(),
+                      primerAllFireH: primerAllFireController.text.trim(),
+                      primerNoFireH: primerNoFireController.text.trim(),
+                      // Propellant
                       propellantLot: propellantLotController.text.trim(),
                       propellantSupplier: propellantSupplierController.text.trim(),
                       propellantCode: propellantCodeController.text.trim(),
+                      propellantCharge: propellantChargeController.text.trim(),
+                      // Cyclic Rate
+                      cyclicRateWeaponType: cyclicWeaponController.text.trim(),
+                      cyclicRateAmmoType: cyclicAmmoController.text.trim(),
+                      cyclicRateValue: cyclicRateValController.text.trim(),
+                      cyclicRateMin: cyclicMinController.text.trim(),
+                      cyclicRateMax: cyclicMaxController.text.trim(),
+                      // Terminal Effect
+                      terminalHoleDiameter: termHoleController.text.trim(),
+                      terminalSteelPenetration: termSteelController.text.trim(),
+                      terminalAluminumPenetration: termAlumController.text.trim(),
+                      terminalVelocity: termVelController.text.trim(),
+                      // Retest fields
+                      retestOperator: r.isRetest ? retestOpController.text.trim() : r.retestOperator,
+                      retestStatus: r.isRetest ? editRetestStatus : r.retestStatus,
+                      retestNotes: r.isRetest ? retestNotesController.text.trim() : r.retestNotes,
+                      retestProduced: r.isRetest ? (int.tryParse(retestProducedController.text.trim()) ?? r.retestProduced) : r.retestProduced,
+                      retestDefects: r.isRetest ? (int.tryParse(retestDefectsController.text.trim()) ?? r.retestDefects) : r.retestDefects,
                     );
                     Navigator.pop(ctx);
                     widget.onEditRecord?.call(r, updated);
@@ -1439,160 +1897,273 @@ class _HistoryTabState extends State<HistoryTab> {
     });
   }
 
+  Widget _buildParamValueSpan(String label, String value, {Color labelColor = const Color(0xFF0F172A), Color valueColor = const Color(0xFF334155)}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1.0),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$label:   ',
+              style: TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: labelColor),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(fontSize: 11.0, fontWeight: FontWeight.normal, color: valueColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildResultCell(BallisticRecord r) {
+    final m = r.parsedRetestMetrics;
+    Widget content;
+
     if (r.testName == 'Waterproof Test') {
       final totalLeaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
-      return Text(
-        totalLeaks == 0 ? '0 leaks' : '$totalLeaks leaks',
-        style: TextStyle(
-          fontSize: 12.0,
-          fontWeight: FontWeight.w600,
-          color: totalLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-        ),
-      );
+      final testStr = totalLeaks == 0 ? '0 leaks' : '$totalLeaks leaks';
+      if (r.isRetest) {
+        final retLeaks = m.isNotEmpty
+            ? ((m['mouthSlow'] as int? ?? 0) + (m['mouthFast'] as int? ?? 0) + (m['primerSlow'] as int? ?? 0) + (m['primerFast'] as int? ?? 0))
+            : r.retestDefects;
+        final retStr = retLeaks == 0 ? '0 leak' : '$retLeaks leaks';
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test', testStr, valueColor: totalLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+            _buildParamValueSpan('Retest', retStr, valueColor: retLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+          ],
+        );
+      } else {
+        content = _buildParamValueSpan(
+          'Leaks',
+          testStr,
+          valueColor: totalLeaks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+        );
+      }
     } else if (r.testName == 'Function Test') {
       final l1 = r.functionLevel1;
       final l2 = r.functionLevel2;
       final l3 = r.functionLevel3;
       final l4 = r.functionLevel4;
-      final totalCracks = l1 + l2 + l3 + l4;
-      if (totalCracks == 0) {
-        return const Text(
-          '0 crack',
-          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+      final totalDefects = l1 + l2 + l3 + l4;
+      final testStr = totalDefects == 0 ? '0 defect' : '$totalDefects defect${totalDefects == 1 ? '' : 's'}';
+      if (r.isRetest) {
+        final rL1 = m['functionLevel1'] as int? ?? 0;
+        final rL2 = m['functionLevel2'] as int? ?? 0;
+        final rL3 = m['functionLevel3'] as int? ?? 0;
+        final rL4 = m['functionLevel4'] as int? ?? 0;
+        final retDef = m.isNotEmpty ? (rL1 + rL2 + rL3 + rL4) : r.retestDefects;
+        final retStr = retDef == 0 ? '0 defect' : '$retDef defect${retDef == 1 ? '' : 's'}';
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test', testStr, valueColor: totalDefects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+            _buildParamValueSpan('Retest', retStr, valueColor: retDef > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+          ],
         );
+      } else {
+        if (totalDefects == 0) {
+          content = _buildParamValueSpan('Defects', '0 defect', valueColor: const Color(0xFF10B981));
+        } else {
+          final levels = <String>[];
+          if (l1 > 0) levels.add('L1: $l1');
+          if (l2 > 0) levels.add('L2: $l2');
+          if (l3 > 0) levels.add('L3: $l3');
+          if (l4 > 0) levels.add('L4: $l4');
+          content = _buildParamValueSpan('Defects', '$totalDefects (${levels.join(", ")})', valueColor: const Color(0xFFEF4444));
+        }
       }
-      final levels = <String>[];
-      if (l1 > 0) levels.add('L1: $l1');
-      if (l2 > 0) levels.add('L2: $l2');
-      if (l3 > 0) levels.add('L3: $l3');
-      if (l4 > 0) levels.add('L4: $l4');
-      return Text(
-        '$totalCracks cracks (${levels.join(", ")})',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
-      );
     } else if (r.testName == 'Accuracy Test') {
       final calLower = r.caliber.toLowerCase();
       final isM193 = calLower.contains('m193');
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            isM193 && r.accMeanRadius.isNotEmpty
-                ? 'MR: ${r.accMeanRadius} mm (SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm)'
-                : 'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Text(
-            'SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Text(
-            'Mean Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
-          ),
-        ],
-      );
-    } else if (r.testName == 'EPVAT test') {
+      if (r.isRetest) {
+        final retRadius = m['accMeanRadius']?.toString() ?? '';
+        final retSDX = m['accSDX']?.toString() ?? '';
+        final retSDY = m['accSDY']?.toString() ?? '';
+        if (isM193 && (r.accMeanRadius.isNotEmpty || retRadius.isNotEmpty)) {
+          content = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildParamValueSpan('Test MR', '${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm'),
+              _buildParamValueSpan('Retest MR', '${retRadius.isNotEmpty ? retRadius : "-"} mm'),
+            ],
+          );
+        } else {
+          content = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildParamValueSpan('Test SD', 'X:${r.accSDX.isNotEmpty ? r.accSDX : "-"} Y:${r.accSDY.isNotEmpty ? r.accSDY : "-"}'),
+              _buildParamValueSpan('Retest SD', 'X:${retSDX.isNotEmpty ? retSDX : "-"} Y:${retSDY.isNotEmpty ? retSDY : "-"}'),
+            ],
+          );
+        }
+      } else {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isM193 && r.accMeanRadius.isNotEmpty)
+              _buildParamValueSpan('Mean Radius', '${r.accMeanRadius} mm (SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm)')
+            else
+              _buildParamValueSpan('SD X', '${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm'),
+            _buildParamValueSpan('SD Y', '${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm'),
+            _buildParamValueSpan('Mean Velocity', '${r.velMean.isNotEmpty ? r.velMean : "-"} m/s'),
+          ],
+        );
+      }
+    } else if (r.testName == 'EPVAT test' || r.testName == 'Propellant Test') {
       final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Mean Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Text(
-            'Mean Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Text(
-            'Mean Vel (+21 °C): ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
-          ),
-        ],
-      );
-    } else if (r.testName == 'Propellant Test') {
-      final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Mean Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Text(
-            'Mean Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit',
-            style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Text(
-            'Mean Vel (+21 °C): ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
-          ),
-        ],
-      );
+      if (r.isRetest) {
+        final retP1 = m['epvatMeanPressure']?.toString() ?? '';
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test P1', '${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit'),
+            _buildParamValueSpan('Retest P1', '${retP1.isNotEmpty ? retP1 : "-"} $unit'),
+          ],
+        );
+      } else {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Mean Chamber', '${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $unit'),
+            _buildParamValueSpan('Mean Port', '${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $unit'),
+            _buildParamValueSpan('Mean Velocity', '${r.velMean.isNotEmpty ? r.velMean : "-"} m/s'),
+          ],
+        );
+      }
     } else if (r.testName == 'Extraction Force Test') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Min: ${r.accMinX.isNotEmpty ? r.accMinX : "-"} N',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Text(
-            'Max: ${r.accMaxX.isNotEmpty ? r.accMaxX : "-"} N',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-          ),
-        ],
-      );
+      if (r.isRetest) {
+        final retMin = m['accMinX']?.toString() ?? '';
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test Min', '${r.accMinX.isNotEmpty ? r.accMinX : "-"} N'),
+            _buildParamValueSpan('Retest Min', '${retMin.isNotEmpty ? retMin : "-"} N'),
+          ],
+        );
+      } else {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Min Force', '${r.accMinX.isNotEmpty ? r.accMinX : "-"} N'),
+            _buildParamValueSpan('Max Force', '${r.accMaxX.isNotEmpty ? r.accMaxX : "-"} N'),
+          ],
+        );
+      }
     } else if (r.testName == 'Residual Stress Test') {
       final neck = r.neckSlow + r.neckFast;
       final shoulder = r.shoulderSlow + r.shoulderFast;
       final body = r.bodySlow + r.bodyFast;
       final head = r.headSlow + r.headFast;
       final total = neck + shoulder + body + head;
-      if (total == 0) {
-        return const Text(
-          '0 crack',
-          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+      final testStr = total == 0 ? '0 crack' : '$total crack${total == 1 ? '' : 's'}';
+      if (r.isRetest) {
+        final retCracks = m.isNotEmpty
+            ? ((m['neckSlow'] as int? ?? 0) + (m['neckFast'] as int? ?? 0) + (m['shoulderSlow'] as int? ?? 0) + (m['shoulderFast'] as int? ?? 0) + (m['bodySlow'] as int? ?? 0) + (m['bodyFast'] as int? ?? 0) + (m['headSlow'] as int? ?? 0) + (m['headFast'] as int? ?? 0))
+            : r.retestDefects;
+        final retStr = retCracks == 0 ? '0 crack' : '$retCracks crack${retCracks == 1 ? '' : 's'}';
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test', testStr, valueColor: total > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+            _buildParamValueSpan('Retest', retStr, valueColor: retCracks > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+          ],
+        );
+      } else {
+        if (total == 0) {
+          content = _buildParamValueSpan('Cracks', '0 crack', valueColor: const Color(0xFF10B981));
+        } else {
+          final zones = <String>[];
+          if (neck > 0) zones.add('Neck: $neck');
+          if (shoulder > 0) zones.add('Shoulder: $shoulder');
+          if (body > 0) zones.add('Body: $body');
+          if (head > 0) zones.add('Head: $head');
+          content = _buildParamValueSpan('Cracks', '$total (${zones.join(", ")})', valueColor: const Color(0xFFEF4444));
+        }
+      }
+    } else if (r.testName == 'Primer Sensitivity Test') {
+      if (r.isRetest) {
+        final retH = m['primerHbar']?.toString() ?? '';
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test H̄', '${r.primerHbar.isNotEmpty ? r.primerHbar : "-"} cm'),
+            _buildParamValueSpan('Retest H̄', '${retH.isNotEmpty ? retH : "-"} cm'),
+          ],
+        );
+      } else {
+        final hm = double.tryParse(r.primerHbar) ?? 0;
+        final sd = double.tryParse(r.primerSD) ?? 0;
+        final plus5 = r.primerAllFireH.isNotEmpty ? r.primerAllFireH : (hm > 0 ? (hm + 5 * sd).toStringAsFixed(1) : "-");
+        final minus2 = r.primerNoFireH.isNotEmpty ? r.primerNoFireH : (hm > 0 ? (hm - 2 * sd).toStringAsFixed(1) : "-");
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('H̄+5SD', '$plus5 cm'),
+            _buildParamValueSpan('H̄-2SD', '$minus2 cm'),
+          ],
         );
       }
-      final zones = <String>[];
-      if (neck > 0) zones.add('Neck: $neck');
-      if (shoulder > 0) zones.add('Shoulder: $shoulder');
-      if (body > 0) zones.add('Body: $body');
-      if (head > 0) zones.add('Head: $head');
-      return Text(
-        '$total cracks (${zones.join(", ")})',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
-      );
-    } else if (r.testName == 'Primer Sensitivity Test') {
-      final hm = double.tryParse(r.primerHbar) ?? 0;
-      final sd = double.tryParse(r.primerSD) ?? 0;
-      final plus5 = r.primerAllFireH.isNotEmpty ? r.primerAllFireH : (hm > 0 ? (hm + 5 * sd).toStringAsFixed(1) : "-");
-      final minus2 = r.primerNoFireH.isNotEmpty ? r.primerNoFireH : (hm > 0 ? (hm - 2 * sd).toStringAsFixed(1) : "-");
-      return Text(
-        'H̄+5SD: $plus5 cm | H̄-2SD: $minus2 cm',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-      );
     } else if (r.testName == 'Firing Rate Cycle Test') {
-      return Text(
-        'Rate: ${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-      );
+      if (r.isRetest) {
+        final retVal = m['cyclicRateValue']?.toString() ?? '';
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test Rate', '${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM'),
+            _buildParamValueSpan('Retest Rate', '${retVal.isNotEmpty ? retVal : "-"} RPM'),
+          ],
+        );
+      } else {
+        content = _buildParamValueSpan('Rate', '${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM');
+      }
     } else if (r.testName == 'Terminal Effect Test') {
-      return Text(
-        'Dist: ${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"}m | Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}',
-        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+      if (r.isRetest) {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Test Hole', '${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}'),
+            _buildParamValueSpan('Retest Hole', '${m['terminalHoleDiameter']?.toString() ?? "-"}'),
+          ],
+        );
+      } else {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildParamValueSpan('Distance', '${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"} m'),
+            _buildParamValueSpan('Hole Diam', '${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}'),
+          ],
+        );
+      }
+    } else {
+      final clean = ReportGenerator.cleanRemarks(r.notes);
+      content = Text(
+        clean.isNotEmpty ? clean : '-',
+        style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
       );
     }
-    return Text(
-      r.notes.isNotEmpty ? r.notes : '-',
-      style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 155.0, maxWidth: 280.0),
+      child: content,
     );
   }
 
@@ -1926,6 +2497,8 @@ class _HistoryTabState extends State<HistoryTab> {
                                 child: DataTable(
                                   columnSpacing: dynamicSpacing,
                                   horizontalMargin: 20.0,
+                                  dataRowMinHeight: 52.0,
+                                  dataRowMaxHeight: 76.0,
                                   headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F6FB)),
                                   columns: [
                                     const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
@@ -2037,7 +2610,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                           Container(
                                             constraints: const BoxConstraints(maxWidth: 160.0),
                                             child: Text(
-                                              r.notes.isNotEmpty ? r.notes : '-',
+                                              ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-',
                                               style: const TextStyle(fontSize: 11.0, color: Color(0xFF475569)),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
@@ -2322,8 +2895,8 @@ class _HistoryTabState extends State<HistoryTab> {
                 vertical: 20.0,
               ),
               child: Container(
-                width: math.min(singleRecord != null ? 1050.0 : 1450.0, MediaQuery.of(context).size.width * 0.98),
-                height: math.min(singleRecord != null ? 820.0 : 850.0, MediaQuery.of(context).size.height * 0.90),
+                width: math.min(1080.0, MediaQuery.of(context).size.width * 0.95),
+                height: math.min(720.0, MediaQuery.of(context).size.height * 0.88),
                 padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 14.0 : 24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2500,6 +3073,8 @@ class _HistoryTabState extends State<HistoryTab> {
                                       headingRowColor: MaterialStateProperty.all(const Color(0xFF263852)),
                                       columnSpacing: 14.0,
                                       horizontalMargin: 12.0,
+                                      dataRowMinHeight: 52.0,
+                                      dataRowMaxHeight: 76.0,
                                       columns: [
                                         const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
                                         const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold))),
@@ -2691,16 +3266,17 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final csvContent = ReportGenerator.generateCsv(reportRecords, selectedReportTest, widget.currentModule);
-                            final slug = singleRecord != null
-                                ? '${singleRecord.lotNo}_${singleRecord.testName.toLowerCase().replaceAll(' ', '_')}'
-                                : selectedReportTest.toLowerCase().replaceAll(' ', '_');
+                            final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
+                            final repTestName = singleRecord?.testName ?? selectedReportTest;
+                            final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
+                            final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadCsv(
                               content: csvContent, 
-                              filename: 'ompc_quality_report_${slug}.csv'
+                              filename: '$exportFilename.csv'
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Quality Excel report downloaded: ompc_quality_report_${slug}.csv'),
+                                content: Text('Quality Excel report downloaded: $exportFilename.csv'),
                                 backgroundColor: const Color(0xFF059669),
                               ),
                             );
@@ -2723,16 +3299,17 @@ class _HistoryTabState extends State<HistoryTab> {
                               base64Logo: widget.base64Logo,
                               adminRules: widget.adminRules,
                             );
-                            final slug = singleRecord != null
-                                ? '${singleRecord.lotNo}_${singleRecord.testName.toLowerCase().replaceAll(' ', '_')}'
-                                : selectedReportTest.toLowerCase().replaceAll(' ', '_');
+                            final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
+                            final repTestName = singleRecord?.testName ?? selectedReportTest;
+                            final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
+                            final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadDoc(
                               content: docContent, 
-                              filename: 'ompc_quality_report_${slug}.doc'
+                              filename: '$exportFilename.doc'
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Quality Word document downloaded: ompc_quality_report_${slug}.doc'),
+                                content: Text('Quality Word document downloaded: $exportFilename.doc'),
                                 backgroundColor: const Color(0xFF0284C7),
                               ),
                             );
@@ -2755,7 +3332,14 @@ class _HistoryTabState extends State<HistoryTab> {
                               base64Logo: widget.base64Logo,
                               adminRules: widget.adminRules,
                             );
-                            await ReportHelper.instance.printHtml(htmlContent: htmlContent);
+                            final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
+                            final repTestName = singleRecord?.testName ?? selectedReportTest;
+                            final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
+                            final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+                            await ReportHelper.instance.printHtml(
+                              htmlContent: htmlContent,
+                              filename: exportFilename,
+                            );
                           },
                           icon: const Icon(Icons.print_outlined, size: 16.0),
                           label: const Text('Download / Print PDF'),
@@ -2869,6 +3453,52 @@ class _HistoryTabState extends State<HistoryTab> {
             runSpacing: 10.0,
             children: _buildTestMetricTiles(r),
           ),
+          if (r.isRetest) ...[
+            const SizedBox(height: 14.0),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.7), width: 1.2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.replay_circle_filled_rounded, color: Color(0xFFF59E0B), size: 18.0),
+                      const SizedBox(width: 8.0),
+                      const Text(
+                        'RETEST VERIFICATION INSPECTION RESULTS',
+                        style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                      ),
+                      const Spacer(),
+                      if (r.retestStatus.isNotEmpty) _buildStatusBadge(r.retestStatus),
+                    ],
+                  ),
+                  const SizedBox(height: 10.0),
+                  Wrap(
+                    spacing: 14.0,
+                    runSpacing: 6.0,
+                    children: [
+                      _buildCompactMeta('RETEST OPERATOR', r.retestOperator.isNotEmpty ? r.retestOperator : r.operators),
+                      if (r.retestTimestamp.isNotEmpty) _buildCompactMeta('RETEST TIME', r.retestTimestamp),
+                      _buildCompactMeta('RETEST SAMPLE', '${r.retestProduced > 0 ? r.retestProduced : r.produced} rounds'),
+                      _buildCompactMeta('RETEST DEFECTS', '${r.retestDefects}', valColor: r.retestDefects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+                    ],
+                  ),
+                  const SizedBox(height: 10.0),
+                  Wrap(
+                    spacing: 10.0,
+                    runSpacing: 10.0,
+                    children: _buildRetestMetricTiles(r),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16.0),
 
           // 3. REMARKS & OBSERVATIONS SECTION (Always completely visible on screen)
@@ -3082,7 +3712,86 @@ class _HistoryTabState extends State<HistoryTab> {
       ];
     }
     return [
-      _buildMetricTile('Test Parameters', r.notes.isNotEmpty ? r.notes : '-'),
+      _buildMetricTile('Test Parameters', ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-'),
+    ];
+  }
+
+  List<Widget> _buildRetestMetricTiles(BallisticRecord r) {
+    final m = r.parsedRetestMetrics;
+    final tName = r.testName;
+    if (tName == 'Waterproof Test') {
+      final ms = m['mouthSlow'] as int? ?? 0;
+      final mf = m['mouthFast'] as int? ?? 0;
+      final ps = m['primerSlow'] as int? ?? 0;
+      final pf = m['primerFast'] as int? ?? 0;
+      final total = ms + mf + ps + pf;
+      return [
+        _buildMetricTile('Mouth Leaks (Slow / Fast)', '$ms / $mf'),
+        _buildMetricTile('Primer Leaks (Slow / Fast)', '$ps / $pf'),
+        _buildMetricTile('Retest Total Leaks', '$total', valueColor: total > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+      ];
+    } else if (tName == 'Residual Stress Test') {
+      final ns = m['neckSlow'] as int? ?? 0;
+      final nf = m['neckFast'] as int? ?? 0;
+      final ss = m['shoulderSlow'] as int? ?? 0;
+      final sf = m['shoulderFast'] as int? ?? 0;
+      final bs = m['bodySlow'] as int? ?? 0;
+      final bf = m['bodyFast'] as int? ?? 0;
+      final hs = m['headSlow'] as int? ?? 0;
+      final hf = m['headFast'] as int? ?? 0;
+      final total = ns + nf + ss + sf + bs + bf + hs + hf;
+      return [
+        _buildMetricTile('Neck Splits', 'Min: $ns | Maj: $nf'),
+        _buildMetricTile('Shoulder Splits', 'Min: $ss | Maj: $sf'),
+        _buildMetricTile('Body Splits', 'Min: $bs | Maj: $bf'),
+        _buildMetricTile('Head Splits', 'Min: $hs | Maj: $hf'),
+        _buildMetricTile('Retest Total Splits', '$total', valueColor: total > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+      ];
+    } else if (tName == 'Accuracy Test') {
+      return [
+        _buildMetricTile('Retest Mean Radius (MR)', m['accMeanRadius'] != null && m['accMeanRadius'].toString().isNotEmpty ? '${m['accMeanRadius']} mm' : '-'),
+        _buildMetricTile('Retest Largest Dist (ES)', m['accLargestDistance'] != null && m['accLargestDistance'].toString().isNotEmpty ? '${m['accLargestDistance']} mm' : '-'),
+        _buildMetricTile('Retest SD X', m['accSDX'] != null && m['accSDX'].toString().isNotEmpty ? '${m['accSDX']} mm' : '-'),
+        _buildMetricTile('Retest SD Y', m['accSDY'] != null && m['accSDY'].toString().isNotEmpty ? '${m['accSDY']} mm' : '-'),
+        _buildMetricTile('Retest Mean Vel', m['velMean'] != null && m['velMean'].toString().isNotEmpty ? '${m['velMean']} m/s' : '-'),
+      ];
+    } else if (tName == 'EPVAT test' || tName == 'Propellant Test') {
+      final unit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
+      return [
+        _buildMetricTile('Retest Chamber P1 (Mean)', m['epvatMeanPressure'] != null && m['epvatMeanPressure'].toString().isNotEmpty ? '${m['epvatMeanPressure']} $unit' : '-'),
+        _buildMetricTile('Retest P1 Max', m['epvatMaxPressure'] != null && m['epvatMaxPressure'].toString().isNotEmpty ? '${m['epvatMaxPressure']} $unit' : '-'),
+        _buildMetricTile('Retest Port P2 (Mean)', m['epvatP2MeanPressure'] != null && m['epvatP2MeanPressure'].toString().isNotEmpty ? '${m['epvatP2MeanPressure']} $unit' : '-'),
+        _buildMetricTile('Retest Action Time', m['actionTimeMean'] != null && m['actionTimeMean'].toString().isNotEmpty ? '${m['actionTimeMean']} ms' : '-'),
+        _buildMetricTile('Retest Mean Vel', m['velMean'] != null && m['velMean'].toString().isNotEmpty ? '${m['velMean']} m/s' : '-'),
+      ];
+    } else if (tName == 'Function Test') {
+      final l1 = m['functionLevel1'] as int? ?? 0;
+      final l2 = m['functionLevel2'] as int? ?? 0;
+      final l3 = m['functionLevel3'] as int? ?? 0;
+      final l4 = m['functionLevel4'] as int? ?? 0;
+      final total = l1 + l2 + l3 + l4;
+      return [
+        _buildMetricTile('Retest L1 (Critical)', '$l1', valueColor: l1 > 0 ? const Color(0xFFEF4444) : Colors.white),
+        _buildMetricTile('Retest L2 (Major)', '$l2', valueColor: l2 > 0 ? const Color(0xFFF97316) : Colors.white),
+        _buildMetricTile('Retest L3 (Minor)', '$l3', valueColor: l3 > 0 ? const Color(0xFFFBBF24) : Colors.white),
+        _buildMetricTile('Retest Level 4', '$l4', valueColor: const Color(0xFF38BDF8)),
+        _buildMetricTile('Retest Total Defects', '$total', valueColor: total > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+      ];
+    } else if (tName == 'Extraction Force Test') {
+      return [
+        _buildMetricTile('Retest Min Force', m['accMinX'] != null && m['accMinX'].toString().isNotEmpty ? '${m['accMinX']} N' : '-'),
+        _buildMetricTile('Retest Force Type', m['extractionForceType'] != null && m['extractionForceType'].toString().isNotEmpty ? '${m['extractionForceType']}' : '-'),
+      ];
+    } else if (tName == 'Primer Sensitivity Test') {
+      return [
+        _buildMetricTile('Retest Mean Height (H̄)', m['primerHbar'] != null && m['primerHbar'].toString().isNotEmpty ? '${m['primerHbar']} cm' : '-'),
+        _buildMetricTile('Retest SD', m['primerSD'] != null && m['primerSD'].toString().isNotEmpty ? '${m['primerSD']} cm' : '-'),
+        _buildMetricTile('Retest All-Fire', m['primerAllFireH'] != null && m['primerAllFireH'].toString().isNotEmpty ? '${m['primerAllFireH']} cm' : '-'),
+        _buildMetricTile('Retest No-Fire', m['primerNoFireH'] != null && m['primerNoFireH'].toString().isNotEmpty ? '${m['primerNoFireH']} cm' : '-'),
+      ];
+    }
+    return [
+      _buildMetricTile('Retest Details', r.retestNotes.isNotEmpty ? r.retestNotes : '-'),
     ];
   }
 
