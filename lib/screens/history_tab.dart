@@ -1904,15 +1904,17 @@ class _HistoryTabState extends State<HistoryTab> {
         TextSpan(
           children: [
             TextSpan(
-              text: '$label:   ',
-              style: TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: labelColor),
+              text: '$label: ',
+              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: labelColor),
             ),
             TextSpan(
               text: value,
-              style: TextStyle(fontSize: 11.0, fontWeight: FontWeight.normal, color: valueColor),
+              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.normal, color: valueColor),
             ),
           ],
         ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -2162,7 +2164,7 @@ class _HistoryTabState extends State<HistoryTab> {
     }
 
     return Container(
-      constraints: const BoxConstraints(minWidth: 155.0, maxWidth: 280.0),
+      constraints: const BoxConstraints(maxWidth: 320.0),
       child: content,
     );
   }
@@ -2457,6 +2459,7 @@ class _HistoryTabState extends State<HistoryTab> {
         Expanded(
           child: Container(
             width: double.infinity,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14.0),
@@ -2475,224 +2478,458 @@ class _HistoryTabState extends State<HistoryTab> {
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       final availableWidth = constraints.maxWidth;
-                      final double dynamicSpacing = ((availableWidth - 850.0) / 10.0).clamp(14.0, 60.0);
-
-                      return Scrollbar(
-                        controller: _verticalScrollController,
-                        thumbVisibility: true,
-                        trackVisibility: true,
-                        child: SingleChildScrollView(
-                          controller: _verticalScrollController,
-                          scrollDirection: Axis.vertical,
-                          child: Scrollbar(
+                      if (availableWidth < 768.0) {
+                        return Scrollbar(
+                          controller: _horizontalScrollController,
+                          thumbVisibility: true,
+                          child: SingleChildScrollView(
                             controller: _horizontalScrollController,
-                            thumbVisibility: true,
-                            trackVisibility: true,
-                            child: SingleChildScrollView(
-                              controller: _horizontalScrollController,
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.only(bottom: 48.0),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(minWidth: availableWidth),
-                                child: DataTable(
-                                  columnSpacing: dynamicSpacing,
-                                  horizontalMargin: 20.0,
-                                  dataRowMinHeight: 52.0,
-                                  dataRowMaxHeight: 76.0,
-                                  headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F6FB)),
-                                  columns: [
-                                    const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('INSPECTOR', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('TEST NAME', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    DataColumn(
-                                      label: Text(
-                                        widget.currentModule == 'Daily Test'
-                                            ? 'HOPPER NO.'
-                                            : (widget.currentModule == 'Component Test' ? 'COMPONENT LOT' : 'LOT NO.'),
-                                        style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('SAMPLE SIZE', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('RESULTS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('REMARKS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                    const DataColumn(label: Text('ACTIONS', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold))),
-                                  ],
-                                  rows: displayRecords.map((r) {
-                                    return DataRow(
-                                      color: MaterialStateProperty.resolveWith((states) {
-                                        final st = r.status.toLowerCase();
-                                        if (st.contains('condition')) {
-                                          return const Color(0xFF0284C7).withOpacity(0.09);
-                                        } else if (st.contains('approved')) {
-                                          return const Color(0xFF10B981).withOpacity(0.08);
-                                        } else if (st.contains('reject')) {
-                                          return const Color(0xFFEF4444).withOpacity(0.12);
-                                        } else if (st.contains('retest') || st.contains('pending')) {
-                                          return const Color(0xFFF59E0B).withOpacity(0.12);
-                                        }
-                                        return null;
-                                      }),
-                                      cells: [
-                                        DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF475569)))),
-                                        DataCell(
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.0, color: Color(0xFF0F172A))),
-                                              if (r.shift.isNotEmpty)
-                                                Text('Shift: ${r.shift}', style: const TextStyle(fontSize: 10.0, color: Color(0xFF64748B))),
-                                            ],
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFEDF4FC),
-                                              borderRadius: BorderRadius.circular(4.0),
-                                              border: Border.all(color: const Color(0xFFB8CEE5)),
-                                            ),
-                                            child: Text(
-                                              r.testName,
-                                              style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F6FB),
-                                              borderRadius: BorderRadius.circular(4.0),
-                                              border: Border.all(color: const Color(0xFFCBD5E1)),
-                                            ),
-                                            child: Text(
-                                              r.caliber,
-                                              style: const TextStyle(color: Color(0xFF0F172A), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            widget.currentModule == 'Daily Test'
-                                                ? r.lotNo
-                                                : (widget.currentModule == 'Component Test'
-                                                    ? (r.primerLot.isNotEmpty ? r.primerLot : (r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo))
-                                                    : (r.hopperNo.isEmpty && r.boxNo.isEmpty ? r.lotNo : '${r.lotNo} (H:${r.hopperNo}, B:${r.boxNo})')),
-                                            style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                        DataCell(_buildStatusBadge(r.status)),
-                                        DataCell(
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F6FB),
-                                              borderRadius: BorderRadius.circular(6.0),
-                                              border: Border.all(color: const Color(0xFFCBD5E1)),
-                                            ),
-                                            child: Text(
-                                              '${r.produced} rounds',
-                                              style: const TextStyle(
-                                                fontFamily: 'JetBrainsMono',
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF0F172A),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(_buildResultCell(r)),
-                                        DataCell(
-                                          Container(
-                                            constraints: const BoxConstraints(maxWidth: 160.0),
-                                            child: Text(
-                                              ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-',
-                                              style: const TextStyle(fontSize: 11.0, color: Color(0xFF475569)),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              if (r.status.toLowerCase().contains('retest')) ...[
-                                                IconButton(
-                                                  icon: const Icon(Icons.replay_circle_filled_rounded, color: Color(0xFFF59E0B), size: 20.0),
-                                                  onPressed: () => _showRetestDialog(r),
-                                                  tooltip: 'Perform Retest Inspection',
-                                                  padding: EdgeInsets.zero,
-                                                  constraints: const BoxConstraints(),
-                                                ),
-                                                const SizedBox(width: 8.0),
-                                              ],
-                                              IconButton(
-                                                icon: const Icon(Icons.auto_awesome, color: Color(0xFF0284C7), size: 18.0),
-                                                onPressed: () => _showAiAnalysisDialog(r),
-                                                tooltip: 'AI Analysis & Recommendations',
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(),
-                                              ),
-                                              const SizedBox(width: 8.0),
-                                              if (r.attachmentBase64.isNotEmpty) ...[
-                                                IconButton(
-                                                  icon: const Icon(Icons.attach_file, color: Color(0xFF0284C7), size: 18.0),
-                                                  onPressed: () => _showAttachmentDialog(r),
-                                                  tooltip: 'View Attachment (${r.attachmentName})',
-                                                  padding: EdgeInsets.zero,
-                                                  constraints: const BoxConstraints(),
-                                                ),
-                                                const SizedBox(width: 8.0),
-                                              ],
-                                              IconButton(
-                                                icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF0284C7), size: 18.0),
-                                                onPressed: () => _showReportGenerationDialog([r], singleRecord: r),
-                                                tooltip: 'Generate Individual Report',
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(),
-                                              ),
-                                              if (widget.isAdmin || widget.canEditRecords) ...[
-                                                const SizedBox(width: 8.0),
-                                                IconButton(
-                                                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF0284C7), size: 18.0),
-                                                  onPressed: () => _showEditRecordDialog(r),
-                                                  tooltip: 'Edit Entry',
-                                                  padding: EdgeInsets.zero,
-                                                  constraints: const BoxConstraints(),
-                                                ),
-                                              ],
-                                              if (widget.isAdmin || widget.canDeleteRecords) ...[
-                                                const SizedBox(width: 8.0),
-                                                IconButton(
-                                                  icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18.0),
-                                                  onPressed: () => _confirmDelete(r),
-                                                  tooltip: 'Delete Entry',
-                                                  padding: EdgeInsets.zero,
-                                                  constraints: const BoxConstraints(),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: 768.0,
+                              child: _buildInspectionLogTable(displayRecords),
                             ),
                           ),
-                        ),
-                      );
+                        );
+                      }
+                      return _buildInspectionLogTable(displayRecords);
                     },
                   ),
           ),
         ),
       ],
+    );
+  }
+
+  static const int _flexTime = 8;
+  static const int _flexInspector = 9;
+  static const int _flexTestName = 11;
+  static const int _flexCaliber = 8;
+  static const int _flexLot = 9;
+  static const int _flexStatus = 9;
+  static const int _flexSample = 6;
+  static const int _flexResults = 16;
+  static const int _flexRemarks = 9;
+  static const int _flexActions = 15;
+
+  Widget _buildInspectionLogTable(List<BallisticRecord> displayRecords) {
+    return Column(
+      children: [
+        // Pinned Header
+        Container(
+          height: 42.0,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1F6FB),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(13.0)),
+            border: Border(bottom: BorderSide(color: Color(0xFFCBD5E1), width: 1.0)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14.0),
+          child: Row(
+            children: [
+              _buildHeaderCell('TIME', flex: _flexTime),
+              _buildHeaderCell('INSPECTOR', flex: _flexInspector),
+              _buildHeaderCell('TEST NAME', flex: _flexTestName),
+              _buildHeaderCell('CALIBER', flex: _flexCaliber),
+              _buildHeaderCell(
+                widget.currentModule == 'Daily Test'
+                    ? 'HOPPER NO.'
+                    : (widget.currentModule == 'Component Test' ? 'COMPONENT LOT' : 'LOT NO.'),
+                flex: _flexLot,
+              ),
+              _buildHeaderCell('STATUS', flex: _flexStatus),
+              _buildHeaderCell('QTY', flex: _flexSample),
+              _buildHeaderCell('RESULTS', flex: _flexResults),
+              _buildHeaderCell('REMARKS', flex: _flexRemarks),
+              _buildHeaderCell('ACTIONS', flex: _flexActions, align: TextAlign.end),
+            ],
+          ),
+        ),
+        // Scrollable Log Rows
+        Expanded(
+          child: Scrollbar(
+            controller: _verticalScrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            child: ListView.builder(
+              controller: _verticalScrollController,
+              itemCount: displayRecords.length,
+              itemBuilder: (context, index) {
+                final r = displayRecords[index];
+                return _buildTableRow(r, index);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderCell(String label, {required int flex, TextAlign align = TextAlign.start}) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: Text(
+          label,
+          textAlign: align,
+          style: const TextStyle(
+            color: Color(0xFF0284C7),
+            fontSize: 10.0,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionIcon({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      preferBelow: false,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(4.0),
+          hoverColor: color.withOpacity(0.12),
+          child: Padding(
+            padding: const EdgeInsets.all(3.0),
+            child: Icon(icon, color: color, size: 16.0),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableRow(BallisticRecord r, int index) {
+    final st = r.status.toLowerCase();
+    Color? rowBg;
+    if (st.contains('condition')) {
+      rowBg = const Color(0xFF0284C7).withOpacity(0.06);
+    } else if (st.contains('approved')) {
+      rowBg = const Color(0xFF10B981).withOpacity(0.05);
+    } else if (st.contains('reject') || st.contains('fail')) {
+      rowBg = const Color(0xFFEF4444).withOpacity(0.08);
+    } else if (st.contains('retest') || st.contains('pending')) {
+      rowBg = const Color(0xFFF59E0B).withOpacity(0.08);
+    } else if (index.isEven) {
+      rowBg = const Color(0xFFFAFCFF);
+    }
+
+    String timePart = r.testTime.isNotEmpty ? r.testTime : '';
+    String datePart = '';
+    if (r.timestamp.contains(' ')) {
+      final parts = r.timestamp.split(' ');
+      datePart = parts[0];
+      if (timePart.isEmpty && parts.length > 1) {
+        timePart = parts.sublist(1).join(' ');
+      }
+    } else {
+      datePart = r.timestamp;
+    }
+    if (timePart.isEmpty) timePart = datePart;
+
+    final String lotPrimary;
+    final String lotSecondary;
+    if (widget.currentModule == 'Daily Test') {
+      lotPrimary = r.lotNo;
+      lotSecondary = '';
+    } else if (widget.currentModule == 'Component Test') {
+      lotPrimary = r.primerLot.isNotEmpty ? r.primerLot : (r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo);
+      lotSecondary = '';
+    } else {
+      lotPrimary = r.lotNo;
+      if (r.hopperNo.isNotEmpty || r.boxNo.isNotEmpty) {
+        lotSecondary = 'H:${r.hopperNo.isNotEmpty ? r.hopperNo : "-"} B:${r.boxNo.isNotEmpty ? r.boxNo : "-"}';
+      } else {
+        lotSecondary = '';
+      }
+    }
+
+    final cleanNotes = ReportGenerator.cleanRemarks(r.notes);
+    final hasNotes = cleanNotes.isNotEmpty;
+    Widget remarksWidget = Text(
+      hasNotes ? cleanNotes : '-',
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 10.5,
+        color: hasNotes ? const Color(0xFF334155) : const Color(0xFF94A3B8),
+      ),
+    );
+    if (hasNotes) {
+      remarksWidget = Tooltip(
+        message: cleanNotes,
+        preferBelow: false,
+        child: remarksWidget,
+      );
+    }
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 52.0),
+      decoration: BoxDecoration(
+        color: rowBg,
+        border: const Border(bottom: BorderSide(color: Color(0xFFEDF2F7), width: 1.0)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 7.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // 1. TIME
+          Expanded(
+            flex: _flexTime,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    timePart,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'JetBrainsMono',
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  if (datePart.isNotEmpty && datePart != timePart)
+                    Text(
+                      datePart,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 9.0,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // 2. INSPECTOR
+          Expanded(
+            flex: _flexInspector,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    r.operators,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.0, color: Color(0xFF0F172A)),
+                  ),
+                  if (r.shift.isNotEmpty)
+                    Text(
+                      'Shift: ${r.shift}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 9.0, color: Color(0xFF64748B)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // 3. TEST NAME
+          Expanded(
+            flex: _flexTestName,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDF4FC),
+                    borderRadius: BorderRadius.circular(4.0),
+                    border: Border.all(color: const Color(0xFFB8CEE5)),
+                  ),
+                  child: Text(
+                    r.testName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.0, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 4. CALIBER
+          Expanded(
+            flex: _flexCaliber,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F6FB),
+                    borderRadius: BorderRadius.circular(4.0),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Text(
+                    r.caliber,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Color(0xFF0F172A), fontFamily: 'JetBrainsMono', fontSize: 10.0, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 5. LOT NO
+          Expanded(
+            flex: _flexLot,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Tooltip(
+                message: lotSecondary.isNotEmpty ? '$lotPrimary ($lotSecondary)' : lotPrimary,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      lotPrimary,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
+                    ),
+                    if (lotSecondary.isNotEmpty)
+                      Text(
+                        lotSecondary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 9.0, color: Color(0xFF64748B)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // 6. STATUS
+          Expanded(
+            flex: _flexStatus,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildStatusBadge(r.status),
+              ),
+            ),
+          ),
+          // 7. QTY
+          Expanded(
+            flex: _flexSample,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F6FB),
+                    borderRadius: BorderRadius.circular(4.0),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Text(
+                    '${r.produced} rds',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'JetBrainsMono',
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 8. RESULTS
+          Expanded(
+            flex: _flexResults,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: _buildResultCell(r),
+            ),
+          ),
+          // 9. REMARKS
+          Expanded(
+            flex: _flexRemarks,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: remarksWidget,
+            ),
+          ),
+          // 10. ACTIONS
+          Expanded(
+            flex: _flexActions,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 2.0, right: 4.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  if (r.status.toLowerCase().contains('retest'))
+                    _buildActionIcon(
+                      icon: Icons.replay_circle_filled_rounded,
+                      color: const Color(0xFFF59E0B),
+                      tooltip: 'Perform Retest Inspection',
+                      onPressed: () => _showRetestDialog(r),
+                    ),
+                  _buildActionIcon(
+                    icon: Icons.auto_awesome,
+                    color: const Color(0xFF0284C7),
+                    tooltip: 'AI Analysis & Recommendations',
+                    onPressed: () => _showAiAnalysisDialog(r),
+                  ),
+                  if (r.attachmentBase64.isNotEmpty)
+                    _buildActionIcon(
+                      icon: Icons.attach_file,
+                      color: const Color(0xFF0284C7),
+                      tooltip: 'View Attachment (${r.attachmentName})',
+                      onPressed: () => _showAttachmentDialog(r),
+                    ),
+                  _buildActionIcon(
+                    icon: Icons.picture_as_pdf,
+                    color: const Color(0xFF0284C7),
+                    tooltip: 'Generate Individual Report',
+                    onPressed: () => _showReportGenerationDialog([r], singleRecord: r),
+                  ),
+                  if (widget.isAdmin || widget.canEditRecords)
+                    _buildActionIcon(
+                      icon: Icons.edit_outlined,
+                      color: const Color(0xFF0284C7),
+                      tooltip: 'Edit Entry',
+                      onPressed: () => _showEditRecordDialog(r),
+                    ),
+                  if (widget.isAdmin || widget.canDeleteRecords)
+                    _buildActionIcon(
+                      icon: Icons.delete_outline,
+                      color: const Color(0xFFEF4444),
+                      tooltip: 'Delete Entry',
+                      onPressed: () => _confirmDelete(r),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2758,19 +2995,22 @@ class _HistoryTabState extends State<HistoryTab> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(10.0),
         border: Border.all(color: border),
       ),
       child: Text(
         status.toUpperCase(),
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: fg,
-          fontSize: 9.0,
+          fontSize: 8.5,
           fontWeight: FontWeight.bold,
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
         ),
       ),
     );
