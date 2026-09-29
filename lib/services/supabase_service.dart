@@ -166,7 +166,11 @@ class SupabaseService {
       final stat = source['retest_status'] ?? '';
       final origStat = source['original_status'] ?? '';
       final rNotes = source['retest_notes'] ?? '';
-      final tag = '[RETEST|op:$op|ts:$ts|stat:$stat|orig:$origStat|notes:$rNotes]';
+      final rProd = source['retest_produced'] ?? 0;
+      final rDef = source['retest_defects'] ?? 0;
+      final rawMetrics = source['retest_metrics']?.toString() ?? '';
+      final rMet = rawMetrics.isNotEmpty ? base64Encode(utf8.encode(rawMetrics)) : '';
+      final tag = '[RETEST|op:$op|ts:$ts|stat:$stat|orig:$origStat|notes:$rNotes|prod:$rProd|def:$rDef|met:$rMet]';
       if (!origNotes.contains('[RETEST|')) {
         sanitized['notes'] = origNotes.isEmpty ? tag : '$origNotes $tag';
       }
@@ -178,6 +182,9 @@ class SupabaseService {
     sanitized.remove('retest_notes');
     sanitized.remove('retest_status');
     sanitized.remove('original_status');
+    sanitized.remove('retest_produced');
+    sanitized.remove('retest_defects');
+    sanitized.remove('retest_metrics');
     return sanitized;
   }
 

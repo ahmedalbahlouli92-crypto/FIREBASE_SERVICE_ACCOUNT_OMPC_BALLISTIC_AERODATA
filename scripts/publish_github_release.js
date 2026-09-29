@@ -19,29 +19,42 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.6.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.6.1 (EPVAT Multi-Temp Evaluation Fix, Round & Stat Serialization, Remarks Safety)';
-const BODY = `## OMPC Ballistic AeroData v1.6.1
+const TAG_NAME = 'v1.6.2';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.6.2 (Window-Fitting Inspection Log, PDF Filename Format, Non-Destructive Retests & Supabase Sync)';
+const BODY = `## OMPC Ballistic AeroData v1.6.2
 
-Comprehensive update resolving EPVAT multi-temperature differential evaluation zero-result bug, enhancing round and telemetry serialization across all modes, and preserving notes metadata during record editing.
+Comprehensive release delivering a fully responsive Inspection Log table layout, standardizing PDF export naming conventions, introducing non-destructive retest separation across logs and reports, updating the Supabase schema and serialization, and expanding cross-platform packaging.
 
-### Bug Fixes & Improvements:
-1. **EPVAT Temperature Differential Evaluation Fix**:
-   - Fixed variable resolution in formula evaluation: non-baseline temperature variables (such as \`p2_mean_52\` or \`vel_mean_54\`) no longer incorrectly fall back to the +21°C baseline.
-   - Previously, if telemetry for +52°C or -54°C was missing or unmapped, the formula subtracted the baseline from itself (e.g. \`Mean P2 @52 - Mean P2 @21\` calculated \`1201.5 - 1201.5 = 0.0 bar\`), yielding false 0.0 results.
-   - Now, temperature suffixes are strictly validated. If a temperature metric is absent, evaluation handles it properly without false 0.0 equality.
-2. **Stats-Only Multi-Temperature Telemetry Persistence**:
-   - In "Stats Only" entry mode (where rounds are not entered individually), EPVAT summary statistics are now serialized into round fields using standard \`STAT:P1=...,Max=...,Min=...,SD=...\` encoding separated by semicolons (\`;\`).
-   - Slot alignment across temperatures is strictly preserved even when individual temperatures have empty fields.
-3. **Resilient Temperature Extraction**:
-   - Replaced comma-splitting with regex-based temperature matching (\`RegExp(r'([+-]?\\d+)')\`), properly parsing multi-temperature configurations whether separated by commas, spaces, or tabs (e.g. \`+21°C  +52°C  -54°C\` from CSV / Supabase).
-4. **Remarks & Notes Protection**:
-   - In History Log Edit dialog, user remarks are cleanly separated from internal \`Temps:\` metadata via \`ReportGenerator.cleanRemarks\`.
-   - On saving record updates, existing \`Temps:\` telemetry is preserved, preventing edits from wiping out multi-temperature statistics.
-5. **Cross-Platform Deployments**:
+### Key Enhancements & Fixes:
+1. **Inspection Log Table Responsive Overhaul (Zero Horizontal Scrolling)**:
+   - Replaced rigid horizontal-scrolling \`DataTable\` with a responsive, proportional flex-column layout.
+   - Fits seamlessly within 100% of the active window width without requiring horizontal scrollbars.
+   - Pinned table header with clear column weights, high-contrast typography, and compact action icon buttons.
+   - Hover tooltips for quick preview of complete notes and test details.
+
+2. **Default PDF Filename Convention**:
+   - PDF export default filename format standardized to: \`[Caliber]_[Test Name]_[Lot number].pdf\` (e.g., \`7.62x51mm_EPVAT_LOT-2026-A.pdf\`).
+   - Clean filename sanitization removing characters incompatible with Windows and Android file systems.
+
+3. **Non-Destructive Retest Separation**:
+   - Retest records and statistics are separated cleanly from initial test runs.
+   - Retest telemetry is preserved non-destructively in exported reports and history records.
+
+4. **Remarks & Defect Classification Reference Guide Formatting**:
+   - Standardized 210px matching box heights across remarks and defect classification reference guides.
+   - Removed placeholder text and auto-generated remarks from exported HTML/Word/PDF reports for clean, audit-ready presentation.
+
+5. **Full Admin Edit Authority**:
+   - Granted full editing authority across all test parameters and metadata for administrative users.
+
+6. **Supabase Database Schema & Serialization Synchronization**:
+   - Updated \`supabase_tables_setup.sql\` with retest columns (\`retest_produced\`, \`retest_defects\`, \`retest_metrics\`).
+   - Safe dual-layer fallback serialization via \`[RETEST|...|prod:...|def:...|met:...]\` tag ensuring full backward and forward compatibility with Supabase without PGRST204 column errors.
+
+7. **Cross-Platform Deployments**:
    - **Web Application**: Live on Firebase Hosting at https://ompc-ballistic-aerodata.web.app.
-   - **Windows Desktop**: 1-Click Setup Installer (\`OMPC_Ballistic_AeroData_Setup.exe\`), Standalone Executable (\`OMPC_Ballistic_AeroData.exe\`), and Portable ZIP.
-   - **Android APK**: Updated release APK (\`OMPC_Ballistic_AeroData_v1.6.1.apk\`).
+   - **Windows Desktop**: 1-Click Setup Installer (\`OMPC_Ballistic_AeroData_Setup.exe\`), Standalone Executable (\`OMPC_Ballistic_AeroData.exe\`), and Portable ZIP (\`OMPC_Ballistic_AeroData_Portable.zip\`).
+   - **Android APK**: Updated release APK (\`OMPC_Ballistic_AeroData_v1.6.2.apk\` and \`OMPC_Ballistic_AeroData.apk\`).
 `;
 
 function request(options, postData) {
@@ -151,8 +164,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.6.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.6.1.apk' },
-    { name: 'OMPC_Ballistic_AeroData_v1.5.9.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.9.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.6.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.6.2.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

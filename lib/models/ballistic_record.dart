@@ -848,9 +848,9 @@ class BallisticRecord {
     String retestNotes = toStr(map['retest_notes']);
     String retestStatus = toStr(map['retest_status']);
     String originalStatus = toStr(map['original_status']);
-    final int retestProduced = toInt(map['retest_produced']);
-    final int retestDefects = toInt(map['retest_defects']);
-    final String retestMetrics = toStr(map['retest_metrics']);
+    int retestProduced = toInt(map['retest_produced']);
+    int retestDefects = toInt(map['retest_defects']);
+    String retestMetrics = toStr(map['retest_metrics']);
 
     final String rawNotes = toStr(map['notes']);
     if (!isRetest && rawNotes.contains('[RETEST|')) {
@@ -867,6 +867,15 @@ class BallisticRecord {
           else if (part.startsWith('stat:')) retestStatus = part.substring(5);
           else if (part.startsWith('orig:')) originalStatus = part.substring(5);
           else if (part.startsWith('notes:')) retestNotes = part.substring(6);
+          else if (part.startsWith('prod:')) retestProduced = int.tryParse(part.substring(5)) ?? retestProduced;
+          else if (part.startsWith('def:')) retestDefects = int.tryParse(part.substring(4)) ?? retestDefects;
+          else if (part.startsWith('met:')) {
+            try {
+              retestMetrics = utf8.decode(base64Decode(part.substring(4)));
+            } catch (_) {
+              retestMetrics = part.substring(4);
+            }
+          }
         }
       } catch (_) {}
     }

@@ -162,7 +162,16 @@ CREATE TABLE IF NOT EXISTS public.ballistic_records (
     propellant_supplier TEXT,
     propellant_code TEXT,
     propellant_lot TEXT,
-    propellant_charge TEXT
+    propellant_charge TEXT,
+    is_retest BOOLEAN DEFAULT false,
+    retest_timestamp TEXT,
+    retest_operator TEXT,
+    retest_notes TEXT,
+    retest_status TEXT,
+    original_status TEXT,
+    retest_produced INTEGER DEFAULT 0,
+    retest_defects INTEGER DEFAULT 0,
+    retest_metrics TEXT DEFAULT '{}'
 );
 
 -- Ensure all newest columns exist on ballistic_records
@@ -182,6 +191,9 @@ ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_operator TE
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_notes TEXT;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_status TEXT;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS original_status TEXT;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_produced INTEGER DEFAULT 0;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_defects INTEGER DEFAULT 0;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_metrics TEXT DEFAULT '{}';
 
 -- 2. Create the 20 Dedicated Tables across Daily Report, Lot Acceptance, and Component Test
 DO $$
