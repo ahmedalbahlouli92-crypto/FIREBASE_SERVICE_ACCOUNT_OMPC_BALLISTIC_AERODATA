@@ -31,8 +31,23 @@ class EpvatFormulaHelper {
   }) {
     final Map<String, double> vars = {};
 
-    Map<String, double> computeStats(String commaString) {
-      final nums = commaString
+    Map<String, double> computeStats(String rawString) {
+      if (rawString.contains('=')) {
+        double mean = 0.0, max = 0.0, min = 0.0, range = 0.0, sd = 0.0;
+        final meanMatch = RegExp(r'(?:mean|p1|p2|v|vel|at)\s*=\s*([\d.]+)', caseSensitive: false).firstMatch(rawString);
+        if (meanMatch != null) mean = double.tryParse(meanMatch.group(1)!) ?? 0.0;
+        final maxMatch = RegExp(r'(?:max|p1max|p2max|vmax|atmax)\s*=\s*([\d.]+)', caseSensitive: false).firstMatch(rawString);
+        if (maxMatch != null) max = double.tryParse(maxMatch.group(1)!) ?? 0.0;
+        final minMatch = RegExp(r'(?:min|p1min|p2min|vmin|atmin)\s*=\s*([\d.]+)', caseSensitive: false).firstMatch(rawString);
+        if (minMatch != null) min = double.tryParse(minMatch.group(1)!) ?? 0.0;
+        final rangeMatch = RegExp(r'(?:range|p1range|p2range|vrange|atrange)\s*=\s*([\d.]+)', caseSensitive: false).firstMatch(rawString);
+        if (rangeMatch != null) range = double.tryParse(rangeMatch.group(1)!) ?? 0.0;
+        final sdMatch = RegExp(r'(?:sd|p1sd|p2sd|vsd|atsd)\s*=\s*([\d.]+)', caseSensitive: false).firstMatch(rawString);
+        if (sdMatch != null) sd = double.tryParse(sdMatch.group(1)!) ?? 0.0;
+        if (range == 0.0 && max > min && min > 0) range = max - min;
+        return {'mean': mean, 'max': max, 'min': min, 'range': range, 'sd': sd};
+      }
+      final nums = rawString
           .split(',')
           .map((s) => double.tryParse(s.trim()))
           .where((n) => n != null)
@@ -151,10 +166,11 @@ class EpvatFormulaHelper {
 
         List<String> tempKeys = ['21', '52', '54'];
         if (r.cartridgeTemp.isNotEmpty) {
-          final extractedKeys = r.cartridgeTemp
-              .split(',')
-              .map((s) => s.replaceAll(RegExp(r'[^0-9]'), '').trim())
+          final matches = RegExp(r'([+-]?\d+)').allMatches(r.cartridgeTemp);
+          final extractedKeys = matches
+              .map((m) => m.group(1)!.replaceAll('+', '').replaceAll('-', '').trim())
               .where((s) => s.isNotEmpty)
+              .toSet()
               .toList();
           if (extractedKeys.isNotEmpty) {
             tempKeys = extractedKeys;
@@ -165,7 +181,7 @@ class EpvatFormulaHelper {
           final curSfx = tempKeys[i];
           if (i < p1Secs.length && p1Secs[i].trim().isNotEmpty) {
             final st = computeStats(p1Secs[i]);
-            if (st['mean']! > 0 || st['sd']! > 0) {
+            if (st['mean']! > 0 || st['sd']! > 0 || st['max']! > 0) {
               vars['p1_mean_$curSfx'] = st['mean']!;
               vars['p1_max_$curSfx'] = st['max']!;
               vars['p1_max_individual_$curSfx'] = st['max']!;
@@ -176,7 +192,7 @@ class EpvatFormulaHelper {
           }
           if (i < p2Secs.length && p2Secs[i].trim().isNotEmpty) {
             final st = computeStats(p2Secs[i]);
-            if (st['mean']! > 0 || st['sd']! > 0) {
+            if (st['mean']! > 0 || st['sd']! > 0 || st['max']! > 0) {
               vars['p2_mean_$curSfx'] = st['mean']!;
               vars['p2_max_$curSfx'] = st['max']!;
               vars['p2_min_$curSfx'] = st['min']!;
@@ -186,7 +202,7 @@ class EpvatFormulaHelper {
           }
           if (i < velSecs.length && velSecs[i].trim().isNotEmpty) {
             final st = computeStats(velSecs[i]);
-            if (st['mean']! > 0 || st['sd']! > 0) {
+            if (st['mean']! > 0 || st['sd']! > 0 || st['max']! > 0) {
               vars['vel_mean_$curSfx'] = st['mean']!;
               vars['vel_max_$curSfx'] = st['max']!;
               vars['vel_min_$curSfx'] = st['min']!;
@@ -196,7 +212,7 @@ class EpvatFormulaHelper {
           }
           if (i < actSecs.length && actSecs[i].trim().isNotEmpty) {
             final st = computeStats(actSecs[i]);
-            if (st['mean']! > 0 || st['sd']! > 0) {
+            if (st['mean']! > 0 || st['sd']! > 0 || st['max']! > 0) {
               vars['action_time_mean_$curSfx'] = st['mean']!;
               vars['action_time_max_$curSfx'] = st['max']!;
               vars['action_time_min_$curSfx'] = st['min']!;
@@ -209,7 +225,7 @@ class EpvatFormulaHelper {
 
       // Also parse notes for temperature metrics (both legacy and rich summary formats)
       if (r.notes.contains('Temps:')) {
-        final matches = RegExp(r'([+-]?\d+)°C\s*\(([^)]+)\)').allMatches(r.notes);
+        final matches = RegExp(r'([+-]?\d+)(?:°C)?\s*\(([^)]+)\)').allMatches(r.notes);
         for (final m in matches) {
           final tRaw = m.group(1)?.replaceAll('+', '').replaceAll('-', '') ?? '21';
           final inner = m.group(2) ?? '';
@@ -390,29 +406,40 @@ class EpvatFormulaHelper {
       final k = e.key;
       final val = e.value;
       final lastUnderscore = k.lastIndexOf('_');
-      if (lastUnderscore > 0) {
-        final sfx = k.substring(lastUnderscore + 1);
-        if (RegExp(r'^\d+$').hasMatch(sfx)) {
-          final base = k.substring(0, lastUnderscore);
-          expanded.putIfAbsent(base, () => val);
-          if (base.contains('max_individual')) {
-            final baseMax = base.replaceAll('max_individual', 'max');
-            expanded.putIfAbsent(baseMax, () => val);
-            expanded.putIfAbsent('${baseMax}_$sfx', () => val);
-          } else if (base.contains('max')) {
-            final baseInd = base.replaceAll('max', 'max_individual');
-            expanded.putIfAbsent(baseInd, () => val);
-            expanded.putIfAbsent('${baseInd}_$sfx', () => val);
-          }
-          if (base.startsWith('action_time_')) {
-            final baseAt = base.replaceFirst('action_time_', 'at_');
-            expanded.putIfAbsent(baseAt, () => val);
-            expanded.putIfAbsent('${baseAt}_$sfx', () => val);
-          }
+      final sfx = lastUnderscore > 0 ? k.substring(lastUnderscore + 1) : '';
+      final bool hasNumericSuffix = lastUnderscore > 0 && RegExp(r'^\d+$').hasMatch(sfx);
+
+      if (hasNumericSuffix) {
+        final base = k.substring(0, lastUnderscore);
+        expanded.putIfAbsent(base, () => val);
+        if (base.contains('max_individual')) {
+          final baseMax = base.replaceAll('max_individual', 'max');
+          expanded.putIfAbsent(baseMax, () => val);
+          expanded.putIfAbsent('${baseMax}_$sfx', () => val);
+        } else if (base.contains('max')) {
+          final baseInd = base.replaceAll('max', 'max_individual');
+          expanded.putIfAbsent(baseInd, () => val);
+          expanded.putIfAbsent('${baseInd}_$sfx', () => val);
+        }
+        if (base.startsWith('action_time_')) {
+          final baseAt = base.replaceFirst('action_time_', 'at_');
+          expanded.putIfAbsent(baseAt, () => val);
+          expanded.putIfAbsent('${baseAt}_$sfx', () => val);
         }
       } else {
         expanded.putIfAbsent('${k}_21', () => val);
         expanded.putIfAbsent('${k}_$cleanDefaultTemp', () => val);
+        if (k.contains('max_individual')) {
+          final baseMax = k.replaceAll('max_individual', 'max');
+          expanded.putIfAbsent(baseMax, () => val);
+          expanded.putIfAbsent('${baseMax}_21', () => val);
+          expanded.putIfAbsent('${baseMax}_$cleanDefaultTemp', () => val);
+        } else if (k.contains('max')) {
+          final baseInd = k.replaceAll('max', 'max_individual');
+          expanded.putIfAbsent(baseInd, () => val);
+          expanded.putIfAbsent('${baseInd}_21', () => val);
+          expanded.putIfAbsent('${baseInd}_$cleanDefaultTemp', () => val);
+        }
         if (k.startsWith('action_time_')) {
           final baseAt = k.replaceFirst('action_time_', 'at_');
           expanded.putIfAbsent(baseAt, () => val);
@@ -677,25 +704,25 @@ class EpvatFormulaHelper {
       lowerVars[k] = val;
       
       final lastUnderscore = k.lastIndexOf('_');
-      if (lastUnderscore > 0) {
-        final sfx = k.substring(lastUnderscore + 1);
-        if (RegExp(r'^\d+$').hasMatch(sfx)) {
-          final base = k.substring(0, lastUnderscore);
-          lowerVars.putIfAbsent(base, () => val);
-          if (base.contains('max_individual')) {
-            final baseMax = base.replaceAll('max_individual', 'max');
-            lowerVars.putIfAbsent(baseMax, () => val);
-            lowerVars.putIfAbsent('${baseMax}_$sfx', () => val);
-          } else if (base.contains('max')) {
-            final baseInd = base.replaceAll('max', 'max_individual');
-            lowerVars.putIfAbsent(baseInd, () => val);
-            lowerVars.putIfAbsent('${baseInd}_$sfx', () => val);
-          }
-          if (base.startsWith('action_time_')) {
-            final baseAt = base.replaceFirst('action_time_', 'at_');
-            lowerVars.putIfAbsent(baseAt, () => val);
-            lowerVars.putIfAbsent('${baseAt}_$sfx', () => val);
-          }
+      final sfx = lastUnderscore > 0 ? k.substring(lastUnderscore + 1) : '';
+      final bool hasNumericSuffix = lastUnderscore > 0 && RegExp(r'^\d+$').hasMatch(sfx);
+
+      if (hasNumericSuffix) {
+        final base = k.substring(0, lastUnderscore);
+        lowerVars.putIfAbsent(base, () => val);
+        if (base.contains('max_individual')) {
+          final baseMax = base.replaceAll('max_individual', 'max');
+          lowerVars.putIfAbsent(baseMax, () => val);
+          lowerVars.putIfAbsent('${baseMax}_$sfx', () => val);
+        } else if (base.contains('max')) {
+          final baseInd = base.replaceAll('max', 'max_individual');
+          lowerVars.putIfAbsent(baseInd, () => val);
+          lowerVars.putIfAbsent('${baseInd}_$sfx', () => val);
+        }
+        if (base.startsWith('action_time_')) {
+          final baseAt = base.replaceFirst('action_time_', 'at_');
+          lowerVars.putIfAbsent(baseAt, () => val);
+          lowerVars.putIfAbsent('${baseAt}_$sfx', () => val);
         }
       } else {
         lowerVars.putIfAbsent('${k}_21', () => val);
@@ -782,28 +809,13 @@ class EpvatFormulaHelper {
 
       double? getVarValue(String t) {
         if (lowerVars.containsKey(t)) return lowerVars[t];
-        String unSuffixed = t;
-        final lastUnderscore = t.lastIndexOf('_');
-        if (lastUnderscore > 0) {
-          final sfx = t.substring(lastUnderscore + 1);
-          if (RegExp(r'^\d+$').hasMatch(sfx)) {
-            unSuffixed = t.substring(0, lastUnderscore);
-            if (lowerVars.containsKey(unSuffixed)) return lowerVars[unSuffixed];
-          }
-        }
-        if (lowerVars.containsKey('${t}_21')) return lowerVars['${t}_21'];
-        if (lowerVars.containsKey('${unSuffixed}_21')) return lowerVars['${unSuffixed}_21'];
 
         if (t.contains('max_individual')) {
           final mapped = t.replaceAll('max_individual', 'max');
           if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
-          final baseMapped = mapped.replaceAll(RegExp(r'_\d+$'), '');
-          if (lowerVars.containsKey(baseMapped)) return lowerVars[baseMapped];
         } else if (t.contains('max')) {
           final mapped = t.replaceAll('max', 'max_individual');
           if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
-          final baseMapped = mapped.replaceAll(RegExp(r'_\d+$'), '');
-          if (lowerVars.containsKey(baseMapped)) return lowerVars[baseMapped];
         }
 
         if (t.startsWith('at_')) {
@@ -813,6 +825,26 @@ class EpvatFormulaHelper {
           final mapped = t.replaceFirst('action_time_', 'at_');
           if (lowerVars.containsKey(mapped)) return lowerVars[mapped];
         }
+
+        String unSuffixed = t;
+        String sfx = '';
+        final lastUnderscore = t.lastIndexOf('_');
+        if (lastUnderscore > 0) {
+          final candidate = t.substring(lastUnderscore + 1);
+          if (RegExp(r'^\d+$').hasMatch(candidate)) {
+            sfx = candidate;
+            unSuffixed = t.substring(0, lastUnderscore);
+          }
+        }
+
+        // Only fall back to un-suffixed if the variable had NO temperature suffix or is the default baseline 21.
+        // NEVER fall back to 21 for specific non-baseline temperatures (e.g. 52, 54, 32)!
+        if (sfx.isEmpty || sfx == '21') {
+          if (lowerVars.containsKey(unSuffixed)) return lowerVars[unSuffixed];
+          if (lowerVars.containsKey('${unSuffixed}_21')) return lowerVars['${unSuffixed}_21'];
+          if (lowerVars.containsKey('${t}_21')) return lowerVars['${t}_21'];
+        }
+
         return null;
       }
 

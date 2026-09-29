@@ -91,9 +91,9 @@ void main() {
       expect(html.contains('⚡'), isFalse);
       expect(word.contains('⚡'), isFalse);
 
-      // Should contain clean &bull; Kinetic Energy (+21 &deg;C)
-      expect(html.contains('&bull; Kinetic Energy (+21 &deg;C):'), isTrue);
-      expect(word.contains('&bull; Kinetic Energy (+21 &deg;C):'), isTrue);
+      // Should contain clean &bull; Kinetic Energy (+21&deg;C)
+      expect(html.contains('&bull; Kinetic Energy (+21&deg;C):'), isTrue);
+      expect(word.contains('&bull; Kinetic Energy (+21&deg;C):'), isTrue);
 
       // Word HTML should contain UTF-8 Content-Type meta
       expect(word.contains('<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'), isTrue);

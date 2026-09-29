@@ -923,7 +923,7 @@ class _HistoryTabState extends State<HistoryTab> {
     final lotNoController = TextEditingController(text: r.lotNo);
     final producedController = TextEditingController(text: '${r.produced}');
     final defectsController = TextEditingController(text: '${r.defects}');
-    final notesController = TextEditingController(text: r.notes);
+    final notesController = TextEditingController(text: ReportGenerator.cleanRemarks(r.notes));
     final pressureController = TextEditingController(text: r.pressureBar);
     final viscosityController = TextEditingController(text: r.viscosity);
     final locationController = TextEditingController(text: r.samplingLocation);
@@ -1313,6 +1313,12 @@ class _HistoryTabState extends State<HistoryTab> {
                     final int primerSlow = int.tryParse(primerSlowController.text.trim()) ?? r.primerSlow;
                     final int primerFast = int.tryParse(primerFastController.text.trim()) ?? r.primerFast;
 
+                    String savedNotes = notesController.text.trim();
+                    if (r.notes.contains('Temps:')) {
+                      final tempsPart = r.notes.substring(r.notes.indexOf('Temps:')).trim();
+                      savedNotes = savedNotes.isNotEmpty ? '$savedNotes | $tempsPart' : tempsPart;
+                    }
+
                     final updated = r.copyWith(
                       operators: operatorsController.text.trim(),
                       shift: editShift,
@@ -1321,7 +1327,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       produced: produced,
                       defects: defects,
                       status: editStatus,
-                      notes: notesController.text.trim(),
+                      notes: savedNotes,
                       pressureBar: pressureController.text.trim(),
                       viscosity: viscosityController.text.trim(),
                       samplingLocation: locationController.text.trim(),

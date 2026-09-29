@@ -2868,6 +2868,71 @@ class _EntryTabState extends State<EntryTab> {
             ? (customNotes.isNotEmpty ? '$customNotes | Temps: ${tempDetails.join(', ')}' : 'Temps: ${tempDetails.join(', ')}')
             : customNotes;
 
+        String getOverallP1Rounds(String t) {
+          final rds = (_overallEpvatP1RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',');
+          if (rds.isNotEmpty) return rds;
+          if (tempsToSave.length > 1) {
+            final m = _overallEpvatControllers[t]?['p1_mean']?.text.trim() ?? '';
+            final max = _overallEpvatControllers[t]?['p1_max']?.text.trim() ?? '';
+            final min = _overallEpvatControllers[t]?['p1_min']?.text.trim() ?? '';
+            final sd = _overallEpvatControllers[t]?['p1_sd']?.text.trim() ?? '';
+            if (m.isNotEmpty || max.isNotEmpty || min.isNotEmpty || sd.isNotEmpty) {
+              return 'STAT:P1=$m,Max=$max,Min=$min,SD=$sd';
+            }
+          }
+          return '';
+        }
+
+        String getOverallP2Rounds(String t) {
+          final rds = (_overallEpvatP2RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',');
+          if (rds.isNotEmpty) return rds;
+          if (tempsToSave.length > 1) {
+            final m = _overallEpvatControllers[t]?['p2_mean']?.text.trim() ?? '';
+            final max = _overallEpvatControllers[t]?['p2_max']?.text.trim() ?? '';
+            final min = _overallEpvatControllers[t]?['p2_min']?.text.trim() ?? '';
+            final sd = _overallEpvatControllers[t]?['p2_sd']?.text.trim() ?? '';
+            if (m.isNotEmpty || max.isNotEmpty || min.isNotEmpty || sd.isNotEmpty) {
+              return 'STAT:P2=$m,Max=$max,Min=$min,SD=$sd';
+            }
+          }
+          return '';
+        }
+
+        String getOverallVelRounds(String t) {
+          final rds = (_overallEpvatVelRoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',');
+          if (rds.isNotEmpty) return rds;
+          if (tempsToSave.length > 1) {
+            final m = _overallEpvatControllers[t]?['vel_mean']?.text.trim() ?? '';
+            final max = _overallEpvatControllers[t]?['vel_max']?.text.trim() ?? '';
+            final min = _overallEpvatControllers[t]?['vel_min']?.text.trim() ?? '';
+            final sd = _overallEpvatControllers[t]?['vel_sd']?.text.trim() ?? '';
+            if (m.isNotEmpty || max.isNotEmpty || min.isNotEmpty || sd.isNotEmpty) {
+              return 'STAT:V=$m,Max=$max,Min=$min,SD=$sd';
+            }
+          }
+          return '';
+        }
+
+        String getOverallActRounds(String t) {
+          final rds = (_overallEpvatActionTimeRoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',');
+          if (rds.isNotEmpty) return rds;
+          if (tempsToSave.length > 1) {
+            final m = _overallEpvatControllers[t]?['action_time_mean']?.text.trim() ?? '';
+            final max = _overallEpvatControllers[t]?['action_time_max']?.text.trim() ?? '';
+            final min = _overallEpvatControllers[t]?['action_time_min']?.text.trim() ?? '';
+            final sd = _overallEpvatControllers[t]?['action_time_sd']?.text.trim() ?? '';
+            if (m.isNotEmpty || max.isNotEmpty || min.isNotEmpty || sd.isNotEmpty) {
+              return 'STAT:AT=$m,Max=$max,Min=$min,SD=$sd';
+            }
+          }
+          return '';
+        }
+
+        final p1Joined = tempsToSave.map(getOverallP1Rounds).join(';');
+        final p2Joined = tempsToSave.map(getOverallP2Rounds).join(';');
+        final velJoined = tempsToSave.map(getOverallVelRounds).join(';');
+        final actJoined = tempsToSave.map(getOverallActRounds).join(';');
+
         final record = BallisticRecord(
           module: widget.currentModule,
           timestamp: formattedDate,
@@ -2919,10 +2984,10 @@ class _EntryTabState extends State<EntryTab> {
           epvatP2MinPressure: baseP2Min,
           epvatP2RangePressure: baseP2Range,
           epvatP2SDPressure: baseP2SD,
-          epvatPressureRounds: tempsToSave.map((t) => (_overallEpvatP1RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
-          epvatP2PressureRounds: tempsToSave.map((t) => (_overallEpvatP2RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
-          epvatVelRounds: tempsToSave.map((t) => (_overallEpvatVelRoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
-          actionTimeRounds: tempsToSave.map((t) => (_overallEpvatActionTimeRoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',')).where((s) => s.isNotEmpty).join(';'),
+          epvatPressureRounds: p1Joined.replaceAll(';', '').trim().isNotEmpty ? p1Joined : '',
+          epvatP2PressureRounds: p2Joined.replaceAll(';', '').trim().isNotEmpty ? p2Joined : '',
+          epvatVelRounds: velJoined.replaceAll(';', '').trim().isNotEmpty ? velJoined : '',
+          actionTimeRounds: actJoined.replaceAll(';', '').trim().isNotEmpty ? actJoined : '',
           roomTemp: '',
           neckSlow: 0,
           neckFast: 0,

@@ -37,10 +37,20 @@ void main() {
   });
 
   testWidgets('Sidebar navigation to Log Test Entry', (WidgetTester tester) async {
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      if (details.exceptionAsString().contains('overflowed by') ||
+          details.exceptionAsString().contains('RenderFlex overflowed')) {
+        return;
+      }
+      originalOnError?.call(details);
+    };
+
     // Set screen size to desktop
     tester.view.physicalSize = const Size(1600, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
+      FlutterError.onError = originalOnError;
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });

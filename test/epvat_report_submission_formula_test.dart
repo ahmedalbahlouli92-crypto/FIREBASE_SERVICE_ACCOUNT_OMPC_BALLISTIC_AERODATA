@@ -258,5 +258,81 @@ void main() {
       expect(html.contains('0.6 ms'), isTrue);
       expect(html.contains('0 52 54 Action Time'), isFalse);
     });
+
+    test('5. Extracts variables when cartridgeTemp has space-separated format and STAT-encoded rounds', () {
+      final record = BallisticRecord.empty().copyWith(
+        cartridgeTemp: '+21°C  +52°C  -54°C',
+        testName: 'EPVAT test',
+        caliber: '5.56x45 SS109',
+        epvatMeanPressure: '3424.0',
+        epvatSDPressure: '50.0',
+        epvatP2MeanPressure: '1201.5',
+        epvatP2SDPressure: '15.0',
+        velMean: '910.35',
+        epvatPressureRounds: 'STAT:P1=3424.0,Max=3500,Min=3350,SD=50.0;STAT:P1=3550.0,Max=3620,Min=3480,SD=45.0;STAT:P1=3320.0,Max=3400,Min=3250,SD=48.0',
+        epvatP2PressureRounds: 'STAT:P2=1201.5,Max=1250,Min=1160,SD=15.0;STAT:P2=1280.0,Max=1320,Min=1240,SD=16.0;STAT:P2=1120.0,Max=1160,Min=1080,SD=14.0',
+        epvatVelRounds: 'STAT:V=910.35,Max=920,Min=900,SD=5.0;STAT:V=935.5,Max=945,Min=925,SD=6.0;STAT:V=885.0,Max=895,Min=875,SD=5.5',
+        actionTimeRounds: 'STAT:AT=0.35,Max=0.40,Min=0.30,SD=0.03;STAT:AT=0.36,Max=0.41,Min=0.31,SD=0.03;STAT:AT=0.38,Max=0.43,Min=0.33,SD=0.04',
+      );
+
+      final vars = EpvatFormulaHelper.extractVariablesFromRecords([record]);
+
+      expect(vars['p2_mean_21'], 1201.5);
+      expect(vars['p2_mean_52'], 1280.0);
+      expect(vars['p2_mean_54'], 1120.0);
+
+      expect(vars['vel_mean_21'], 910.35);
+      expect(vars['vel_mean_52'], 935.5);
+      expect(vars['vel_mean_54'], 885.0);
+
+      final p2Diff52 = EpvatFormulaHelper.evaluate('Mean P2 @52 - Mean P2 @21', vars, defaultTemp: '21');
+      expect(p2Diff52, closeTo(78.5, 0.01));
+
+      final p2Diff54 = EpvatFormulaHelper.evaluate('Mean P2 @54 - Mean P2 @21', vars, defaultTemp: '21');
+      expect(p2Diff54, closeTo(-81.5, 0.01));
+
+      final velDiff52 = EpvatFormulaHelper.evaluate('Mean Vel @52 - Mean Vel @21', vars, defaultTemp: '21');
+      expect(velDiff52, closeTo(25.15, 0.01));
+
+      final velDiff54 = EpvatFormulaHelper.evaluate('Mean Vel @54 - Mean Vel @21', vars, defaultTemp: '21');
+      expect(velDiff54, closeTo(-25.35, 0.01));
+    });
+
+    test('6. Missing non-baseline temperature does NOT fall back to baseline @21 to yield 0.0', () {
+      // Record only has +21 data, no +52 or -54 rounds or notes
+      final record = BallisticRecord.empty().copyWith(
+        cartridgeTemp: '+21°C',
+        testName: 'EPVAT test',
+        caliber: '5.56x45 SS109',
+        epvatMeanPressure: '3424.0',
+        epvatP2MeanPressure: '1201.5',
+        velMean: '910.35',
+      );
+
+      final vars = EpvatFormulaHelper.extractVariablesFromRecords([record]);
+
+      // Only 21 variables exist
+      expect(vars['p2_mean_21'], 1201.5);
+      expect(vars['p2_mean_52'], isNull);
+      expect(vars['p2_mean_54'], isNull);
+
+      // Formulas requiring @52 or @54 must NOT evaluate using @21 fallback (which would produce 1201.5 - 1201.5 = 0.0)
+      final p2Diff52 = EpvatFormulaHelper.evaluate('Mean P2 @52 - Mean P2 @21', vars, defaultTemp: '21');
+      expect(p2Diff52, isNot(0.0));
+      expect(p2Diff52, -1201.5);
+
+      final p2Diff54 = EpvatFormulaHelper.evaluate('Mean P2 @54 - Mean P2 @21', vars, defaultTemp: '21');
+      expect(p2Diff54, isNot(0.0));
+      expect(p2Diff54, -1201.5);
+
+      final velDiff52 = EpvatFormulaHelper.evaluate('Mean Vel @52 - Mean Vel @21', vars, defaultTemp: '21');
+      expect(velDiff52, isNot(0.0));
+      expect(velDiff52, -910.35);
+
+      final velDiff54 = EpvatFormulaHelper.evaluate('Mean Vel @54 - Mean Vel @21', vars, defaultTemp: '21');
+      expect(velDiff54, isNot(0.0));
+      expect(velDiff54, -910.35);
+    });
   });
 }
+
