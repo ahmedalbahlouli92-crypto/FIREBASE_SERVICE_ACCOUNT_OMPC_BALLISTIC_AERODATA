@@ -1085,5 +1085,243 @@ class SupabaseService {
       return false;
     }
   }
+
+  /// Fetch Witness Storage Lots from Supabase
+  static Future<List<Map<String, dynamic>>?> fetchWitnessLotsFromCloud() async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return null;
+    }
+    // 1. Try dedicated witness_storage_lots table
+    try {
+      final res = await client.from('witness_storage_lots').select().order('created_at', ascending: false);
+      if (res.isNotEmpty) {
+        return (res as List<dynamic>).map((e) {
+          final m = Map<String, dynamic>.from(e as Map);
+          return {
+            'id': m['id']?.toString() ?? '',
+            'lotNo': m['lot_no']?.toString() ?? '',
+            'caliber': m['caliber']?.toString() ?? '',
+            'initialQty': m['initial_qty'] ?? 0,
+            'consumedQty': m['consumed_qty'] ?? 0,
+            'remainingQty': m['remaining_qty'] ?? 0,
+            'powderLot': m['powder_lot']?.toString() ?? '',
+            'powderSupplier': m['powder_supplier']?.toString() ?? '',
+            'powderType': m['powder_type']?.toString() ?? '',
+            'chargeWeight': m['charge_weight']?.toString() ?? '',
+            'primerLot': m['primer_lot']?.toString() ?? '',
+            'primerSupplier': m['primer_supplier']?.toString() ?? '',
+            'primerType': m['primer_type']?.toString() ?? '',
+            'storageLocation': m['storage_location']?.toString() ?? '',
+            'registeredBy': m['registered_by']?.toString() ?? '',
+            'registeredAt': m['registered_at']?.toString() ?? '',
+            'notes': m['notes']?.toString() ?? '',
+            'status': m['status']?.toString() ?? 'ACTIVE',
+          };
+        }).toList();
+      }
+    } catch (_) {}
+
+    // 2. Fallback to master ballistic_records (SYSTEM_CONFIG)
+    try {
+      final res = await client
+          .from(tableName)
+          .select('id, notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'WITNESS_STORAGE_LOTS')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if (res.isNotEmpty && res[0]['notes'] != null) {
+        final notesStr = res[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          final List<dynamic> decoded = jsonDecode(notesStr);
+          return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching witness lots from Supabase: $e');
+      return null;
+    }
+  }
+
+  /// Save Witness Storage Lots to Supabase
+  static Future<bool> saveWitnessLotsToCloud(List<Map<String, dynamic>> lots) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    try {
+      // 1. Try dedicated table
+      try {
+        final rows = lots.map((it) => {
+          'id': it['id']?.toString() ?? '',
+          'lot_no': it['lotNo']?.toString() ?? '',
+          'caliber': it['caliber']?.toString() ?? '',
+          'initial_qty': it['initialQty'] ?? 0,
+          'consumed_qty': it['consumedQty'] ?? 0,
+          'remaining_qty': it['remainingQty'] ?? 0,
+          'powder_lot': it['powderLot']?.toString() ?? '',
+          'powder_supplier': it['powderSupplier']?.toString() ?? '',
+          'powder_type': it['powderType']?.toString() ?? '',
+          'charge_weight': it['chargeWeight']?.toString() ?? '',
+          'primer_lot': it['primerLot']?.toString() ?? '',
+          'primer_supplier': it['primerSupplier']?.toString() ?? '',
+          'primer_type': it['primerType']?.toString() ?? '',
+          'storage_location': it['storageLocation']?.toString() ?? '',
+          'registered_by': it['registeredBy']?.toString() ?? '',
+          'registered_at': it['registeredAt']?.toString() ?? DateTime.now().toIso8601String(),
+          'notes': it['notes']?.toString() ?? '',
+          'status': it['status']?.toString() ?? 'ACTIVE',
+        }).toList();
+        await client.from('witness_storage_lots').upsert(rows);
+      } catch (e) {
+        debugPrint('witness_storage_lots upsert note: $e');
+      }
+
+      // 2. Always sync with master ballistic_records (SYSTEM_CONFIG)
+      final jsonString = jsonEncode(lots);
+      final existing = await client
+          .from(tableName)
+          .select('id')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'WITNESS_STORAGE_LOTS')
+          .limit(1);
+
+      if (existing.isNotEmpty) {
+        final existingId = existing[0]['id'];
+        await client.from(tableName).update({
+          'notes': jsonString,
+          'timestamp': DateTime.now().toIso8601String(),
+        }).eq('id', existingId);
+      } else {
+        await client.from(tableName).insert({
+          'module': 'SYSTEM_CONFIG',
+          'test_name': 'WITNESS_STORAGE_LOTS',
+          'operators': 'System',
+          'notes': jsonString,
+          'status': 'ACTIVE',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error saving witness lots to Supabase: $e');
+      return false;
+    }
+  }
+
+  /// Fetch Witness Storage Consumptions from Supabase
+  static Future<List<Map<String, dynamic>>?> fetchWitnessConsumptionsFromCloud() async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return null;
+    }
+    // 1. Try dedicated witness_storage_consumptions table
+    try {
+      final res = await client.from('witness_storage_consumptions').select().order('created_at', ascending: false);
+      if (res.isNotEmpty) {
+        return (res as List<dynamic>).map((e) {
+          final m = Map<String, dynamic>.from(e as Map);
+          return {
+            'id': m['id']?.toString() ?? '',
+            'lotId': m['lot_id']?.toString() ?? '',
+            'lotNo': m['lot_no']?.toString() ?? '',
+            'caliber': m['caliber']?.toString() ?? '',
+            'quantity': m['quantity'] ?? 0,
+            'purpose': m['purpose']?.toString() ?? '',
+            'orderRef': m['order_ref']?.toString() ?? '',
+            'consumedBy': m['consumed_by']?.toString() ?? '',
+            'consumedAt': m['consumed_at']?.toString() ?? '',
+            'remainingAfter': m['remaining_after'] ?? 0,
+            'notes': m['notes']?.toString() ?? '',
+          };
+        }).toList();
+      }
+    } catch (_) {}
+
+    // 2. Fallback to master ballistic_records (SYSTEM_CONFIG)
+    try {
+      final res = await client
+          .from(tableName)
+          .select('id, notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'WITNESS_STORAGE_CONSUMPTIONS')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if (res.isNotEmpty && res[0]['notes'] != null) {
+        final notesStr = res[0]['notes'] as String;
+        if (notesStr.isNotEmpty) {
+          final List<dynamic> decoded = jsonDecode(notesStr);
+          return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching witness consumptions from Supabase: $e');
+      return null;
+    }
+  }
+
+  /// Save Witness Storage Consumptions to Supabase
+  static Future<bool> saveWitnessConsumptionsToCloud(List<Map<String, dynamic>> consumptions) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    try {
+      // 1. Try dedicated table
+      try {
+        final rows = consumptions.map((it) => {
+          'id': it['id']?.toString() ?? '',
+          'lot_id': it['lotId']?.toString() ?? '',
+          'lot_no': it['lotNo']?.toString() ?? '',
+          'caliber': it['caliber']?.toString() ?? '',
+          'quantity': it['quantity'] ?? 0,
+          'purpose': it['purpose']?.toString() ?? '',
+          'order_ref': it['orderRef']?.toString() ?? '',
+          'consumed_by': it['consumedBy']?.toString() ?? '',
+          'consumed_at': it['consumedAt']?.toString() ?? DateTime.now().toIso8601String(),
+          'remaining_after': it['remainingAfter'] ?? 0,
+          'notes': it['notes']?.toString() ?? '',
+        }).toList();
+        await client.from('witness_storage_consumptions').upsert(rows);
+      } catch (e) {
+        debugPrint('witness_storage_consumptions upsert note: $e');
+      }
+
+      // 2. Always sync with master ballistic_records (SYSTEM_CONFIG)
+      final jsonString = jsonEncode(consumptions);
+      final existing = await client
+          .from(tableName)
+          .select('id')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'WITNESS_STORAGE_CONSUMPTIONS')
+          .limit(1);
+
+      if (existing.isNotEmpty) {
+        final existingId = existing[0]['id'];
+        await client.from(tableName).update({
+          'notes': jsonString,
+          'timestamp': DateTime.now().toIso8601String(),
+        }).eq('id', existingId);
+      } else {
+        await client.from(tableName).insert({
+          'module': 'SYSTEM_CONFIG',
+          'test_name': 'WITNESS_STORAGE_CONSUMPTIONS',
+          'operators': 'System',
+          'notes': jsonString,
+          'status': 'ACTIVE',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error saving witness consumptions to Supabase: $e');
+      return false;
+    }
+  }
 }
 

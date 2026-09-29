@@ -165,6 +165,7 @@ class BallisticRecord {
   final int retestProduced;
   final int retestDefects;
   final String retestMetrics;
+  final String referenceNo;
  
   BallisticRecord({
     String? id,
@@ -285,6 +286,7 @@ class BallisticRecord {
     this.retestProduced = 0,
     this.retestDefects = 0,
     this.retestMetrics = '',
+    this.referenceNo = '',
   }) : id = (id != null && id.isNotEmpty) ? id : generateUuid();
 
   Map<String, dynamic> get parsedRetestMetrics {
@@ -404,8 +406,9 @@ class BallisticRecord {
     final cleanOrigStatus = originalStatus.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanId = (id ?? '').replaceAll('"', '""').replaceAll(',', ' ');
     final cleanRetestMetrics = retestMetrics.replaceAll('"', '""').replaceAll('\n', ' ');
+    final cleanRefNo = referenceNo.replaceAll('"', '""').replaceAll(',', ' ');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge","$cleanIsRetest","$cleanRetestTs","$cleanRetestOp","$cleanRetestNotes","$cleanRetestStatus","$cleanOrigStatus","$cleanId",$retestProduced,$retestDefects,"$cleanRetestMetrics"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge","$cleanIsRetest","$cleanRetestTs","$cleanRetestOp","$cleanRetestNotes","$cleanRetestStatus","$cleanOrigStatus","$cleanId",$retestProduced,$retestDefects,"$cleanRetestMetrics","$cleanRefNo"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -579,6 +582,7 @@ class BallisticRecord {
     final int retestProduced = fields.length > 115 ? int.tryParse(fields[115].replaceAll('"', '').trim()) ?? 0 : 0;
     final int retestDefects = fields.length > 116 ? int.tryParse(fields[116].replaceAll('"', '').trim()) ?? 0 : 0;
     final String retestMetrics = fields.length > 117 ? fields[117].replaceAll('"', '').trim() : '';
+    final String referenceNo = fields.length > 118 ? fields[118].replaceAll('"', '').trim() : '';
  
     return BallisticRecord(
       id: rowId.isNotEmpty ? rowId : null,
@@ -699,6 +703,7 @@ class BallisticRecord {
       retestProduced: retestProduced,
       retestDefects: retestDefects,
       retestMetrics: retestMetrics,
+      referenceNo: referenceNo,
     );
   }
 
@@ -821,6 +826,7 @@ class BallisticRecord {
       'retest_produced': retestProduced,
       'retest_defects': retestDefects,
       'retest_metrics': retestMetrics,
+      'reference_no': referenceNo,
     };
     if (id != null && id!.isNotEmpty) {
       map['id'] = id;
@@ -999,6 +1005,7 @@ class BallisticRecord {
       retestProduced: retestProduced,
       retestDefects: retestDefects,
       retestMetrics: retestMetrics,
+      referenceNo: toStr(map['reference_no'] ?? map['referenceNo']),
     );
   }
 
@@ -1122,6 +1129,7 @@ class BallisticRecord {
     int? retestProduced,
     int? retestDefects,
     String? retestMetrics,
+    String? referenceNo,
   }) {
     return BallisticRecord(
       id: id ?? this.id,
@@ -1242,6 +1250,7 @@ class BallisticRecord {
       retestProduced: retestProduced ?? this.retestProduced,
       retestDefects: retestDefects ?? this.retestDefects,
       retestMetrics: retestMetrics ?? this.retestMetrics,
+      referenceNo: referenceNo ?? this.referenceNo,
     );
   }
 

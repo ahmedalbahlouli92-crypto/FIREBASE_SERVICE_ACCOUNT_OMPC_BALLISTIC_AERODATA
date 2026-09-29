@@ -3507,7 +3507,7 @@ class _HistoryTabState extends State<HistoryTab> {
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final csvContent = ReportGenerator.generateCsv(reportRecords, selectedReportTest, widget.currentModule);
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
-                            final repTestName = singleRecord?.testName ?? selectedReportTest;
+                            final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadCsv(
@@ -3540,7 +3540,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               adminRules: widget.adminRules,
                             );
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
-                            final repTestName = singleRecord?.testName ?? selectedReportTest;
+                            final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadDoc(
@@ -3555,7 +3555,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             );
                           },
                           icon: const Icon(Icons.description, size: 16.0),
-                          label: const Text('Export Word'),
+                          label: Text(selectedReportTest == 'All' ? 'Export Certificate (Word)' : 'Export Word'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0284C7),
                             foregroundColor: Colors.white,
@@ -3573,7 +3573,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               adminRules: widget.adminRules,
                             );
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
-                            final repTestName = singleRecord?.testName ?? selectedReportTest;
+                            final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.printHtml(
@@ -3582,7 +3582,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             );
                           },
                           icon: const Icon(Icons.print_outlined, size: 16.0),
-                          label: const Text('Download / Print PDF'),
+                          label: Text(selectedReportTest == 'All' ? 'Certificate (PDF / Print)' : 'Download / Print PDF'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0EA5E9),
                             foregroundColor: Colors.white,
@@ -3590,6 +3590,64 @@ class _HistoryTabState extends State<HistoryTab> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
                         ),
+                        if (selectedReportTest == 'All' && reportRecords.length > 1) ...[
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final docContent = ReportGenerator.generateLotDossierWord(
+                                reportRecords, 
+                                widget.currentModule,
+                                base64Logo: widget.base64Logo,
+                                adminRules: widget.adminRules,
+                              );
+                              final repCaliber = (reportRecords.first.caliber).replaceAll(';', ' ').trim();
+                              final repLotNo = reportRecords.first.lotNo;
+                              final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+                              await ReportHelper.instance.downloadDoc(
+                                content: docContent, 
+                                filename: '$exportFilename.doc'
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Complete Lot Dossier Word document downloaded: $exportFilename.doc'),
+                                  backgroundColor: const Color(0xFF8B5CF6),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.auto_stories_outlined, size: 16.0),
+                            label: const Text('Complete Dossier (Word)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF7C3AED),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final htmlContent = ReportGenerator.generateLotDossierHtml(
+                                reportRecords, 
+                                widget.currentModule,
+                                base64Logo: widget.base64Logo,
+                                adminRules: widget.adminRules,
+                              );
+                              final repCaliber = (reportRecords.first.caliber).replaceAll(';', ' ').trim();
+                              final repLotNo = reportRecords.first.lotNo;
+                              final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+                              await ReportHelper.instance.printHtml(
+                                htmlContent: htmlContent,
+                                filename: exportFilename,
+                              );
+                            },
+                            icon: const Icon(Icons.collections_bookmark_outlined, size: 16.0),
+                            label: const Text('Complete Dossier (PDF)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF9333EA),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],

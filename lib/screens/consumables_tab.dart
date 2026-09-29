@@ -1694,144 +1694,242 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
 
   // 1. Consume Dialog (Decrements stock)
   void _openItemConsumeModal(Map<String, dynamic> item) {
-    final qtyCtrl = TextEditingController();
+    final qtyCtrl = TextEditingController(text: '1');
     final purposeCtrl = TextEditingController();
     final userCtrl = TextEditingController(text: widget.loggedInUser);
 
+    final bool isBarOrTrans = item['name'].toString().toLowerCase().contains('barrel') ||
+        item['name'].toString().toLowerCase().contains('transducer') ||
+        (item['category']?.toString().toLowerCase().contains('shooting') ?? false) ||
+        (item['serials'] is List && (item['serials'] as List).isNotEmpty);
+
+    final List<String> availableSerials = (item['serials'] is List)
+        ? (item['serials'] as List).map((e) => e.toString().trim()).where((s) => s.isNotEmpty && s.toUpperCase() != 'N/A').toList()
+        : (item['serial'] != null && item['serial'].toString() != 'N/A' && item['serial'].toString().isNotEmpty
+            ? item['serial'].toString().split(RegExp(r'[,;\n]')).map((s) => s.trim()).where((s) => s.isNotEmpty && s.toUpperCase() != 'N/A').toList()
+            : <String>[]);
+
+    String selectedSerial = availableSerials.isNotEmpty ? availableSerials.first : (item['serial'] != 'N/A' ? (item['serial']?.toString() ?? '') : '');
+    final serialCustomCtrl = TextEditingController(text: selectedSerial);
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1C3351),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        title: Row(
-          children: [
-            const Icon(Icons.remove_circle_outline, color: Color(0xFF38BDF8)),
-            const SizedBox(width: 8.0),
-            Expanded(
-              child: Text(
-                'Log Consumption: ${item['name']}',
-                style: const TextStyle(color: Colors.white, fontSize: 15.0),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 420.0,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          backgroundColor: const Color(0xFF1C3351),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          title: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0E223D),
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Current Available Stock:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0)),
-                    Text('${item['quantity']} ${item['unit']}', style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13.0)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              TextField(
-                controller: qtyCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                decoration: InputDecoration(
-                  labelText: 'Quantity Consumed (${item['unit']})',
-                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                  filled: true,
-                  fillColor: const Color(0xFF0E223D),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-                ),
-              ),
-              const SizedBox(height: 12.0),
-              TextField(
-                controller: purposeCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                decoration: const InputDecoration(
-                  labelText: 'Testing Purpose / Lot Number / Order Ref',
-                  labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  filled: true,
-                  fillColor: Color(0xFF0E223D),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
-                ),
-              ),
-              const SizedBox(height: 12.0),
-              TextField(
-                controller: userCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                decoration: const InputDecoration(
-                  labelText: 'Operator In Charge',
-                  labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-                  filled: true,
-                  fillColor: Color(0xFF0E223D),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+              const Icon(Icons.remove_circle_outline, color: Color(0xFF38BDF8)),
+              const SizedBox(width: 8.0),
+              Expanded(
+                child: Text(
+                  'Log Consumption: ${item['name']}',
+                  style: const TextStyle(color: Colors.white, fontSize: 15.0),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
-            onPressed: () async {
-              final val = num.tryParse(qtyCtrl.text.trim());
-              if (val == null || val <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid positive quantity.'), backgroundColor: Colors.red),
-                );
-                return;
-              }
-              final currentQty = (item['quantity'] ?? 0) as num;
-              if (val > currentQty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Cannot consume more than available stock!'), backgroundColor: Colors.red),
-                );
-                return;
-              }
-
-              final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-              final newQty = currentQty - val;
-
-              final historyList = List<dynamic>.from(item['history'] ?? []);
-              historyList.insert(0, {
-                'type': 'CONSUMED',
-                'quantity': val,
-                'date': now,
-                'user': userCtrl.text.trim().isNotEmpty ? userCtrl.text.trim() : widget.loggedInUser,
-                'purpose': purposeCtrl.text.trim().isNotEmpty ? purposeCtrl.text.trim() : 'Routine Ballistic Testing',
-                'remaining': newQty,
-              });
-
-              setState(() {
-                item['quantity'] = newQty;
-                item['history'] = historyList;
-              });
-
-              await _saveData();
-              Navigator.pop(ctx);
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Logged consumption of $val ${item['unit']} for "${item['name']}". New Balance: $newQty'),
-                    backgroundColor: const Color(0xFF0284C7),
+          content: SizedBox(
+            width: 440.0,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0E223D),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Current Available Stock:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0)),
+                        Text('${item['quantity']} ${item['unit']}', style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13.0)),
+                      ],
+                    ),
                   ),
-                );
-              }
-            },
-            child: const Text('Confirm Consumption', style: TextStyle(color: Colors.white)),
+                  const SizedBox(height: 14.0),
+                  if (isBarOrTrans || availableSerials.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B192C),
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.5)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.precision_manufacturing, color: Color(0xFF38BDF8), size: 16.0),
+                              SizedBox(width: 6.0),
+                              Text(
+                                'Consumed Barrel / Transducer Serial Number',
+                                style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8.0),
+                          if (availableSerials.isNotEmpty) ...[
+                            DropdownButtonFormField<String>(
+                              value: availableSerials.contains(selectedSerial) ? selectedSerial : availableSerials.first,
+                              dropdownColor: const Color(0xFF1C3351),
+                              style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                              decoration: const InputDecoration(
+                                labelText: 'Select Available Serial Number',
+                                labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                                filled: true,
+                                fillColor: Color(0xFF0E223D),
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                              ),
+                              items: availableSerials.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setDlgState(() {
+                                    selectedSerial = v;
+                                    serialCustomCtrl.text = v;
+                                  });
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 8.0),
+                          ],
+                          TextField(
+                            controller: serialCustomCtrl,
+                            style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                            decoration: const InputDecoration(
+                              labelText: 'Or Enter / Scan Serial Number',
+                              labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                              filled: true,
+                              fillColor: Color(0xFF0E223D),
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                            ),
+                            onChanged: (v) => selectedSerial = v.trim(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12.0),
+                  ],
+                  TextField(
+                    controller: qtyCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                    decoration: InputDecoration(
+                      labelText: 'Quantity Consumed (${item['unit']})',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                      filled: true,
+                      fillColor: const Color(0xFF0E223D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+                    ),
+                  ),
+                  const SizedBox(height: 12.0),
+                  TextField(
+                    controller: purposeCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                    decoration: const InputDecoration(
+                      labelText: 'Testing Purpose / Lot Number / Order Ref',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      filled: true,
+                      fillColor: Color(0xFF0E223D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                    ),
+                  ),
+                  const SizedBox(height: 12.0),
+                  TextField(
+                    controller: userCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                    decoration: const InputDecoration(
+                      labelText: 'Operator In Charge',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      filled: true,
+                      fillColor: Color(0xFF0E223D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+              onPressed: () async {
+                final val = num.tryParse(qtyCtrl.text.trim());
+                if (val == null || val <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a valid positive quantity.'), backgroundColor: Colors.red),
+                  );
+                  return;
+                }
+                final currentQty = (item['quantity'] ?? 0) as num;
+                if (val > currentQty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Cannot consume more than available stock!'), backgroundColor: Colors.red),
+                  );
+                  return;
+                }
+
+                final chosenSerial = serialCustomCtrl.text.trim().isNotEmpty ? serialCustomCtrl.text.trim() : selectedSerial;
+                final updatedSerials = List<String>.from(availableSerials);
+                if (chosenSerial.isNotEmpty && updatedSerials.contains(chosenSerial)) {
+                  updatedSerials.remove(chosenSerial);
+                }
+
+                final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+                final newQty = currentQty - val;
+
+                final historyList = List<dynamic>.from(item['history'] ?? []);
+                final basePurpose = purposeCtrl.text.trim().isNotEmpty ? purposeCtrl.text.trim() : 'Routine Ballistic Testing';
+                final fullPurpose = chosenSerial.isNotEmpty ? '[Serial: $chosenSerial] $basePurpose' : basePurpose;
+
+                historyList.insert(0, {
+                  'type': 'CONSUMED',
+                  'quantity': val,
+                  'date': now,
+                  'user': userCtrl.text.trim().isNotEmpty ? userCtrl.text.trim() : widget.loggedInUser,
+                  'serial': chosenSerial,
+                  'consumedSerial': chosenSerial,
+                  'purpose': fullPurpose,
+                  'remaining': newQty,
+                });
+
+                setState(() {
+                  item['quantity'] = newQty;
+                  item['serials'] = updatedSerials;
+                  if (updatedSerials.isNotEmpty) {
+                    item['serial'] = updatedSerials.join(', ');
+                  }
+                  item['history'] = historyList;
+                });
+
+                await _saveData();
+                Navigator.pop(ctx);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Logged consumption of $val ${item['unit']} for "${item['name']}"${chosenSerial.isNotEmpty ? " (Serial: $chosenSerial)" : ""}. New Balance: $newQty'),
+                      backgroundColor: const Color(0xFF0284C7),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Confirm Consumption', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }

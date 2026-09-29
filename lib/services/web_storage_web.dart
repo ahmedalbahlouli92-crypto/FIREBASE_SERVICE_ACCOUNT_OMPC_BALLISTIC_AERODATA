@@ -208,3 +208,43 @@ void saveWebActiveModule(String module) {
   }
 }
 
+List<Map<String, dynamic>> getWebWitnessLots() {
+  final data = _getItem('ompc_witness_storage_lots');
+  if (data == null || data.isEmpty) return [];
+  try {
+    final List<dynamic> decoded = jsonDecode(data);
+    return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  } catch (e) {
+    return [];
+  }
+}
+
+void saveWebWitnessLots(List<Map<String, dynamic>> lots) {
+  _setItem('ompc_witness_storage_lots', jsonEncode(lots));
+}
+
+List<Map<String, dynamic>> getWebWitnessConsumptions() {
+  final data = _getItem('ompc_witness_storage_consumptions');
+  if (data == null || data.isEmpty) return [];
+  try {
+    final List<dynamic> decoded = jsonDecode(data);
+    return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  } catch (e) {
+    return [];
+  }
+}
+
+void saveWebWitnessConsumptions(List<Map<String, dynamic>> consumptions) {
+  _setItem('ompc_witness_storage_consumptions', jsonEncode(consumptions));
+}
+
+int getWebRefCounter() {
+  final val = _getItem('ompc_test_ref_counter');
+  if (val == null || val.isEmpty) return 1000;
+  return int.tryParse(val) ?? 1000;
+}
+
+void saveWebRefCounter(int val) {
+  _setItem('ompc_test_ref_counter', val.toString());
+}
+

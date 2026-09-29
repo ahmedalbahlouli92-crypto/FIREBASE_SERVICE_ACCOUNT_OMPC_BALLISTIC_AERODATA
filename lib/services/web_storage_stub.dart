@@ -22,5 +22,11 @@ List<Map<String, dynamic>> getWebConsumables() => [];
 void saveWebConsumables(List<Map<String, dynamic>> items) {}
 String? getWebActiveModule() => null;
 void saveWebActiveModule(String module) {}
+List<Map<String, dynamic>> getWebWitnessLots() => [];
+void saveWebWitnessLots(List<Map<String, dynamic>> lots) {}
+List<Map<String, dynamic>> getWebWitnessConsumptions() => [];
+void saveWebWitnessConsumptions(List<Map<String, dynamic>> consumptions) {}
+int getWebRefCounter() => 1000;
+void saveWebRefCounter(int val) {}
 
 

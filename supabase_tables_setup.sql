@@ -790,5 +790,56 @@ GRANT ALL ON TABLE public.ballistic_records TO anon, authenticated, service_role
 CREATE INDEX IF NOT EXISTS idx_ballistic_records_lot_no ON public.ballistic_records (lot_no);
 CREATE INDEX IF NOT EXISTS idx_ballistic_records_created_at ON public.ballistic_records (created_at DESC);
 
+-- 13. Witness Storage Lots Table
+CREATE TABLE IF NOT EXISTS public.witness_storage_lots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    lot_no TEXT UNIQUE NOT NULL,
+    caliber TEXT NOT NULL,
+    initial_qty INTEGER NOT NULL DEFAULT 0,
+    consumed_qty INTEGER NOT NULL DEFAULT 0,
+    remaining_qty INTEGER NOT NULL DEFAULT 0,
+    powder_lot TEXT DEFAULT '',
+    powder_supplier TEXT DEFAULT '',
+    powder_type TEXT DEFAULT '',
+    charge_weight TEXT DEFAULT '',
+    primer_lot TEXT DEFAULT '',
+    primer_supplier TEXT DEFAULT '',
+    primer_type TEXT DEFAULT '',
+    storage_location TEXT DEFAULT '',
+    registered_by TEXT DEFAULT '',
+    registered_at TIMESTAMPTZ DEFAULT now(),
+    notes TEXT DEFAULT '',
+    status TEXT DEFAULT 'ACTIVE'
+);
+ALTER TABLE public.witness_storage_lots ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.witness_storage_lots;
+CREATE POLICY "Public access policy" ON public.witness_storage_lots FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.witness_storage_lots TO anon, authenticated, service_role;
+CREATE INDEX IF NOT EXISTS idx_witness_lots_lot_no ON public.witness_storage_lots (lot_no);
+CREATE INDEX IF NOT EXISTS idx_witness_lots_caliber ON public.witness_storage_lots (caliber);
+
+-- 14. Witness Storage Consumptions Audit Trail Table
+CREATE TABLE IF NOT EXISTS public.witness_storage_consumptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    lot_id TEXT NOT NULL,
+    lot_no TEXT NOT NULL,
+    caliber TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    order_ref TEXT DEFAULT '',
+    consumed_by TEXT NOT NULL,
+    consumed_at TIMESTAMPTZ DEFAULT now(),
+    remaining_after INTEGER NOT NULL,
+    notes TEXT DEFAULT ''
+);
+ALTER TABLE public.witness_storage_consumptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.witness_storage_consumptions;
+CREATE POLICY "Public access policy" ON public.witness_storage_consumptions FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.witness_storage_consumptions TO anon, authenticated, service_role;
+CREATE INDEX IF NOT EXISTS idx_witness_consumptions_lot_no ON public.witness_storage_consumptions (lot_no);
+CREATE INDEX IF NOT EXISTS idx_witness_consumptions_lot_id ON public.witness_storage_consumptions (lot_id);
+
 -- Confirmation output
-SELECT 'Successfully created all 20 test tables, 8 consumable category tables, component inventory, and admin control tables.' as result;
+SELECT 'Successfully created all 20 test tables, 8 consumable category tables, component inventory, witness storage tables, and admin control tables.' as result;

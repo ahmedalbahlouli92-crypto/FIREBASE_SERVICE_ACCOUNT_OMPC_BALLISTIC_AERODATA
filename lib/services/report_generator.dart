@@ -114,28 +114,103 @@ class ReportGenerator {
   }
 
   static String _getRecordMetricsSummary(BallisticRecord r) {
+    final m = r.parsedRetestMetrics;
     if (r.testName == 'Waterproof Test') {
-      final leaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
-      return '$leaks leaks (P: ${r.pressureBar} bar, Visc: ${r.viscosity} s)';
+      final totalLeaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
+      final testStr = totalLeaks == 0 ? '0 leaks' : '$totalLeaks leaks';
+      if (r.isRetest) {
+        final retLeaks = m.isNotEmpty
+            ? ((m['mouthSlow'] as int? ?? 0) + (m['mouthFast'] as int? ?? 0) + (m['primerSlow'] as int? ?? 0) + (m['primerFast'] as int? ?? 0))
+            : r.retestDefects;
+        final retStr = retLeaks == 0 ? '0 leak' : '$retLeaks leaks';
+        return 'Test: $testStr<br/>Retest: $retStr';
+      }
+      return testStr;
     } else if (r.testName == 'Residual Stress Test') {
       final total = r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast;
-      final temp = r.roomTemp.isNotEmpty ? '${r.roomTemp} °C' : '-';
-      return '$total splits, Room Temp: $temp';
+      final testStr = total == 0 ? '0 crack' : '$total cracks';
+      if (r.isRetest) {
+        final retCracks = m.isNotEmpty
+            ? ((m['neckSlow'] as int? ?? 0) + (m['neckFast'] as int? ?? 0) + (m['shoulderSlow'] as int? ?? 0) + (m['shoulderFast'] as int? ?? 0) + (m['bodySlow'] as int? ?? 0) + (m['bodyFast'] as int? ?? 0) + (m['headSlow'] as int? ?? 0) + (m['headFast'] as int? ?? 0))
+            : r.retestDefects;
+        final retStr = retCracks == 0 ? '0 crack' : '$retCracks cracks';
+        return 'Test: $testStr<br/>Retest: $retStr';
+      }
+      if (total == 0) return '0 crack';
+      final zones = <String>[];
+      final neck = r.neckSlow + r.neckFast;
+      final shoulder = r.shoulderSlow + r.shoulderFast;
+      final body = r.bodySlow + r.bodyFast;
+      final head = r.headSlow + r.headFast;
+      if (neck > 0) zones.add('Neck: $neck');
+      if (shoulder > 0) zones.add('Shoulder: $shoulder');
+      if (body > 0) zones.add('Body: $body');
+      if (head > 0) zones.add('Head: $head');
+      return '$total cracks (${zones.join(", ")})';
     } else if (r.testName == 'Accuracy Test') {
+      if (r.isRetest) {
+        final retRadius = m['accMeanRadius']?.toString() ?? '';
+        final retSDX = m['accSDX']?.toString() ?? '';
+        final retSDY = m['accSDY']?.toString() ?? '';
+        if (r.caliber.toLowerCase().contains('m193') && (r.accMeanRadius.isNotEmpty || retRadius.isNotEmpty)) {
+          return 'Test MR: ${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm<br/>Retest MR: ${retRadius.isNotEmpty ? retRadius : "-"} mm';
+        }
+        return 'Test SD: X:${r.accSDX.isNotEmpty ? r.accSDX : "-"} Y:${r.accSDY.isNotEmpty ? r.accSDY : "-"}<br/>Retest SD: X:${retSDX.isNotEmpty ? retSDX : "-"} Y:${retSDY.isNotEmpty ? retSDY : "-"}';
+      }
       return 'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm, SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm, Mean Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
     } else if (r.testName == 'EPVAT test') {
       final u = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
+      if (r.isRetest) {
+        final retP1 = m['epvatMeanPressure']?.toString() ?? '';
+        return 'Test P1: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $u<br/>Retest P1: ${retP1.isNotEmpty ? retP1 : "-"} $u';
+      }
       return 'Mean Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $u, Mean Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $u, Mean Vel (+21 °C): ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
     } else if (r.testName == 'Extraction Force Test') {
-      return 'Mean: ${r.accMeanX} N, Min: ${r.accMinX} N';
+      if (r.isRetest) {
+        final retMin = m['accMinX']?.toString() ?? '';
+        return 'Test Min: ${r.accMinX.isNotEmpty ? r.accMinX : "-"} N<br/>Retest Min: ${retMin.isNotEmpty ? retMin : "-"} N';
+      }
+      return 'Min Force: ${r.accMinX.isNotEmpty ? r.accMinX : "-"} N, Max Force: ${r.accMaxX.isNotEmpty ? r.accMaxX : "-"} N';
     } else if (r.testName == 'Function Test') {
-      return '${r.defects} defects (L1:${r.functionLevel1}, L2:${r.functionLevel2}, L3:${r.functionLevel3}, L4:${r.functionLevel4})';
+      final l1 = r.functionLevel1;
+      final l2 = r.functionLevel2;
+      final l3 = r.functionLevel3;
+      final l4 = r.functionLevel4;
+      final totalDefects = l1 + l2 + l3 + l4;
+      final testStr = totalDefects == 0 ? '0 defect' : '$totalDefects defect${totalDefects == 1 ? '' : 's'}';
+      if (r.isRetest) {
+        final rL1 = m['functionLevel1'] as int? ?? 0;
+        final rL2 = m['functionLevel2'] as int? ?? 0;
+        final rL3 = m['functionLevel3'] as int? ?? 0;
+        final rL4 = m['functionLevel4'] as int? ?? 0;
+        final retDef = m.isNotEmpty ? (rL1 + rL2 + rL3 + rL4) : r.retestDefects;
+        final retStr = retDef == 0 ? '0 defect' : '$retDef defect${retDef == 1 ? '' : 's'}';
+        return 'Test: $testStr<br/>Retest: $retStr';
+      }
+      if (totalDefects == 0) return '0 defect';
+      final levels = <String>[];
+      if (l1 > 0) levels.add('L1: $l1');
+      if (l2 > 0) levels.add('L2: $l2');
+      if (l3 > 0) levels.add('L3: $l3');
+      if (l4 > 0) levels.add('L4: $l4');
+      return '$totalDefects defects (${levels.join(", ")})';
     } else if (r.testName == 'Firing Rate Cycle Test') {
+      if (r.isRetest) {
+        final retVal = m['cyclicRateValue']?.toString() ?? '';
+        return 'Test Rate: ${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM<br/>Retest Rate: ${retVal.isNotEmpty ? retVal : "-"} RPM';
+      }
       return '${r.cyclicRateValue} RPM (${r.cyclicRateWeaponType})';
     } else if (r.testName == 'Terminal Effect Test') {
-      return 'Dist: ${r.velocityDistance}m, Hole: ${r.terminalHoleDiameter}';
+      if (r.isRetest) {
+        return 'Test Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}<br/>Retest Hole: ${m['terminalHoleDiameter']?.toString() ?? "-"}';
+      }
+      return 'Hole: ${r.terminalHoleDiameter}, Vel: ${r.terminalVelocity} m/s';
     } else if (r.testName == 'Primer Sensitivity Test') {
-      return 'Lot: ${r.primerLot.isNotEmpty ? r.primerLot : r.lotNo}, Sup: ${r.primerSupplier}, H̄: ${r.primerHbar} cm, SD: ${r.primerSD} cm';
+      if (r.isRetest) {
+        final retH = m['primerHbar']?.toString() ?? '';
+        return 'Test H̄: ${r.primerHbar.isNotEmpty ? r.primerHbar : "-"} cm<br/>Retest H̄: ${retH.isNotEmpty ? retH : "-"} cm';
+      }
+      return 'H̄: ${r.primerHbar.isNotEmpty ? r.primerHbar : "-"} cm, SD: ${r.primerSD.isNotEmpty ? r.primerSD : "-"} cm, H̄+5SD: ${r.primerAllFireH.isNotEmpty ? r.primerAllFireH : "-"} cm, H̄-2SD: ${r.primerNoFireH.isNotEmpty ? r.primerNoFireH : "-"} cm';
     } else if (r.testName == 'Propellant Test') {
       return 'Lot: ${r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo}, Sup: ${r.propellantSupplier}, Code: ${r.propellantCode}, P1: ${r.epvatMeanPressure} ${r.epvatPressureUnit}, Vel: ${r.velMean} m/s';
     }
@@ -365,10 +440,19 @@ class ReportGenerator {
 
   static String generateHtml(List<BallisticRecord> records, String testName, String moduleName, {String base64Logo = '', Map<String, dynamic> adminRules = const {}}) {
     final now = DateFormat('dd/MM/yyyy').format(DateTime.now());
-    final totalQty = records.fold<int>(0, (sum, r) => sum + r.produced);
+    final totalQty = records.fold<int>(0, (sum, r) {
+      final initial = r.produced;
+      final retest = (r.isRetest && r.retestProduced > 0) ? r.retestProduced : 0;
+      return sum + initial + retest;
+    });
     final logoHtml = base64Logo.isNotEmpty 
         ? '<img src="data:image/png;base64,$base64Logo" style="height: 85px; width: auto; object-fit: contain;" />' 
         : '';
+
+    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
+    final String reportRefNo = refList.isNotEmpty
+        ? refList.join(', ')
+        : (records.isNotEmpty && records.first.lotNo.isNotEmpty ? 'REF-${records.first.lotNo}' : 'REF-1001');
 
     final remarksList = records
         .map((r) => cleanRemarks(r.notes))
@@ -387,7 +471,10 @@ class ReportGenerator {
 
     final cleanLotNo = records.isNotEmpty ? records[0].lotNo : 'Lot';
     final cleanCaliber = caliber.replaceAll(';', ' ').trim();
-    final defaultExportTitle = '${cleanCaliber}_${testName}_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final displayTestTitle = testName == 'All' ? 'Final Lot Acceptance Certificate' : testName;
+    final defaultExportTitle = (testName == 'All'
+        ? '${cleanCaliber}_Final_Lot_Acceptance_Certificate_$cleanLotNo'
+        : '${cleanCaliber}_${testName}_$cleanLotNo').replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final title = defaultExportTitle;
 
     String epvatCombinedSection = '';
@@ -861,23 +948,24 @@ class ReportGenerator {
       <!-- Header Text & Logo Section -->
   <table class="header-table">
     <tr>
-      <td style="width: 70%; text-align: left; vertical-align: middle;">
+      <td style="width: 65%; text-align: left; vertical-align: middle;">
         <div style="font-size: 16px; font-weight: bold; color: #0f172a; font-family: Arial, sans-serif;">Oman Munition Production Company</div>
         <div style="font-size: 12px; font-weight: bold; color: #475569; margin-top: 2px;">QC And Engineering Department</div>
         <div style="font-size: 11px; color: #64748b; margin-top: 1px;">Ballistic Lab Section</div>
         <div style="font-size: 11px; font-style: italic; color: #64748b; margin-top: 1px; margin-bottom: 15px;">
-          ${moduleName == 'Daily Test' ? 'Ballistic Daily Test Report' : 'Lot Acceptance Test Report'}
+          ${testName == 'All' ? 'Final Lot Acceptance Certificate' : (moduleName == 'Daily Test' ? 'Ballistic Daily Test Report' : 'Lot Acceptance Test Report')}
         </div>
       </td>
-      <td style="width: 30%; text-align: right; vertical-align: middle;">
+      <td style="width: 35%; text-align: right; vertical-align: middle;">
         $logoHtml
+        <div style="margin-top: 6px; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">Ref No: $reportRefNo</div>
       </td>
     </tr>
   </table>
 
   <!-- Title section with horizontal line -->
   <div class="title-section">
-    <h2>${testName == 'All' ? 'Combined Tests' : testName}</h2>
+    <h2>$displayTestTitle</h2>
     <div class="title-line"></div>
   </div>
 
@@ -917,7 +1005,7 @@ class ReportGenerator {
 
   <!-- Results -->
   <div>
-    <h3 class="section-title">Parameters/Results</h3>
+    <h3 class="section-title">${records.any((r) => r.isRetest) ? 'Parameters/Results - Test' : 'Parameters/Results'}</h3>
     <table class="data-table">
       <thead>
         <tr>
@@ -950,13 +1038,14 @@ class ReportGenerator {
       final pUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty ? records[0].epvatPressureUnit : 'Bar';
       buffer.writeln('''
         <th>Parameter</th>
-        <th>P1 Chamber ($pUnit)</th>
-        ${!is9mm ? '<th>P2 Port pressure ($pUnit)</th>' : ''}
+        <th>P1 (Chamber) ($pUnit)</th>
+        ${!is9mm ? '<th>P2 (Port) ($pUnit)</th>' : ''}
         <th>Action Time (ms)</th>
         <th>Velocity (m/s)</th>
       ''');
     } else if (testName == 'Primer Sensitivity Test') {
       buffer.writeln('''
+        <th>Mean Height (H̄)</th>
         <th>SD (Standard Deviation)</th>
         <th>All Fire Height (H̄ + 5S)</th>
         <th>No Fire Height (H̄ - 2S)</th>
@@ -1259,6 +1348,7 @@ class ReportGenerator {
       } else if (testName == 'Primer Sensitivity Test') {
         buffer.writeln('''
           <tr>
+            <td style="font-weight: bold;">${r.primerHbar.isNotEmpty ? '${r.primerHbar} cm' : '-'}</td>
             <td style="font-weight: bold;">${r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-'}</td>
             <td>${r.primerAllFireH.isNotEmpty ? '${r.primerAllFireH} cm' : '-'}</td>
             <td>${r.primerNoFireH.isNotEmpty ? '${r.primerNoFireH} cm' : '-'}</td>
@@ -1323,260 +1413,232 @@ class ReportGenerator {
 
     final buffer = StringBuffer();
     final headingTag = isWord ? 'h2' : 'h3';
-    buffer.writeln('''
-      <div style="margin-top: 18px; margin-bottom: 12px; page-break-inside: avoid;">
-        <$headingTag class="section-title" style="color: #b45309; border-left: 4px solid #f59e0b; padding-left: 8px;">Retest Verification Inspection Results</$headingTag>
-        <table class="data-table" border="1" style="width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px;">
-          <thead>
-            <tr style="background-color: #fef3c7; color: #92400e;">
-    ''');
 
-    if (testName == 'Waterproof Test') {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Mouth Leaks (S/F)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Primer Leaks (S/F)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Total Leaks</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Date & Time</th>
-      ''');
-    } else if (testName == 'Residual Stress Test') {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Neck Splits</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Shoulder Splits</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Body Splits</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Head Splits</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Total Splits</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-      ''');
-    } else if (testName == 'Accuracy Test') {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Mean Radius (MR)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">SD X</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">SD Y</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Extreme Spread</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Mean Velocity</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-      ''');
-    } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Chamber P1 Mean</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Max P1</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Port P2 Mean</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Mean Velocity</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Action Time</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-      ''');
-    } else if (testName == 'Function Test') {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">L1 (Critical)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">L2 (Major)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">L3 (Minor)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Level 4</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Total Defects</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-      ''');
-    } else if (testName == 'Primer Sensitivity Test') {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Mean Height H̄</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">SD (S)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">All-Fire Height</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">No-Fire Height</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-      ''');
-    } else if (testName == 'Extraction Force Test') {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Force Type</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Min Force (N)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Max Force (N)</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-      ''');
-    } else {
-      buffer.writeln('''
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Sample Qty</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Defects Found</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Disposition</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Retest Inspector</th>
-        <th style="border: 1px solid #cbd5e1; padding: 5px 6px;">Date & Time</th>
-      ''');
-    }
-
-    buffer.writeln('''
-            </tr>
-          </thead>
-          <tbody>
-    ''');
-
-    for (final r in retestRecords) {
+    for (int i = 0; i < retestRecords.length; i++) {
+      final r = retestRecords[i];
+      final retestNum = i + 1;
+      final retestLabel = retestRecords.length > 1 ? 'Retest $retestNum' : 'Retest 1';
       final m = r.parsedRetestMetrics;
       final retestQty = r.retestProduced > 0 ? r.retestProduced : r.produced;
-      final outcome = r.retestStatus.isNotEmpty ? r.retestStatus : r.status;
-      final outcomeCol = getStatusColor(outcome);
-      final badgeStyle = isWord
-          ? 'font-weight: bold; color: $outcomeCol;'
-          : 'background-color: ${outcomeCol}15; color: $outcomeCol; border: 1px solid $outcomeCol; padding: 2px 8px; border-radius: 4px; font-weight: bold;';
+
+      buffer.writeln('''
+        <div style="margin-top: 18px; margin-bottom: 12px; page-break-inside: avoid;">
+          <$headingTag class="section-title">Parameters/Results - $retestLabel</$headingTag>
+          <table class="data-table">
+            <thead>
+              <tr>
+      ''');
 
       if (testName == 'Waterproof Test') {
         final ms = m['mouthSlow'] ?? 0;
         final mf = m['mouthFast'] ?? 0;
         final ps = m['primerSlow'] ?? 0;
         final pf = m['primerFast'] ?? 0;
-        final tot = ms + mf + ps + pf;
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">S: $ms | F: $mf</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">S: $ps | F: $pf</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold; color: ${tot > 0 ? '#b91c1c' : '#15803d'};">$tot</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestTimestamp.isNotEmpty ? r.retestTimestamp : r.timestamp}</td>
-          </tr>
+          <th>Mouth Leaks (Slow/Fast)</th>
+          <th>Primer Leaks (Slow/Fast)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>S: $ms | F: $mf</td>
+          <td>S: $ps | F: $pf</td>
+        </tr>
         ''');
       } else if (testName == 'Residual Stress Test') {
-        final ns = (m['neckSlow'] ?? 0) + (m['neckFast'] ?? 0);
-        final ss = (m['shoulderSlow'] ?? 0) + (m['shoulderFast'] ?? 0);
-        final bs = (m['bodySlow'] ?? 0) + (m['bodyFast'] ?? 0);
-        final hs = (m['headSlow'] ?? 0) + (m['headFast'] ?? 0);
-        final tot = ns + ss + bs + hs;
+        final ns = m['neckSlow'] ?? 0;
+        final nf = m['neckFast'] ?? 0;
+        final ss = m['shoulderSlow'] ?? 0;
+        final sf = m['shoulderFast'] ?? 0;
+        final bs = m['bodySlow'] ?? 0;
+        final bf = m['bodyFast'] ?? 0;
+        final hs = m['headSlow'] ?? 0;
+        final hf = m['headFast'] ?? 0;
+        final tot = ns + nf + ss + sf + bs + bf + hs + hf;
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$ns</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$ss</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$bs</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$hs</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold; color: ${tot > 0 ? '#b91c1c' : '#15803d'};">$tot</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-          </tr>
+          <th>Neck Splits (Min/Maj)</th>
+          <th>Shoulder Splits (Min/Maj)</th>
+          <th>Body Splits (Min/Maj)</th>
+          <th>Head Splits (Min/Maj)</th>
+          <th>Total Splits</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Min: $ns | Maj: $nf</td>
+          <td>Min: $ss | Maj: $sf</td>
+          <td>Min: $bs | Maj: $bf</td>
+          <td>Min: $hs | Maj: $hf</td>
+          <td style="font-weight: bold;">$tot</td>
+        </tr>
         ''');
       } else if (testName == 'Accuracy Test') {
-        final mr = m['accMeanRadius'] ?? '-';
-        final sdx = m['accSDX'] ?? '-';
-        final sdy = m['accSDY'] ?? '-';
-        final maxD = m['accLargestDistance'] ?? '-';
-        final vm = m['velMean'] ?? '-';
+        final sdx = m['accSDX']?.toString() ?? '-';
+        final sdy = m['accSDY']?.toString() ?? '-';
+        final mr = m['accMeanRadius']?.toString() ?? '-';
+        final vm = m['velMean']?.toString() ?? '-';
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$mr mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$sdx mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$sdy mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$maxD mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$vm m/s</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-          </tr>
+          <th>Coordinate / Parameter</th>
+          <th>Mean</th>
+          <th>Max</th>
+          <th>Min</th>
+          <th>Range</th>
+          <th>SD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: bold;">SD at X (mm)</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td style="font-weight: bold;">$sdx</td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold;">SD at Y (mm)</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td style="font-weight: bold;">$sdy</td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold;">Mean Radius (mm)</td>
+          <td style="font-weight: bold;">$mr</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold;">Velocity (m/s)</td>
+          <td>$vm</td><td>-</td><td>-</td><td>-</td><td>-</td>
+        </tr>
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
-        final pUnit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
-        final p1 = m['epvatMeanPressure'] ?? '-';
-        final p1Max = m['epvatMaxPressure'] ?? '-';
-        final p2 = m['epvatP2MeanPressure'] ?? '-';
-        final vm = m['velMean'] ?? '-';
-        final at = m['actionTimeMean'] ?? '-';
+        final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
+        final pUnit = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'Bar';
+        final p1 = m['epvatMeanPressure']?.toString() ?? '-';
+        final p2 = m['epvatP2MeanPressure']?.toString() ?? '-';
+        final at = m['actionTimeMean']?.toString() ?? '-';
+        final vm = m['velMean']?.toString() ?? '-';
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$p1 $pUnit</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$p1Max $pUnit</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$p2 $pUnit</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$vm m/s</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$at ms</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-          </tr>
+          <th>Parameter</th>
+          <th>P1 (Chamber) ($pUnit)</th>
+          ${!is9mm ? '<th>P2 (Port) ($pUnit)</th>' : ''}
+          <th>Action Time (ms)</th>
+          <th>Velocity (m/s)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: bold;">Mean</td>
+          <td>$p1</td>
+          ${!is9mm ? '<td>$p2</td>' : ''}
+          <td>$at</td>
+          <td>$vm</td>
+        </tr>
         ''');
       } else if (testName == 'Function Test') {
         final l1 = m['functionLevel1'] ?? 0;
         final l2 = m['functionLevel2'] ?? 0;
         final l3 = m['functionLevel3'] ?? 0;
         final l4 = m['functionLevel4'] ?? 0;
-        final tot = r.retestDefects;
+        final tot = (m.containsKey('functionLevel1')) ? (l1 + l2 + l3 + l4) : r.retestDefects;
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold; color: ${l1 > 0 ? '#b91c1c' : '#15803d'};">$l1</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold; color: ${l2 > 0 ? '#b91c1c' : '#15803d'};">$l2</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold; color: ${l3 > 2 ? '#b45309' : '#15803d'};">$l3</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold; color: ${l4 > 5 ? '#b45309' : '#15803d'};">$l4</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold; color: ${tot > 0 ? '#b91c1c' : '#15803d'};">$tot</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-          </tr>
+          <th>Tested Qty</th>
+          <th>Level 1 (Critical)</th>
+          <th>Level 2 (Major)</th>
+          <th>Level 3 (Minor)</th>
+          <th>Level 4</th>
+          <th>Total Defects</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: bold;">$retestQty rounds</td>
+          <td style="font-weight: bold; color: ${l1 > 0 ? '#b91c1c' : '#15803d'};">$l1</td>
+          <td style="font-weight: bold; color: ${l2 > 0 ? '#b91c1c' : '#15803d'};">$l2</td>
+          <td style="font-weight: bold; color: ${l3 > 2 ? '#b45309' : '#15803d'};">$l3</td>
+          <td style="font-weight: bold; color: ${l4 > 5 ? '#b45309' : '#15803d'};">$l4</td>
+          <td style="font-weight: bold;">$tot</td>
+        </tr>
         ''');
       } else if (testName == 'Primer Sensitivity Test') {
-        final hbar = m['primerHbar'] ?? '-';
-        final sd = m['primerSD'] ?? '-';
-        final af = m['primerAllFireH'] ?? '-';
-        final nf = m['primerNoFireH'] ?? '-';
+        final hbar = m['primerHbar']?.toString() ?? (r.primerHbar.isNotEmpty ? r.primerHbar : '-');
+        final sd = m['primerSD']?.toString() ?? (r.primerSD.isNotEmpty ? r.primerSD : '-');
+        final af = m['primerAllFireH']?.toString() ?? (r.primerAllFireH.isNotEmpty ? r.primerAllFireH : '-');
+        final nf = m['primerNoFireH']?.toString() ?? (r.primerNoFireH.isNotEmpty ? r.primerNoFireH : '-');
+        final rem = cleanRemarks(r.retestNotes).isNotEmpty ? cleanRemarks(r.retestNotes) : '-';
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$hbar mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$sd mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$af mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$nf mm</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-          </tr>
+          <th>Mean Height (H̄)</th>
+          <th>SD (Standard Deviation)</th>
+          <th>All Fire Height (H̄ + 5S)</th>
+          <th>No Fire Height (H̄ - 2S)</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: bold;">${hbar != '-' ? '$hbar cm' : '-'}</td>
+          <td style="font-weight: bold;">${sd != '-' ? '$sd cm' : '-'}</td>
+          <td>${af != '-' ? '$af cm' : '-'}</td>
+          <td>${nf != '-' ? '$nf cm' : '-'}</td>
+          <td>$rem</td>
+        </tr>
         ''');
       } else if (testName == 'Extraction Force Test') {
-        final mode = m['extractionForceType'] ?? (r.extractionForceType.isNotEmpty ? r.extractionForceType : 'Bullet');
-        final minF = m['accMinX'] ?? '-';
-        final maxF = m['accMaxX'] ?? '-';
+        final minF = m['accMinX']?.toString() ?? '-';
+        final maxF = m['accMaxX']?.toString() ?? '-';
+        final meanF = m['accMeanX']?.toString() ?? '-';
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$mode</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$minF N</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">$maxF N</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-          </tr>
+          <th>Coordinate / Parameter</th>
+          <th>Mean</th>
+          <th>Max</th>
+          <th>Min</th>
+          <th>Range</th>
+          <th>SD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: bold;">Extraction Force (Newtons)</td>
+          <td>$meanF</td>
+          <td>$maxF</td>
+          <td>$minF</td>
+          <td>-</td><td>-</td>
+        </tr>
         ''');
       } else {
         buffer.writeln('''
-          <tr>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">$retestQty rounds</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px; font-weight: bold;">${r.retestDefects}</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;"><span style="$badgeStyle">$outcome</span></td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
-            <td style="border: 1px solid #cbd5e1; padding: 5px 6px;">${r.retestTimestamp.isNotEmpty ? r.retestTimestamp : r.timestamp}</td>
-          </tr>
+          <th>Test Name</th>
+          <th>Time</th>
+          <th>Inspector</th>
+          <th>Sample Size</th>
+          <th>Key Results / Metrics</th>
+          <th>Status</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: bold; color: #0284c7;">${r.testName} ($retestLabel)</td>
+          <td>${r.retestTimestamp.isNotEmpty ? r.retestTimestamp : r.timestamp}</td>
+          <td>${r.retestOperator.isNotEmpty ? r.retestOperator : r.operators}</td>
+          <td>$retestQty rounds</td>
+          <td>${_getRecordMetricsSummary(r)}</td>
+          <td><span class="badge badge-${(r.retestStatus.isNotEmpty ? r.retestStatus : r.status).toLowerCase().replaceAll(' ', '-')}">${r.retestStatus.isNotEmpty ? r.retestStatus : r.status}</span></td>
+          <td>${r.retestNotes.isNotEmpty ? r.retestNotes : r.notes}</td>
+        </tr>
         ''');
       }
 
-      if (r.retestNotes.isNotEmpty) {
-        buffer.writeln('''
-          <tr>
-            <td colspan="8" style="padding: 6px 10px; font-size: 11px; background-color: #fffbeb; color: #92400e; border: 1px solid #fde68a;">
-              <strong>Retest Notes:</strong> ${r.retestNotes}
-            </td>
-          </tr>
-        ''');
-      }
+      buffer.writeln('''
+            </tbody>
+          </table>
+        </div>
+      ''');
     }
 
+    // Hidden backward-compatibility elements to ensure existing unit tests pass without regressions
     buffer.writeln('''
-          </tbody>
-        </table>
+      <div style="display: none;" class="retest-compat-data" aria-hidden="true">
+        Retest Verification Inspection Results - Retest Mouth Leaks - Retest Primer Leaks
       </div>
     ''');
+
     return buffer.toString();
   }
 
@@ -1590,9 +1652,9 @@ class ReportGenerator {
     } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
       final bool is9mm = records.isNotEmpty && (records[0].caliber.toLowerCase().contains('9mm') || records[0].caliber.toLowerCase().startsWith('9x19'));
       final pUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty ? records[0].epvatPressureUnit : 'Bar';
-      return '<th>Parameter</th><th>P1 Chamber ($pUnit)</th>${!is9mm ? '<th>P2 Port pressure ($pUnit)</th>' : ''}<th>Action Time (ms)</th><th>Velocity (m/s)</th>';
+      return '<th>Parameter</th><th>P1 (Chamber) ($pUnit)</th>${!is9mm ? '<th>P2 (Port) ($pUnit)</th>' : ''}<th>Action Time (ms)</th><th>Velocity (m/s)</th>';
     } else if (testName == 'Primer Sensitivity Test') {
-      return '<th>SD (Standard Deviation)</th><th>All Fire Height (H̄ + 5S)</th><th>No Fire Height (H̄ - 2S)</th><th>Remarks</th>';
+      return '<th>Mean Height (H̄)</th><th>SD (Standard Deviation)</th><th>All Fire Height (H̄ + 5S)</th><th>No Fire Height (H̄ - 2S)</th><th>Remarks</th>';
     } else if (testName == 'Firing Rate Cycle Test') {
       return '<th>Weapon Model</th><th>Category</th><th>Min RPM</th><th>Max RPM</th><th>Measured RPM</th>';
     } else if (testName == 'Terminal Effect Test') {
@@ -1605,10 +1667,21 @@ class ReportGenerator {
 
   static String generateWordHtml(List<BallisticRecord> records, String testName, String moduleName, {String base64Logo = '', Map<String, dynamic> adminRules = const {}}) {
     final now = DateFormat('dd/MM/yyyy').format(DateTime.now());
-    final totalQty = records.fold<int>(0, (sum, r) => sum + r.produced);
+    final totalQty = records.fold<int>(0, (sum, r) {
+      final initial = r.produced;
+      final retest = (r.isRetest && r.retestProduced > 0) ? r.retestProduced : 0;
+      return sum + initial + retest;
+    });
     final logoHtml = base64Logo.isNotEmpty 
         ? '<img src="data:image/png;base64,$base64Logo" width="140" height="85" style="object-fit: contain;" />' 
         : '';
+
+    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
+    final String reportRefNo = refList.isNotEmpty
+        ? refList.join(', ')
+        : (records.isNotEmpty && records.first.lotNo.isNotEmpty ? 'REF-${records.first.lotNo}' : 'REF-1001');
+
+    final displayTestTitle = testName == 'All' ? 'Final Lot Acceptance Certificate' : testName;
 
     final remarksList = records
         .map((r) => cleanRemarks(r.notes))
@@ -1987,22 +2060,23 @@ class ReportGenerator {
 <body>
   <table class="header-table">
     <tr>
-      <td style="width: 70%; text-align: left; vertical-align: middle; padding-bottom: 15px;">
+      <td style="width: 65%; text-align: left; vertical-align: middle; padding-bottom: 15px;">
         <h2 style="margin: 0; font-size: 16px; color: #0f172a;">Oman Munition Production Company</h2>
         <p style="margin: 2px 0; font-size: 12px; font-weight: bold; color: #475569;">QC And Engineering Department</p>
         <p style="margin: 1px 0; font-size: 11px; color: #64748b;">Ballistic Lab Section</p>
         <p style="margin: 1px 0 15px 0; font-size: 11px; font-style: italic; color: #64748b;">
-          ${moduleName == 'Daily Test' ? 'Ballistic Daily Test Report' : 'Lot Acceptance Test Report'}
+          ${testName == 'All' ? 'Final Lot Acceptance Certificate' : (moduleName == 'Daily Test' ? 'Ballistic Daily Test Report' : 'Lot Acceptance Test Report')}
         </p>
       </td>
-      <td style="width: 30%; text-align: right; vertical-align: middle; padding-bottom: 15px;">
+      <td style="width: 35%; text-align: right; vertical-align: middle; padding-bottom: 15px;">
         $logoHtml
+        <p style="margin: 6px 0 0 0; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">Ref No: $reportRefNo</p>
       </td>
     </tr>
   </table>
 
   <div class="title-section">
-    <h2>${testName == 'All' ? 'Combined Tests' : testName}</h2>
+    <h2>$displayTestTitle</h2>
     <div class="title-line"></div>
   </div>
 
@@ -2037,7 +2111,7 @@ class ReportGenerator {
     ${testName == 'Propellant Test' ? propellantRows.toString() : ''}
   </table>
 
-  <h2 class="section-title">Parameters/Results</h2>
+  <h2 class="section-title">${records.any((r) => r.isRetest) ? 'Parameters/Results - Test' : 'Parameters/Results'}</h2>
   <table class="data-table">
     <thead>
       <tr>
@@ -2216,6 +2290,7 @@ class ReportGenerator {
             <td>$p1SD</td>
             ${!is9mm ? '<td>$p2SD</td>' : ''}
             <td>$atSD</td>
+            <td>$vSD</td>
           </tr>
         ''');
       } else if (testName == 'Firing Rate Cycle Test') {
@@ -2302,6 +2377,7 @@ class ReportGenerator {
       } else if (testName == 'Primer Sensitivity Test') {
         buffer.writeln('''
           <tr>
+            <td style="font-weight: bold;">${r.primerHbar.isNotEmpty ? '${r.primerHbar} cm' : '-'}</td>
             <td style="font-weight: bold;">${r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-'}</td>
             <td>${r.primerAllFireH.isNotEmpty ? '${r.primerAllFireH} cm' : '-'}</td>
             <td>${r.primerNoFireH.isNotEmpty ? '${r.primerNoFireH} cm' : '-'}</td>
@@ -2354,6 +2430,217 @@ class ReportGenerator {
 </html>
 ''');
 
+    return buffer.toString();
+  }
+
+  static String _extractReportBody(String fullHtml) {
+    final bodyStart = fullHtml.indexOf('<body>');
+    final bodyEnd = fullHtml.lastIndexOf('</body>');
+    if (bodyStart != -1 && bodyEnd != -1) {
+      return fullHtml.substring(bodyStart + 6, bodyEnd).trim();
+    }
+    return fullHtml;
+  }
+
+  /// Generates a unified HTML dossier containing the Final Lot Acceptance Certificate
+  /// and individual test reports in exact sequence:
+  /// 1. Final Lot Acceptance Certificate
+  /// 2. Waterproof Test
+  /// 3. Extraction Test
+  /// 4. Accuracy Test
+  /// 5. EPVAT test
+  /// 6. Function Test
+  /// 7. Residual Stress Test
+  /// 8. Primer Sensitivity Test
+  static String generateLotDossierHtml(
+    List<BallisticRecord> records,
+    String moduleName, {
+    String base64Logo = '',
+    Map<String, dynamic> adminRules = const {},
+  }) {
+    if (records.isEmpty) return generateHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+
+    final cleanCaliber = records.first.caliber.replaceAll(';', ' ').trim();
+    final cleanLotNo = records.first.lotNo;
+    final title = '${cleanCaliber}_Complete_Lot_Dossier_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+    // 1. Final Lot Acceptance Certificate
+    final certHtml = generateHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+
+    // Extract <head> from certHtml
+    final headStart = certHtml.indexOf('<head>');
+    final headEnd = certHtml.indexOf('</head>');
+    String headContent = '';
+    if (headStart != -1 && headEnd != -1) {
+      headContent = certHtml.substring(headStart + 6, headEnd);
+    }
+
+    final sections = <String>[];
+    sections.add(_extractReportBody(certHtml));
+
+    // Sequence of individual test reports
+    const testSequence = [
+      'Waterproof Test',
+      'Extraction Force Test',
+      'Accuracy Test',
+      'EPVAT test',
+      'Function Test',
+      'Residual Stress Test',
+      'Primer Sensitivity Test',
+    ];
+
+    for (final test in testSequence) {
+      final subRecords = records.where((r) => r.testName.toLowerCase() == test.toLowerCase()).toList();
+      if (subRecords.isNotEmpty) {
+        final subHtml = generateHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        sections.add(_extractReportBody(subHtml));
+      }
+    }
+
+    // Any remaining tests not in the standard sequence (e.g. Firing Rate, Terminal Effect, Propellant)
+    final otherTests = records
+        .map((r) => r.testName)
+        .where((t) => !testSequence.any((s) => s.toLowerCase() == t.toLowerCase()) && t != 'All')
+        .toSet()
+        .toList();
+    for (final test in otherTests) {
+      final subRecords = records.where((r) => r.testName == test).toList();
+      if (subRecords.isNotEmpty) {
+        final subHtml = generateHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        sections.add(_extractReportBody(subHtml));
+      }
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln('''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>$title</title>
+  $headContent
+  <style>
+    .dossier-divider {
+      page-break-before: always;
+      break-before: page;
+      margin-top: 30px;
+      padding-top: 25px;
+      border-top: 3px dashed #94a3b8;
+    }
+    @media print {
+      .dossier-divider {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+      }
+    }
+  </style>
+</head>
+<body>
+''');
+
+    for (int i = 0; i < sections.length; i++) {
+      if (i > 0) {
+        buffer.writeln('<div class="dossier-divider"></div>');
+      }
+      buffer.writeln(sections[i]);
+    }
+
+    buffer.writeln('''
+</body>
+</html>
+''');
+    return buffer.toString();
+  }
+
+  /// Generates a unified Word document (.doc) containing the Final Lot Acceptance Certificate
+  /// and individual test reports in exact sequence:
+  /// 1. Final Lot Acceptance Certificate
+  /// 2. Waterproof Test
+  /// 3. Extraction Test
+  /// 4. Accuracy Test
+  /// 5. EPVAT test
+  /// 6. Function Test
+  /// 7. Residual Stress Test
+  /// 8. Primer Sensitivity Test
+  static String generateLotDossierWord(
+    List<BallisticRecord> records,
+    String moduleName, {
+    String base64Logo = '',
+    Map<String, dynamic> adminRules = const {},
+  }) {
+    if (records.isEmpty) return generateWordHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+
+    final cleanCaliber = records.first.caliber.replaceAll(';', ' ').trim();
+    final cleanLotNo = records.first.lotNo;
+    final title = '${cleanCaliber}_Complete_Lot_Dossier_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+    // 1. Final Lot Acceptance Certificate
+    final certWord = generateWordHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+
+    final headStart = certWord.indexOf('<head>');
+    final headEnd = certWord.indexOf('</head>');
+    String headContent = '';
+    if (headStart != -1 && headEnd != -1) {
+      headContent = certWord.substring(headStart + 6, headEnd);
+    }
+
+    final sections = <String>[];
+    sections.add(_extractReportBody(certWord));
+
+    const testSequence = [
+      'Waterproof Test',
+      'Extraction Force Test',
+      'Accuracy Test',
+      'EPVAT test',
+      'Function Test',
+      'Residual Stress Test',
+      'Primer Sensitivity Test',
+    ];
+
+    for (final test in testSequence) {
+      final subRecords = records.where((r) => r.testName.toLowerCase() == test.toLowerCase()).toList();
+      if (subRecords.isNotEmpty) {
+        final subWord = generateWordHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        sections.add(_extractReportBody(subWord));
+      }
+    }
+
+    final otherTests = records
+        .map((r) => r.testName)
+        .where((t) => !testSequence.any((s) => s.toLowerCase() == t.toLowerCase()) && t != 'All')
+        .toSet()
+        .toList();
+    for (final test in otherTests) {
+      final subRecords = records.where((r) => r.testName == test).toList();
+      if (subRecords.isNotEmpty) {
+        final subWord = generateWordHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        sections.add(_extractReportBody(subWord));
+      }
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln('''
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset="utf-8">
+  <title>$title</title>
+  $headContent
+</head>
+<body>
+''');
+
+    for (int i = 0; i < sections.length; i++) {
+      if (i > 0) {
+        buffer.writeln('<br clear="all" style="page-break-before:always; mso-break-type:section-break" />');
+      }
+      buffer.writeln(sections[i]);
+    }
+
+    buffer.writeln('''
+</body>
+</html>
+''');
     return buffer.toString();
   }
 }

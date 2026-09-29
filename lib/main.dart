@@ -13,6 +13,7 @@ import 'screens/entry_tab.dart';
 import 'screens/history_tab.dart';
 import 'screens/analysis_recommendation_tab.dart';
 import 'screens/consumables_tab.dart';
+import 'screens/witness_storage_tab.dart';
 import 'screens/executive_reports_tab.dart';
 import 'services/epvat_formula_helper.dart';
 import 'services/supabase_service.dart';
@@ -8523,6 +8524,17 @@ class _MainShellState extends State<MainShell> {
         base64Logo: _base64Logo,
         loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
       );
+    } else if (_currentModule == 'Witness Storage') {
+      mainContent = WitnessStorageTab(
+        loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
+        userRole: _currentUserRole == UserRole.admin
+            ? 'admin'
+            : (_currentUserRole == UserRole.technician
+                ? 'technician'
+                : (_currentUserRole == UserRole.supervisor
+                    ? 'supervisor'
+                    : (_currentUserRole == UserRole.manager ? 'manager' : 'operator'))),
+      );
     } else {
       mainContent = ConsumablesTab(
         loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
@@ -8725,6 +8737,8 @@ class _MainShellState extends State<MainShell> {
                               const SizedBox(height: 8.0),
                               _buildModuleButton(label: 'Consumable Items', icon: Icons.inventory_2_outlined, activeColor: const Color(0xFFEC4899)),
                               const SizedBox(height: 8.0),
+                              _buildModuleButton(label: 'Witness Storage', icon: Icons.archive_outlined, activeColor: const Color(0xFF06B6D4)),
+                              const SizedBox(height: 8.0),
                               _buildModuleButton(label: 'Executive Reports', icon: Icons.summarize_outlined, activeColor: const Color(0xFF8B5CF6)),
                             ],
                           ),
@@ -8843,6 +8857,7 @@ class _MainShellState extends State<MainShell> {
                     'Component Test',
                     'Equipment Report',
                     'Consumable Items',
+                    'Witness Storage',
                     'Executive Reports',
                   ].map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(

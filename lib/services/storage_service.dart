@@ -275,7 +275,12 @@ class StorageService {
         ? 'Daily Test'
         : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
     final String assignedId = (record.id != null && record.id!.isNotEmpty) ? record.id! : BallisticRecord.generateUuid();
-    BallisticRecord recordToSave = record.copyWith(id: assignedId, module: cleanModule);
+    String refNo = record.referenceNo;
+    if (refNo.isEmpty) {
+      final refNum = await getNextReferenceNumber();
+      refNo = 'REF-${refNum.toString().padLeft(4, '0')}';
+    }
+    BallisticRecord recordToSave = record.copyWith(id: assignedId, module: cleanModule, referenceNo: refNo);
 
     // Track as pending sync until confirmed by cloud
     await _addPendingSyncId(assignedId);
@@ -1182,6 +1187,98 @@ class StorageService {
 
   void saveActiveModule(String module) {
     if (kIsWeb) saveWebActiveModule(module);
+  }
+
+  // Sequential Reference Number Counter for Tests
+  Future<int> getNextReferenceNumber() async {
+    if (kIsWeb) {
+      int current = getWebRefCounter();
+      current++;
+      saveWebRefCounter(current);
+      return current;
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/test_reference_counter.json');
+      int current = 1000;
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        current = int.tryParse(content.trim()) ?? 1000;
+      }
+      current++;
+      await file.writeAsString(current.toString(), mode: FileMode.write, flush: true);
+      return current;
+    } catch (e) {
+      return 1000 + (DateTime.now().millisecondsSinceEpoch % 10000);
+    }
+  }
+
+  // Witness Storage: Load registered lots
+  Future<List<Map<String, dynamic>>> loadWitnessStorageLots() async {
+    if (kIsWeb) {
+      return getWebWitnessLots();
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/witness_storage_lots.json');
+      if (!await file.exists()) return [];
+      final content = await file.readAsString();
+      if (content.isEmpty) return [];
+      final List<dynamic> decoded = jsonDecode(content);
+      return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      print("Error loading witness storage lots: $e");
+      return [];
+    }
+  }
+
+  // Witness Storage: Save registered lots
+  Future<void> saveWitnessStorageLots(List<Map<String, dynamic>> lots) async {
+    if (kIsWeb) {
+      saveWebWitnessLots(lots);
+      return;
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/witness_storage_lots.json');
+      await file.writeAsString(jsonEncode(lots), mode: FileMode.write, flush: true);
+    } catch (e) {
+      print("Error saving witness storage lots: $e");
+    }
+  }
+
+  // Witness Storage: Load consumption records
+  Future<List<Map<String, dynamic>>> loadWitnessStorageConsumptions() async {
+    if (kIsWeb) {
+      return getWebWitnessConsumptions();
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/witness_storage_consumptions.json');
+      if (!await file.exists()) return [];
+      final content = await file.readAsString();
+      if (content.isEmpty) return [];
+      final List<dynamic> decoded = jsonDecode(content);
+      return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      print("Error loading witness storage consumptions: $e");
+      return [];
+    }
+  }
+
+  // Witness Storage: Save consumption records
+  Future<void> saveWitnessStorageConsumptions(List<Map<String, dynamic>> consumptions) async {
+    if (kIsWeb) {
+      saveWebWitnessConsumptions(consumptions);
+      return;
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/witness_storage_consumptions.json');
+      await file.writeAsString(jsonEncode(consumptions), mode: FileMode.write, flush: true);
+    } catch (e) {
+      print("Error saving witness storage consumptions: $e");
+    }
   }
 }
 
