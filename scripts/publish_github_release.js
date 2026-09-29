@@ -19,36 +19,29 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.5.9';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.5.9 (Collapsible Control, Submission Alerts, EPVAT Summary Statistics, UI Enhancements)';
-const BODY = `## OMPC Ballistic AeroData v1.5.9
+const TAG_NAME = 'v1.6.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.6.1 (EPVAT Multi-Temp Evaluation Fix, Round & Stat Serialization, Remarks Safety)';
+const BODY = `## OMPC Ballistic AeroData v1.6.1
 
-Production release with major UI refinements, automated real-time submission alerts, dynamic collapsible control modules, and streamlined EPVAT evaluation & reporting:
+Comprehensive update resolving EPVAT multi-temperature differential evaluation zero-result bug, enhancing round and telemetry serialization across all modes, and preserving notes metadata during record editing.
 
-### Key Highlights & Features:
-1. **Dynamic Collapsible Control Panel (1-Page Fit)**:
-   - Control panel refactored to single-column responsive layout with immediate vertical sliding.
-   - When sections collapse, lower sections slide up seamlessly; when sections expand, lower sections slide down.
-   - "Collapse All" and "Expand All" one-click action buttons.
-   - All 6 sections fit comfortably on one page when collapsed.
-2. **Audio Chime & Real-Time Multi-User Submission Alerts**:
-   - Native audio alert plays upon report submission.
-   - Supabase Realtime broadcasts submission events across connected sessions, flashing a one-time alert notification with a direct "View in Logs" button.
-3. **EPVAT Summary Statistics & 1-Page Fit Reports**:
-   - Replaced raw round dumps with clean Summary Statistics evaluation table (P1, P2, Velocity, Action Time: Mean, Max, Min, Range, SD).
-   - "Evaluated Calculation" column streamlined to display auto-calculated values and units.
-   - Optimized print CSS ensuring clean 1-page fit on standard paper.
-4. **Sentencing & Specification Simplification**:
-   - Resolved EPVAT auto-sentencing bug: now strictly evaluates active custom caliber formulas.
-   - Removed obsolete temperature specification chips/fields and legacy 3-sigma/delta toggles from Control.
-   - Quality Status field enlarged to flex: 6 preventing any text truncation.
-   - Red asterisk (*) prominently indicates all mandatory required fields.
-   - Function test classification diagram repositioned below Remarks; Remarks defaults to empty.
-5. **Cross-Platform Deployment**:
-   - **Windows Desktop**: 1-Click Installer (\`OMPC_Ballistic_AeroData_Setup.exe\`), Standalone Executable (\`OMPC_Ballistic_AeroData.exe\`), and Portable ZIP.
-   - **Android APK**: Compiled release APKs (\`OMPC_Ballistic_AeroData.apk\`, \`OMPC_Ballistic_AeroData_v1.5.9.apk\`).
+### Bug Fixes & Improvements:
+1. **EPVAT Temperature Differential Evaluation Fix**:
+   - Fixed variable resolution in formula evaluation: non-baseline temperature variables (such as \`p2_mean_52\` or \`vel_mean_54\`) no longer incorrectly fall back to the +21°C baseline.
+   - Previously, if telemetry for +52°C or -54°C was missing or unmapped, the formula subtracted the baseline from itself (e.g. \`Mean P2 @52 - Mean P2 @21\` calculated \`1201.5 - 1201.5 = 0.0 bar\`), yielding false 0.0 results.
+   - Now, temperature suffixes are strictly validated. If a temperature metric is absent, evaluation handles it properly without false 0.0 equality.
+2. **Stats-Only Multi-Temperature Telemetry Persistence**:
+   - In "Stats Only" entry mode (where rounds are not entered individually), EPVAT summary statistics are now serialized into round fields using standard \`STAT:P1=...,Max=...,Min=...,SD=...\` encoding separated by semicolons (\`;\`).
+   - Slot alignment across temperatures is strictly preserved even when individual temperatures have empty fields.
+3. **Resilient Temperature Extraction**:
+   - Replaced comma-splitting with regex-based temperature matching (\`RegExp(r'([+-]?\\d+)')\`), properly parsing multi-temperature configurations whether separated by commas, spaces, or tabs (e.g. \`+21°C  +52°C  -54°C\` from CSV / Supabase).
+4. **Remarks & Notes Protection**:
+   - In History Log Edit dialog, user remarks are cleanly separated from internal \`Temps:\` metadata via \`ReportGenerator.cleanRemarks\`.
+   - On saving record updates, existing \`Temps:\` telemetry is preserved, preventing edits from wiping out multi-temperature statistics.
+5. **Cross-Platform Deployments**:
    - **Web Application**: Live on Firebase Hosting at https://ompc-ballistic-aerodata.web.app.
-   - **Supabase**: Real-time broadcast and master database synchronization verified.
+   - **Windows Desktop**: 1-Click Setup Installer (\`OMPC_Ballistic_AeroData_Setup.exe\`), Standalone Executable (\`OMPC_Ballistic_AeroData.exe\`), and Portable ZIP.
+   - **Android APK**: Updated release APK (\`OMPC_Ballistic_AeroData_v1.6.1.apk\`).
 `;
 
 function request(options, postData) {
@@ -158,6 +151,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
+    { name: 'OMPC_Ballistic_AeroData_v1.6.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.6.1.apk' },
     { name: 'OMPC_Ballistic_AeroData_v1.5.9.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.5.9.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
