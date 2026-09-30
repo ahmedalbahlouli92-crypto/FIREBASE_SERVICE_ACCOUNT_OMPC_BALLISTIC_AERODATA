@@ -841,5 +841,29 @@ GRANT ALL ON TABLE public.witness_storage_consumptions TO anon, authenticated, s
 CREATE INDEX IF NOT EXISTS idx_witness_consumptions_lot_no ON public.witness_storage_consumptions (lot_no);
 CREATE INDEX IF NOT EXISTS idx_witness_consumptions_lot_id ON public.witness_storage_consumptions (lot_id);
 
+-- Migration: Ensure reference_no exists on all test tables
+ALTER TABLE IF EXISTS public.ballistic_records ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_waterproof_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_extraction_force_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_accuracy_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_epvat_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_function_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_residual_stress_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_terminal_effect_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_firing_rate_cycle_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.lot_acceptance_primer_sensitivity_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_waterproof_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_extraction_force_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_accuracy_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_epvat_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_function_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_residual_stress_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_terminal_effect_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_firing_rate_cycle_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.daily_primer_sensitivity_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.component_propellant_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.component_primer_sensitivity_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+
 -- Confirmation output
 SELECT 'Successfully created all 20 test tables, 8 consumable category tables, component inventory, witness storage tables, and admin control tables.' as result;
+

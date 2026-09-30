@@ -2845,16 +2845,51 @@ class _MainShellState extends State<MainShell> {
     }
 
     try {
-      await _storageService.saveRecord(record, module: _currentModule);
-      final updated = await _storageService.loadRecords(module: _currentModule);
-      if (updated.isNotEmpty && mounted) {
+      final savedRecord = await _storageService.saveRecord(record, module: _currentModule);
+      if (mounted) {
         setState(() {
           if (_currentModule == 'Lot Acceptance Test') {
-            _records = updated;
+            _records = [
+              savedRecord,
+              ..._records.where((r) =>
+                  (savedRecord.id != null && savedRecord.id!.isNotEmpty && r.id == savedRecord.id)
+                      ? false
+                      : (r.timestamp != savedRecord.timestamp || r.lotNo != savedRecord.lotNo || r.testName != savedRecord.testName))
+            ];
           } else if (_currentModule == 'Component Test') {
-            _componentTestRecords = updated;
+            _componentTestRecords = [
+              savedRecord,
+              ..._componentTestRecords.where((r) =>
+                  (savedRecord.id != null && savedRecord.id!.isNotEmpty && r.id == savedRecord.id)
+                      ? false
+                      : (r.timestamp != savedRecord.timestamp || r.lotNo != savedRecord.lotNo || r.testName != savedRecord.testName))
+            ];
           } else {
-            _dailyTestRecords = updated;
+            _dailyTestRecords = [
+              savedRecord,
+              ..._dailyTestRecords.where((r) =>
+                  (savedRecord.id != null && savedRecord.id!.isNotEmpty && r.id == savedRecord.id)
+                      ? false
+                      : (r.timestamp != savedRecord.timestamp || r.lotNo != savedRecord.lotNo || r.testName != savedRecord.testName))
+            ];
+          }
+        });
+      }
+
+      final updated = await _storageService.loadRecords(module: _currentModule);
+      if (updated.isNotEmpty && mounted) {
+        final bool containsSaved = updated.any((r) =>
+            (r.id != null && r.id!.isNotEmpty && savedRecord.id != null && r.id == savedRecord.id) ||
+            (r.timestamp == savedRecord.timestamp && r.lotNo == savedRecord.lotNo && r.testName == savedRecord.testName));
+        final finalList = containsSaved ? updated : [savedRecord, ...updated];
+
+        setState(() {
+          if (_currentModule == 'Lot Acceptance Test') {
+            _records = finalList;
+          } else if (_currentModule == 'Component Test') {
+            _componentTestRecords = finalList;
+          } else {
+            _dailyTestRecords = finalList;
           }
         });
       }

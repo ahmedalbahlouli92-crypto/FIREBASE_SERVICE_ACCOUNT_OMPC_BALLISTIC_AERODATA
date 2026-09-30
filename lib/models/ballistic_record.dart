@@ -859,6 +859,16 @@ class BallisticRecord {
     String retestMetrics = toStr(map['retest_metrics']);
 
     final String rawNotes = toStr(map['notes']);
+    String referenceNo = toStr(map['reference_no'] ?? map['referenceNo']);
+    if (referenceNo.isEmpty && rawNotes.contains('[REF:')) {
+      try {
+        final startIndex = rawNotes.indexOf('[REF:');
+        final tag = rawNotes.substring(startIndex + 5);
+        final endTag = tag.indexOf(']');
+        referenceNo = (endTag != -1 ? tag.substring(0, endTag) : tag).trim();
+      } catch (_) {}
+    }
+
     if (!isRetest && rawNotes.contains('[RETEST|')) {
       isRetest = true;
       try {
@@ -1005,7 +1015,7 @@ class BallisticRecord {
       retestProduced: retestProduced,
       retestDefects: retestDefects,
       retestMetrics: retestMetrics,
-      referenceNo: toStr(map['reference_no'] ?? map['referenceNo']),
+      referenceNo: referenceNo,
     );
   }
 

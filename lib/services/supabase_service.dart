@@ -153,10 +153,21 @@ class SupabaseService {
   }
 
   /// Sanitize record map for Supabase master table schema
-  /// Strips any client-only columns not in remote schema and embeds retest metadata safely in notes
+  /// Strips any client-only columns not in remote schema and embeds retest/reference metadata safely in notes
   static Map<String, dynamic> sanitizeForSupabase(Map<String, dynamic> source) {
     final sanitized = Map<String, dynamic>.from(source);
     sanitized.remove('acc_largest_distance');
+
+    final String refNo = (source['reference_no'] ?? source['referenceNo'] ?? '').toString().trim();
+    if (refNo.isNotEmpty) {
+      final origNotes = (sanitized['notes'] ?? '').toString();
+      final tag = '[REF:$refNo]';
+      if (!origNotes.contains('[REF:')) {
+        sanitized['notes'] = origNotes.isEmpty ? tag : '$origNotes $tag';
+      }
+    }
+    sanitized.remove('reference_no');
+    sanitized.remove('referenceNo');
 
     final bool isRetest = source['is_retest'] == true || source['is_retest']?.toString() == '1';
     if (isRetest) {

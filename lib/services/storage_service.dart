@@ -271,7 +271,7 @@ class StorageService {
   }
 
   // Append new ballistic test log entry to Supabase and local cache
-  Future<void> saveRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
+  Future<BallisticRecord> saveRecord(BallisticRecord record, {String module = 'Lot Acceptance Test'}) async {
     final cleanModule = (module == 'Daily Test' || module == 'Daily Test Report')
         ? 'Daily Test'
         : (module == 'Component Test' ? 'Component Test' : 'Lot Acceptance Test');
@@ -325,6 +325,7 @@ class StorageService {
         print("Supabase save error (saved to local cache, will sync later): $e");
       }
     }
+    return recordToSave;
   }
 
   // Read all local CSV records from disk for desktop

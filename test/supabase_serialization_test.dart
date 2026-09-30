@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ompc_ballistic_aerodata/models/ballistic_record.dart';
+import 'package:ompc_ballistic_aerodata/services/supabase_service.dart';
 
 void main() {
   group('Supabase Mapping Tests', () {
@@ -46,6 +47,32 @@ void main() {
       expect(reconstructed.produced, original.produced);
       expect(reconstructed.actionTimeMean, original.actionTimeMean);
       expect(reconstructed.primerHbar, original.primerHbar);
+    });
+
+    test('sanitizeForSupabase strips reference_no and embeds into notes', () {
+      final rawMap = {
+        'lot_no': '001 OMPC/26',
+        'notes': 'All measurements nominal',
+        'reference_no': 'REF-0042',
+      };
+      final sanitized = SupabaseService.sanitizeForSupabase(rawMap);
+      expect(sanitized.containsKey('reference_no'), isFalse);
+      expect(sanitized.containsKey('referenceNo'), isFalse);
+      expect(sanitized['notes'], contains('[REF:REF-0042]'));
+
+      // fromSupabaseMap recovers referenceNo from notes tag
+      final record = BallisticRecord.fromSupabaseMap(sanitized);
+      expect(record.referenceNo, 'REF-0042');
+    });
+
+    test('fromSupabaseMap recovers referenceNo directly from map when column exists', () {
+      final mapWithCol = {
+        'lot_no': '001 OMPC/26',
+        'notes': 'All good',
+        'reference_no': 'REF-0088',
+      };
+      final record = BallisticRecord.fromSupabaseMap(mapWithCol);
+      expect(record.referenceNo, 'REF-0088');
     });
   });
 }

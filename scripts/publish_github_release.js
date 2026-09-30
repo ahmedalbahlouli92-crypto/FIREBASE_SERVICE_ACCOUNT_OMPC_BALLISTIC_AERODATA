@@ -19,31 +19,30 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.7.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.7.1 (Critical Fix: Report Submission Persistence, EPVAT Sentencing & Parameter Order)';
-const BODY = `## OMPC Ballistic AeroData v1.7.1
+const TAG_NAME = 'v1.7.2';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.7.2 (Supabase Save Fix, Schema Resilience & UI Persistence Guard)';
+const BODY = `## OMPC Ballistic AeroData v1.7.2
 
-Critical stability and compliance release resolving report persistence on submission, fixing false tombstone purging, correcting EPVAT parameter sequence, and eliminating false quality rejections across all calibers (including 9mm and blanks).
+Critical fix release resolving report submission failures to Supabase, eliminating PostgREST schema cache errors (PGRST204), and guarding client-side in-memory persistence so submitted reports never disappear.
 
-### Key Fixes & Enhancements:
-1. **Report Persistence & Disappearing Submissions Resolved**:
-   - Replaced aggressive local tombstoning on cloud queries with authoritative local preservation. Reports submitted locally are never falsely deleted or purged on cloud latency/sync.
-   - Implemented optimistic in-memory record insertion across all modules before cloud I/O, guaranteeing reports stick on the first submission without needing re-entry.
-   - Fixed silent background sync to prevent replacing active local records on transient connection failures.
+### Key Fixes:
+1. **Supabase Database Insert & Update Fix (PGRST204 Resolved)**:
+   - Fixed schema incompatibility where client-generated \`reference_no\` caused Supabase PostgREST to reject all record insertions with HTTP 400 (\`Could not find the 'reference_no' column of 'ballistic_records' in the schema cache\`).
+   - Implemented automatic payload sanitization in \`SupabaseService.sanitizeForSupabase\` to strip \`reference_no\` before REST network calls while safely embedding reference metadata in the notes field (\`[REF:REF-xxxx]\`).
+   - Added automatic recovery in \`BallisticRecord.fromSupabaseMap\` to parse reference numbers from either database column or embedded notes tag.
 
-2. **EPVAT Parameter Sequence Order Aligned**:
-   - Strictly unified parameter sequence across Log Entry UI, Retest Dialog, Edit Record Dialog, and Summary Statistics:
-     **P1 Chamber -> P2 Case Mouth / Port -> Action Time -> Velocity**.
+2. **Client-Side Report Persistence & UI Eviction Guard**:
+   - Fixed issue where optimistic in-memory records could be overwritten by cloud query response if Supabase insertion failed or lagged.
+   - Guaranteed that newly submitted records remain in active state and local storage regardless of cloud sync status.
 
-3. **EPVAT Quality Sentencing & False Rejection Fix**:
-   - Custom mathematical formulas are now treated as authoritative: when all formulas pass, the status sentences to "Approved".
-   - Calibers without gas port pressure (e.g. 9x19mm Para, Luger, Match, CMJ) and blank calibers (M200, M82) no longer fail for missing P2 or velocity; irrelevant formulas are marked non-applicable.
-   - Updated NATO 3-sigma design pressure formula limit from 3800 bar to standard 4200 bar (+21°C / -54°C) and 4400 bar (+52°C).
-   - Applied single-round +15% NATO allowance on peak pressure limits.
+3. **Database Schema Migration Script**:
+   - Added SQL \`ALTER TABLE ... ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';\` statements to \`supabase_tables_setup.sql\` for both master and all 20 dedicated test tables.
 
-4. **Full Test Suite & Cross-Platform Packaging**:
-   - 60/60 automated tests passing cleanly.
-   - Release binaries published for Web (Firebase), Windows Desktop (Installer, Portable ZIP, Standalone), and Android APK.
+4. **Cross-Platform Release Artifacts**:
+   - Web application updated and deployed to Firebase Hosting.
+   - Windows Desktop 1-Click Installer and Portable ZIP packages generated.
+   - Android release APK built and published.
+   - All 62 automated unit and integration tests passing.
 `;
 
 function request(options, postData) {
@@ -153,7 +152,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.7.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.7.1.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.7.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.7.2.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
