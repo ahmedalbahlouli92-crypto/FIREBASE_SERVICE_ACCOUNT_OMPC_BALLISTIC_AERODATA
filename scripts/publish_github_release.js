@@ -19,56 +19,31 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.7.0';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.7.0 (Witness Storage Module, Complete Lot Dossier, EPVAT Order & Retest Tables)';
-const BODY = `## OMPC Ballistic AeroData v1.7.0
+const TAG_NAME = 'v1.7.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.7.1 (Critical Fix: Report Submission Persistence, EPVAT Sentencing & Parameter Order)';
+const BODY = `## OMPC Ballistic AeroData v1.7.1
 
-Major release introducing the Witness Storage module with automated quantity countdown, Complete Lot Dossier compilation in strict sequence, standardized Final Lot Acceptance Certificate exports, EPVAT test specification reordering, and serial tracking across consumables.
+Critical stability and compliance release resolving report persistence on submission, fixing false tombstone purging, correcting EPVAT parameter sequence, and eliminating false quality rejections across all calibers (including 9mm and blanks).
 
-### Key Enhancements & Features:
-1. **New Witness Storage Module**:
-   - Registered under dedicated navigation with role-based access for technicians, inspectors, and administrators.
-   - Comprehensive lot registration: Caliber, Lot Number, Initial Quantity, Powder Details (Lot, Supplier, Type, Charge Weight), Primer Details (Lot, Supplier, Type), and Storage Location.
-   - Consumption logging with validation, testing purpose/order reference, and operator tracking.
-   - Real-time automated countdown with dynamic status indicators (\`ACTIVE\`, \`LOW STOCK\`, \`DEPLETED\`).
-   - Dual-layer synchronization supporting local storage and cloud Supabase tables (\`witness_storage_lots\` & \`witness_storage_consumptions\`).
+### Key Fixes & Enhancements:
+1. **Report Persistence & Disappearing Submissions Resolved**:
+   - Replaced aggressive local tombstoning on cloud queries with authoritative local preservation. Reports submitted locally are never falsely deleted or purged on cloud latency/sync.
+   - Implemented optimistic in-memory record insertion across all modules before cloud I/O, guaranteeing reports stick on the first submission without needing re-entry.
+   - Fixed silent background sync to prevent replacing active local records on transient connection failures.
 
-2. **Complete Lot Dossier (Word & PDF Export)**:
-   - Exports the complete suite of tests for any lot in one unified document in exact sequence:
-     1. Final Lot Acceptance Certificate
-     2. Waterproof Test
-     3. Extraction Force Test
-     4. Accuracy Test
-     5. EPVAT test
-     6. Function Test
-     7. Residual Stress Test
-     8. Primer Sensitivity Test
-   - Available via 1-click "Complete Dossier (Word)" and "Complete Dossier (PDF)" actions in the Inspection Log.
+2. **EPVAT Parameter Sequence Order Aligned**:
+   - Strictly unified parameter sequence across Log Entry UI, Retest Dialog, Edit Record Dialog, and Summary Statistics:
+     **P1 Chamber -> P2 Case Mouth / Port -> Action Time -> Velocity**.
 
-3. **Final Lot Acceptance Certificate**:
-   - Renamed default export title and report banners from "Combined Test Report" to "Final Lot Acceptance Certificate".
-   - Key Results / Metrics column synchronized with the Inspection Log display format (e.g. \`Test: 4 leaks / Retest: 0 leak\`).
+3. **EPVAT Quality Sentencing & False Rejection Fix**:
+   - Custom mathematical formulas are now treated as authoritative: when all formulas pass, the status sentences to "Approved".
+   - Calibers without gas port pressure (e.g. 9x19mm Para, Luger, Match, CMJ) and blank calibers (M200, M82) no longer fail for missing P2 or velocity; irrelevant formulas are marked non-applicable.
+   - Updated NATO 3-sigma design pressure formula limit from 3800 bar to standard 4200 bar (+21°C / -54°C) and 4400 bar (+52°C).
+   - Applied single-round +15% NATO allowance on peak pressure limits.
 
-4. **EPVAT Test Reordering**:
-   - Single-temp round rows and auto-calculated statistics ordered as: **P1 (Chamber)**, **P2 (Port)**, **Action Time**, **Velocity**.
-   - Standardized across Log Entry UI and exported HTML/Word/PDF reports.
-
-5. **Primer Sensitivity Mean Height (H̄)**:
-   - Added Mean Height (H̄) column immediately preceding SD in exported tables.
-
-6. **Retest Tables & Reference Number Counters**:
-   - Retest verification tables styled with matching \`data-table\` layout and numbered sequentially (\`Retest 1\`, \`Retest 2\`, etc.).
-   - Added test Reference Number counter to the top-right report header (\`Ref No: REF-XXXX\`).
-   - Transparent defect and sample size summation across initial tests and retests.
-
-7. **Barrels & Transducers Serial Number Management**:
-   - Admins can register serial numbers for Barrels and Pressure Transducers.
-   - Users select which active serial number was consumed during testing, recorded in consumption history.
-
-8. **Database & Cross-Platform Packaging**:
-   - Updated \`supabase_tables_setup.sql\` with dedicated \`witness_storage_lots\` and \`witness_storage_consumptions\` tables with RLS and public policies.
-   - Full 57-test suite passing with 0 errors.
-   - Available for Web (Firebase), Windows Desktop (Installer, Standalone, Portable ZIP), and Android APK.
+4. **Full Test Suite & Cross-Platform Packaging**:
+   - 60/60 automated tests passing cleanly.
+   - Release binaries published for Web (Firebase), Windows Desktop (Installer, Portable ZIP, Standalone), and Android APK.
 `;
 
 function request(options, postData) {
@@ -178,7 +153,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.7.0.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.7.0.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.7.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.7.1.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

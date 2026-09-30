@@ -591,6 +591,112 @@ final Map<String, dynamic> _defaultRules = {
           'description': 'Port pressure minimum 3-sigma bound at +21°C'
         }
       ],
+      '5.56x45 M193': [
+        {
+          'name': 'P1 Max Individual (+21°C)',
+          'formula': 'P1_MAX_INDIVIDUAL',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': 'US MIL-C-9963F: Max individual chamber pressure at +21°C'
+        },
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': '3-Sigma Chamber Pressure at +21°C'
+        },
+        {
+          'name': 'P2 Port Mean - 3SD (+21°C)',
+          'formula': 'P2_MEAN - 3 * P2_SD',
+          'operator': '>=',
+          'limit': '180',
+          'unit': 'bar',
+          'description': 'Port pressure minimum 3-sigma bound at +21°C'
+        }
+      ],
+      '7.62x51 M80': [
+        {
+          'name': 'P1 Max Individual (+21°C)',
+          'formula': 'P1_MAX_INDIVIDUAL',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': 'NATO STANAG 2310: Max individual chamber pressure at +21°C'
+        },
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '4200',
+          'unit': 'bar',
+          'description': '3-Sigma Chamber Pressure at +21°C'
+        },
+        {
+          'name': 'P2 Port Mean - 3SD (+21°C)',
+          'formula': 'P2_MEAN - 3 * P2_SD',
+          'operator': '>=',
+          'limit': '180',
+          'unit': 'bar',
+          'description': 'Port pressure minimum 3-sigma bound at +21°C'
+        }
+      ],
+      '9x19mm Para': [
+        {
+          'name': 'P1 Max Individual (+21°C)',
+          'formula': 'P1_MAX_INDIVIDUAL',
+          'operator': '<=',
+          'limit': '2650',
+          'unit': 'bar',
+          'description': 'NATO STANAG 4090: Max individual chamber pressure at +21°C'
+        },
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '2650',
+          'unit': 'bar',
+          'description': '3-Sigma Chamber Pressure at +21°C'
+        }
+      ],
+      '5.56x45 M200 Blank': [
+        {
+          'name': 'P1 Max Individual (+21°C)',
+          'formula': 'P1_MAX_INDIVIDUAL',
+          'operator': '<=',
+          'limit': '2000',
+          'unit': 'bar',
+          'description': 'Blank Ammunition Max individual chamber pressure at +21°C'
+        },
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '2000',
+          'unit': 'bar',
+          'description': '3-Sigma Blank Chamber Pressure at +21°C'
+        }
+      ],
+      '7.62x51 M82': [
+        {
+          'name': 'P1 Max Individual (+21°C)',
+          'formula': 'P1_MAX_INDIVIDUAL',
+          'operator': '<=',
+          'limit': '2000',
+          'unit': 'bar',
+          'description': 'Blank Ammunition Max individual chamber pressure at +21°C'
+        },
+        {
+          'name': 'P1 Mean + 3SD (+21°C)',
+          'formula': 'P1_MEAN + 3 * P1_SD',
+          'operator': '<=',
+          'limit': '2000',
+          'unit': 'bar',
+          'description': '3-Sigma Blank Chamber Pressure at +21°C'
+        }
+      ],
       'default': [
         {
           'name': 'P1 Mean + 3SD (+21°C)',
@@ -599,14 +705,6 @@ final Map<String, dynamic> _defaultRules = {
           'limit': '4200',
           'unit': 'bar',
           'description': 'Statistical upper bound for chamber pressure at +21°C'
-        },
-        {
-          'name': 'P2 Mean - 3SD (+21°C)',
-          'formula': 'P2_MEAN - 3 * P2_SD',
-          'operator': '>=',
-          'limit': '180',
-          'unit': 'bar',
-          'description': 'Statistical lower bound for gas port pressure at +21°C'
         }
       ]
     },
@@ -2224,9 +2322,9 @@ class _MainShellState extends State<MainShell> {
       final componentList = await _storageService.loadRecords(module: 'Component Test');
       if (mounted) {
         setState(() {
-          _records = recordsList;
-          _dailyTestRecords = dailyList;
-          _componentTestRecords = componentList;
+          if (recordsList.isNotEmpty || _records.isEmpty) _records = recordsList;
+          if (dailyList.isNotEmpty || _dailyTestRecords.isEmpty) _dailyTestRecords = dailyList;
+          if (componentList.isNotEmpty || _componentTestRecords.isEmpty) _componentTestRecords = componentList;
         });
       }
     } catch (_) {}
@@ -2733,17 +2831,36 @@ class _MainShellState extends State<MainShell> {
       debugPrint("Realtime broadcast note: $e");
     }
 
-    await _storageService.saveRecord(record, module: _currentModule);
-    final updated = await _storageService.loadRecords(module: _currentModule);
-    setState(() {
-      if (_currentModule == 'Lot Acceptance Test') {
-        _records = updated;
-      } else if (_currentModule == 'Component Test') {
-        _componentTestRecords = updated;
-      } else {
-        _dailyTestRecords = updated;
+    // Optimistic in-memory update: ensures newly submitted record is immediately visible and never disappears
+    if (mounted) {
+      setState(() {
+        if (_currentModule == 'Lot Acceptance Test') {
+          _records = [record, ..._records.where((r) => (record.id != null && record.id!.isNotEmpty) ? r.id != record.id : (r.referenceNo != record.referenceNo || r.timestamp != record.timestamp))];
+        } else if (_currentModule == 'Component Test') {
+          _componentTestRecords = [record, ..._componentTestRecords.where((r) => (record.id != null && record.id!.isNotEmpty) ? r.id != record.id : (r.referenceNo != record.referenceNo || r.timestamp != record.timestamp))];
+        } else {
+          _dailyTestRecords = [record, ..._dailyTestRecords.where((r) => (record.id != null && record.id!.isNotEmpty) ? r.id != record.id : (r.referenceNo != record.referenceNo || r.timestamp != record.timestamp))];
+        }
+      });
+    }
+
+    try {
+      await _storageService.saveRecord(record, module: _currentModule);
+      final updated = await _storageService.loadRecords(module: _currentModule);
+      if (updated.isNotEmpty && mounted) {
+        setState(() {
+          if (_currentModule == 'Lot Acceptance Test') {
+            _records = updated;
+          } else if (_currentModule == 'Component Test') {
+            _componentTestRecords = updated;
+          } else {
+            _dailyTestRecords = updated;
+          }
+        });
       }
-    });
+    } catch (e) {
+      debugPrint("Error saving/loading record: $e");
+    }
 
     if (_submissionAlertsEnabled && mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();

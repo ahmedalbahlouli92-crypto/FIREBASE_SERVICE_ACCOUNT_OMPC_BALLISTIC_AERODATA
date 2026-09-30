@@ -162,21 +162,22 @@ class StorageService {
       if (_cachedDeletedKeys != null &&
           _lastDeletedKeysFetch != null &&
           DateTime.now().difference(_lastDeletedKeysFetch!).inSeconds < 15) {
-        keys.addAll(_cachedDeletedKeys!);
-        return keys;
+        return Set<String>.from(_cachedDeletedKeys!);
       }
       try {
         final cloudDeleted = await SupabaseService.fetchDeletedRecordsFromCloud();
         _cachedDeletedKeys = cloudDeleted.toSet();
         _lastDeletedKeysFetch = DateTime.now();
-        keys.addAll(cloudDeleted);
+        // Authoritative reconciliation: the cloud deleted records list is the true ground truth.
+        // We sync local storage with cloudDeleted to purge any false local tombstones.
         if (kIsWeb) {
-          saveWebDeletedRecords(keys);
+          saveWebDeletedRecords(_cachedDeletedKeys!);
         } else {
           final dirPath = await getDirectoryPath();
           final file = File('$dirPath/deleted_records.json');
-          await file.writeAsString(jsonEncode(keys.toList()), mode: FileMode.write, flush: true);
+          await file.writeAsString(jsonEncode(_cachedDeletedKeys!.toList()), mode: FileMode.write, flush: true);
         }
+        return Set<String>.from(_cachedDeletedKeys!);
       } catch (_) {}
     }
     return keys;
@@ -472,23 +473,9 @@ class StorageService {
 
           if (idx == -1) {
             // Local record is NOT in cloud records.
-            // Check if it's an offline-created record waiting for its initial upload
-            final isOfflineCreated = (local.id != null && pendingSyncIds.contains(local.id)) ||
-                                     (local.id == null || local.id!.isEmpty);
-            if (isOfflineCreated) {
-              combined.add(local);
-              unsynced.add(local);
-            } else {
-              // The record was previously synced to the cloud and has now been deleted on another client!
-              // DO NOT resurrect it! Purge it from local cache.
-              recordsToPurgeLocally.add(local);
-              // Register tombstone so it stays deleted
-              _addDeletedKeys([
-                if (local.id != null && local.id!.isNotEmpty) local.id!,
-                '${local.timestamp.trim()}|${local.lotNo.trim()}|${local.testName.trim()}',
-                if (local.hopperNo.trim().isNotEmpty) '${local.timestamp.trim()}|${local.hopperNo.trim()}|${local.testName.trim()}',
-              ]);
-            }
+            // Preserve all valid local records: add to combined and queue for cloud sync
+            combined.add(local);
+            unsynced.add(local);
           } else {
             // Local record has updates not yet reflected in cloud; keep local version
             final c = combined[idx];

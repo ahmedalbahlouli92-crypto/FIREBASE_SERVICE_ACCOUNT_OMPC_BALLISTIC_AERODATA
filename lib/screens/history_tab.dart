@@ -403,7 +403,6 @@ class _HistoryTabState extends State<HistoryTab> {
                                 children: [
                                   buildParamField('Retest Sample Qty', retestProducedCtrl),
                                   buildParamField('Cartridge Temp °C', epvCartridgeTempCtrl, isNumber: false),
-                                  buildParamField('Action Time Mean (ms)', epvActionTimeMeanCtrl),
                                 ],
                               ),
                               Row(
@@ -418,6 +417,11 @@ class _HistoryTabState extends State<HistoryTab> {
                                 children: [
                                   buildParamField('P2 Mean (bar)', epvMeanP2Ctrl),
                                   buildParamField('P2 Max (bar)', epvMaxP2Ctrl),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  buildParamField('Action Time Mean (ms)', epvActionTimeMeanCtrl),
                                   buildParamField('Mean Vel (m/s)', velMeanCtrl),
                                   buildParamField('SD Vel (m/s)', velSDCtrl),
                                 ],
@@ -1469,13 +1473,13 @@ class _HistoryTabState extends State<HistoryTab> {
                         const SizedBox(height: 10.0),
                         Row(
                           children: [
-                            Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
-                            const SizedBox(width: 10.0),
-                            Expanded(child: _buildDialogField(label: 'Velocity SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
-                            const SizedBox(width: 10.0),
                             Expanded(child: _buildDialogField(label: 'Action Time Mean (ms)', child: _buildDialogTextField(controller: epvActionTimeMeanController))),
                             const SizedBox(width: 10.0),
                             Expanded(child: _buildDialogField(label: 'Action Time SD (ms)', child: _buildDialogTextField(controller: epvActionTimeSDController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Velocity SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
                           ],
                         ),
                         const SizedBox(height: 10.0),

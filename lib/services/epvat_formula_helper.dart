@@ -599,6 +599,38 @@ class EpvatFormulaHelper {
       );
     }
 
+    final bool requiresP2 = normalized.toLowerCase().contains('p2');
+    final bool hasAnyP2 = lowerVars.entries.any((e) => e.key.toLowerCase().contains('p2') && e.value != 0.0);
+    if (requiresP2 && !hasAnyP2) {
+      return EpvatFormulaResult(
+        name: name,
+        formula: formula,
+        substitutedText: 'Not Tested (No P2)',
+        calculatedValue: 0.0,
+        op: op,
+        limitValue: 0.0,
+        unit: displayUnit,
+        isPassed: true,
+        isApplicable: false,
+      );
+    }
+
+    final bool requiresVel = normalized.toLowerCase().contains('vel');
+    final bool hasAnyVel = lowerVars.entries.any((e) => e.key.toLowerCase().contains('vel') && e.value != 0.0);
+    if (requiresVel && !hasAnyVel) {
+      return EpvatFormulaResult(
+        name: name,
+        formula: formula,
+        substitutedText: 'Not Tested (No Vel)',
+        calculatedValue: 0.0,
+        op: op,
+        limitValue: 0.0,
+        unit: displayUnit,
+        isPassed: true,
+        isApplicable: false,
+      );
+    }
+
     double calculated = evaluate(formula, variables, defaultTemp: defaultTemp);
     final String substitutedText = buildSubstitutedArithmetic(formula, variables, defaultTemp: defaultTemp);
 
@@ -714,14 +746,14 @@ class EpvatFormulaHelper {
           'name': 'P1 3-Sigma (Single Temp)',
           'formula': 'P1 Mean + 3 * P1 SD',
           'operator': '<=',
-          'limit': '3800',
+          'limit': '4200',
           'unit': 'bar',
         },
         {
           'name': 'P1 Peak Maximum',
           'formula': 'P1 Max',
           'operator': '<=',
-          'limit': '3800',
+          'limit': '4200',
           'unit': 'bar',
         },
       ];
@@ -731,21 +763,21 @@ class EpvatFormulaHelper {
         'name': 'P1 3-Sigma (+21°C)',
         'formula': 'P1 Mean @ 21 + 3 * P1 SD @ 21',
         'operator': '<=',
-        'limit': '3800',
+        'limit': '4200',
         'unit': 'bar',
       },
       {
         'name': 'P1 3-Sigma (+52°C)',
         'formula': 'P1 Mean @ 52 + 3 * P1 SD @ 52',
         'operator': '<=',
-        'limit': '4200',
+        'limit': '4400',
         'unit': 'bar',
       },
       {
         'name': 'P1 3-Sigma (-54°C)',
         'formula': 'P1 Mean @ 54 + 3 * P1 SD @ 54',
         'operator': '<=',
-        'limit': '3800',
+        'limit': '4200',
         'unit': 'bar',
       },
       {

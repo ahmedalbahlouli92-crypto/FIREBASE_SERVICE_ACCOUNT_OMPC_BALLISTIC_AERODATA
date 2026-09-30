@@ -1396,23 +1396,44 @@ class _EntryTabState extends State<EntryTab> {
         notifyMissing('GP1 (chamber)');
         return false;
       }
+      final bool isBlank = _caliber.contains('M82') || _caliber.contains('M200') || _caliber.toLowerCase().contains('blank');
       if (_epvatPressureType == 'Overall') {
         const temps = ['+21', '+52', '-54'];
-        for (final t in temps) {
-          if (_overallEpvatControllers[t]?['vel_mean']?.text.trim().isEmpty ?? true) {
-            notifyMissing('Velocity Mean (' + t + '°C)');
+        final hasAnyData = temps.any((t) {
+          final p1 = _overallEpvatControllers[t]?['p1_mean']?.text.trim() ?? '';
+          final p2 = _overallEpvatControllers[t]?['p2_mean']?.text.trim() ?? '';
+          final v = _overallEpvatControllers[t]?['vel_mean']?.text.trim() ?? '';
+          final hasRounds = (_overallEpvatP1RoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false) ||
+                            (_overallEpvatVelRoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false);
+          return p1.isNotEmpty || p2.isNotEmpty || v.isNotEmpty || hasRounds;
+        });
+
+        final tempsToCheck = hasAnyData
+            ? temps.where((t) {
+                final p1 = _overallEpvatControllers[t]?['p1_mean']?.text.trim() ?? '';
+                final p2 = _overallEpvatControllers[t]?['p2_mean']?.text.trim() ?? '';
+                final v = _overallEpvatControllers[t]?['vel_mean']?.text.trim() ?? '';
+                final hasRounds = (_overallEpvatP1RoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false) ||
+                                  (_overallEpvatVelRoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false);
+                return p1.isNotEmpty || p2.isNotEmpty || v.isNotEmpty || hasRounds;
+              }).toList()
+            : [temps[_activeEpvatTempTabIndex]];
+
+        for (final t in tempsToCheck) {
+          if (_overallEpvatControllers[t]?['p1_mean']?.text.trim().isEmpty ?? true) {
+            notifyMissing((_isCaliber9mm ? 'Chamber Pressure Mean (' : 'GP1 Chamber Pressure Mean (') + t + '°C)');
+            return false;
+          }
+          if (!_isCaliber9mm && !isBlank && (_overallEpvatControllers[t]?['p2_mean']?.text.trim().isEmpty ?? true)) {
+            notifyMissing('GP2 Port Pressure Mean (' + t + '°C)');
             return false;
           }
           if (_overallEpvatControllers[t]?['action_time_mean']?.text.trim().isEmpty ?? true) {
             notifyMissing('Action Time Mean (' + t + '°C)');
             return false;
           }
-          if (_overallEpvatControllers[t]?['p1_mean']?.text.trim().isEmpty ?? true) {
-            notifyMissing((_isCaliber9mm ? 'Chamber Pressure Mean (' : 'GP1 Chamber Pressure Mean (') + t + '°C)');
-            return false;
-          }
-          if (!_isCaliber9mm && (_overallEpvatControllers[t]?['p2_mean']?.text.trim().isEmpty ?? true)) {
-            notifyMissing('GP2 Port Pressure Mean (' + t + '°C)');
+          if (!isBlank && (_overallEpvatControllers[t]?['vel_mean']?.text.trim().isEmpty ?? true)) {
+            notifyMissing('Velocity Mean (' + t + '°C)');
             return false;
           }
         }
@@ -1421,20 +1442,20 @@ class _EntryTabState extends State<EntryTab> {
           notifyMissing('Cartridge Temperature');
           return false;
         }
-        if (_meanVelController.text.trim().isEmpty) {
-          notifyMissing('Mean Velocity');
+        if (_epvatMeanPressureController.text.trim().isEmpty) {
+          notifyMissing(_isCaliber9mm ? 'Mean Chamber Pressure' : 'GP1 Mean Chamber Pressure');
+          return false;
+        }
+        if (!_isCaliber9mm && !isBlank && _epvatP2MeanPressureController.text.trim().isEmpty) {
+          notifyMissing('GP2 Mean Port Pressure');
           return false;
         }
         if (_actionTimeMeanController.text.trim().isEmpty) {
           notifyMissing('Mean Action Time');
           return false;
         }
-        if (_epvatMeanPressureController.text.trim().isEmpty) {
-          notifyMissing(_isCaliber9mm ? 'Mean Chamber Pressure' : 'GP1 Mean Chamber Pressure');
-          return false;
-        }
-        if (!_isCaliber9mm && _epvatP2MeanPressureController.text.trim().isEmpty) {
-          notifyMissing('GP2 Mean Port Pressure');
+        if (!isBlank && _meanVelController.text.trim().isEmpty) {
+          notifyMissing('Mean Velocity');
           return false;
         }
       }
@@ -5263,6 +5284,19 @@ class _EntryTabState extends State<EntryTab> {
                                     ],
                                     const SizedBox(height: 16.0),
                                     Text(
+                                      'Action Time ($t °C) (ms)',
+                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                    _buildFormRow([
+                                      _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
+                                      _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                      _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
+                                    ]),
+                                    const SizedBox(height: 16.0),
+                                    Text(
                                       'Velocity ($t °C) (m/s)',
                                       style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
                                     ),
@@ -5275,18 +5309,6 @@ class _EntryTabState extends State<EntryTab> {
                                       _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                                     ]),
                                     const SizedBox(height: 16.0),
-                                    Text(
-                                      'Action Time ($t °C) (ms)',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                      _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                      _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                      _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                    ]),
                                     
                                     // --- Kinetic Energy Display (only for +21°C tab) ---
                                     if (t == '+21') ...[  
@@ -8295,37 +8317,81 @@ class _EntryTabState extends State<EntryTab> {
 
     if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
       final epv = widget.adminRules['epvat'] ?? {};
-      
+      final bool isThreeTemp = _epvatPressureType == 'Overall';
+      final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
+      final list = EpvatFormulaHelper.getFormulasForCaliber(
+        formulasMap,
+        _caliber,
+        isThreeTemp: isThreeTemp,
+      );
+
+      final defaultTemp = isThreeTemp
+          ? '21'
+          : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
+              ? '21'
+              : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
+
+      final variables = _getEpvatVariablesMap();
+
+      if (list.isNotEmpty) {
+        // Authoritative sentencing: If custom caliber formulas are configured, they determine the quality verdict
+        for (var f in list) {
+          final item = Map<String, dynamic>.from(f as Map);
+          final res = EpvatFormulaHelper.evaluateFormulaItem(
+            item,
+            variables,
+            defaultTemp: defaultTemp,
+            activePressureUnit: _epvatPressureUnit,
+          );
+          if (res.isApplicable && !res.isPassed) {
+            return 'Rejected';
+          }
+        }
+        return 'Approved';
+      }
+
+      // Fallback only when no custom formulas exist for the caliber
       bool isRejected = false;
-      
-      void checkTemp(String t, Map<String, dynamic> variables) {
+      void checkTemp(String t) {
         final activeEpv = _getEpvatRulesForCaliber(t);
         final double velMin = (activeEpv['vel_min'] ?? 0.0).toDouble();
         final double velMax = (activeEpv['vel_max'] ?? 9999.0).toDouble();
-        final double p1Max = (activeEpv['p1_max'] ?? 9999.0).toDouble();
-        final double p2Min = (activeEpv['p2_min'] ?? 0.0).toDouble();
+        double p1Max = (activeEpv['p1_max'] ?? 9999.0).toDouble();
+        double p2Min = (activeEpv['p2_min'] ?? 0.0).toDouble();
         final double maxActionTime = (activeEpv['max_action_time'] ?? epv['max_action_time'] ?? 4.0).toDouble();
-        
-        final double vMean = variables['vel_mean_${t.replaceAll('+', '').replaceAll('-', '')}'] ?? 0.0;
-        final double p1MaxVal = variables['p1_max_${t.replaceAll('+', '').replaceAll('-', '')}'] ?? 0.0;
-        final double p2MinVal = variables['p2_min_${t.replaceAll('+', '').replaceAll('-', '')}'] ?? 0.0;
-        final double aMean = variables['action_time_mean_${t.replaceAll('+', '').replaceAll('-', '')}'] ?? 0.0;
-        
-        if (vMean > 0 && (vMean < velMin || vMean > velMax)) {
+
+        // Convert pressure limits from bar to active unit
+        if (_epvatPressureUnit != 'bar') {
+          p1Max = EpvatFormulaHelper.convertPressure(p1Max, 'bar', _epvatPressureUnit);
+          p2Min = EpvatFormulaHelper.convertPressure(p2Min, 'bar', _epvatPressureUnit);
+        }
+
+        final sfx = t.replaceAll('+', '').replaceAll('-', '');
+        final double vMean = variables['vel_mean_$sfx'] ?? 0.0;
+        final double p1MeanVal = variables['p1_mean_$sfx'] ?? 0.0;
+        final double p1MaxVal = variables['p1_max_$sfx'] ?? 0.0;
+        final double p2MeanVal = variables['p2_mean_$sfx'] ?? 0.0;
+        final double aMean = variables['action_time_mean_$sfx'] ?? 0.0;
+
+        final bool isBlank = _caliber.contains('M82') || _caliber.contains('M200') || _caliber.toLowerCase().contains('blank');
+        if (!isBlank && vMean > 0 && (vMean < velMin || vMean > velMax)) {
           isRejected = true;
         }
-        if (p1MaxVal > 0 && p1MaxVal > p1Max) {
+        if (p1MeanVal > 0 && p1MeanVal > p1Max) {
           isRejected = true;
         }
-        if (p2MinVal > 0 && p2MinVal < p2Min) {
+        // NATO STANAG allows individual round peak up to 15% over mean limit
+        if (p1MaxVal > 0 && p1MaxVal > (p1Max * 1.15)) {
+          isRejected = true;
+        }
+        if (!_isCaliber9mm && !isBlank && p2MeanVal > 0 && p2MeanVal < p2Min) {
           isRejected = true;
         }
         if (aMean > 0 && aMean > maxActionTime) {
           isRejected = true;
         }
       }
-      
-      final variables = _getEpvatVariablesMap();
+
       if (_epvatPressureType == 'Overall') {
         final bool isBlank = _caliber.contains('M82') || _caliber.contains('M200') || _caliber.toLowerCase().contains('blank');
         final coldT = isBlank ? '-32' : '-54';
@@ -8338,41 +8404,15 @@ class _EntryTabState extends State<EntryTab> {
         }).toList();
         final tempsToCheck = validTemps.isNotEmpty ? validTemps : [temps[_activeEpvatTempTabIndex]];
         for (var t in tempsToCheck) {
-          checkTemp(t, variables);
+          checkTemp(t);
         }
       } else {
         final activeTemp = _cartridgeTempController.text.trim();
         final tKey = activeTemp.contains('52') ? '+52' : (activeTemp.contains('32') ? '-32' : (activeTemp.contains('54') ? '-54' : '+21'));
-        checkTemp(tKey, variables);
+        checkTemp(tKey);
       }
-      
-      if (isRejected) return 'Rejected';
-      
-      final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
-      final list = EpvatFormulaHelper.getFormulasForCaliber(
-        formulasMap,
-        _caliber,
-        isThreeTemp: _epvatPressureType == 'Overall',
-      );
-      
-      final defaultTemp = _epvatPressureType == 'Overall'
-          ? '21'
-          : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
-              ? '21'
-              : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
 
-      for (var f in list) {
-        final item = Map<String, dynamic>.from(f as Map);
-        final res = EpvatFormulaHelper.evaluateFormulaItem(
-          item,
-          variables,
-          defaultTemp: defaultTemp,
-          activePressureUnit: _epvatPressureUnit,
-        );
-        if (res.isApplicable && !res.isPassed) {
-          return 'Rejected';
-        }
-      }
+      return isRejected ? 'Rejected' : 'Approved';
     }
 
     return 'Approved';
