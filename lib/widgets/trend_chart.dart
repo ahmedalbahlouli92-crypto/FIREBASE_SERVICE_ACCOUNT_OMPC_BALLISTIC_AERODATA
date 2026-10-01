@@ -31,7 +31,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
   bool _showMin = true;
   bool _showSD = true;
 
-  bool _showFourCharts = false;
+  bool _showFourCharts = true;
 
   static const List<String> _timeRangeOptions = [
     'All Time',

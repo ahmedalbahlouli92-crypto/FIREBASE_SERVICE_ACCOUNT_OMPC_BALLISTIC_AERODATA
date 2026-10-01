@@ -346,6 +346,18 @@ class ReportGenerator {
         buffer.writeln(row);
       }
     }
+
+    final totalLines = records.length + 1;
+    if (totalLines < 27) {
+      for (int i = 0; i < (27 - totalLines); i++) {
+        buffer.writeln('');
+      }
+    }
+    final allRemarks = records.map((r) => cleanRemarks(r.notes)).where((s) => s.isNotEmpty).toSet().join(' | ');
+    if (allRemarks.isNotEmpty) {
+      buffer.writeln('Remarks,"${allRemarks.replaceAll('"', '""')}"');
+    }
+
     return buffer.toString();
   }
 
@@ -962,17 +974,25 @@ class ReportGenerator {
         min-height: calc(297mm - 14mm);
         padding: 0;
       }
+      .report-content {
+        min-height: 7.0in;
+        box-sizing: border-box;
+      }
       .report-footer {
         margin-top: auto;
         page-break-inside: avoid;
       }
       .summary-card, .data-table, .sentence-box, .signatures { page-break-inside: avoid; }
     }
+    .report-content {
+      min-height: 7.0in;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
   <div class="report-wrapper">
-    <div class="report-content">
+    <div class="report-content" style="min-height: 7.0in; box-sizing: border-box;">
       <!-- Header Text & Logo Section -->
   <table class="header-table">
     <tr>
@@ -2101,10 +2121,12 @@ class ReportGenerator {
     .sentence-box { padding: 10px; border: 1px solid #cbd5e1; background-color: #f8fafc; font-size: 11px; font-weight: bold; color: #1e293b; white-space: pre-wrap; }
     .signatures { margin-top: 25px; width: 100%; }
     .signatures td { width: 50%; text-align: center; font-size: 11px; color: #475569; padding-top: 20px; border-top: 1px solid #cbd5e1; }
+    .report-content { min-height: 7.0in; box-sizing: border-box; }
     @media print { @page { margin: 0; } body { margin: 12mm 15mm; -webkit-print-color-adjust: exact; } }
   </style>
 </head>
 <body>
+  <div class="report-content" style="min-height: 7.0in; box-sizing: border-box;">
   <table class="header-table">
     <tr>
       <td style="width: 65%; text-align: left; vertical-align: middle; padding-bottom: 15px;">
@@ -2454,8 +2476,9 @@ class ReportGenerator {
 
   $epvatCombinedSection
   ${_buildRetestSectionHtml(records, testName, isWord: true)}
+  </div> <!-- end report-content -->
 
-  <div style="margin-top: 25px;">
+  <div class="word-report-footer" style="margin-top: 15px;">
     $remarksAndDiagramSection
 
     <h2 class="section-title">Recommendation</h2>

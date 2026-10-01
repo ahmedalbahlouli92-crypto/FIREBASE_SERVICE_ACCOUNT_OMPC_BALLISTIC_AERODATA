@@ -9015,10 +9015,10 @@ class _MainShellState extends State<MainShell> {
                       const SizedBox(width: 12.0),
                       Expanded(
                         flex: 2,
-                        child: _buildCertInputField(
+                        child: _buildCertFormulaDropdownField(
                           label: '+21 °C Result Formula',
                           controller: _certEpvFormula21Ctrl,
-                          hintText: 'e.g. P1+3SD or leave blank',
+                          temp: '+21',
                         ),
                       ),
                     ],
@@ -9039,10 +9039,10 @@ class _MainShellState extends State<MainShell> {
                       const SizedBox(width: 12.0),
                       Expanded(
                         flex: 2,
-                        child: _buildCertInputField(
+                        child: _buildCertFormulaDropdownField(
                           label: '+52 °C Result Formula',
                           controller: _certEpvFormula52Ctrl,
-                          hintText: 'e.g. mean_chamber or leave blank',
+                          temp: '+52',
                         ),
                       ),
                     ],
@@ -9063,10 +9063,10 @@ class _MainShellState extends State<MainShell> {
                       const SizedBox(width: 12.0),
                       Expanded(
                         flex: 2,
-                        child: _buildCertInputField(
+                        child: _buildCertFormulaDropdownField(
                           label: '-54 °C Result Formula',
                           controller: _certEpvFormula54Ctrl,
-                          hintText: 'e.g. mean_chamber or leave blank',
+                          temp: '-54',
                         ),
                       ),
                     ],
@@ -9279,6 +9279,117 @@ class _MainShellState extends State<MainShell> {
                 borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCertFormulaDropdownField({
+    required String label,
+    required TextEditingController controller,
+    required String temp,
+  }) {
+    final List<Map<String, String>> formulaOptions = [
+      {'name': 'None / Default Formula', 'value': ''},
+    ];
+
+    try {
+      final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(_adminRules, _certSelectedCaliber);
+      for (final f in customFormulas) {
+        final name = (f['name'] ?? f['formula'] ?? '').toString().trim();
+        final formulaStr = (f['formula'] ?? f['name'] ?? '').toString().trim();
+        if (name.isNotEmpty && !formulaOptions.any((opt) => opt['value'] == formulaStr || opt['name'] == name)) {
+          formulaOptions.add({
+            'name': '$name ($formulaStr)',
+            'value': formulaStr,
+          });
+        }
+      }
+    } catch (_) {}
+
+    final standardFormulas = [
+      {'name': 'P1 Mean + 3SD (Mean Chamber + 3SD)', 'value': 'P1 Mean + 3 * P1 SD'},
+      {'name': 'P1 Peak Maximum (p1_max)', 'value': 'P1 Max'},
+      {'name': 'P1 Mean (mean_chamber)', 'value': 'P1 Mean'},
+      {'name': 'P2 Mean - 3SD (Mean Port - 3SD)', 'value': 'P2 Mean - 3 * P2 SD'},
+      {'name': 'P2 Minimum (p2_min)', 'value': 'P2 Min'},
+      {'name': 'P2 Mean (mean_port)', 'value': 'P2 Mean'},
+      {'name': 'Velocity Mean (vel_mean)', 'value': 'Velocity Mean'},
+      {'name': 'Action Time Mean (action_time_mean)', 'value': 'Action Time Mean'},
+    ];
+
+    for (final sf in standardFormulas) {
+      if (!formulaOptions.any((opt) => opt['value'] == sf['value'])) {
+        formulaOptions.add(sf);
+      }
+    }
+
+    final curValue = controller.text.trim();
+    if (curValue.isNotEmpty && !formulaOptions.any((opt) => opt['value'] == curValue)) {
+      formulaOptions.add({'name': 'Custom: $curValue', 'value': curValue});
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4.0),
+          DropdownButtonFormField<String>(
+            value: formulaOptions.any((opt) => opt['value'] == curValue) ? curValue : '',
+            isExpanded: true,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6.0),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6.0),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6.0),
+                borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
+              ),
+            ),
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 12.0,
+              fontFamily: 'JetBrainsMono',
+            ),
+            dropdownColor: Colors.white,
+            items: formulaOptions.map((opt) {
+              return DropdownMenuItem<String>(
+                value: opt['value'],
+                child: Text(
+                  opt['name']!,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontFamily: opt['value']!.isEmpty ? 'sans-serif' : 'JetBrainsMono',
+                    color: opt['value']!.isEmpty ? const Color(0xFF64748B) : const Color(0xFF0F172A),
+                    fontStyle: opt['value']!.isEmpty ? FontStyle.italic : FontStyle.normal,
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: (val) {
+              setState(() {
+                controller.text = val ?? '';
+              });
+            },
           ),
         ],
       ),

@@ -34,6 +34,32 @@ class _DashboardTabState extends State<DashboardTab> {
   String _selectedCaliber = 'All';
   String _selectedTestName = 'All';
 
+  bool _isAnalyticsMinimized = true;
+  bool _isOverviewChartsMinimized = true;
+  bool _isBoxPlotMinimized = true;
+  bool _isRecentLogsMinimized = true;
+  bool _isSpcMaximized = true;
+
+  Widget _buildMinimizedBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(color: color.withOpacity(0.35), width: 1.0),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 11.0,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'sans-serif',
+        ),
+      ),
+    );
+  }
+
   String _formatDate(DateTime d) {
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
@@ -702,224 +728,351 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           const SizedBox(height: 24.0),
 
-          // Modern Analytics Overview Component (#edf4fc background, #4d99db sky blue accents)
-          ModernAnalyticsOverviewCard(
-            totalRounds: totalRounds,
-            totalInspections: filtered.length,
-            passCount: passCount,
-            condCount: condCount,
-            rejectCount: rejectCount,
-            retestCount: retestCount,
-            yieldRate: yieldRate,
-            activeCalibersCount: activeCalibersCount,
-            topCaliber: topCaliber,
-            topCaliberRounds: topCaliberRounds,
-            currentModule: widget.currentModule,
-            onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
-            onQuickPrint: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
-          ),
-          const SizedBox(height: 24.0),
-
-          // KPI Cards Grid
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final double cardWidth = constraints.maxWidth > 1200
-                  ? (constraints.maxWidth - 80) / 6
-                  : constraints.maxWidth > 900
-                      ? (constraints.maxWidth - 48) / 3
-                      : constraints.maxWidth > 600
-                          ? (constraints.maxWidth - 32) / 2
-                          : constraints.maxWidth;
-
-              return Wrap(
-                spacing: 16.0,
-                runSpacing: 16.0,
+          // Ballistic Analytics & Fleet Volume (Minimized by default)
+          if (_isAnalyticsMinimized) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDF4FC),
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: const Color(0xFFCBE2F8), width: 1.2),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildKpiCard(
-                    title: 'QUANTITY TESTED',
-                    value: totalRounds.toString(),
-                    desc: _selectedTime == 'Overall' ? 'Total rounds logged' : 'Rounds in this period',
-                    accentColor: const Color(0xFF0284C7),
-                    width: cardWidth,
-                    icon: Icons.flash_on,
-                  ),
-                  _buildKpiCard(
-                    title: 'PASSED TESTS',
-                    value: passCount.toString(),
-                    desc: 'Tests approved & conforming',
-                    accentColor: const Color(0xFF10B981),
-                    width: cardWidth,
-                    icon: Icons.check_circle_outline,
-                  ),
-                  _buildKpiCard(
-                    title: 'COND. APPROVED',
-                    value: condCount.toString(),
-                    desc: 'Approved with condition',
-                    accentColor: const Color(0xFF06B6D4),
-                    width: cardWidth,
-                    icon: Icons.verified_user_outlined,
-                  ),
-                  _buildKpiCard(
-                    title: 'REJECTED TESTS',
-                    value: rejectCount.toString(),
-                    desc: 'Failed evaluations',
-                    accentColor: const Color(0xFFEF4444),
-                    width: cardWidth,
-                    icon: Icons.cancel_outlined,
-                  ),
-                  _buildKpiCard(
-                    title: 'RETEST REQUIRED',
-                    value: retestCount.toString(),
-                    desc: 'Need new inspections',
-                    accentColor: const Color(0xFFF59E0B),
-                    width: cardWidth,
-                    icon: Icons.sync_problem_outlined,
-                  ),
-                  _buildKpiCard(
-                    title: 'YIELD RATE',
-                    value: '${yieldRate.toStringAsFixed(2)}%',
-                    desc: 'Percent within specifications',
-                    accentColor: const Color(0xFF0EA5E9),
-                    width: cardWidth,
-                    icon: Icons.trending_up,
-                  ),
-                  _buildKpiCard(
-                    title: widget.currentModule == 'Component Test' ? 'COMPONENT TESTS' : 'LOT ACCEPTANCE TESTS',
-                    value: widget.currentModule == 'Component Test'
-                        ? '${widget.records.length} Tests'
-                        : '$lotAcceptanceTestsCount Tests',
-                    desc: widget.currentModule == 'Component Test'
-                        ? '${uniqueLots.length} unique component lots'
-                        : '$lotAcceptanceLotsCount unique lots tested',
-                    accentColor: const Color(0xFF0284C7),
-                    width: cardWidth,
-                    icon: Icons.fact_check_outlined,
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 28.0),
-
-          // Charts Card
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isDesktop = constraints.maxWidth > 800;
-              final charts = [
-                _buildChartCard(
-                  title: _dashboardViewMode == 'By Caliber'
-                      ? (_selectedCaliber == 'All' ? 'All Calibers Performance' : '$_selectedCaliber Test Breakdown')
-                      : (_selectedTestName == 'All' ? 'General Defects Trend' : '$_selectedTestName Metrics'),
-                  child: _dashboardViewMode == 'By Caliber'
-                      ? CaliberIndividualChart(records: widget.records, caliber: _selectedCaliber)
-                      : TestMetricChart(filteredRecords: filtered, selectedTestName: _selectedTestName),
-                  width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
-                ),
-                _buildChartCard(
-                  title: 'Tested Caliber Volume',
-                  action: InkWell(
-                    onTap: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
-                    borderRadius: BorderRadius.circular(6.0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4D99DB).withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(6.0),
-                        border: Border.all(color: const Color(0xFF4D99DB), width: 1.0),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.download, size: 13.0, color: Color(0xFF4D99DB)),
-                          SizedBox(width: 4.0),
-                          Text(
-                            'Export Alone',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF4D99DB),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 10.0,
+                      runSpacing: 6.0,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 3.5,
+                              height: 18.0,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4D99DB),
+                                borderRadius: BorderRadius.circular(2.0),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 8.0),
+                            const Text(
+                              'Ballistic Analytics & Fleet Volume',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0C2A4D),
+                              ),
+                            ),
+                          ],
+                        ),
+                        _buildMinimizedBadge('Total Rounds: $totalRounds', const Color(0xFF0284C7)),
+                        _buildMinimizedBadge('Yield: ${yieldRate.toStringAsFixed(1)}%', const Color(0xFF10B981)),
+                        _buildMinimizedBadge('Pass: $passCount', const Color(0xFF10B981)),
+                        if (condCount > 0) _buildMinimizedBadge('Cond: $condCount', const Color(0xFF06B6D4)),
+                        if (rejectCount > 0) _buildMinimizedBadge('Reject: $rejectCount', const Color(0xFFEF4444)),
+                        if (retestCount > 0) _buildMinimizedBadge('Retest: $retestCount', const Color(0xFFF59E0B)),
+                        if (topCaliber.isNotEmpty) _buildMinimizedBadge('Top: $topCaliber', const Color(0xFF6366F1)),
+                      ],
                     ),
                   ),
-                  child: SingleChildScrollView(
-                    child: CaliberVolumeList(caliberCounts: caliberCounts),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Export Caliber Volume Alone',
+                        icon: const Icon(Icons.download_rounded, size: 18.0, color: Color(0xFF4D99DB)),
+                        onPressed: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+                      ),
+                      const SizedBox(width: 4.0),
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() => _isAnalyticsMinimized = false),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                        label: const Text('Expand Overview', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                          minimumSize: const Size(0, 30.0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                        ),
+                      ),
+                    ],
                   ),
-                  width: isDesktop ? (constraints.maxWidth - 40) * 0.28 : constraints.maxWidth,
-                ),
-                _buildChartCard(
-                  title: 'Status Distribution',
-                  child: StatusDoughnutChart(statusCounts: statusCounts, yieldRate: yieldRate),
-                  width: isDesktop ? (constraints.maxWidth - 40) * 0.27 : constraints.maxWidth,
-                ),
-              ];
-
-              return isDesktop
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: charts,
-                    )
-                  : Column(
-                      children: [
-                        charts[0],
-                        const SizedBox(height: 20.0),
-                        charts[1],
-                        const SizedBox(height: 20.0),
-                        charts[2],
-                      ],
-                    );
-            },
-          ),
-          const SizedBox(height: 28.0),
-
-          // ── Trend Line Chart (full width) ──────────────────────────────
-          Container(
-            width: double.infinity,
-            height: 580.0,
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14.0),
-              border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0A1E3A8A),
-                  blurRadius: 14.0,
-                  offset: Offset(0, 3),
-                ),
-              ],
+                ],
+              ),
             ),
-            child: TrendLineChart(records: filtered),
-          ),
-          const SizedBox(height: 28.0),
-
-          // ── Box & Whisker Distribution Chart (Instruction 14) ───────────
-          Container(
-            width: double.infinity,
-            height: 380.0,
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14.0),
-              border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0A1E3A8A),
-                  blurRadius: 14.0,
-                  offset: Offset(0, 3),
+          ] else ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 8.0),
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _isAnalyticsMinimized = true),
+                icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                label: const Text('Minimize Overview', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  minimumSize: const Size(0, 30.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
                 ),
-              ],
+              ),
             ),
-            child: BoxPlotChart(records: filtered),
-          ),
-          const SizedBox(height: 28.0),
+            // Modern Analytics Overview Component (#edf4fc background, #4d99db sky blue accents)
+            ModernAnalyticsOverviewCard(
+              totalRounds: totalRounds,
+              totalInspections: filtered.length,
+              passCount: passCount,
+              condCount: condCount,
+              rejectCount: rejectCount,
+              retestCount: retestCount,
+              yieldRate: yieldRate,
+              activeCalibersCount: activeCalibersCount,
+              topCaliber: topCaliber,
+              topCaliberRounds: topCaliberRounds,
+              currentModule: widget.currentModule,
+              onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+              onQuickPrint: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+            ),
+            const SizedBox(height: 24.0),
 
-          // Recent Logs Table Card (Clean White Container)
+            // KPI Cards Grid
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final double cardWidth = constraints.maxWidth > 1200
+                    ? (constraints.maxWidth - 80) / 6
+                    : constraints.maxWidth > 900
+                        ? (constraints.maxWidth - 48) / 3
+                        : constraints.maxWidth > 600
+                            ? (constraints.maxWidth - 32) / 2
+                            : constraints.maxWidth;
+
+                return Wrap(
+                  spacing: 16.0,
+                  runSpacing: 16.0,
+                  children: [
+                    _buildKpiCard(
+                      title: 'QUANTITY TESTED',
+                      value: totalRounds.toString(),
+                      desc: _selectedTime == 'Overall' ? 'Total rounds logged' : 'Rounds in this period',
+                      accentColor: const Color(0xFF0284C7),
+                      width: cardWidth,
+                      icon: Icons.flash_on,
+                    ),
+                    _buildKpiCard(
+                      title: 'PASSED TESTS',
+                      value: passCount.toString(),
+                      desc: 'Tests approved & conforming',
+                      accentColor: const Color(0xFF10B981),
+                      width: cardWidth,
+                      icon: Icons.check_circle_outline,
+                    ),
+                    _buildKpiCard(
+                      title: 'COND. APPROVED',
+                      value: condCount.toString(),
+                      desc: 'Approved with condition',
+                      accentColor: const Color(0xFF06B6D4),
+                      width: cardWidth,
+                      icon: Icons.verified_user_outlined,
+                    ),
+                    _buildKpiCard(
+                      title: 'REJECTED TESTS',
+                      value: rejectCount.toString(),
+                      desc: 'Failed evaluations',
+                      accentColor: const Color(0xFFEF4444),
+                      width: cardWidth,
+                      icon: Icons.cancel_outlined,
+                    ),
+                    _buildKpiCard(
+                      title: 'RETEST REQUIRED',
+                      value: retestCount.toString(),
+                      desc: 'Need new inspections',
+                      accentColor: const Color(0xFFF59E0B),
+                      width: cardWidth,
+                      icon: Icons.sync_problem_outlined,
+                    ),
+                    _buildKpiCard(
+                      title: 'YIELD RATE',
+                      value: '${yieldRate.toStringAsFixed(2)}%',
+                      desc: 'Percent within specifications',
+                      accentColor: const Color(0xFF0EA5E9),
+                      width: cardWidth,
+                      icon: Icons.trending_up,
+                    ),
+                    _buildKpiCard(
+                      title: widget.currentModule == 'Component Test' ? 'COMPONENT TESTS' : 'LOT ACCEPTANCE TESTS',
+                      value: widget.currentModule == 'Component Test'
+                          ? '${widget.records.length} Tests'
+                          : '$lotAcceptanceTestsCount Tests',
+                      desc: widget.currentModule == 'Component Test'
+                          ? '${uniqueLots.length} unique component lots'
+                          : '$lotAcceptanceLotsCount unique lots tested',
+                      accentColor: const Color(0xFF0284C7),
+                      width: cardWidth,
+                      icon: Icons.fact_check_outlined,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+          const SizedBox(height: 18.0),
+
+          // Overview Analytics & Distributions (3 Charts: General Defects, Tested Caliber Volume, Status Distribution)
+          if (_isOverviewChartsMinimized) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 3.5,
+                        height: 18.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4D99DB),
+                          borderRadius: BorderRadius.circular(2.0),
+                        ),
+                      ),
+                      const SizedBox(width: 8.0),
+                      const Text(
+                        'General Defects Trend, Tested Caliber Volume & Status Distribution',
+                        style: TextStyle(
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(width: 10.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: const Text('3 Charts Minimized', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => setState(() => _isOverviewChartsMinimized = false),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                    label: const Text('Expand 3 Charts', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: const Size(0, 30.0),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 8.0),
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _isOverviewChartsMinimized = true),
+                icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                label: const Text('Minimize Charts', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  minimumSize: const Size(0, 30.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                ),
+              ),
+            ),
+            // Charts Card
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth > 800;
+                final charts = [
+                  _buildChartCard(
+                    title: _dashboardViewMode == 'By Caliber'
+                        ? (_selectedCaliber == 'All' ? 'All Calibers Performance' : '$_selectedCaliber Test Breakdown')
+                        : (_selectedTestName == 'All' ? 'General Defects Trend' : '$_selectedTestName Metrics'),
+                    child: _dashboardViewMode == 'By Caliber'
+                        ? CaliberIndividualChart(records: widget.records, caliber: _selectedCaliber)
+                        : TestMetricChart(filteredRecords: filtered, selectedTestName: _selectedTestName),
+                    width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
+                  ),
+                  _buildChartCard(
+                    title: 'Tested Caliber Volume',
+                    action: InkWell(
+                      onTap: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+                      borderRadius: BorderRadius.circular(6.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4D99DB).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(color: const Color(0xFF4D99DB), width: 1.0),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.download, size: 13.0, color: Color(0xFF4D99DB)),
+                            SizedBox(width: 4.0),
+                            Text(
+                              'Export Alone',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF4D99DB),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      child: CaliberVolumeList(caliberCounts: caliberCounts),
+                    ),
+                    width: isDesktop ? (constraints.maxWidth - 40) * 0.28 : constraints.maxWidth,
+                  ),
+                  _buildChartCard(
+                    title: 'Status Distribution',
+                    child: StatusDoughnutChart(statusCounts: statusCounts, yieldRate: yieldRate),
+                    width: isDesktop ? (constraints.maxWidth - 40) * 0.27 : constraints.maxWidth,
+                  ),
+                ];
+
+                return isDesktop
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: charts,
+                      )
+                    : Column(
+                        children: [
+                          charts[0],
+                          const SizedBox(height: 20.0),
+                          charts[1],
+                          const SizedBox(height: 20.0),
+                          charts[2],
+                        ],
+                      );
+              },
+            ),
+          ],
+          const SizedBox(height: 18.0),
+
+          // ── Statistical Process Control (SPC) Chart (MAXIMIZED, 4 Charts Default) ────────────────
           Container(
             width: double.infinity,
+            height: _isSpcMaximized ? 780.0 : 580.0,
+            padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14.0),
@@ -935,37 +1088,200 @@ class _DashboardTabState extends State<DashboardTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 4.0,
+                          height: 20.0,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0284C7),
+                            borderRadius: BorderRadius.circular(2.0),
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        const Text(
+                          'Statistical Process Control (SPC) - 4-Chart Process Matrix',
+                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        ),
+                        const SizedBox(width: 10.0),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12.0),
+                            border: Border.all(color: const Color(0xFF10B981), width: 1.0),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle, size: 12.0, color: Color(0xFF10B981)),
+                              SizedBox(width: 4.0),
+                              Text('4 Charts Default', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      tooltip: _isSpcMaximized ? 'Restore Size' : 'Maximize Chart Height',
+                      icon: Icon(_isSpcMaximized ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: const Color(0xFF4D99DB)),
+                      onPressed: () => setState(() => _isSpcMaximized = !_isSpcMaximized),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12.0),
+                Expanded(
+                  child: TrendLineChart(records: filtered),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18.0),
+
+          // ── Box & Whisker Distribution Chart (Minimized by default) ───────────
+          if (_isBoxPlotMinimized) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 3.5,
-                            height: 18.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF4D99DB),
-                              borderRadius: BorderRadius.circular(2.0),
-                            ),
-                          ),
-                          const SizedBox(width: 8.0),
-                          Text(
-                            _selectedLot != 'Overall'
-                                ? 'Submitted Reports for Lot: $_selectedLot'
-                                : 'Recent Lab Logs',
-                            style: const TextStyle(
-                              fontSize: 16.0,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
-                              fontFamily: 'sans-serif',
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ],
+                      Container(
+                        width: 3.5,
+                        height: 18.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4D99DB),
+                          borderRadius: BorderRadius.circular(2.0),
+                        ),
                       ),
+                      const SizedBox(width: 8.0),
+                      const Text(
+                        'Box & Whisker Distribution Analysis',
+                        style: TextStyle(
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(width: 10.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: const Text('Minimized', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => setState(() => _isBoxPlotMinimized = false),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                    label: const Text('Expand Box & Whisker', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: const Size(0, 30.0),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 8.0),
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _isBoxPlotMinimized = true),
+                icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                label: const Text('Minimize Box & Whisker', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  minimumSize: const Size(0, 30.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                ),
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              height: 380.0,
+              padding: const EdgeInsets.all(24.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14.0),
+                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A1E3A8A),
+                    blurRadius: 14.0,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: BoxPlotChart(records: filtered),
+            ),
+          ],
+          const SizedBox(height: 18.0),
+
+          // Recent Logs Table Card (Minimized by default)
+          if (_isRecentLogsMinimized) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 3.5,
+                        height: 18.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4D99DB),
+                          borderRadius: BorderRadius.circular(2.0),
+                        ),
+                      ),
+                      const SizedBox(width: 8.0),
+                      Text(
+                        _selectedLot != 'Overall'
+                            ? 'Recent Lab Logs for Lot: $_selectedLot (${recentRecords.length} records)'
+                            : 'Recent Lab Logs (${recentRecords.length} records)',
+                        style: const TextStyle(
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(width: 10.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: const Text('Minimized', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
                       TextButton(
                         onPressed: widget.onGoToLogs,
                         child: const Text(
@@ -973,87 +1289,181 @@ class _DashboardTabState extends State<DashboardTab> {
                           style: TextStyle(
                             color: Color(0xFF4D99DB),
                             fontWeight: FontWeight.bold,
-                            fontSize: 13.0,
-                            fontFamily: 'sans-serif',
+                            fontSize: 12.0,
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 6.0),
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() => _isRecentLogsMinimized = false),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                        label: const Text('Expand Logs', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                          minimumSize: const Size(0, 30.0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
-                if (recentRecords.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32.0),
-                    child: Center(
-                      child: Text(
-                        'No test entries matched the current filters.',
-                        style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5, fontFamily: 'sans-serif'),
-                      ),
-                    ),
-                  )
-                else
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F6FB)),
-                      columns: [
-                        const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                        const DataColumn(label: Text('INSPECTORS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                        const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                        const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                        DataColumn(
-                          label: Text(
-                            widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PRODUCTION DATE' : 'LOT',
-                            style: const TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'),
-                          ),
-                        ),
-                        const DataColumn(label: Text('TESTED', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                        const DataColumn(label: Text('DEFECTS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                        const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                      ],
-                      rows: recentRecords.map((r) {
-                        return DataRow(
-                          cells: [
-                            DataCell(Text(r.timestamp.split(' ').length > 1 ? r.timestamp.split(' ')[1] : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF64748B)))),
-                            DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0F172A), fontFamily: 'sans-serif'))),
-                            DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF475569), fontFamily: 'sans-serif'))),
-                            DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEDF4FC),
-                                  borderRadius: BorderRadius.circular(4.0),
-                                  border: Border.all(color: const Color(0xFF4D99DB).withOpacity(0.35)),
-                                ),
-                                child: Text(
-                                  r.caliber.replaceAll(' NATO', '').replaceAll(' Parabellum', ''),
-                                  style: const TextStyle(color: Color(0xFF0284C7), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
-                                ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14.0),
+                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A1E3A8A),
+                    blurRadius: 14.0,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 3.5,
+                              height: 18.0,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4D99DB),
+                                borderRadius: BorderRadius.circular(2.0),
                               ),
                             ),
-                            DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A)))),
-                            DataCell(Text(r.produced.toString(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontFamily: 'sans-serif'))),
-                            DataCell(
-                              Text(
-                                r.defects.toString(),
+                            const SizedBox(width: 8.0),
+                            Text(
+                              _selectedLot != 'Overall'
+                                  ? 'Submitted Reports for Lot: $_selectedLot'
+                                  : 'Recent Lab Logs',
+                              style: const TextStyle(
+                                fontSize: 16.0,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0F172A),
+                                fontFamily: 'sans-serif',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: widget.onGoToLogs,
+                              child: const Text(
+                                'View All Logs →',
                                 style: TextStyle(
-                                  color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
-                                  fontWeight: r.defects > 0 ? FontWeight.bold : FontWeight.normal,
-                                  fontSize: 12.5,
+                                  color: Color(0xFF4D99DB),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.0,
                                   fontFamily: 'sans-serif',
                                 ),
                               ),
                             ),
-                            DataCell(_buildStatusBadge(r.status)),
+                            const SizedBox(width: 6.0),
+                            OutlinedButton.icon(
+                              onPressed: () => setState(() => _isRecentLogsMinimized = true),
+                              icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                              label: const Text('Minimize Table', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                                minimumSize: const Size(0, 30.0),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                              ),
+                            ),
                           ],
-                        );
-                      }).toList(),
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                  const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
+                  if (recentRecords.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32.0),
+                      child: Center(
+                        child: Text(
+                          'No test entries matched the current filters.',
+                          style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5, fontFamily: 'sans-serif'),
+                        ),
+                      ),
+                    )
+                  else
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F6FB)),
+                        columns: [
+                          const DataColumn(label: Text('TIME', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                          const DataColumn(label: Text('INSPECTORS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                          const DataColumn(label: Text('SHIFT', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                          const DataColumn(label: Text('CALIBER', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                          DataColumn(
+                            label: Text(
+                              widget.currentModule == 'Daily Test' ? 'HOPPER NO. / PRODUCTION DATE' : 'LOT',
+                              style: const TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'),
+                            ),
+                          ),
+                          const DataColumn(label: Text('TESTED', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                          const DataColumn(label: Text('DEFECTS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                          const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                        ],
+                        rows: recentRecords.map((r) {
+                          return DataRow(
+                            cells: [
+                              DataCell(Text(r.timestamp.split(' ').length > 1 ? r.timestamp.split(' ')[1] : r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: Color(0xFF64748B)))),
+                              DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0F172A), fontFamily: 'sans-serif'))),
+                              DataCell(Text(r.shift, style: const TextStyle(fontSize: 12.0, color: Color(0xFF475569), fontFamily: 'sans-serif'))),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDF4FC),
+                                    borderRadius: BorderRadius.circular(4.0),
+                                    border: Border.all(color: const Color(0xFF4D99DB).withOpacity(0.35)),
+                                  ),
+                                  child: Text(
+                                    r.caliber.replaceAll(' NATO', '').replaceAll(' Parabellum', ''),
+                                    style: const TextStyle(color: Color(0xFF0284C7), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                              DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A)))),
+                              DataCell(Text(r.produced.toString(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontFamily: 'sans-serif'))),
+                              DataCell(
+                                Text(
+                                  r.defects.toString(),
+                                  style: TextStyle(
+                                    color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
+                                    fontWeight: r.defects > 0 ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 12.5,
+                                    fontFamily: 'sans-serif',
+                                  ),
+                                ),
+                              ),
+                              DataCell(_buildStatusBadge(r.status)),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     ),
@@ -3018,7 +3428,6 @@ class _DashboardTabState extends State<DashboardTab> {
     final sortedEntries = caliberCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final effectiveRecords = records ?? widget.records;
 
     if (choice == 'csv' || choice == 'excel') {
       final buffer = StringBuffer();

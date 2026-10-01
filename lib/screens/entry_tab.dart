@@ -243,6 +243,10 @@ class _EntryTabState extends State<EntryTab> {
   final _rangeVelController = TextEditingController();
   final _sdVelController = TextEditingController();
 
+  // Collapsible reference diagrams to prevent vertical overflow
+  bool _showResidualDiagram = false;
+  bool _showFunctionDiagram = false;
+
   // Sample Location state
   final List<String> _defaultSampleLocations = [
     'After Packing machine',
@@ -3463,7 +3467,7 @@ class _EntryTabState extends State<EntryTab> {
 
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
       child: Form(
         key: _formKey,
         child: Column(
@@ -3519,12 +3523,12 @@ class _EntryTabState extends State<EntryTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 6.0),
+            const SizedBox(height: 4.0),
 
             // Form container card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10.0),
@@ -3543,7 +3547,7 @@ class _EntryTabState extends State<EntryTab> {
                   // Auto-Save Status Banner
                   if (_autoSaveStatus.isNotEmpty) ...[
                     Container(
-                      margin: const EdgeInsets.only(bottom: 16.0),
+                      margin: const EdgeInsets.only(bottom: 6.0),
                       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFF10B981).withOpacity(0.12),
@@ -3673,33 +3677,33 @@ class _EntryTabState extends State<EntryTab> {
                       ),
                     ),
                   ], lockSingleRow: true),
-                  const SizedBox(height: 8.0),
+                  const SizedBox(height: 4.0),
                   _buildComponentAndPrimerFieldsCard(),
                   _buildAdminInstructionsCard(),
 
                   // Function Test Specifications Sub-Card (Dynamic)
                   if (_testName == 'Function Test') ...[
                     _buildFunctionTestSpecsCard(),
-                    const SizedBox(height: 8.0),
+                    const SizedBox(height: 4.0),
                   ],
 
                   // Consolidated Row 2 (Viscosity, Sampling Location, Quality Status, Quantity Tested, Barrel Number, Transducers in 1 or max 2 rows)
                   _buildConsolidatedRow2(),
-                  const SizedBox(height: 8.0),
+                  const SizedBox(height: 4.0),
 
                   // Function Test 4-Level Defects Section (Dynamic)
                   if (_testName == 'Function Test') ...[
                     _buildFunctionTestDefectsCard(),
-                    const SizedBox(height: 8.0),
+                    const SizedBox(height: 4.0),
                   ],
 
                   // Waterproof Leakage Test Results Section (Dynamic)
                   if (_testName == 'Waterproof Test') ...[
                     Container(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F6FB),
-                        borderRadius: BorderRadius.circular(10.0),
+                        borderRadius: BorderRadius.circular(8.0),
                         border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
@@ -3707,15 +3711,15 @@ class _EntryTabState extends State<EntryTab> {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.list_alt_outlined, color: Color(0xFF0284C7), size: 18.0),
-                              SizedBox(width: 8.0),
+                              Icon(Icons.list_alt_outlined, color: Color(0xFF0284C7), size: 16.0),
+                              SizedBox(width: 6.0),
                               Text(
                                 'Test Result (Waterproof Leaks)',
-                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
 
                           // TABLE HEADERS
                           Row(
@@ -3734,57 +3738,57 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ],
                           ),
-                          const Divider(color: Color(0xFFE2E8F0), height: 16.0),
+                          const Divider(color: Color(0xFFE2E8F0), height: 6.0),
 
                           // ROW 1: MOUTH
                           Row(
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Mouth', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Mouth', style: TextStyle(color: Color(0xFF1E293B), fontSize: 12.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _mouthSlowController),
                                 ),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _mouthFastController),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12.0),
+                          const SizedBox(height: 4.0),
 
                           // ROW 2: PRIMER
                           Row(
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Primer', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Primer', style: TextStyle(color: Color(0xFF1E293B), fontSize: 12.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _primerSlowController),
                                 ),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _primerFastController),
                                 ),
                               ),
                             ],
                           ),
-                          const Divider(color: Color(0xFFE2E8F0), height: 24.0),
+                          const Divider(color: Color(0xFFE2E8F0), height: 6.0),
 
                           // CALCULATED TOTAL DISPLAY
                           Builder(
@@ -3805,29 +3809,29 @@ class _EntryTabState extends State<EntryTab> {
                                     style: TextStyle(
                                       color: isRed ? const Color(0xFFEF4444) : const Color(0xFF8E96A3),
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 13.0,
+                                      fontSize: 12.0,
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
                                     decoration: BoxDecoration(
                                       color: isRed ? const Color(0xFFEF4444).withOpacity(0.12) : const Color(0xFF10B981).withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(6.0),
+                                      borderRadius: BorderRadius.circular(4.0),
                                       border: Border.all(color: isRed ? const Color(0xFFEF4444).withOpacity(0.2) : const Color(0xFF10B981).withOpacity(0.2)),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         if (isRed) ...[
-                                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 14.0),
-                                          const SizedBox(width: 6.0),
+                                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 12.0),
+                                          const SizedBox(width: 4.0),
                                         ],
                                         Text(
                                           '$total Leaks',
                                           style: TextStyle(
                                             color: isRed ? const Color(0xFFEF4444) : const Color(0xFF10B981),
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 13.5,
+                                            fontSize: 12.5,
                                             fontFamily: 'JetBrainsMono',
                                           ),
                                         ),
@@ -3841,33 +3845,81 @@ class _EntryTabState extends State<EntryTab> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 4.0),
                   ],
 
                   // Residual Stress Test UI (Dynamic)
                   if (_testName == 'Residual Stress Test') ...[
-                    // 1. Stress Test setup card (Room Temp)
                     Container(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.15)),
+                        color: const Color(0xFFF1F6FB),
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.thermostat_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text(
-                                'Residual Stress Test Setup',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(Icons.report_problem_outlined, color: Color(0xFF0284C7), size: 16.0),
+                                  SizedBox(width: 6.0),
+                                  Text(
+                                    'Residual Stress Test (Splits/Cracks)',
+                                    style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                  ),
+                                ],
+                              ),
+                              Builder(
+                                builder: (context) {
+                                  final ns = int.tryParse(_neckSlowController.text) ?? 0;
+                                  final nf = int.tryParse(_neckFastController.text) ?? 0;
+                                  final ss = int.tryParse(_shoulderSlowController.text) ?? 0;
+                                  final sf = int.tryParse(_shoulderFastController.text) ?? 0;
+                                  final bs = int.tryParse(_bodySlowController.text) ?? 0;
+                                  final bf = int.tryParse(_bodyFastController.text) ?? 0;
+                                  final hs = int.tryParse(_headSlowController.text) ?? 0;
+                                  final hf = int.tryParse(_headFastController.text) ?? 0;
+                                  final total = ns + nf + ss + sf + bs + bf + hs + hf;
+                                  
+                                  final rs = widget.adminRules['residual_stress'] ?? {};
+                                  final int rejectLimit = rs['reject_limit'] ?? 3;
+                                  final bool isRed = total >= rejectLimit;
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                                    decoration: BoxDecoration(
+                                      color: isRed ? const Color(0xFFEF4444).withOpacity(0.12) : const Color(0xFF10B981).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(4.0),
+                                      border: Border.all(color: isRed ? const Color(0xFFEF4444).withOpacity(0.2) : const Color(0xFF10B981).withOpacity(0.2)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (isRed) ...[
+                                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 12.0),
+                                          const SizedBox(width: 4.0),
+                                        ],
+                                        Text(
+                                          '$total Splits/Cracks',
+                                          style: TextStyle(
+                                            color: isRed ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12.5,
+                                            fontFamily: 'JetBrainsMono',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
                           _buildFormRow([
                             _buildFlexibleField(
                               key: _roomTempFieldKey,
@@ -3909,10 +3961,10 @@ class _EntryTabState extends State<EntryTab> {
                                       border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
                                     ),
                                     child: IconButton(
-                                      icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
+                                      icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 16),
                                       tooltip: 'Admin: Add new sample location',
-                                      padding: const EdgeInsets.all(8),
-                                      constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                                      padding: const EdgeInsets.all(6),
+                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                       onPressed: _showAddLocationDialog,
                                     ),
                                   ),
@@ -3920,33 +3972,7 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ),
                           ]),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20.0),
-
-                    // 2. Splits/cracks grid card
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F6FB),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: const Color(0xFFD6E4F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.report_problem_outlined, color: Color(0xFF0284C7), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text(
-                                'Test Result (Splits/Cracks per Zone)',
-                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
 
                           // TABLE HEADERS
                           Row(
@@ -3965,177 +3991,178 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ],
                           ),
-                          const Divider(color: Color(0xFFE2E8F0), height: 16.0),
+                          const Divider(color: Color(0xFFE2E8F0), height: 6.0),
 
                           // ROW 1: Neck (I zone)
                           Row(
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Neck (I zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Neck (I zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 12.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _neckSlowController),
                                 ),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _neckFastController),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12.0),
+                          const SizedBox(height: 4.0),
 
                           // ROW 2: Shoulder (S zone)
                           Row(
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Shoulder (S zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Shoulder (S zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 12.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _shoulderSlowController),
                                 ),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _shoulderFastController),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12.0),
+                          const SizedBox(height: 4.0),
 
                           // ROW 3: Body (J & K zone)
                           Row(
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Body (J & K zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Body (J & K zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 12.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _bodySlowController),
                                 ),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _bodyFastController),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12.0),
+                          const SizedBox(height: 4.0),
 
                           // ROW 4: Head (L & M zone)
                           Row(
                             children: [
                               const Expanded(
                                 flex: 2,
-                                child: Text('Head (L & M zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 13.0, fontWeight: FontWeight.bold)),
+                                child: Text('Head (L & M zone)', style: TextStyle(color: Color(0xFF1E293B), fontSize: 12.0, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _headSlowController),
                                 ),
                               ),
                               Expanded(
                                 flex: 3,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0),
+                                  padding: const EdgeInsets.only(right: 12.0),
                                   child: _buildLeakTextField(controller: _headFastController),
                                 ),
                               ),
                             ],
                           ),
-                          const Divider(color: Color(0xFFE2E8F0), height: 24.0),
-
-                          // CALCULATED TOTAL DISPLAY
-                          Builder(
-                            builder: (context) {
-                              final ns = int.tryParse(_neckSlowController.text) ?? 0;
-                              final nf = int.tryParse(_neckFastController.text) ?? 0;
-                              final ss = int.tryParse(_shoulderSlowController.text) ?? 0;
-                              final sf = int.tryParse(_shoulderFastController.text) ?? 0;
-                              final bs = int.tryParse(_bodySlowController.text) ?? 0;
-                              final bf = int.tryParse(_bodyFastController.text) ?? 0;
-                              final hs = int.tryParse(_headSlowController.text) ?? 0;
-                              final hf = int.tryParse(_headFastController.text) ?? 0;
-                              final total = ns + nf + ss + sf + bs + bf + hs + hf;
-                              
-                              final rs = widget.adminRules['residual_stress'] ?? {};
-                              final int rejectLimit = rs['reject_limit'] ?? 3;
-                              final bool isRed = total >= rejectLimit;
-
-                              return Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Total Splits/Cracks:',
-                                    style: TextStyle(
-                                      color: isRed ? const Color(0xFFEF4444) : const Color(0xFF8E96A3),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13.0,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-                                    decoration: BoxDecoration(
-                                      color: isRed ? const Color(0xFFEF4444).withOpacity(0.12) : const Color(0xFF10B981).withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(6.0),
-                                      border: Border.all(color: isRed ? const Color(0xFFEF4444).withOpacity(0.2) : const Color(0xFF10B981).withOpacity(0.2)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (isRed) ...[
-                                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 14.0),
-                                          const SizedBox(width: 6.0),
-                                        ],
-                                        Text(
-                                          '$total Splits/Cracks',
-                                          style: TextStyle(
-                                            color: isRed ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13.5,
-                                            fontFamily: 'JetBrainsMono',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 4.0),
 
-                    // 3. Cartridge classification reference diagram
+                    // Collapsible Cartridge Reference Diagram
                     Container(
-                      padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F6FB),
-                        borderRadius: BorderRadius.circular(10.0),
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8.0),
+                            onTap: () => setState(() => _showResidualDiagram = !_showResidualDiagram),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.photo_outlined, color: Color(0xFF0284C7), size: 16.0),
+                                  const SizedBox(width: 8.0),
+                                  Text(
+                                    _isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram',
+                                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    _showResidualDiagram ? 'Hide Diagram' : 'Show Diagram',
+                                    style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.w600),
+                                  ),
+                                  Icon(
+                                    _showResidualDiagram ? Icons.expand_less : Icons.expand_more,
+                                    color: const Color(0xFF0284C7),
+                                    size: 16.0,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (_showResidualDiagram) ...[
+                            const Divider(color: Color(0xFFD6E4F0), height: 1.0),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6.0),
+                              child: Center(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  child: Image.asset(
+                                    _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
+                                    height: 110,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4.0),
+                  ],
+
+                  // Cyclic Rate Test UI
+                  if (_testName == 'Firing Rate Cycle Test') ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F6FB),
+                        borderRadius: BorderRadius.circular(8.0),
                         border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
@@ -4143,59 +4170,12 @@ class _EntryTabState extends State<EntryTab> {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.photo_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text(
-                                'Residual Stress Classification Reference Diagram',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
-                              ),
+                              Icon(Icons.speed_outlined, color: Color(0xFF0284C7), size: 16.0),
+                              SizedBox(width: 6.0),
+                              Text('Firing Rate Cycle Test', style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
                             ],
                           ),
-                          const SizedBox(height: 12.0),
-                          Center(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child: Image.asset(
-                                _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
-                                height: 220,
-                                fit: BoxFit.contain,
-                                errorBuilder: (c, e, s) => const SizedBox.shrink(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6.0),
-                          Center(
-                            child: Text(
-                              _isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram',
-                              style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontStyle: FontStyle.italic),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20.0),
-                  ],
-
-                  // Cyclic Rate Test UI
-                  if (_testName == 'Firing Rate Cycle Test') ...[
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.15)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.speed_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text('Firing Rate Cycle Test', style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
-                            ],
-                          ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
                           Builder(builder: (context) {
                             final allWeapons = List<Map<String, dynamic>>.from(
                               (widget.adminRules['cyclic_rate']?['weapons'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
@@ -4257,7 +4237,6 @@ class _EntryTabState extends State<EntryTab> {
                                 if (mounted) setState(() => _cyclicRateWeaponType = weapons.first['name'] ?? '');
                               });
                             } else if (_cyclicRateWeaponType.isNotEmpty && weapons.isNotEmpty && !weapons.any((w) => w['name'] == _cyclicRateWeaponType)) {
-                              // If current weapon doesn't match selected category, switch to first in filtered list
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 if (mounted) setState(() => _cyclicRateWeaponType = weapons.first['name'] ?? '');
                               });
@@ -4273,140 +4252,120 @@ class _EntryTabState extends State<EntryTab> {
                             final double? enteredRpm = double.tryParse(_cyclicRateController.text.trim());
                             final bool isOutOfRange = enteredRpm != null && (enteredRpm < rpmMin || (rpmMax != null && enteredRpm > rpmMax));
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                            return _buildFormRow([
+                              _buildFlexibleField(
+                                flex: 2,
+                                label: 'Category',
+                                child: Row(
                                   children: [
-                                    const Text('Category: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5)),
-                                    const SizedBox(width: 12.0),
                                     _buildCyclicAmmoRadio('Rifle'),
-                                    const SizedBox(width: 16.0),
+                                    const SizedBox(width: 8.0),
                                     _buildCyclicAmmoRadio('Machine Gun'),
                                   ],
                                 ),
-                                const SizedBox(height: 14.0),
-                                const Text('Weapon Type', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 6.0),
-                                if (weapons.isEmpty)
-                                  const Text('No weapons configured for this category in Control Panel.', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12.0))
-                                else
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F6FB),
-                                      borderRadius: BorderRadius.circular(6.0),
-                                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                                    ),
-                                    child: DropdownButton<String>(
-                                      value: weapons.any((w) => w['name'] == _cyclicRateWeaponType) ? _cyclicRateWeaponType : (weapons.isNotEmpty ? weapons.first['name'] as String : ''),
-                                      isExpanded: true,
-                                      dropdownColor: Colors.white,
-                                      underline: const SizedBox(),
-                                      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
-                                      onChanged: (val) => setState(() => _cyclicRateWeaponType = val ?? ''),
-                                      items: weapons.map((w) => DropdownMenuItem<String>(value: w['name'] as String, child: Text(w['name'] ?? '', style: const TextStyle(color: Color(0xFF0F172A))))).toList(),
-                                    ),
-                                  ),
-                                const SizedBox(height: 14.0),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text.rich(
-                                            TextSpan(
-                                              text: 'Cyclic Rate (RPM)',
-                                              children: [
-                                                TextSpan(
-                                                  text: ' *',
-                                                  style: TextStyle(color: Color(0xFFEF4444), fontSize: 13.0, fontWeight: FontWeight.bold),
-                                                ),
-                                              ],
-                                            ),
-                                            style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold),
+                              ),
+                              _buildFlexibleField(
+                                flex: 3,
+                                label: 'Weapon Type',
+                                child: weapons.isEmpty
+                                    ? const Text('No weapons', style: TextStyle(color: Color(0xFFEF4444), fontSize: 11.0))
+                                    : Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE0F2FE),
+                                          borderRadius: BorderRadius.circular(6.0),
+                                          border: Border.all(color: const Color(0xFF7DD3FC)),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: weapons.any((w) => w['name'] == _cyclicRateWeaponType) ? _cyclicRateWeaponType : (weapons.isNotEmpty ? weapons.first['name'] as String : ''),
+                                            isExpanded: true,
+                                            dropdownColor: const Color(0xFFE0F2FE),
+                                            style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0, fontWeight: FontWeight.w600),
+                                            onChanged: (val) => setState(() => _cyclicRateWeaponType = val ?? ''),
+                                            items: weapons.map((w) => DropdownMenuItem<String>(value: w['name'] as String, child: Text(w['name'] ?? '', style: const TextStyle(color: Color(0xFF0C2A4D))))).toList(),
                                           ),
-                                          const SizedBox(height: 6.0),
-                                          _buildTextField(
-                                            controller: _cyclicRateController,
-                                            hint: 'Enter measured RPM',
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                            onChanged: (v) => setState(() {}),
-                                            validator: (v) {
-                                              if (v == null || v.trim().isEmpty) return 'Required';
-                                              final val = double.tryParse(v.trim());
-                                              if (val == null) return 'Must be a number';
-                                              if (val < rpmMin || (rpmMax != null && val > rpmMax)) {
-                                                return rpmMax == null ? 'Must be \u2265 $rpmMin RPM' : 'Must be $rpmMin \u2013 $rpmMax RPM';
-                                              }
-                                              return null;
-                                            },
-                                          ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 16.0),
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 22.0),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                                      decoration: BoxDecoration(
-                                        color: isOutOfRange ? const Color(0xFFEF4444).withOpacity(0.1) : const Color(0xFF10B981).withOpacity(0.08),
-                                        borderRadius: BorderRadius.circular(8.0),
-                                        border: Border.all(color: isOutOfRange ? const Color(0xFFEF4444).withOpacity(0.3) : const Color(0xFF10B981).withOpacity(0.2)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Limit ($_cyclicRateAmmoType)', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 10.5, fontWeight: FontWeight.bold)),
-                                          const SizedBox(height: 4.0),
-                                          Text(rpmMax == null ? '\u2265 $rpmMin RPM' : '$rpmMin \u2013 $rpmMax RPM', style: TextStyle(
-                                            color: isOutOfRange ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                                            fontSize: 13.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono',
-                                          )),
-                                          if (isOutOfRange) ...const [
-                                            SizedBox(height: 4.0),
-                                            Row(mainAxisSize: MainAxisSize.min, children: [
-                                              Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 13.0),
-                                              SizedBox(width: 4.0),
-                                              Text('Out of range', style: TextStyle(color: Color(0xFFEF4444), fontSize: 10.5)),
-                                            ]),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                              ),
+                              _buildFlexibleField(
+                                flex: 2,
+                                label: 'Cyclic Rate (RPM)',
+                                isRequired: true,
+                                child: _buildTextField(
+                                  controller: _cyclicRateController,
+                                  hint: 'Measured RPM',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  onChanged: (v) => setState(() {}),
+                                  validator: (v) {
+                                    if (v == null || v.trim().isEmpty) return 'Required';
+                                    final val = double.tryParse(v.trim());
+                                    if (val == null) return 'Must be a number';
+                                    if (val < rpmMin || (rpmMax != null && val > rpmMax)) {
+                                      return rpmMax == null ? '\u2265 $rpmMin' : '$rpmMin\u2013$rpmMax';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                              ],
-                            );
+                              ),
+                              _buildFlexibleField(
+                                flex: 2,
+                                label: 'Limit ($_cyclicRateAmmoType)',
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                                  decoration: BoxDecoration(
+                                    color: isOutOfRange ? const Color(0xFFEF4444).withOpacity(0.12) : const Color(0xFF10B981).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(6.0),
+                                    border: Border.all(color: isOutOfRange ? const Color(0xFFEF4444).withOpacity(0.3) : const Color(0xFF10B981).withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (isOutOfRange) ...const [
+                                        Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 13.0),
+                                        SizedBox(width: 4.0),
+                                      ],
+                                      Text(
+                                        rpmMax == null ? '\u2265 $rpmMin RPM' : '$rpmMin \u2013 $rpmMax RPM',
+                                        style: TextStyle(
+                                          color: isOutOfRange ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                                          fontSize: 12.0,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'JetBrainsMono',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ]);
                           }),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 4.0),
                   ],
 
                   // Terminal Effect Test UI
                   if (_testName == 'Terminal Effect Test') ...[
                     Container(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.15)),
+                        color: const Color(0xFFF1F6FB),
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.gps_fixed_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text('Terminal Effect Test Setup', style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+                              Icon(Icons.gps_fixed_outlined, color: Color(0xFF0284C7), size: 16.0),
+                              SizedBox(width: 6.0),
+                              Text('Terminal Effect Test', style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
                             ],
                           ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
                           _buildFormRow([
                             _buildFlexibleField(
                               flex: 1,
@@ -4432,53 +4391,31 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ),
                           ]),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20.0),
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F6FB),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: const Color(0xFFD6E4F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text('Terminal Effect Results (Round-by-Round)', style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
-                            ],
-                          ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Table(
-                              defaultColumnWidth: const FixedColumnWidth(130.0),
+                              defaultColumnWidth: const FixedColumnWidth(120.0),
                               columnWidths: const {
-                                0: FixedColumnWidth(60.0),   // Round #
-                                1: FixedColumnWidth(180.0),  // Hole Diameter
-                                2: FixedColumnWidth(140.0),  // Steel Penetration
-                                3: FixedColumnWidth(140.0),  // Aluminum Penetration
-                                4: FixedColumnWidth(130.0),  // Velocity (m/s)
+                                0: FixedColumnWidth(50.0),   // Round #
+                                1: FixedColumnWidth(160.0),  // Hole Diameter
+                                2: FixedColumnWidth(130.0),  // Steel Penetration
+                                3: FixedColumnWidth(130.0),  // Aluminum Penetration
+                                4: FixedColumnWidth(120.0),  // Velocity (m/s)
                               },
                               children: [
                                 // Table Header
                                 TableRow(
-                                  children: [
-                                    Padding(padding: const EdgeInsets.all(8.0), child: Text('Round', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: const EdgeInsets.all(8.0), child: Text('Hole > Bullet?', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: const EdgeInsets.all(8.0), child: Text('Steel Penetration', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: const EdgeInsets.all(8.0), child: Text('Alum Penetration', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: const EdgeInsets.all(8.0), child: Text('Velocity (m/s)', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                  children: const [
+                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Round', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Hole > Bullet?', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Steel Penetration', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Alum Penetration', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                   ],
                                 ),
                                 // Table Rows
                                 ...List.generate(_getTerminalVisibleRounds(), (idx) {
-                                  // Make sure list elements are initialized
                                   while (_terminalHoleDiameterRounds.length <= idx) {
                                     _terminalHoleDiameterRounds.add('Yes');
                                   }
@@ -4492,23 +4429,23 @@ class _EntryTabState extends State<EntryTab> {
                                   return TableRow(
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                        child: Center(child: Text('${idx + 1}', style: const TextStyle(color: Colors.white, fontSize: 12.5))),
+                                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                        child: Center(child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF1E293B), fontSize: 12.0))),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF2C415E),
+                                            color: const Color(0xFFE0F2FE),
                                             borderRadius: BorderRadius.circular(6.0),
-                                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                                            border: Border.all(color: const Color(0xFF7DD3FC)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalHoleDiameterRounds[idx],
-                                              dropdownColor: Colors.white,
-                                              style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                                              dropdownColor: const Color(0xFFE0F2FE),
+                                              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 11.5, fontWeight: FontWeight.w600),
                                               onChanged: (v) => setState(() => _terminalHoleDiameterRounds[idx] = v!),
                                               items: const [
                                                 DropdownMenuItem(value: 'Yes', child: Text('Hole > Bullet')),
@@ -4519,19 +4456,19 @@ class _EntryTabState extends State<EntryTab> {
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF2C415E),
+                                            color: const Color(0xFFE0F2FE),
                                             borderRadius: BorderRadius.circular(6.0),
-                                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                                            border: Border.all(color: const Color(0xFF7DD3FC)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalSteelPenetrationRounds[idx],
-                                              dropdownColor: Colors.white,
-                                              style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                                              dropdownColor: const Color(0xFFE0F2FE),
+                                              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 11.5, fontWeight: FontWeight.w600),
                                               onChanged: (v) => setState(() => _terminalSteelPenetrationRounds[idx] = v!),
                                               items: const [
                                                 DropdownMenuItem(value: 'Yes', child: Text('Yes (Passed)')),
@@ -4542,19 +4479,19 @@ class _EntryTabState extends State<EntryTab> {
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6.0),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF2C415E),
+                                            color: const Color(0xFFE0F2FE),
                                             borderRadius: BorderRadius.circular(6.0),
-                                            border: Border.all(color: const Color(0xFF1E3A8A)),
+                                            border: Border.all(color: const Color(0xFF7DD3FC)),
                                           ),
                                           child: DropdownButtonHideUnderline(
                                             child: DropdownButton<String>(
                                               value: _terminalAluminumPenetrationRounds[idx],
-                                              dropdownColor: Colors.white,
-                                              style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                                              dropdownColor: const Color(0xFFE0F2FE),
+                                              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 11.5, fontWeight: FontWeight.w600),
                                               onChanged: (v) => setState(() => _terminalAluminumPenetrationRounds[idx] = v!),
                                               items: const [
                                                 DropdownMenuItem(value: 'Yes', child: Text('Yes (Passed)')),
@@ -4565,7 +4502,7 @@ class _EntryTabState extends State<EntryTab> {
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                                         child: _buildTextField(
                                           controller: _terminalVelocityRoundsControllers[idx],
                                           hint: 'm/s (opt)',
@@ -4586,16 +4523,15 @@ class _EntryTabState extends State<EntryTab> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 4.0),
                   ],
 
                   if (_testName == 'Accuracy Test') ...[
                     Container(
-                      padding: const EdgeInsets.all(16.0),
-
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F6FB),
-                        borderRadius: BorderRadius.circular(10.0),
+                        borderRadius: BorderRadius.circular(8.0),
                         border: Border.all(color: const Color(0xFFD6E4F0)),
                       ),
                       child: Column(
@@ -4603,21 +4539,21 @@ class _EntryTabState extends State<EntryTab> {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.gps_fixed_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
+                              Icon(Icons.gps_fixed_outlined, color: Color(0xFF0284C7), size: 16.0),
+                              SizedBox(width: 6.0),
                               Text(
                                 'Accuracy Test Specifications',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                               ),
                             ],
                           ),
                           if (_caliber == '5.56x45 M193') ...[
-                            const SizedBox(height: 16.0),
+                            const SizedBox(height: 4.0),
                             const Text(
                               'Coordinate Target Deviation / Mean Radius (mm)',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(height: 8.0),
+                            const SizedBox(height: 2.0),
                             _buildFormRow([
                               _buildFlexibleField(
                                 flex: 1,
@@ -4651,12 +4587,12 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ]),
                           ] else ...[
-                            const SizedBox(height: 16.0),
+                            const SizedBox(height: 4.0),
                             const Text(
                               'X-Coordinate Target Deviation (mm)',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(height: 8.0),
+                            const SizedBox(height: 2.0),
                             _buildFormRow([
                               _buildFlexibleField(
                                 flex: 1,
@@ -4706,12 +4642,12 @@ class _EntryTabState extends State<EntryTab> {
                                 ),
                               ),
                             ]),
-                            const SizedBox(height: 16.0),
+                            const SizedBox(height: 4.0),
                             const Text(
                               'Y-Coordinate Target Deviation (mm)',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(height: 8.0),
+                            const SizedBox(height: 2.0),
                             _buildFormRow([
                               _buildFlexibleField(
                                 flex: 1,
@@ -4762,12 +4698,12 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ]),
                           ],
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
                           const Text(
                             'Velocity Parameters (m/s)',
-                            style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 8.0),
+                          const SizedBox(height: 2.0),
                           _buildFormRow([
                             _buildFlexibleField(
                               flex: 1,
@@ -4818,16 +4754,11 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ),
                           ]),
-                          const SizedBox(height: 16.0),
-                          const Text(
-                            'Dispersion & Largest Distance (mm)',
-                            style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.0, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8.0),
+                          const SizedBox(height: 4.0),
                           _buildFormRow([
                             _buildFlexibleField(
                               flex: 1,
-                              label: 'Largest Distance (mm)',
+                              label: 'Largest Distance / Dispersion (mm)',
                               child: _buildTextField(
                                 controller: _accLargestDistanceController,
                                 hint: '0.0',
@@ -4840,12 +4771,12 @@ class _EntryTabState extends State<EntryTab> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 4.0),
                   ],
 
                   if (_testName == 'Extraction Force Test') ...[
                     Container(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
@@ -4860,41 +4791,41 @@ class _EntryTabState extends State<EntryTab> {
                               SizedBox(width: 8.0),
                               Text(
                                 'Extraction Force Test Specifications',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
                           Row(
                             children: [
-                              const Text('Result Input Mode: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5)),
-                              const SizedBox(width: 12.0),
+                              const Text('Result Input Mode: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0)),
+                              const SizedBox(width: 8.0),
                               _buildModeRadioButton('Overall', 'Overall Results'),
-                              const SizedBox(width: 16.0),
+                              const SizedBox(width: 12.0),
                               _buildModeRadioButton('Individual', 'Individual Rounds'),
                             ],
                           ),
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 4.0),
                           if (_extractionForceType == 'Individual') ...[
                             const Text(
                               'Individual Round Inputs (Newtons)',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(height: 8.0),
+                            const SizedBox(height: 4.0),
                             Wrap(
-                              spacing: 12.0,
-                              runSpacing: 12.0,
+                              spacing: 8.0,
+                              runSpacing: 4.0,
                               children: List.generate(_extractionRoundsControllers.length, (index) {
                                 return SizedBox(
-                                  width: 90.0,
+                                  width: 85.0,
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Round ${index + 1}',
-                                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11.0, fontWeight: FontWeight.w500),
+                                        style: const TextStyle(color: Color(0xFF475569), fontSize: 10.5, fontWeight: FontWeight.w500),
                                       ),
-                                      const SizedBox(height: 4.0),
+                                      const SizedBox(height: 2.0),
                                       _buildTextField(
                                         controller: _extractionRoundsControllers[index],
                                         hint: '0.0',
@@ -4913,18 +4844,18 @@ class _EntryTabState extends State<EntryTab> {
                                 );
                               }),
                             ),
-                            const SizedBox(height: 20.0),
+                            const SizedBox(height: 4.0),
                             const Text(
                               'Auto-Calculated Statistics',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
                             ),
                           ] else ...[
                             const Text(
                               'Overall Extraction Force (Newtons)',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
                             ),
                           ],
-                          const SizedBox(height: 8.0),
+                          const SizedBox(height: 4.0),
                           _buildFormRow([
                             _buildFlexibleField(
                               flex: 1,
@@ -4980,12 +4911,12 @@ class _EntryTabState extends State<EntryTab> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 4.0),
                   ],
 
                   if (_testName == 'EPVAT test' || _testName == 'Propellant Test') ...[
                     Container(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F6FB),
                         borderRadius: BorderRadius.circular(10.0),
@@ -4995,118 +4926,97 @@ class _EntryTabState extends State<EntryTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.compress_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text(
-                                'EPVAT Pressure & Velocity Specifications',
-                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16.0),
-                          Row(
                             children: [
+                              const Icon(Icons.compress_outlined, color: Color(0xFF06B6D4), size: 18.0),
+                              const SizedBox(width: 8.0),
+                              const Text(
+                                'EPVAT Pressure & Velocity Specifications',
+                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                              ),
+                              const Spacer(),
                               RichText(
                                 text: const TextSpan(
-                                  text: 'Pressure Unit',
-                                  style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold),
+                                  text: 'Unit',
+                                  style: TextStyle(color: Color(0xFF0F172A), fontSize: 11.5, fontWeight: FontWeight.bold),
                                   children: [
                                     TextSpan(
                                       text: ' *',
-                                      style: TextStyle(color: Color(0xFFEF4444), fontSize: 14.0, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: Color(0xFFEF4444), fontSize: 13.0, fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
                                       text: ': ',
-                                      style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: Color(0xFF0F172A), fontSize: 11.5, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 12.0),
+                              const SizedBox(width: 4.0),
                               _buildEpvatUnitRadioButton('bar', 'bar'),
-                              const SizedBox(width: 16.0),
+                              const SizedBox(width: 6.0),
                               _buildEpvatUnitRadioButton('MPa', 'MPa'),
-                              const SizedBox(width: 16.0),
+                              const SizedBox(width: 6.0),
                               _buildEpvatUnitRadioButton('kg/cm²', 'kg/cm²'),
                             ],
                           ),
-                          const SizedBox(height: 20.0),
+                          const SizedBox(height: 6.0),
                           if (_epvatPressureType == 'Overall') ...[
-                            // Overall mode layout: Tabbed container for temperatures +21, +52, -54
-                            Row(
-                              children: [
-                                const Text(
-                                  'Overall Trial Parameters by Temperature',
-                                  style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.5, fontWeight: FontWeight.bold),
-                                ),
-                                const Text(
-                                  ' *',
-                                  style: TextStyle(color: Color(0xFFEF4444), fontSize: 14.0, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12.0),
-                            Row(
-                              children: [0, 1, 2].map((idx) {
-                                final tempKeys = ['+21', '+52', '-54'];
-                                final labels = ['+21 °C', '+52 °C', '-54 °C'];
-                                final tKey = tempKeys[idx];
-                                final hasData = (_overallEpvatControllers[tKey]?['vel_mean']?.text.trim().isNotEmpty ?? false) ||
-                                                (_overallEpvatControllers[tKey]?['p1_mean']?.text.trim().isNotEmpty ?? false) ||
-                                                (_overallEpvatP1RoundsControllers[tKey]?.any((c) => c.text.trim().isNotEmpty) ?? false);
-                                final isSelected = _activeEpvatTempTabIndex == idx;
-                                return GestureDetector(
-                                  onTap: () => setState(() => _activeEpvatTempTabIndex = idx),
-                                  child: Container(
-                                    margin: const EdgeInsets.only(right: 12.0),
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                    decoration: BoxDecoration(
-                                      color: isSelected ? const Color(0xFF06B6D4) : const Color(0xFFE2E8F0),
-                                      borderRadius: BorderRadius.circular(20.0),
-                                      border: Border.all(color: isSelected ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          labels[idx],
-                                          style: TextStyle(
-                                            color: isSelected ? Colors.white : const Color(0xFF0F172A),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12.0,
-                                          ),
-                                        ),
-                                        if (hasData) ...[
-                                          const SizedBox(width: 6.0),
-                                          Icon(Icons.check_circle, size: 14.0, color: isSelected ? Colors.white : const Color(0xFF10B981)),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 20.0),
                             Builder(
                               builder: (context) {
                                 final tempKeys = ['+21', '+52', '-54'];
+                                final labels = ['+21 °C', '+52 °C', '-54 °C'];
                                 final t = tempKeys[_activeEpvatTempTabIndex];
                                 final isIndividualMode = _epvatOverallSubMode[t] == 'Individual Rounds';
-                                
+
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Sub-mode selector
                                     Row(
                                       children: [
-                                        const Text('Result Entry Method: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5)),
-                                        const SizedBox(width: 12.0),
+                                        ...List.generate(3, (idx) {
+                                          final tKey = tempKeys[idx];
+                                          final hasData = (_overallEpvatControllers[tKey]?['vel_mean']?.text.trim().isNotEmpty ?? false) ||
+                                                          (_overallEpvatControllers[tKey]?['p1_mean']?.text.trim().isNotEmpty ?? false) ||
+                                                          (_overallEpvatP1RoundsControllers[tKey]?.any((c) => c.text.trim().isNotEmpty) ?? false);
+                                          final isSelected = _activeEpvatTempTabIndex == idx;
+                                          return GestureDetector(
+                                            onTap: () => setState(() => _activeEpvatTempTabIndex = idx),
+                                            child: Container(
+                                              margin: const EdgeInsets.only(right: 6.0),
+                                              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                              decoration: BoxDecoration(
+                                                color: isSelected ? const Color(0xFF06B6D4) : const Color(0xFFE2E8F0),
+                                                borderRadius: BorderRadius.circular(14.0),
+                                                border: Border.all(color: isSelected ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    labels[idx],
+                                                    style: TextStyle(
+                                                      color: isSelected ? Colors.white : const Color(0xFF0F172A),
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 11.5,
+                                                    ),
+                                                  ),
+                                                  if (hasData) ...[
+                                                    const SizedBox(width: 4.0),
+                                                    Icon(Icons.check_circle, size: 12.0, color: isSelected ? Colors.white : const Color(0xFF10B981)),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                        const Spacer(),
+                                        const Text('Entry: ', style: TextStyle(color: Color(0xFF64748B), fontSize: 11.0, fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 4.0),
                                         ChoiceChip(
-                                          label: const Text('Stats Only', style: TextStyle(fontSize: 12.0)),
+                                          visualDensity: VisualDensity.compact,
+                                          label: const Text('Stats Only', style: TextStyle(fontSize: 11.0)),
                                           selected: _epvatOverallSubMode[t] == 'Stats Only',
                                           selectedColor: const Color(0xFF06B6D4),
-                                          backgroundColor: Colors.white.withOpacity(0.05),
+                                          backgroundColor: const Color(0xFFE2E8F0),
                                           onSelected: (val) {
                                             if (val) {
                                               setState(() {
@@ -5115,12 +5025,13 @@ class _EntryTabState extends State<EntryTab> {
                                             }
                                           },
                                         ),
-                                        const SizedBox(width: 12.0),
+                                        const SizedBox(width: 6.0),
                                         ChoiceChip(
-                                          label: const Text('Individual Rounds', style: TextStyle(fontSize: 12.0)),
+                                          visualDensity: VisualDensity.compact,
+                                          label: const Text('Individual Rounds', style: TextStyle(fontSize: 11.0)),
                                           selected: _epvatOverallSubMode[t] == 'Individual Rounds',
                                           selectedColor: const Color(0xFF06B6D4),
-                                          backgroundColor: Colors.white.withOpacity(0.05),
+                                          backgroundColor: const Color(0xFFE2E8F0),
                                           onSelected: (val) {
                                             if (val) {
                                               setState(() {
@@ -5132,8 +5043,8 @@ class _EntryTabState extends State<EntryTab> {
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 16.0),
-                                    
+                                    const SizedBox(height: 6.0),
+
                                     if (isIndividualMode) ...[
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -5144,12 +5055,13 @@ class _EntryTabState extends State<EntryTab> {
                                           ),
                                           Row(
                                             children: [
-                                              const Text('Rounds: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0)),
-                                              const SizedBox(width: 8.0),
+                                              const Text('Rounds: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5)),
+                                              const SizedBox(width: 6.0),
                                               DropdownButton<int>(
                                                 value: _epvatOverallRoundCount[t] ?? 30,
                                                 dropdownColor: Colors.white,
-                                                style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                                                style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
+                                                isDense: true,
                                                 underline: const SizedBox(),
                                                 onChanged: (val) {
                                                   if (val != null) {
@@ -5170,7 +5082,7 @@ class _EntryTabState extends State<EntryTab> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 8.0),
+                                      const SizedBox(height: 4.0),
                                       Row(
                                         children: [
                                           const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
@@ -5181,33 +5093,33 @@ class _EntryTabState extends State<EntryTab> {
                                           const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                         ],
                                       ),
-                                      const SizedBox(height: 8.0),
+                                      const SizedBox(height: 4.0),
                                       Container(
-                                        height: 240.0,
+                                        height: 180.0,
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(8.0),
-                                          border: Border.all(color: Colors.white12),
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(6.0),
+                                          border: Border.all(color: const Color(0xFFCBD5E1)),
                                         ),
                                         child: ListView.builder(
-                                          padding: const EdgeInsets.all(8.0),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
                                           itemCount: _getOverallEpvatVisibleRounds(t),
                                           itemBuilder: (context, rIdx) {
                                             return Padding(
-                                              padding: const EdgeInsets.only(bottom: 8.0),
+                                              padding: const EdgeInsets.only(bottom: 4.0),
                                               child: Row(
                                                 children: [
                                                   Expanded(
                                                     flex: 1,
                                                     child: Text(
                                                       'Round ${rIdx + 1}',
-                                                      style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                                                      style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
                                                     ),
                                                   ),
                                                   Expanded(
                                                     flex: 2,
                                                     child: Padding(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 3.0),
                                                       child: _buildTextField(
                                                         controller: _overallEpvatP1RoundsControllers[t]![rIdx],
                                                         hint: 'P1',
@@ -5219,7 +5131,7 @@ class _EntryTabState extends State<EntryTab> {
                                                     Expanded(
                                                       flex: 2,
                                                       child: Padding(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                                        padding: const EdgeInsets.symmetric(horizontal: 3.0),
                                                         child: _buildTextField(
                                                           controller: _overallEpvatP2RoundsControllers[t]![rIdx],
                                                           hint: 'P2',
@@ -5230,7 +5142,7 @@ class _EntryTabState extends State<EntryTab> {
                                                   Expanded(
                                                     flex: 2,
                                                     child: Padding(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 3.0),
                                                       child: _buildTextField(
                                                         controller: _overallEpvatActionTimeRoundsControllers[t]![rIdx],
                                                         hint: 'ms',
@@ -5242,7 +5154,7 @@ class _EntryTabState extends State<EntryTab> {
                                                   Expanded(
                                                     flex: 2,
                                                     child: Padding(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 3.0),
                                                       child: _buildTextField(
                                                         controller: _overallEpvatVelRoundsControllers[t]![rIdx],
                                                         hint: 'm/s',
@@ -5256,72 +5168,53 @@ class _EntryTabState extends State<EntryTab> {
                                           },
                                         ),
                                       ),
-                                      const SizedBox(height: 20.0),
+                                      const SizedBox(height: 6.0),
                                     ],
-                                    
-                                    Text(
-                                      'Summary Statistics Evaluation ($t °C)',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 13.0, fontWeight: FontWeight.bold),
+
+                                    // Compact Table for Summary Statistics
+                                    _buildEpvatTableHeader(),
+                                    _buildEpvatMetricTableRow(
+                                      parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'GP1 Pres. ($_epvatPressureUnit)',
+                                      meanCtrl: _overallEpvatControllers[t]!['p1_mean']!,
+                                      maxCtrl: _overallEpvatControllers[t]!['p1_max']!,
+                                      minCtrl: _overallEpvatControllers[t]!['p1_min']!,
+                                      rangeCtrl: _overallEpvatControllers[t]!['p1_range']!,
+                                      sdCtrl: _overallEpvatControllers[t]!['p1_sd']!,
+                                      readOnly: isIndividualMode,
                                     ),
-                                    const SizedBox(height: 12.0),
-                                    Text(
-                                      _isCaliber9mm ? 'Chamber Pressure ($t °C) (${_epvatPressureUnit})' : 'GP1 (Chamber) Pressure ($t °C) (${_epvatPressureUnit})',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Mean P' : 'Mean P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Range P' : 'Range P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _overallEpvatControllers[t]!['p1_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    ]),
-                                    if (!_isCaliber9mm) ...[
-                                      const SizedBox(height: 16.0),
-                                      Text(
-                                        'GP2 (Port) Pressure ($t °C) (${_epvatPressureUnit})',
-                                        style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    if (!_isCaliber9mm)
+                                      _buildEpvatMetricTableRow(
+                                        parameterName: 'GP2 (Port) Pres. ($_epvatPressureUnit)',
+                                        meanCtrl: _overallEpvatControllers[t]!['p2_mean']!,
+                                        maxCtrl: _overallEpvatControllers[t]!['p2_max']!,
+                                        minCtrl: _overallEpvatControllers[t]!['p2_min']!,
+                                        rangeCtrl: _overallEpvatControllers[t]!['p2_range']!,
+                                        sdCtrl: _overallEpvatControllers[t]!['p2_sd']!,
+                                        readOnly: isIndividualMode,
                                       ),
-                                      const SizedBox(height: 8.0),
-                                      _buildFormRow([
-                                        _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                        _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                        _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                        _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                        _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _overallEpvatControllers[t]!['p2_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      ]),
-                                    ],
-                                    const SizedBox(height: 16.0),
-                                    Text(
-                                      'Action Time ($t °C) (ms)',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    _buildEpvatMetricTableRow(
+                                      parameterName: 'Action Time (ms)',
+                                      meanCtrl: _overallEpvatControllers[t]!['action_time_mean']!,
+                                      maxCtrl: _overallEpvatControllers[t]!['action_time_max']!,
+                                      minCtrl: _overallEpvatControllers[t]!['action_time_min']!,
+                                      rangeCtrl: _overallEpvatControllers[t]!['action_time_range']!,
+                                      sdCtrl: _overallEpvatControllers[t]!['action_time_sd']!,
+                                      readOnly: isIndividualMode,
+                                      inputFormatters: [ActionTimeInputFormatter()],
                                     ),
-                                    const SizedBox(height: 8.0),
-                                    _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()], onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                      _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                      _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                      _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _overallEpvatControllers[t]!['action_time_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                    ]),
-                                    const SizedBox(height: 16.0),
-                                    Text(
-                                      'Velocity ($t °C) (m/s)',
-                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    _buildEpvatMetricTableRow(
+                                      parameterName: 'Velocity (m/s)',
+                                      meanCtrl: _overallEpvatControllers[t]!['vel_mean']!,
+                                      maxCtrl: _overallEpvatControllers[t]!['vel_max']!,
+                                      minCtrl: _overallEpvatControllers[t]!['vel_min']!,
+                                      rangeCtrl: _overallEpvatControllers[t]!['vel_range']!,
+                                      sdCtrl: _overallEpvatControllers[t]!['vel_sd']!,
+                                      readOnly: isIndividualMode,
                                     ),
-                                    const SizedBox(height: 8.0),
-                                    _buildFormRow([
-                                      _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_mean']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
-                                      _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_max']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_min']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_range']!, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                      _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _overallEpvatControllers[t]!['vel_sd']!, hint: '0.0', readOnly: isIndividualMode, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    ]),
-                                    const SizedBox(height: 16.0),
-                                    
-                                    // --- Kinetic Energy Display (only for +21°C tab) ---
-                                    if (t == '+21') ...[  
-                                      const SizedBox(height: 12.0),
+
+                                    // Kinetic Energy Display (only for +21°C tab)
+                                    if (t == '+21') ...[
+                                      const SizedBox(height: 4.0),
                                       Builder(builder: (ctx) {
                                         final epvRules = widget.adminRules['epvat'] ?? {};
                                         final massMap = epvRules['bullet_mass_grams'] ?? {};
@@ -5332,20 +5225,20 @@ class _EntryTabState extends State<EntryTab> {
                                         }
                                         final double ke = 0.5 * (massG / 1000.0) * vMean * vMean;
                                         return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF6366F1).withOpacity(0.08),
-                                            borderRadius: BorderRadius.circular(8.0),
+                                            borderRadius: BorderRadius.circular(6.0),
                                             border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
                                           ),
                                           child: Row(
                                             children: [
-                                              const Icon(Icons.bolt, color: Color(0xFF6366F1), size: 16.0),
-                                              const SizedBox(width: 8.0),
+                                              const Icon(Icons.bolt, color: Color(0xFF6366F1), size: 15.0),
+                                              const SizedBox(width: 6.0),
                                               Expanded(
                                                 child: RichText(
                                                   text: TextSpan(
-                                                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF8E96A3)),
+                                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
                                                     children: [
                                                       const TextSpan(text: 'Kinetic Energy (+21°C): '),
                                                       TextSpan(
@@ -5354,7 +5247,7 @@ class _EntryTabState extends State<EntryTab> {
                                                           color: Color(0xFF6366F1),
                                                           fontWeight: FontWeight.bold,
                                                           fontFamily: 'JetBrainsMono',
-                                                          fontSize: 13.0,
+                                                          fontSize: 12.0,
                                                         ),
                                                       ),
                                                       TextSpan(text: '  (m = ${massG.toStringAsFixed(2)} g, v = ${vMean.toStringAsFixed(1)} m/s)'),
@@ -5380,7 +5273,7 @@ class _EntryTabState extends State<EntryTab> {
                                   'Individual Round Inputs (${_epvatPressureUnit})',
                                   style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
                                 ),
-                                const SizedBox(height: 8.0),
+                                const SizedBox(height: 4.0),
                                 Row(
                                   children: [
                                     const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
@@ -5391,23 +5284,23 @@ class _EntryTabState extends State<EntryTab> {
                                     const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                   ],
                                 ),
-                                const SizedBox(height: 8.0),
+                                const SizedBox(height: 4.0),
                                 ...List.generate(_getIndividualEpvatVisibleRounds(), (index) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    padding: const EdgeInsets.only(bottom: 4.0),
                                     child: Row(
                                       children: [
                                         Expanded(
                                           flex: 1,
                                           child: Text(
                                             'Round ${index + 1}',
-                                            style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                                            style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
                                           ),
                                         ),
                                         Expanded(
                                           flex: 2,
                                           child: Padding(
-                                            padding: EdgeInsets.only(right: _isCaliber9mm ? 8.0 : 8.0),
+                                            padding: const EdgeInsets.only(right: 6.0),
                                             child: _buildTextField(
                                               controller: _epvatRoundsControllers[index],
                                               hint: '0.0',
@@ -5420,7 +5313,7 @@ class _EntryTabState extends State<EntryTab> {
                                           Expanded(
                                             flex: 2,
                                             child: Padding(
-                                              padding: const EdgeInsets.only(right: 8.0),
+                                              padding: const EdgeInsets.only(right: 6.0),
                                               child: _buildTextField(
                                                 controller: _epvatP2RoundsControllers[index],
                                                 hint: '0.0',
@@ -5432,7 +5325,7 @@ class _EntryTabState extends State<EntryTab> {
                                         Expanded(
                                           flex: 2,
                                           child: Padding(
-                                            padding: const EdgeInsets.only(right: 8.0),
+                                            padding: const EdgeInsets.only(right: 6.0),
                                             child: _buildTextField(
                                               controller: _actionTimeRoundsControllers[index],
                                               hint: '0.0',
@@ -5455,72 +5348,53 @@ class _EntryTabState extends State<EntryTab> {
                                     ),
                                   );
                                 }),
-                                const SizedBox(height: 20.0),
-                                const Text(
-                                  'Auto-Calculated Statistics',
-                                  style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                const SizedBox(height: 6.0),
+                                _buildEpvatTableHeader(),
+                                _buildEpvatMetricTableRow(
+                                  parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'P1 Pres. ($_epvatPressureUnit)',
+                                  meanCtrl: _epvatMeanPressureController,
+                                  maxCtrl: _epvatMaxPressureController,
+                                  minCtrl: _epvatMinPressureController,
+                                  rangeCtrl: _epvatRangePressureController,
+                                  sdCtrl: _epvatSDPressureController,
+                                  readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty),
                                 ),
-                                const SizedBox(height: 8.0),
-                                Text(
-                                  _isCaliber9mm ? 'Chamber Pressure Statistics (${_epvatPressureUnit})' : 'P1 (Chamber) Pressure Statistics (${_epvatPressureUnit})',
-                                  style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4.0),
-                                _buildFormRow([
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Mean P' : 'Mean P1', child: _buildTextField(controller: _epvatMeanPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Max P' : 'Max P1', child: _buildTextField(controller: _epvatMaxPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Min P' : 'Min P1', child: _buildTextField(controller: _epvatMinPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'Range P' : 'Range P1', child: _buildTextField(controller: _epvatRangePressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  _buildFlexibleField(flex: 1, label: _isCaliber9mm ? 'SD P' : 'SD P1', child: _buildTextField(controller: _epvatSDPressureController, hint: '0.0', readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                ]),
-                                if (!_isCaliber9mm) ...[
-                                  const SizedBox(height: 12.0),
-                                  Text(
-                                    'P2 (Port) Pressure Statistics (${_epvatPressureUnit})',
-                                    style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                if (!_isCaliber9mm)
+                                  _buildEpvatMetricTableRow(
+                                    parameterName: 'P2 Pres. ($_epvatPressureUnit)',
+                                    meanCtrl: _epvatP2MeanPressureController,
+                                    maxCtrl: _epvatP2MaxPressureController,
+                                    minCtrl: _epvatP2MinPressureController,
+                                    rangeCtrl: _epvatP2RangePressureController,
+                                    sdCtrl: _epvatP2SDPressureController,
+                                    readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty),
                                   ),
-                                  const SizedBox(height: 4.0),
-                                  _buildFormRow([
-                                    _buildFlexibleField(flex: 1, label: 'Mean P2', child: _buildTextField(controller: _epvatP2MeanPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    _buildFlexibleField(flex: 1, label: 'Max P2', child: _buildTextField(controller: _epvatP2MaxPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    _buildFlexibleField(flex: 1, label: 'Min P2', child: _buildTextField(controller: _epvatP2MinPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    _buildFlexibleField(flex: 1, label: 'Range P2', child: _buildTextField(controller: _epvatP2RangePressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                    _buildFlexibleField(flex: 1, label: 'SD P2', child: _buildTextField(controller: _epvatP2SDPressureController, hint: '0.0', readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                  ]),
-                                ],
-                                const SizedBox(height: 12.0),
-                                const Text(
-                                  'Action Time Statistics (ms)',
-                                  style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                _buildEpvatMetricTableRow(
+                                  parameterName: 'Action Time (ms)',
+                                  meanCtrl: _actionTimeMeanController,
+                                  maxCtrl: _actionTimeMaxController,
+                                  minCtrl: _actionTimeMinController,
+                                  rangeCtrl: _actionTimeRangeController,
+                                  sdCtrl: _actionTimeSDController,
+                                  readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty),
+                                  inputFormatters: [ActionTimeInputFormatter()],
                                 ),
-                                const SizedBox(height: 4.0),
-                                _buildFormRow([
-                                   _buildFlexibleField(flex: 1, label: 'Mean Action Time', child: _buildTextField(controller: _actionTimeMeanController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                   _buildFlexibleField(flex: 1, label: 'Max Action Time', child: _buildTextField(controller: _actionTimeMaxController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                   _buildFlexibleField(flex: 1, label: 'Min Action Time', child: _buildTextField(controller: _actionTimeMinController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                   _buildFlexibleField(flex: 1, label: 'Range Action Time', child: _buildTextField(controller: _actionTimeRangeController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                   _buildFlexibleField(flex: 1, label: 'SD Action Time', child: _buildTextField(controller: _actionTimeSDController, hint: '0.0', readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [ActionTimeInputFormatter()])),
-                                 ]),
-                                const SizedBox(height: 12.0),
-                                const Text(
-                                  'Velocity Statistics (m/s)',
-                                  style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                _buildEpvatMetricTableRow(
+                                  parameterName: 'Velocity (m/s)',
+                                  meanCtrl: _meanVelController,
+                                  maxCtrl: _maxVelController,
+                                  minCtrl: _minVelController,
+                                  rangeCtrl: _rangeVelController,
+                                  sdCtrl: _sdVelController,
+                                  readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty),
                                 ),
-                                const SizedBox(height: 4.0),
-                                _buildFormRow([
-                                   _buildFlexibleField(flex: 1, label: 'Mean Vel', child: _buildTextField(controller: _meanVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Max Vel', child: _buildTextField(controller: _maxVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Min Vel', child: _buildTextField(controller: _minVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'Range Vel', child: _buildTextField(controller: _rangeVelController, hint: '0.0', readOnly: true, keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                   _buildFlexibleField(flex: 1, label: 'SD Vel', child: _buildTextField(controller: _sdVelController, hint: '0.0', readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                 ]),
                               ],
                             ),
                           ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 4.0),
                     if (_testName == 'EPVAT test' || _testName == 'Propellant Test') ...[
                       _buildEpvatCustomCalculationsCard(),
                     ],
@@ -5528,7 +5402,7 @@ class _EntryTabState extends State<EntryTab> {
                   if (_testName == 'Primer Sensitivity Test') ...[
                     _buildPrimerSensitivityCard(),
                   ],
-                  const SizedBox(height: 8.0),
+                  const SizedBox(height: 4.0),
 
                   // Row 4: Remarks + Inline Attachment
                   Row(
@@ -5547,18 +5421,18 @@ class _EntryTabState extends State<EntryTab> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4.0),
+                            const SizedBox(height: 3.0),
                             TextFormField(
                               controller: _notesController,
                               maxLines: 2,
-                              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5),
+                              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0),
                               decoration: InputDecoration(
                                 hintText: 'Enter remarks, observations, or quality anomalies...',
-                                hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0),
+                                hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 11.5),
                                 filled: true,
                                 fillColor: const Color(0xFFE0F2FE),
                                 isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(6.0),
                                   borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
@@ -5576,7 +5450,7 @@ class _EntryTabState extends State<EntryTab> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12.0),
+                      const SizedBox(width: 10.0),
                       Expanded(
                         flex: 2,
                         child: Column(
@@ -5590,19 +5464,19 @@ class _EntryTabState extends State<EntryTab> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4.0),
+                            const SizedBox(height: 3.0),
                             _buildCompactInlineAttachment(),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8.0),
+                  const SizedBox(height: 4.0),
 
                   // Function Test Cartridge Classification Reference Diagram below Remarks
                   if (_testName == 'Function Test') ...[
                     _buildFunctionCartridgeReferenceDiagram(),
-                    const SizedBox(height: 8.0),
+                    const SizedBox(height: 4.0),
                   ],
                   if (_testName == 'Extraction Force Test' && (_caliber.contains('M200') || _caliber.contains('M82'))) ...[
                     Container(
@@ -6337,6 +6211,7 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildAttachmentCard() {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -7094,7 +6969,8 @@ class _EntryTabState extends State<EntryTab> {
         return null;
       },
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
         filled: true,
         fillColor: const Color(0xFFE0F2FE),
         border: OutlineInputBorder(
@@ -7257,21 +7133,22 @@ class _EntryTabState extends State<EntryTab> {
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF6495BF)),
+        hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0),
         filled: true,
+        isDense: true,
         fillColor: readOnly ? const Color(0xFFC8E3F5) : const Color(0xFFE0F2FE),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(6.0),
           borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(6.0),
           borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
+          borderRadius: BorderRadius.circular(6.0),
+          borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 1.5),
         ),
       ),
     );
@@ -7288,30 +7165,31 @@ class _EntryTabState extends State<EntryTab> {
       focusNode: focusNode,
       isExpanded: true,
       onChanged: onChanged,
-      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.w500),
+      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5, fontWeight: FontWeight.w500),
       dropdownColor: const Color(0xFFE0F2FE),
-      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF31B9F6)),
+      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF31B9F6), size: 20.0),
       decoration: InputDecoration(
         filled: true,
+        isDense: true,
         fillColor: const Color(0xFFE0F2FE),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(6.0),
           borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(6.0),
           borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
+          borderRadius: BorderRadius.circular(6.0),
+          borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 1.5),
         ),
       ),
       items: items.map((String item) {
         return DropdownMenuItem<String>(
           value: item,
-          child: Text(item, style: const TextStyle(color: Color(0xFF0C2A4D))),
+          child: Text(item, style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5)),
         );
       }).toList(),
     );
@@ -7328,21 +7206,22 @@ class _EntryTabState extends State<EntryTab> {
               focusNode: focusNode,
               keyboardType: TextInputType.number,
               maxLength: 3,
-              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: '###',
-                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
+                hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0),
                 filled: true,
+                isDense: true,
                 fillColor: const Color(0xFFE0F2FE),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+                  borderRadius: BorderRadius.circular(6.0),
                   borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
+                  borderRadius: BorderRadius.circular(6.0),
+                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 1.5),
                 ),
               ),
               inputFormatters: [
@@ -7356,16 +7235,16 @@ class _EntryTabState extends State<EntryTab> {
               },
             ),
           ),
-          const SizedBox(width: 12.0),
+          const SizedBox(width: 8.0),
           const Text(
-            ' OMPC/',
+            'OMPC/',
             style: TextStyle(
               color: Color(0xFF31B9F6),
-              fontSize: 14.0,
+              fontSize: 13.0,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(width: 12.0),
+          const SizedBox(width: 8.0),
           Expanded(
             flex: 2,
             child: _buildDropdownField(
@@ -7390,20 +7269,21 @@ class _EntryTabState extends State<EntryTab> {
       return TextFormField(
         controller: ctrl,
         focusNode: focusNode,
-        style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
+        style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5, fontWeight: FontWeight.bold),
         decoration: InputDecoration(
           hintText: isPrimer ? 'Enter Primer Lot (e.g. CBC-26-01)' : 'Enter Propellant Lot (e.g. 90124)',
-          hintStyle: const TextStyle(color: Color(0xFF6495BF)),
+          hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0),
           filled: true,
+          isDense: true,
           fillColor: const Color(0xFFE0F2FE),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
+            borderRadius: BorderRadius.circular(6.0),
             borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
+            borderRadius: BorderRadius.circular(6.0),
+            borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 1.5),
           ),
         ),
         onChanged: (val) {
@@ -7426,21 +7306,22 @@ class _EntryTabState extends State<EntryTab> {
               focusNode: focusNode,
               keyboardType: TextInputType.number,
               maxLength: 3,
-              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: '###',
-                hintStyle: const TextStyle(color: Color(0xFF6495BF)),
+                hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0),
                 filled: true,
+                isDense: true,
                 fillColor: const Color(0xFFE0F2FE),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+                  borderRadius: BorderRadius.circular(6.0),
                   borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
+                  borderRadius: BorderRadius.circular(6.0),
+                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 1.5),
                 ),
               ),
               inputFormatters: [
@@ -7558,27 +7439,56 @@ class _EntryTabState extends State<EntryTab> {
     }
   }
 
-  Widget _buildEpvatUnitRadioButton(String unit, String label) {
-    final bool isSelected = _epvatPressureUnit == unit;
-    return InkWell(
-      onTap: () => _onPressureUnitChanged(unit),
+  Widget _buildEpvatTableHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Radio<String>(
-            value: unit,
-            groupValue: _epvatPressureUnit,
-            activeColor: const Color(0xFF0284C7),
-            onChanged: (val) {
-              if (val != null) _onPressureUnitChanged(val);
-            },
+        children: const [
+          Expanded(
+            flex: 3,
+            child: Text(
+              'Parameter',
+              style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
+            ),
           ),
-          Text(
-            label,
-            style: TextStyle(
-              color: const Color(0xFF0F172A),
-              fontSize: 13.0,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'Mean',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 10.5, fontWeight: FontWeight.bold),
+            ),
+          ),
+          SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'Max',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 10.5, fontWeight: FontWeight.bold),
+            ),
+          ),
+          SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'Min',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 10.5, fontWeight: FontWeight.bold),
+            ),
+          ),
+          SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'Range',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 10.5, fontWeight: FontWeight.bold),
+            ),
+          ),
+          SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'SD',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 10.5, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -7586,47 +7496,187 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  Widget _buildEpvatMetricTableRow({
+    required String parameterName,
+    required TextEditingController meanCtrl,
+    required TextEditingController maxCtrl,
+    required TextEditingController minCtrl,
+    required TextEditingController rangeCtrl,
+    required TextEditingController sdCtrl,
+    required bool readOnly,
+    List<TextInputFormatter>? inputFormatters,
+    VoidCallback? onMeanChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              parameterName,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: _buildTextField(
+              controller: meanCtrl,
+              hint: '0.0',
+              readOnly: readOnly,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: inputFormatters,
+              onChanged: (_) {
+                if (onMeanChanged != null) onMeanChanged();
+                setState(() {});
+              },
+            ),
+          ),
+          const SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: _buildTextField(
+              controller: maxCtrl,
+              hint: '0.0',
+              readOnly: readOnly,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: inputFormatters,
+            ),
+          ),
+          const SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: _buildTextField(
+              controller: minCtrl,
+              hint: '0.0',
+              readOnly: readOnly,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: inputFormatters,
+            ),
+          ),
+          const SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: _buildTextField(
+              controller: rangeCtrl,
+              hint: '0.0',
+              readOnly: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: inputFormatters,
+            ),
+          ),
+          const SizedBox(width: 6.0),
+          Expanded(
+            flex: 2,
+            child: _buildTextField(
+              controller: sdCtrl,
+              hint: '0.0',
+              readOnly: readOnly,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: inputFormatters,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpvatUnitRadioButton(String unit, String label) {
+    final bool isSelected = _epvatPressureUnit == unit;
+    return InkWell(
+      onTap: () => _onPressureUnitChanged(unit),
+      borderRadius: BorderRadius.circular(4.0),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 1.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Radio<String>(
+              value: unit,
+              groupValue: _epvatPressureUnit,
+              activeColor: const Color(0xFF0284C7),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onChanged: (val) {
+                if (val != null) _onPressureUnitChanged(val);
+              },
+            ),
+            const SizedBox(width: 3.0),
+            Text(
+              label,
+              style: TextStyle(
+                color: const Color(0xFF0F172A),
+                fontSize: 12.0,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFunctionCartridgeReferenceDiagram() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F9FF),
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(8.0),
         border: Border.all(color: const Color(0xFFBAE6FD)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
-              Icon(Icons.photo_outlined, color: Color(0xFF0284C7), size: 18.0),
-              SizedBox(width: 8.0),
-              Text(
-                'Cartridge Classification Reference Diagram',
-                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12.0),
-          Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8.0),
-              child: Image.asset(
-                _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
-                height: 220,
-                fit: BoxFit.contain,
-                errorBuilder: (c, e, s) => const SizedBox.shrink(),
+          InkWell(
+            borderRadius: BorderRadius.circular(8.0),
+            onTap: () => setState(() => _showFunctionDiagram = !_showFunctionDiagram),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+              child: Row(
+                children: [
+                  const Icon(Icons.photo_outlined, color: Color(0xFF0284C7), size: 16.0),
+                  const SizedBox(width: 8.0),
+                  Text(
+                    _isCaliber9mm ? '9mm Cartridge Reference Diagram' : '5.56 / 7.62 Cartridge Reference Diagram',
+                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 12.0, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _showFunctionDiagram ? 'Hide Diagram' : 'Show Diagram',
+                    style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.w600),
+                  ),
+                  Icon(
+                    _showFunctionDiagram ? Icons.expand_less : Icons.expand_more,
+                    color: const Color(0xFF0284C7),
+                    size: 16.0,
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 6.0),
-          Center(
-            child: Text(
-              _isCaliber9mm ? '9mm Cartridge Reference Diagram' : '5.56 / 7.62 Cartridge Reference Diagram',
-              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0, fontStyle: FontStyle.italic),
+          if (_showFunctionDiagram) ...[
+            const Divider(color: Color(0xFFBAE6FD), height: 1.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6.0),
+                  child: Image.asset(
+                    _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
+                    height: 110,
+                    fit: BoxFit.contain,
+                    errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -8152,6 +8202,7 @@ class _EntryTabState extends State<EntryTab> {
     };
   }
 
+  // ignore: unused_element
   void _recalculatePrimerStats() {
     final List<double> heights = [];
     int misfires = 0;
@@ -8462,11 +8513,11 @@ class _EntryTabState extends State<EntryTab> {
     
     if (list.isEmpty) {
       return Container(
-        margin: const EdgeInsets.only(bottom: 20.0),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        margin: const EdgeInsets.only(bottom: 6.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(10.0),
+          borderRadius: BorderRadius.circular(8.0),
           border: Border.all(color: Colors.white.withOpacity(0.04)),
         ),
         child: Row(
@@ -8474,32 +8525,32 @@ class _EntryTabState extends State<EntryTab> {
           children: [
             Row(
               children: [
-                const Icon(Icons.calculate_outlined, color: Color(0xFF8E96A3), size: 18.0),
-                const SizedBox(width: 8.0),
+                const Icon(Icons.calculate_outlined, color: Color(0xFF8E96A3), size: 16.0),
+                const SizedBox(width: 6.0),
                 Text(
                   'No custom EPVAT evaluation formulas registered for "$_caliber".',
-                  style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0, fontStyle: FontStyle.italic),
+                  style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontStyle: FontStyle.italic),
                 ),
               ],
             ),
             if (widget.onOpenEpvatRulesInControl != null)
               InkWell(
                 onTap: widget.onOpenEpvatRulesInControl,
-                borderRadius: BorderRadius.circular(6.0),
+                borderRadius: BorderRadius.circular(4.0),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                   decoration: BoxDecoration(
                     color: const Color(0xFF6366F1).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6.0),
+                    borderRadius: BorderRadius.circular(4.0),
                     border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.4)),
                   ),
                   child: Row(
                     children: const [
-                      Icon(Icons.tune_rounded, color: Color(0xFF818CF8), size: 13.0),
+                      Icon(Icons.tune_rounded, color: Color(0xFF818CF8), size: 12.0),
                       SizedBox(width: 4.0),
                       Text(
                         'Configure Rules in Control Module',
-                        style: TextStyle(color: Color(0xFF818CF8), fontSize: 11.0, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Color(0xFF818CF8), fontSize: 10.5, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -8525,11 +8576,11 @@ class _EntryTabState extends State<EntryTab> {
     )).toList();
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 20.0),
-      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.only(bottom: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(8.0),
         border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Column(
@@ -8540,11 +8591,11 @@ class _EntryTabState extends State<EntryTab> {
             children: [
               Row(
                 children: const [
-                  Icon(Icons.calculate_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                  SizedBox(width: 8.0),
+                  Icon(Icons.calculate_outlined, color: Color(0xFF06B6D4), size: 16.0),
+                  SizedBox(width: 6.0),
                   Text(
                     'EPVAT Calculated Results & Formulas (Admin Defined)',
-                    style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                    style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                   ),
                 ],
               ),
@@ -8555,7 +8606,7 @@ class _EntryTabState extends State<EntryTab> {
                       onTap: widget.onOpenEpvatRulesInControl,
                       borderRadius: BorderRadius.circular(4.0),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
                         decoration: BoxDecoration(
                           color: const Color(0xFF6366F1).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(4.0),
@@ -8564,20 +8615,20 @@ class _EntryTabState extends State<EntryTab> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: const [
-                            Icon(Icons.tune_rounded, color: Color(0xFF818CF8), size: 12.0),
+                            Icon(Icons.tune_rounded, color: Color(0xFF818CF8), size: 11.0),
                             SizedBox(width: 4.0),
                             Text(
                               'Configure in Control Rules',
-                              style: TextStyle(color: Color(0xFF818CF8), fontSize: 10.5, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: Color(0xFF818CF8), fontSize: 10.0, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8.0),
+                    const SizedBox(width: 6.0),
                   ],
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.5),
                     decoration: BoxDecoration(
                       color: const Color(0xFF06B6D4).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4.0),
@@ -8585,14 +8636,14 @@ class _EntryTabState extends State<EntryTab> {
                     ),
                     child: const Text(
                       'Auto Calculated',
-                      style: TextStyle(color: Color(0xFF06B6D4), fontSize: 10.5, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Color(0xFF06B6D4), fontSize: 10.0, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 12.0),
+          const SizedBox(height: 6.0),
           ...results.map((res) {
             final isApp = res.isApplicable;
             final passed = res.isPassed;
@@ -8614,8 +8665,8 @@ class _EntryTabState extends State<EntryTab> {
             final String statusLabel = !isApp ? 'NOT TESTED' : (passed ? 'PASSED' : 'FAILED');
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 10.0),
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+              margin: const EdgeInsets.only(bottom: 4.0),
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
               decoration: BoxDecoration(
                 color: cardBg,
                 borderRadius: BorderRadius.circular(8.0),
@@ -8713,10 +8764,10 @@ class _EntryTabState extends State<EntryTab> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(8.0),
         border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Column(
@@ -8727,34 +8778,34 @@ class _EntryTabState extends State<EntryTab> {
             children: [
               Row(
                 children: const [
-                  Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                  SizedBox(width: 8.0),
+                  Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 16.0),
+                  SizedBox(width: 6.0),
                   Text(
                     'Primer Sensitivity Test',
-                    style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                    style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 4.0),
           if (isLotPrimerLocked) ...[
             Container(
-              margin: const EdgeInsets.only(bottom: 14.0),
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+              margin: const EdgeInsets.only(bottom: 6.0),
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
               decoration: BoxDecoration(
                 color: const Color(0xFF0284C7).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: const Color(0xFF38BDF8), width: 1.2),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFF38BDF8), width: 1.0),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.lock_rounded, color: Color(0xFF38BDF8), size: 20.0),
-                  const SizedBox(width: 10.0),
+                  const Icon(Icons.lock_rounded, color: Color(0xFF38BDF8), size: 16.0),
+                  const SizedBox(width: 8.0),
                   Expanded(
                     child: Text(
                       'Lot Acceptance Module: Primer Sensitivity metrics are synchronized automatically from Component Primer Lot (${_selectedComponentPrimerLot ?? _primerLotController.text}) and locked against manual changes.',
-                      style: const TextStyle(color: Color(0xFFE0F2FE), fontSize: 12.0, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Color(0xFFE0F2FE), fontSize: 11.0, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -8764,7 +8815,7 @@ class _EntryTabState extends State<EntryTab> {
           _buildFormRow([
             _buildFlexibleField(
               flex: 1,
-              label: 'Total Test Rounds Recorded (Sample Size)',
+              label: 'Total Rounds (Sample Size)',
               child: _buildTextField(
                 controller: _producedController,
                 readOnly: isLotPrimerLocked,
@@ -8776,14 +8827,6 @@ class _EntryTabState extends State<EntryTab> {
                 },
               ),
             ),
-          ]),
-          const SizedBox(height: 16.0),
-          const Text(
-            'Primer Sensitivity Metrics & Auto-Calculated Limits',
-            style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12.5, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8.0),
-          _buildFormRow([
             _buildFlexibleField(
               flex: 1,
               label: 'Mean Height H̄ / HM (mm)',
@@ -8806,7 +8849,7 @@ class _EntryTabState extends State<EntryTab> {
             ),
             _buildFlexibleField(
               flex: 1,
-              label: 'Std Deviation S / SD (mm)',
+              label: 'Std Dev S / SD (mm)',
               child: _buildTextField(
                 controller: _primerSDController,
                 hint: 'e.g. 30.0',
@@ -9052,9 +9095,10 @@ class _EntryTabState extends State<EntryTab> {
               }).toList();
             },
             decoration: InputDecoration(
+              isDense: true,
               filled: true,
               fillColor: statusBgColor,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide(color: statusBorderColor),
@@ -9384,11 +9428,12 @@ class _EntryTabState extends State<EntryTab> {
                       dropdownColor: const Color(0xFFE0F2FE),
                       style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
+                        isDense: true,
                         filled: true,
                         fillColor: const Color(0xFFE0F2FE),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
                       ),
                       items: propellantLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                       onChanged: (v) {
@@ -9425,20 +9470,21 @@ class _EntryTabState extends State<EntryTab> {
               label: 'Primer Lot',
               isRequired: true,
               child: primerLotOptions.isNotEmpty
-                  ? DropdownButtonFormField<String>(
-                      value: primerLotOptions.contains(_primerLotController.text.trim())
-                          ? _primerLotController.text.trim()
-                          : primerLotOptions.first,
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFFE0F2FE),
-                      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFFE0F2FE),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                      ),
+                ? DropdownButtonFormField<String>(
+                    value: primerLotOptions.contains(_primerLotController.text.trim())
+                        ? _primerLotController.text.trim()
+                        : primerLotOptions.first,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFFE0F2FE),
+                    style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: const Color(0xFFE0F2FE),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                    ),
                       items: primerLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                       onChanged: (v) {
                         if (v != null) {
@@ -10389,13 +10435,13 @@ class FormRowField extends StatelessWidget {
           ),
           style: const TextStyle(
             color: Color(0xFF8E96A3),
-            fontSize: 12.0,
+            fontSize: 11.0,
             fontWeight: FontWeight.bold,
           ),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
         ),
-        const SizedBox(height: 8.0),
+        const SizedBox(height: 3.0),
         child,
       ],
     );
