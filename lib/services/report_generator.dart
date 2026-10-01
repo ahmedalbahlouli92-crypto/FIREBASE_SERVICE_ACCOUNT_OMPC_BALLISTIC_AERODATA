@@ -348,8 +348,8 @@ class ReportGenerator {
     }
 
     final totalLines = records.length + 1;
-    if (totalLines < 27) {
-      for (int i = 0; i < (27 - totalLines); i++) {
+    if (totalLines < 20) {
+      for (int i = 0; i < (20 - totalLines); i++) {
         buffer.writeln('');
       }
     }
@@ -975,7 +975,7 @@ class ReportGenerator {
         padding: 0;
       }
       .report-content {
-        min-height: 7.0in;
+        min-height: 5.0in;
         box-sizing: border-box;
       }
       .report-footer {
@@ -985,14 +985,14 @@ class ReportGenerator {
       .summary-card, .data-table, .sentence-box, .signatures { page-break-inside: avoid; }
     }
     .report-content {
-      min-height: 7.0in;
+      min-height: 5.0in;
       box-sizing: border-box;
     }
   </style>
 </head>
 <body>
   <div class="report-wrapper">
-    <div class="report-content" style="min-height: 7.0in; box-sizing: border-box;">
+    <div class="report-content" style="min-height: 5.0in; box-sizing: border-box;">
       <!-- Header Text & Logo Section -->
   <table class="header-table">
     <tr>
@@ -2121,12 +2121,12 @@ class ReportGenerator {
     .sentence-box { padding: 10px; border: 1px solid #cbd5e1; background-color: #f8fafc; font-size: 11px; font-weight: bold; color: #1e293b; white-space: pre-wrap; }
     .signatures { margin-top: 25px; width: 100%; }
     .signatures td { width: 50%; text-align: center; font-size: 11px; color: #475569; padding-top: 20px; border-top: 1px solid #cbd5e1; }
-    .report-content { min-height: 7.0in; box-sizing: border-box; }
+    .report-content { min-height: 5.0in; box-sizing: border-box; }
     @media print { @page { margin: 0; } body { margin: 12mm 15mm; -webkit-print-color-adjust: exact; } }
   </style>
 </head>
 <body>
-  <div class="report-content" style="min-height: 7.0in; box-sizing: border-box;">
+  <div class="report-content" style="min-height: 5.0in; box-sizing: border-box;">
   <table class="header-table">
     <tr>
       <td style="width: 65%; text-align: left; vertical-align: middle; padding-bottom: 15px;">
@@ -2488,7 +2488,7 @@ class ReportGenerator {
 
     $attachmentsSection
 
-    <table class="signatures" style="margin-top: 30px;">
+    <table class="signatures" style="margin-top: 15px;">
       <tr>
         <td style="border-top: 1px solid #cbd5e1; width: 45%;">Ballistic Inspector Signature</td>
         <td style="width: 10%; border: none;"></td>
@@ -3029,18 +3029,18 @@ class ReportGenerator {
     <table class="results-table">
       <thead>
         <tr>
-          <th style="width: 20%;">Test Name</th>
-          <th style="width: 12%;">Sample<br/>Size</th>
+          <th colspan="2" style="width: 22%;">Test Name</th>
+          <th style="width: 12%;">Sample Size</th>
           <th style="width: 25%;">Results</th>
           <th style="width: 25%;">Requirements</th>
-          <th style="width: 10%;">Status</th>
+          <th style="width: 8%;">Status</th>
           <th style="width: 8%;">Remarks</th>
         </tr>
       </thead>
       <tbody>
         <!-- 1. Primer Sensitivity Test -->
         <tr>
-          <td class="test-name-cell">Primer Sensitivity Test</td>
+          <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
           <td style="text-align: center;">$primerSample</td>
           <td>$primerResult</td>
           <td>$primerReq</td>
@@ -3050,29 +3050,23 @@ class ReportGenerator {
 
         <!-- 2. EPVAT test (+21 °C, +52 °C, -54 °C) -->
         <tr>
-          <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: top; border-bottom: 1px solid #cbd5e1;">
-            <div>EPVAT test</div>
-            <div style="margin-top: 10px; color: #0284c7; font-weight: bold;">+21 &deg;C</div>
-          </td>
-          <td style="text-align: center;">$epvSample21</td>
+          <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: left; width: 14%;">EPVAT test</td>
+          <td style="text-align: center; color: #0284c7; font-weight: bold; width: 8%;">+21 &deg;C</td>
+          <td rowspan="3" style="text-align: center; vertical-align: middle;">$epvSample21</td>
           <td>$epvResult21</td>
           <td>$epvReq21</td>
           <td class="status-cell">$epvStatus21</td>
           <td style="text-align: center;">$epvRemarks21</td>
         </tr>
         <tr>
-          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">
-            +52 &deg;C
-          </td>
+          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">+52 &deg;C</td>
           <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvResult52</td>
           <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvReq52</td>
           <td class="status-cell">$epvStatus52</td>
           <td style="text-align: center;">$epvRemarks52</td>
         </tr>
         <tr>
-          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">
-            -54 &deg;C
-          </td>
+          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">-54 &deg;C</td>
           <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvResult54</td>
           <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvReq54</td>
           <td class="status-cell">$epvStatus54</td>
@@ -3081,7 +3075,7 @@ class ReportGenerator {
 
         <!-- 3. Function Test -->
         <tr>
-          <td class="test-name-cell">Function Test</td>
+          <td colspan="2" class="test-name-cell">Function Test</td>
           <td style="text-align: center;">$funcSample</td>
           <td>$funcResult</td>
           <td>$funcReq</td>
@@ -3091,7 +3085,7 @@ class ReportGenerator {
 
         <!-- 4. Residual Stress Test -->
         <tr>
-          <td class="test-name-cell">Residual Stress Test</td>
+          <td colspan="2" class="test-name-cell">Residual Stress Test</td>
           <td style="text-align: center;">$rsSample</td>
           <td>$rsResult</td>
           <td>$rsReq</td>
@@ -3101,7 +3095,7 @@ class ReportGenerator {
 
         <!-- 5. Accuracy Test -->
         <tr>
-          <td class="test-name-cell">Accuracy Test</td>
+          <td colspan="2" class="test-name-cell">Accuracy Test</td>
           <td style="text-align: center;">$accSample</td>
           <td>$accResult</td>
           <td>$accReq</td>
@@ -3111,7 +3105,7 @@ class ReportGenerator {
 
         <!-- 6. Extraction Force Test -->
         <tr>
-          <td class="test-name-cell">Extraction Force Test</td>
+          <td colspan="2" class="test-name-cell">Extraction Force Test</td>
           <td style="text-align: center;">$extSample</td>
           <td>$extResult</td>
           <td>$extReq</td>
@@ -3121,7 +3115,7 @@ class ReportGenerator {
 
         <!-- 7. Waterproof Test -->
         <tr>
-          <td class="test-name-cell">Waterproof Test</td>
+          <td colspan="2" class="test-name-cell">Waterproof Test</td>
           <td style="text-align: center;">$wpSample</td>
           <td>$wpResult</td>
           <td>$wpReq</td>
@@ -3131,27 +3125,29 @@ class ReportGenerator {
       </tbody>
     </table>
 
-    <div class="overall-status-box">
-      <span style="font-size: 14.5px; font-weight: bold; color: #0f172a; margin-right: 25px;">Overall Status:</span>
-      <span style="font-size: 16px; font-weight: 800; color: $overallStatusColor;">$overallStatusText</span>
-    </div>
+    <!-- Signatures Table (Table 1 from Reference Docx) -->
+    <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 14px; border: none; page-break-inside: avoid;">
+      <tr>
+        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: top;">
+          <div style="border-bottom: 1px solid #94a3b8; width: 85%; height: 20px; margin-bottom: 6px;"></div>
+          <div style="font-size: 11.5px; color: #1e293b;"><strong>Prepared By:</strong> $inspectorName</div>
+          <div style="font-size: 10px; color: #475569; margin-top: 2px;">Ballistic Technician</div>
+        </td>
+        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: top;">
+          <div style="border-bottom: 1px solid #94a3b8; width: 85%; height: 20px; margin-bottom: 6px;"></div>
+          <div style="font-size: 11.5px; color: #1e293b;"><strong>Approved By:</strong> $supervisorName</div>
+          <div style="font-size: 10px; color: #475569; margin-top: 2px;">Action Ballistic &amp; Engineering Supervisor</div>
+        </td>
+        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: top;">
+          <div style="border-bottom: 1px solid #94a3b8; width: 85%; height: 20px; margin-bottom: 6px;"></div>
+          <div style="font-size: 11.5px; color: #1e293b;"><strong>Authorized By:</strong> $managerName</div>
+          <div style="font-size: 10px; color: #475569; margin-top: 2px;">Acting QC &amp; Engineering Manager</div>
+        </td>
+      </tr>
+    </table>
 
-    <div class="signatures-block">
-      <div class="sig-col">
-        <div class="sig-line"></div>
-        <div style="font-size: 12px; color: #1e293b;">Prepared By: $inspectorName</div>
-        <div style="font-size: 11px; color: #475569; margin-top: 2px;">Ballistic Technician</div>
-      </div>
-      <div class="sig-col">
-        <div class="sig-line"></div>
-        <div style="font-size: 12px; color: #1e293b;">Approved By: $supervisorName</div>
-        <div style="font-size: 11px; color: #475569; margin-top: 2px;">Action Ballistic &amp; Engineering Supervisor</div>
-      </div>
-      <div class="sig-col">
-        <div class="sig-line"></div>
-        <div style="font-size: 12px; color: #1e293b;">Authorized By: $managerName</div>
-        <div style="font-size: 11px; color: #475569; margin-top: 2px;">Acting QC &amp; Engineering Manager</div>
-      </div>
+    <div style="margin-top: 14px; font-size: 13.5px; font-weight: bold; color: #0f172a; page-break-inside: avoid;">
+      Overall Status:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: $overallStatusColor; font-weight: 800;">$overallStatusText</span>
     </div>
 
     <div class="ref-footer">

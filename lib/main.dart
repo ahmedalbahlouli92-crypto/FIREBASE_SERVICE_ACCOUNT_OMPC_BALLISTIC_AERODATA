@@ -2022,7 +2022,8 @@ class _MainShellState extends State<MainShell> {
     _ruleEpvMaxVelCtrl.text = (activeEpv['vel_max'] ?? 930.0).toString();
     _ruleEpvMaxP1Ctrl.text = (activeEpv['p1_max'] ?? 3800.0).toString();
     _ruleEpvMinP2Ctrl.text = (activeEpv['p2_min'] ?? 200.0).toString();
-    _ruleEpvInstructionsCtrl.text = (calEpv['instructions'] ?? epv['instructions'] ?? 'Ensure P1 Chamber does not exceed limits, and P2 Port remains above minimums.').toString();
+    final instructionsByCaliber = Map<String, dynamic>.from(epv['instructions_by_caliber'] ?? {});
+    _ruleEpvInstructionsCtrl.text = (instructionsByCaliber[_ruleSelectedCaliber] ?? calEpv['instructions'] ?? epv['instructions'] ?? 'Ensure P1 Chamber does not exceed limits, and P2 Port remains above minimums.').toString();
 
     // EPVAT Advanced — bullet mass, action time & sentencing flags
     final bulletMassMap = epv['bullet_mass_grams'] ?? {};
@@ -2208,6 +2209,10 @@ class _MainShellState extends State<MainShell> {
     calEpv['instructions'] = _ruleEpvInstructionsCtrl.text.trim();
     epvLimitsByCal[_ruleSelectedCaliber] = calEpv;
     epv['limits_by_caliber'] = epvLimitsByCal;
+
+    final instructionsByCaliber = Map<String, dynamic>.from(epv['instructions_by_caliber'] ?? {});
+    instructionsByCaliber[_ruleSelectedCaliber] = _ruleEpvInstructionsCtrl.text.trim();
+    epv['instructions_by_caliber'] = instructionsByCaliber;
 
     // Fallback legacy map
     final epvLimits = Map<String, dynamic>.from(epv['limits'] ?? {});
@@ -6661,6 +6666,12 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 10.0),
             _buildRuleTextField('Bullet Mass (grams) for $_ruleSelectedCaliber', _ruleEpvBulletMassCtrl),
+            const SizedBox(height: 12.0),
+            _buildRuleTextField(
+              'Admin Instruction / Recommendation for $_ruleSelectedCaliber (Advisory only — does not decide quality status)',
+              _ruleEpvInstructionsCtrl,
+              isMultiline: true,
+            ),
             const SizedBox(height: 20.0),
             const Text('Custom Caliber Sentencing Calculations', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 13.0, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8.0),

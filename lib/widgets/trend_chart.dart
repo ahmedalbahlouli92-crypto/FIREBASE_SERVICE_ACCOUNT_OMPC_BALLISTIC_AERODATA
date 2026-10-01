@@ -33,6 +33,17 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   bool _showFourCharts = true;
 
+  List<String> _selectedMultiParams = [];
+
+  void _initMultiParamsForTest(String testType) {
+    final available = _getParamsForTestType(testType);
+    final default4 = _get4ParamsForTestType(testType);
+    _selectedMultiParams = default4.where((p) => available.contains(p)).toList();
+    if (_selectedMultiParams.isEmpty && available.isNotEmpty) {
+      _selectedMultiParams = available.take(4).toList();
+    }
+  }
+
   static const List<String> _timeRangeOptions = [
     'All Time',
     'Today',
@@ -189,6 +200,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
     } else {
       _selectedParam = 'Defect Rate (%)';
     }
+    _initMultiParamsForTest(_selectedTestType);
   }
 
   _RecordMetric? _extractRecordMetric(BallisticRecord r, {String? paramOverride}) {
@@ -455,6 +467,16 @@ class _TrendLineChartState extends State<TrendLineChart> {
     if (!paramOptions.contains(_selectedParam)) {
       _selectedParam = paramOptions.first;
     }
+    if (_selectedMultiParams.isEmpty) {
+      _initMultiParamsForTest(_selectedTestType);
+    } else {
+      final valid = _selectedMultiParams.where((p) => paramOptions.contains(p)).toList();
+      if (valid.isEmpty) {
+        _initMultiParamsForTest(_selectedTestType);
+      } else if (valid.length != _selectedMultiParams.length) {
+        _selectedMultiParams = valid;
+      }
+    }
 
     // Filter by caliber, test type, and time range
     final filtered = widget.records.where((r) {
@@ -623,6 +645,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
                     if (!newParams.contains(_selectedParam)) {
                       _selectedParam = newParams.first;
                     }
+                    _initMultiParamsForTest(v);
                   });
                 }
               },
@@ -665,7 +688,11 @@ class _TrendLineChartState extends State<TrendLineChart> {
               ),
           ],
         ),
-        const SizedBox(height: 16.0),
+        const SizedBox(height: 8.0),
+
+        // ─── Parameter Selection Chips (Filtered by Test Type) ─────────
+        _buildParameterSelectorChips(paramOptions),
+        const SizedBox(height: 10.0),
 
         // ─── Chart area ───────────────────────────────────────────────
         Expanded(
@@ -832,13 +859,152 @@ class _TrendLineChartState extends State<TrendLineChart> {
     );
   }
 
+  Widget _buildParameterSelectorChips(List<String> availableParams) {
+    if (availableParams.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _showFourCharts ? Icons.view_compact_rounded : Icons.tune_rounded,
+                size: 14.0,
+                color: const Color(0xFF38BDF8),
+              ),
+              const SizedBox(width: 6.0),
+              Text(
+                _showFourCharts
+                    ? 'CHOOSE PARAMETERS TO DISPLAY IN SPC GRID (CHOSEN TEST: $_selectedTestType - SELECT UP TO 4):'
+                    : 'CHOOSE PARAMETER TO DISPLAY (CHOSEN TEST: $_selectedTestType):',
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF94A3B8),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6.0),
+          Wrap(
+            spacing: 6.0,
+            runSpacing: 6.0,
+            children: availableParams.map((param) {
+              final isSelected = _showFourCharts
+                  ? _selectedMultiParams.contains(param)
+                  : (_selectedParam == param);
+
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    if (_showFourCharts) {
+                      if (_selectedMultiParams.contains(param)) {
+                        if (_selectedMultiParams.length > 1) {
+                          _selectedMultiParams.remove(param);
+                        }
+                      } else {
+                        if (_selectedMultiParams.length < 4) {
+                          _selectedMultiParams.add(param);
+                        } else {
+                          _selectedMultiParams.removeLast();
+                          _selectedMultiParams.add(param);
+                        }
+                      }
+                    } else {
+                      _selectedParam = param;
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(6.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF0284C7).withOpacity(0.25)
+                        : const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF38BDF8)
+                          : const Color(0xFF334155),
+                      width: isSelected ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSelected
+                            ? (_showFourCharts ? Icons.check_box : Icons.radio_button_checked)
+                            : (_showFourCharts ? Icons.check_box_outline_blank : Icons.radio_button_unchecked),
+                        size: 13.0,
+                        color: isSelected ? const Color(0xFF38BDF8) : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 5.0),
+                      Text(
+                        param,
+                        style: TextStyle(
+                          fontSize: 11.0,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFourChartsGrid(List<BallisticRecord> filtered) {
-    final params = _get4ParamsForTestType(_selectedTestType);
+    final params = _selectedMultiParams.isNotEmpty
+        ? _selectedMultiParams
+        : _get4ParamsForTestType(_selectedTestType);
+
     if (params.isEmpty) {
       return const Center(child: Text('No parameters available', style: TextStyle(color: Color(0xFF8E96A3))));
     }
 
-    final p0 = params.isNotEmpty ? params[0] : '';
+    if (params.length == 1) {
+      return _buildSpcCard(params[0], filtered);
+    } else if (params.length == 2) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildSpcCard(params[0], filtered)),
+          const SizedBox(width: 8.0),
+          Expanded(child: _buildSpcCard(params[1], filtered)),
+        ],
+      );
+    } else if (params.length == 3) {
+      return Column(
+        children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildSpcCard(params[0], filtered)),
+                const SizedBox(width: 8.0),
+                Expanded(child: _buildSpcCard(params[1], filtered)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          Expanded(
+            child: _buildSpcCard(params[2], filtered),
+          ),
+        ],
+      );
+    }
+
+    final p0 = params[0];
     final p1 = params.length > 1 ? params[1] : '';
     final p2 = params.length > 2 ? params[2] : '';
     final p3 = params.length > 3 ? params[3] : '';

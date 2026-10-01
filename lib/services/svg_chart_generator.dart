@@ -530,4 +530,329 @@ class SvgChartGenerator {
     buffer.writeln('</svg>');
     return buffer.toString();
   }
+
+  /// Generates an SVG Statistical Process Control (SPC) Chart with UCL, CL, and LCL limits
+  static String generateSpcChartSvg(
+    List<BallisticRecord> records, {
+    String param = 'Mean Velocity (m/s)',
+    double width = 800,
+    double height = 230,
+  }) {
+    // 1. Extract values
+    final List<Map<String, dynamic>> points = [];
+    for (int i = 0; i < records.length; i++) {
+      final r = records[i];
+      double? val;
+      if (param.contains('Velocity')) {
+        val = double.tryParse(r.velMean);
+      } else if (param.contains('Pressure') || param.contains('P1')) {
+        val = double.tryParse(r.epvatMeanPressure);
+      } else if (param.contains('Radius')) {
+        val = double.tryParse(r.accMeanRadius);
+      } else {
+        // Fallback to velocity or pressure or defect rate
+        val = double.tryParse(r.velMean) ?? double.tryParse(r.epvatMeanPressure);
+        if (val == null && r.produced > 0) {
+          val = (r.defects / r.produced) * 100.0;
+        }
+      }
+
+      if (val != null && val > 0) {
+        final lot = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : 'Test ${i + 1}');
+        points.add({
+          'val': val,
+          'label': lot.length > 8 ? lot.substring(lot.length - 8) : lot,
+          'index': i + 1,
+        });
+      }
+    }
+
+    if (points.isEmpty) {
+      return '''
+      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No SPC Data Available for Evaluation</text>
+      </svg>
+      ''';
+    }
+
+    // Limit to latest 15 points if too many
+    final displayPoints = points.length > 15 ? points.sublist(points.length - 15) : points;
+    final values = displayPoints.map((p) => p['val'] as double).toList();
+
+    // 2. Compute Mean & SD
+    final double mean = values.reduce((a, b) => a + b) / values.length;
+    double variance = 0.0;
+    if (values.length > 1) {
+      variance = values.map((v) => math.pow(v - mean, 2)).reduce((a, b) => a + b) / (values.length - 1);
+    }
+    final double sd = math.sqrt(variance);
+    final double ucl = mean + (3 * sd);
+    final double lcl = math.max(0.0, mean - (3 * sd));
+
+    final int oocCount = values.where((v) => v > ucl || v < lcl).length;
+
+    // 3. Layout Dimensions
+    final padLeft = 65.0;
+    final padRight = 35.0;
+    final padTop = 45.0;
+    final padBottom = 40.0;
+    final chartW = width - padLeft - padRight;
+    final chartH = height - padTop - padBottom;
+
+    // Scale range with 10% breathing room
+    final double minVal = values.reduce(math.min);
+    final double maxVal = values.reduce(math.max);
+    final double axisMin = math.min(lcl, minVal) - (sd * 0.8);
+    final double axisMax = math.max(ucl, maxVal) + (sd * 0.8);
+    final double range = (axisMax - axisMin) > 0 ? (axisMax - axisMin) : 10.0;
+
+    double getY(double v) => padTop + chartH - (((v - axisMin) / range) * chartH).clamp(0.0, chartH);
+
+    final buffer = StringBuffer();
+    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
+
+    // Title & Badges
+    buffer.writeln('''  <text x="$padLeft" y="22" font-size="12" font-weight="bold" fill="#0f172a" font-family="sans-serif">Statistical Process Control (SPC) Chart - $param</text>''');
+    
+    // Limits Badges on the right
+    buffer.writeln('''
+  <g transform="translate(${width - padRight - 360}, 10)">
+    <rect x="0" y="0" width="75" height="18" rx="3" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8"/>
+    <text x="37" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#b91c1c" font-family="sans-serif">UCL: ${ucl.toStringAsFixed(1)}</text>
+
+    <rect x="82" y="0" width="85" height="18" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+    <text x="124" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#0369a1" font-family="sans-serif">CL: ${mean.toStringAsFixed(1)}</text>
+
+    <rect x="174" y="0" width="75" height="18" rx="3" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8"/>
+    <text x="211" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#b91c1c" font-family="sans-serif">LCL: ${lcl.toStringAsFixed(1)}</text>
+
+    <rect x="256" y="0" width="65" height="18" rx="3" fill="#f3e8ff" stroke="#a855f7" stroke-width="0.8"/>
+    <text x="288" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#7e22ce" font-family="sans-serif">σ: ${sd.toStringAsFixed(2)}</text>
+''');
+    if (oocCount > 0) {
+      buffer.writeln('''
+    <rect x="328" y="0" width="70" height="18" rx="3" fill="#ef4444"/>
+    <text x="363" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#ffffff" font-family="sans-serif">OOC: $oocCount</text>
+''');
+    }
+    buffer.writeln('  </g>');
+
+    // Y Grid lines
+    for (int i = 0; i <= 4; i++) {
+      final y = padTop + chartH - (i * chartH / 4);
+      final v = axisMin + (i * range / 4);
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="monospace">${v.toStringAsFixed(1)}</text>''');
+    }
+
+    // UCL line
+    final uclY = getY(ucl);
+    buffer.writeln('''  <line x1="$padLeft" y1="$uclY" x2="${width - padRight}" y2="$uclY" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4"/>''');
+    buffer.writeln('''  <text x="${width - padRight + 4}" y="${uclY + 3}" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">UCL</text>''');
+
+    // CL / Mean line
+    final clY = getY(mean);
+    buffer.writeln('''  <line x1="$padLeft" y1="$clY" x2="${width - padRight}" y2="$clY" stroke="#0284c7" stroke-width="1.8" stroke-dasharray="4,3"/>''');
+    buffer.writeln('''  <text x="${width - padRight + 4}" y="${clY + 3}" font-size="8.5" font-weight="bold" fill="#0284c7" font-family="sans-serif">CL</text>''');
+
+    // LCL line
+    final lclY = getY(lcl);
+    buffer.writeln('''  <line x1="$padLeft" y1="$lclY" x2="${width - padRight}" y2="$lclY" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4"/>''');
+    buffer.writeln('''  <text x="${width - padRight + 4}" y="${lclY + 3}" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">LCL</text>''');
+
+    // Points and polyline
+    final stepX = displayPoints.length > 1 ? chartW / (displayPoints.length - 1) : chartW / 2;
+    final polyPts = <String>[];
+    for (int i = 0; i < displayPoints.length; i++) {
+      final x = displayPoints.length > 1 ? padLeft + (i * stepX) : padLeft + chartW / 2;
+      final y = getY(displayPoints[i]['val'] as double);
+      polyPts.add('$x,$y');
+    }
+
+    buffer.writeln('''  <polyline fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${polyPts.join(' ')}"/>''');
+
+    for (int i = 0; i < displayPoints.length; i++) {
+      final x = displayPoints.length > 1 ? padLeft + (i * stepX) : padLeft + chartW / 2;
+      final val = displayPoints[i]['val'] as double;
+      final y = getY(val);
+      final isOoc = val > ucl || val < lcl;
+      final color = isOoc ? '#ef4444' : '#0284c7';
+      final radius = isOoc ? 6.0 : 4.5;
+      final label = displayPoints[i]['label'] as String;
+
+      buffer.writeln('''  <circle cx="$x" cy="$y" r="$radius" fill="$color" stroke="#ffffff" stroke-width="2"/>''');
+      buffer.writeln('''  <text x="$x" y="${padTop + chartH + 16}" text-anchor="middle" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">$label</text>''');
+    }
+
+    buffer.writeln('</svg>');
+    return buffer.toString();
+  }
+
+  /// Generates an SVG Box & Whisker Distribution Analysis Chart (Min, Q1, Median, Q3, Max)
+  static String generateBoxPlotSvg(
+    List<BallisticRecord> records, {
+    String metric = 'Velocity (m/s)',
+    double width = 800,
+    double height = 230,
+  }) {
+    // Group records by lot or caliber
+    final Map<String, List<double>> groups = {};
+    for (var r in records) {
+      double? val = double.tryParse(r.velMean);
+      if (val == null || val <= 0) {
+        val = double.tryParse(r.epvatMeanPressure);
+      }
+      if (val == null || val <= 0) {
+        val = double.tryParse(r.accMeanRadius);
+      }
+      if (val == null && r.produced > 0) {
+        val = (r.defects / r.produced) * 100.0;
+      }
+      if (val != null) {
+        final key = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : r.caliber;
+        groups.putIfAbsent(key, () => []).add(val);
+      }
+    }
+
+    // If fewer than 2 groups, attempt grouping by caliber
+    if (groups.length < 2) {
+      groups.clear();
+      for (var r in records) {
+        double? val = double.tryParse(r.velMean) ?? double.tryParse(r.epvatMeanPressure);
+        if (val != null) {
+          groups.putIfAbsent(r.caliber, () => []).add(val);
+        }
+      }
+    }
+
+    if (groups.isEmpty) {
+      return '''
+      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No Data for Box & Whisker Distribution Analysis</text>
+      </svg>
+      ''';
+    }
+
+    final keys = groups.keys.toList();
+    final displayKeys = keys.length > 8 ? keys.sublist(keys.length - 8) : keys;
+
+    // Compute stats for each group
+    final List<Map<String, dynamic>> stats = [];
+    double globalMin = double.infinity;
+    double globalMax = -double.infinity;
+
+    for (var key in displayKeys) {
+      final vals = groups[key]!..sort();
+      final n = vals.length;
+      final min = vals.first;
+      final max = vals.last;
+
+      double getMedian(List<double> list) {
+        if (list.isEmpty) return 0.0;
+        final int mid = list.length ~/ 2;
+        return (list.length % 2 == 1) ? list[mid] : ((list[mid - 1] + list[mid]) / 2.0);
+      }
+
+      final median = getMedian(vals);
+      final List<double> lowerHalf = vals.sublist(0, n ~/ 2);
+      final List<double> upperHalf = (n % 2 == 0) ? vals.sublist(n ~/ 2) : vals.sublist(n ~/ 2 + 1);
+      final q1 = lowerHalf.isNotEmpty ? getMedian(lowerHalf) : min;
+      final q3 = upperHalf.isNotEmpty ? getMedian(upperHalf) : max;
+
+      if (min < globalMin) globalMin = min;
+      if (max > globalMax) globalMax = max;
+
+      stats.add({
+        'label': key.length > 10 ? key.substring(key.length - 10) : key,
+        'min': min,
+        'q1': q1,
+        'median': median,
+        'q3': q3,
+        'max': max,
+        'count': n,
+      });
+    }
+
+    if (globalMin == double.infinity) {
+      globalMin = 0.0;
+      globalMax = 100.0;
+    }
+
+    final padLeft = 65.0;
+    final padRight = 35.0;
+    final padTop = 45.0;
+    final padBottom = 40.0;
+    final chartW = width - padLeft - padRight;
+    final chartH = height - padTop - padBottom;
+
+    final span = globalMax - globalMin;
+    final axisMin = globalMin - (span * 0.1);
+    final axisMax = globalMax + (span * 0.1);
+    final range = (axisMax - axisMin) > 0 ? (axisMax - axisMin) : 10.0;
+
+    double getY(double v) => padTop + chartH - (((v - axisMin) / range) * chartH).clamp(0.0, chartH);
+
+    final buffer = StringBuffer();
+    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
+
+    // Title & Legend
+    buffer.writeln('''  <text x="$padLeft" y="22" font-size="12" font-weight="bold" fill="#0f172a" font-family="sans-serif">Box & Whisker Distribution Analysis ($metric)</text>''');
+    buffer.writeln('''
+  <g transform="translate(${width - padRight - 320}, 10)">
+    <line x1="0" y1="9" x2="16" y2="9" stroke="#475569" stroke-width="1.8"/>
+    <text x="22" y="12" font-size="9" fill="#475569" font-family="sans-serif">Whiskers (Min/Max)</text>
+    <rect x="120" y="2" width="14" height="14" rx="2" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+    <text x="140" y="12" font-size="9" fill="#475569" font-family="sans-serif">IQR (Q1 - Q3)</text>
+    <line x1="220" y1="9" x2="236" y2="9" stroke="#f59e0b" stroke-width="2.5"/>
+    <text x="242" y="12" font-size="9" fill="#475569" font-family="sans-serif">Median</text>
+  </g>
+''');
+
+    // Y Grid lines
+    for (int i = 0; i <= 4; i++) {
+      final y = padTop + chartH - (i * chartH / 4);
+      final v = axisMin + (i * range / 4);
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="monospace">${v.toStringAsFixed(1)}</text>''');
+    }
+
+    // Boxes & Whiskers
+    final groupW = chartW / stats.length;
+    final boxW = math.min(36.0, groupW * 0.55);
+
+    for (int i = 0; i < stats.length; i++) {
+      final s = stats[i];
+      final cx = padLeft + (i * groupW) + (groupW / 2);
+      final minY = getY(s['min'] as double);
+      final q1Y = getY(s['q1'] as double);
+      final medY = getY(s['median'] as double);
+      final q3Y = getY(s['q3'] as double);
+      final maxY = getY(s['max'] as double);
+
+      // Whisker stem (Min to Max)
+      buffer.writeln('''  <line x1="$cx" y1="$minY" x2="$cx" y2="$maxY" stroke="#475569" stroke-width="1.5"/>''');
+      // Whisker caps
+      buffer.writeln('''  <line x1="${cx - boxW / 3}" y1="$minY" x2="${cx + boxW / 3}" y2="$minY" stroke="#475569" stroke-width="2"/>''');
+      buffer.writeln('''  <line x1="${cx - boxW / 3}" y1="$maxY" x2="${cx + boxW / 3}" y2="$maxY" stroke="#475569" stroke-width="2"/>''');
+
+      // Box (Q1 to Q3)
+      final boxTop = math.min(q1Y, q3Y);
+      final boxHeight = math.max(2.0, (q1Y - q3Y).abs());
+      buffer.writeln('''  <rect x="${cx - boxW / 2}" y="$boxTop" width="$boxW" height="$boxHeight" rx="3" fill="#bae6fd" stroke="#0284c7" stroke-width="1.8"/>''');
+
+      // Median Line
+      buffer.writeln('''  <line x1="${cx - boxW / 2}" y1="$medY" x2="${cx + boxW / 2}" y2="$medY" stroke="#f59e0b" stroke-width="2.5"/>''');
+
+      // X-axis label
+      buffer.writeln('''  <text x="$cx" y="${padTop + chartH + 16}" text-anchor="middle" font-size="9" font-weight="600" fill="#334155" font-family="sans-serif">${s['label']}</text>''');
+      buffer.writeln('''  <text x="$cx" y="${padTop + chartH + 28}" text-anchor="middle" font-size="8" fill="#64748b" font-family="sans-serif">n=${s['count']}</text>''');
+    }
+
+    buffer.writeln('</svg>');
+    return buffer.toString();
+  }
 }

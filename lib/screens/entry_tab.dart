@@ -4558,6 +4558,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'SD of X',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _sdXController,
                                   hint: '0.0',
@@ -4568,6 +4569,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'SD of Y',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _sdYController,
                                   hint: '0.0',
@@ -4578,6 +4580,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'Mean Radius',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _meanRadiusController,
                                   hint: '0.0',
@@ -4597,6 +4600,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'Mean of X',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _meanXController,
                                   hint: '0.0',
@@ -4606,6 +4610,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'Max of X',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _maxXController,
                                   hint: '0.0',
@@ -4615,6 +4620,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'Min of X',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _minXController,
                                   hint: '0.0',
@@ -4634,6 +4640,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'SD of X',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _sdXController,
                                   hint: '0.0',
@@ -4652,6 +4659,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'Mean of Y',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _meanYController,
                                   hint: '0.0',
@@ -4661,6 +4669,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'Max of Y',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _maxYController,
                                   hint: '0.0',
@@ -4670,6 +4679,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'Min of Y',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _minYController,
                                   hint: '0.0',
@@ -4689,6 +4699,7 @@ class _EntryTabState extends State<EntryTab> {
                               _buildFlexibleField(
                                 flex: 1,
                                 label: 'SD of Y',
+                                isRequired: true,
                                 child: _buildTextField(
                                   controller: _sdYController,
                                   hint: '0.0',
@@ -4708,6 +4719,7 @@ class _EntryTabState extends State<EntryTab> {
                             _buildFlexibleField(
                               flex: 1,
                               label: 'Mean Vel',
+                              isRequired: true,
                               child: _buildTextField(
                                 controller: _meanVelController,
                                 hint: '0.0',
@@ -4718,6 +4730,7 @@ class _EntryTabState extends State<EntryTab> {
                             _buildFlexibleField(
                               flex: 1,
                               label: 'Max Vel',
+                              isRequired: true,
                               child: _buildTextField(
                                 controller: _maxVelController,
                                 hint: '0.0',
@@ -4727,6 +4740,7 @@ class _EntryTabState extends State<EntryTab> {
                             _buildFlexibleField(
                               flex: 1,
                               label: 'Min Vel',
+                              isRequired: true,
                               child: _buildTextField(
                                 controller: _minVelController,
                                 hint: '0.0',
@@ -4746,6 +4760,7 @@ class _EntryTabState extends State<EntryTab> {
                             _buildFlexibleField(
                               flex: 1,
                               label: 'SD Vel',
+                              isRequired: true,
                               child: _buildTextField(
                                 controller: _sdVelController,
                                 hint: '0.0',
@@ -4860,6 +4875,7 @@ class _EntryTabState extends State<EntryTab> {
                             _buildFlexibleField(
                               flex: 1,
                               label: 'Min Force',
+                              isRequired: true,
                               child: _buildTextField(
                                 controller: _minXController,
                                 hint: '0.0',
@@ -8830,6 +8846,7 @@ class _EntryTabState extends State<EntryTab> {
             _buildFlexibleField(
               flex: 1,
               label: 'Mean Height H̄ / HM (mm)',
+              isRequired: true,
               child: _buildTextField(
                 controller: _primerHbarController,
                 hint: 'e.g. 350.0',
@@ -8850,6 +8867,7 @@ class _EntryTabState extends State<EntryTab> {
             _buildFlexibleField(
               flex: 1,
               label: 'Std Dev S / SD (mm)',
+              isRequired: true,
               child: _buildTextField(
                 controller: _primerSDController,
                 hint: 'e.g. 30.0',
@@ -8987,36 +9005,8 @@ class _EntryTabState extends State<EntryTab> {
             autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
           }
         } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
-          final epv = widget.adminRules['epvat'] ?? {};
-          final bool isThreeTemp = _epvatPressureType == 'Overall';
-
-          // Evaluate custom formulas configured in Control module (COMBINED EPVAT BALLISTIC ANALYSIS)
-          final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
-          final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(formulasMap, _caliber, isThreeTemp: isThreeTemp);
-          
-          bool rejected = false;
-          if (customFormulas.isNotEmpty) {
-            final defaultTemp = isThreeTemp
-                ? '21'
-                : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
-                    ? '21'
-                    : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
-            final vars = _getEpvatVariablesMap();
-            for (final f in customFormulas) {
-              final res = EpvatFormulaHelper.evaluateFormulaItem(
-                Map<String, dynamic>.from(f as Map),
-                vars,
-                defaultTemp: defaultTemp,
-                activePressureUnit: _epvatPressureUnit,
-              );
-              if (res.isApplicable && !res.isPassed) {
-                rejected = true;
-                break;
-              }
-            }
-          }
-          
-          autoStatus = rejected ? 'Rejected' : 'Approved';
+          // Quality status is based strictly on EPVAT calculated results (custom formulas or standard limits). Admin instruction is an advisory recommendation only.
+          autoStatus = _getCalculatedStatus();
         }
 
         if (autoStatus != null && _status != autoStatus) {
@@ -9215,6 +9205,7 @@ class _EntryTabState extends State<EntryTab> {
         _buildFlexibleField(
           flex: 2,
           label: 'Viscosity (seconds)',
+          isRequired: true,
           child: _buildTextField(
             controller: _viscosityController,
             hint: 'e.g., 40',
@@ -9226,6 +9217,7 @@ class _EntryTabState extends State<EntryTab> {
         _buildFlexibleField(
           flex: 2,
           label: 'Pressure (Bar) - Caliber Fixed',
+          isRequired: true,
           child: _buildTextField(
             controller: _pressureController,
             readOnly: true,
@@ -9331,6 +9323,7 @@ class _EntryTabState extends State<EntryTab> {
             _buildFlexibleField(
               flex: 3,
               label: 'Temp Evaluation Mode',
+              isRequired: true,
               child: Column(
                 children: [
                   _buildDropdownField(
@@ -9668,6 +9661,7 @@ class _EntryTabState extends State<EntryTab> {
         _buildFlexibleField(
           flex: 3,
           label: 'Temperature Evaluation Mode',
+          isRequired: true,
           child: _buildDropdownField(
             value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
                 ? 'Single Temperature'
@@ -9687,6 +9681,7 @@ class _EntryTabState extends State<EntryTab> {
           _buildFlexibleField(
             flex: 2,
             label: 'Selected Temperature',
+            isRequired: true,
             child: _buildDropdownField(
               value: _selectedTemperatureDisplay,
               items: ['+21 °C', '+52 °C', _functionColdTempLabel],
@@ -9724,6 +9719,7 @@ class _EntryTabState extends State<EntryTab> {
         _buildFlexibleField(
           flex: 3,
           label: 'Temperature Evaluation Mode',
+          isRequired: true,
           child: _buildDropdownField(
             value: _isCaliberSingleTempOnly || !_isThreeTemperatureMode
                 ? 'Single Temperature'
@@ -9743,6 +9739,7 @@ class _EntryTabState extends State<EntryTab> {
           _buildFlexibleField(
             flex: 2,
             label: 'Selected Temperature',
+            isRequired: true,
             child: _buildDropdownField(
               value: _selectedTemperatureDisplay,
               items: const ['+21 °C', '+52 °C', '-54 °C'],
@@ -10357,9 +10354,11 @@ class _EntryTabState extends State<EntryTab> {
                   children: [
                     const Icon(Icons.info_outline, color: Color(0xFF6366F1), size: 14.0),
                     const SizedBox(width: 6.0),
-                    const Text(
-                      'Specs & Admin Instructions',
-                      style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                    Text(
+                      (_testName == 'EPVAT test' || _testName == 'Propellant Test')
+                          ? 'Specs & Admin Recommendation'
+                          : 'Specs & Admin Instructions',
+                      style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 8.0),
                     Expanded(
@@ -10383,10 +10382,43 @@ class _EntryTabState extends State<EntryTab> {
                     style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11.0, height: 1.3),
                   ),
                   if (instructionsText.isNotEmpty) ...[
-                    const SizedBox(height: 4.0),
-                    Text(
-                      'Instructions: $instructionsText',
-                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontStyle: FontStyle.italic),
+                    const SizedBox(height: 6.0),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0284C7).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4.0),
+                        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.lightbulb_outline, color: Color(0xFF38BDF8), size: 14.0),
+                              const SizedBox(width: 4.0),
+                              Text(
+                                (_testName == 'EPVAT test' || _testName == 'Propellant Test')
+                                    ? 'Admin Recommendation (Advisory Only):'
+                                    : 'Instructions:',
+                                style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2.0),
+                          Text(
+                            instructionsText,
+                            style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 11.0, fontStyle: FontStyle.italic),
+                          ),
+                          if (_testName == 'EPVAT test' || _testName == 'Propellant Test') ...[
+                            const SizedBox(height: 3.0),
+                            const Text(
+                              '* Note: Admin instruction is an advisory recommendation only. Quality status is determined strictly by EPVAT calculated results.',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ],

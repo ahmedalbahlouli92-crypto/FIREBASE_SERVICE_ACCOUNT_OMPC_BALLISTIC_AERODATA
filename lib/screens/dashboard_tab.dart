@@ -2966,11 +2966,12 @@ class _DashboardTabState extends State<DashboardTab> {
       return;
     }
 
-    // SVG Charts
     final donutSvg = SvgChartGenerator.generateStatusDonutSvg(statusCounts, yieldRate, width: 340, height: 210);
     final caliberVolumeSvg = SvgChartGenerator.generateCaliberVolumeSvg(caliberCounts, width: 440, height: 210);
     final trendLineSvg = SvgChartGenerator.generateTrendLineSvg(exportRecords, width: 800, height: 180);
     final velocityTrendSvg = SvgChartGenerator.generateVelocityTrendSvg(exportRecords, width: 800, height: 240);
+    final spcChartSvg = SvgChartGenerator.generateSpcChartSvg(exportRecords, width: 800, height: 230);
+    final boxPlotSvg = SvgChartGenerator.generateBoxPlotSvg(exportRecords, width: 800, height: 230);
 
     final bool includeEpvatChart = scope == 'All' || scope == 'Lot' || (scope == 'TestType' && selectedTest == 'EPVAT test') || (scope == 'Caliber' && exportRecords.any((r) => r.testName == 'EPVAT test'));
     final String epvatChartSvg = includeEpvatChart ? SvgChartGenerator.generateEpvatChartSvg(exportRecords, width: 800, height: 210) : '';
@@ -3207,6 +3208,16 @@ class _DashboardTabState extends State<DashboardTab> {
   <div class="chart-box" style="margin-bottom: 22px;">
     <h4>Muzzle Velocity Trend Across Tests (m/s) — Test 1, Test 2, Test 3...</h4>
     $velocityTrendSvg
+  </div>
+
+  <div class="chart-box" style="margin-bottom: 22px;">
+    <h4>Statistical Process Control (SPC) Chart (UCL / CL / LCL Analysis)</h4>
+    $spcChartSvg
+  </div>
+
+  <div class="chart-box" style="margin-bottom: 22px;">
+    <h4>Box & Whisker Distribution Analysis Chart (Min, Q1, Median, Q3, Max)</h4>
+    $boxPlotSvg
   </div>
 ''');
 

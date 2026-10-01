@@ -5,6 +5,7 @@ import '../services/storage_service.dart';
 import '../services/report_helper.dart';
 import '../services/report_generator.dart';
 import '../services/supabase_service.dart';
+import '../services/svg_chart_generator.dart';
 
 class ExecutiveReportsTab extends StatefulWidget {
   final List<BallisticRecord> lotAcceptanceRecords;
@@ -221,6 +222,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0284C7)),
+      );
+    }
+
     final inspections = _getFilteredInspectionRecords();
     final equipmentIssues = _getFilteredEquipmentIssues();
     final consumables = _getFilteredConsumables();
@@ -1009,6 +1016,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 
     final passRate = totalTests > 0 ? ((approved / totalTests) * 100).toStringAsFixed(1) : '0.0';
 
+    final allRecords = inspections.map((e) => e['record'] as BallisticRecord).toList();
+    final spcChartSvg = SvgChartGenerator.generateSpcChartSvg(allRecords, width: 800, height: 220);
+    final boxPlotSvg = SvgChartGenerator.generateBoxPlotSvg(allRecords, width: 800, height: 220);
+
     final lotAcceptanceList = inspections.where((e) => e['module'] == 'Lot Acceptance').toList();
     final dailyTestList = inspections.where((e) => e['module'] == 'Daily Test').toList();
     final componentTestList = inspections.where((e) => e['module'] == 'Component Test').toList();
@@ -1121,7 +1132,31 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     ${renderInspectionTable(lotAcceptanceList, 'Lot Number')}
   </div>
 
-  <!-- PAGE 2: DAILY TEST MODULE -->
+  <!-- PAGE 2: STATISTICAL PROCESS CONTROL & BOX-WHISKER ANALYTICS -->
+  <div class="page-break"></div>
+  <div class="report-page">
+    <div class="header">
+      <div>
+        <div class="title">OMPC BALLISTIC AERODATA - EXECUTIVE QUALITY REPORT</div>
+        <div class="subtitle">STATISTICAL PROCESS CONTROL & DISTRIBUTION ANALYSIS | PERIOD: <strong>$_periodLabel</strong> | Generated: $now | Inspector: ${widget.loggedInUser}</div>
+      </div>
+    </div>
+
+    <span class="module-badge" style="background-color: #0284c7;">SPC & DISTRIBUTION ANALYSIS</span>
+    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">Statistical Process Control (SPC) & Distribution Analysis</h3>
+    
+    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; background: #fff;">
+      <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: bold; color: #334155; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart</h4>
+      $spcChartSvg
+    </div>
+
+    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; background: #fff;">
+      <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: bold; color: #334155; text-transform: uppercase;">2. Box & Whisker Distribution Analysis Chart</h4>
+      $boxPlotSvg
+    </div>
+  </div>
+
+  <!-- PAGE 3: DAILY TEST MODULE -->
   <div class="page-break"></div>
   <div class="report-page">
     <div class="header">
