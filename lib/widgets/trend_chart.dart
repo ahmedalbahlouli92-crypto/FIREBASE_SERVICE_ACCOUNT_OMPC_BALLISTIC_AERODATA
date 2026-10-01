@@ -31,6 +31,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
   bool _showMin = true;
   bool _showSD = true;
 
+  bool _showFourCharts = false;
+
   static const List<String> _timeRangeOptions = [
     'All Time',
     'Today',
@@ -45,6 +47,67 @@ class _TrendLineChartState extends State<TrendLineChart> {
     'By Hopper No.',
     'By Individual Test',
   ];
+
+  List<String> _get4ParamsForTestType(String testType) {
+    switch (testType) {
+      case 'Accuracy Test':
+        return [
+          'Mean Velocity (m/s)',
+          'Mean Radius (mm)',
+          'Extreme Spread X (mm)',
+          'Extreme Spread Y (mm)',
+        ];
+      case 'EPVAT test':
+        return [
+          'P1 Chamber Pressure (bar)',
+          'Mean Velocity (m/s)',
+          'P2 Port Pressure (bar)',
+          'Action Time (ms)',
+        ];
+      case 'Extraction Force Test':
+        return [
+          'Extraction Force (N)',
+          'Mean Velocity (m/s)',
+          'Extreme Spread X (mm)',
+          'SD Velocity (m/s)',
+        ];
+      case 'Function Test':
+        return [
+          'Defect Rate (%)',
+          'Total Defects',
+          'Level 1 Critical Defects',
+          'Level 2 Major Defects',
+        ];
+      case 'Waterproof Test':
+        return [
+          'Total Leaks',
+          'Mouth Leaks',
+          'Primer Leaks',
+          'Defect Rate (%)',
+        ];
+      case 'Residual Stress Test':
+        return [
+          'Total Splits',
+          'Neck Splits',
+          'Shoulder Splits',
+          'Body Splits',
+        ];
+      case 'Primer Sensitivity Test':
+        return [
+          'Mean Height H̄ (mm)',
+          'Std Deviation S (mm)',
+          'All Fire H̄+5S (mm)',
+          'No Fire H̄-2S (mm)',
+        ];
+      default:
+        return [
+          'Mean Velocity (m/s)',
+          'P1 Chamber Pressure (bar)',
+          'Mean Radius (mm)',
+          'Defect Rate (%)',
+        ];
+    }
+  }
 
   List<String> _getParamsForTestType(String testType) {
     switch (testType) {
@@ -128,8 +191,9 @@ class _TrendLineChartState extends State<TrendLineChart> {
     }
   }
 
-  _RecordMetric? _extractRecordMetric(BallisticRecord r) {
-    switch (_selectedParam) {
+  _RecordMetric? _extractRecordMetric(BallisticRecord r, {String? paramOverride}) {
+    final param = paramOverride ?? _selectedParam;
+    switch (param) {
       case 'Mean Velocity (m/s)':
         final mean = double.tryParse(r.velMean);
         if (mean == null) return null;
@@ -293,18 +357,27 @@ class _TrendLineChartState extends State<TrendLineChart> {
     }
   }
 
-  List<_TrendGroupPoint> _buildGroupPoints(List<BallisticRecord> filtered) {
-    if (_selectedGroupBy == 'By Individual Test') {
+  List<_TrendGroupPoint> _buildGroupPoints(List<BallisticRecord> filtered, {String? paramOverride}) {
+    final activeParam = paramOverride ?? _selectedParam;
+    final distinctLots = filtered.map((r) => r.lotNo.trim()).where((l) => l.isNotEmpty).toSet();
+    final bool isSingleLot = distinctLots.length <= 1;
+    final groupBy = (isSingleLot && _selectedGroupBy == 'By Lot Number') ? 'By Individual Test' : _selectedGroupBy;
+
+    if (groupBy == 'By Individual Test') {
       final List<_TrendGroupPoint> pts = [];
       int testIndex = 1;
       for (int i = 0; i < filtered.length; i++) {
-        final metric = _extractRecordMetric(filtered[i]);
+        final metric = _extractRecordMetric(filtered[i], paramOverride: activeParam);
         if (metric != null) {
           final lot = filtered[i].lotNo.trim();
+          final temp = filtered[i].cartridgeTemp.trim();
+          final sub = temp.isNotEmpty && temp != 'N/A'
+              ? temp
+              : (lot.isNotEmpty ? 'Lot $lot' : filtered[i].timestamp.split(' ')[0]);
           pts.add(_TrendGroupPoint(
             index: pts.length,
             label: 'Test $testIndex',
-            subLabel: lot.isNotEmpty ? 'Lot $lot' : filtered[i].timestamp.split(' ')[0],
+            subLabel: sub,
             min: metric.min,
             max: metric.max,
             mean: metric.mean,
@@ -320,11 +393,11 @@ class _TrendLineChartState extends State<TrendLineChart> {
     // Grouping by Lot Number or Hopper No.
     final Map<String, List<_RecordMetric>> groups = {};
     for (var r in filtered) {
-      final key = _selectedGroupBy == 'By Hopper No.'
+      final key = groupBy == 'By Hopper No.'
           ? (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'N/A'))
           : (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'Lot N/A');
 
-      final metric = _extractRecordMetric(r);
+      final metric = _extractRecordMetric(r, paramOverride: activeParam);
       if (metric != null) {
         groups.putIfAbsent(key, () => []).add(metric);
       }
@@ -340,7 +413,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
       final double overallMean = metricsList.map((m) => m.mean).reduce((a, b) => a + b) / metricsList.length;
       final double overallSD = metricsList.map((m) => m.sd).reduce((a, b) => a + b) / metricsList.length;
 
-      final prefix = _selectedGroupBy == 'By Hopper No.' ? 'Hop ' : 'Lot ';
+      final prefix = groupBy == 'By Hopper No.' ? 'Hop ' : 'Lot ';
 
       pts.add(_TrendGroupPoint(
         index: idx++,
@@ -447,6 +520,52 @@ class _TrendLineChartState extends State<TrendLineChart> {
               ),
             ),
             const SizedBox(width: 8.0),
+            // Mode toggle pills: Single SPC vs 4 SPC Charts Grid (Simultaneous)
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () => setState(() => _showFourCharts = false),
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(5.0)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      color: !_showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.show_chart_rounded, size: 14.0, color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
+                          const SizedBox(width: 4.0),
+                          Text('Single SPC', style: TextStyle(color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => setState(() => _showFourCharts = true),
+                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(5.0)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      color: _showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.grid_view_rounded, size: 14.0, color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
+                          const SizedBox(width: 4.0),
+                          Text('4 SPC Charts (Simultaneous)', style: TextStyle(color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8.0),
             ElevatedButton.icon(
               onPressed: points.isEmpty ? null : () => _exportTrendReport(points),
               icon: const Icon(Icons.print_outlined, size: 15.0),
@@ -514,12 +633,13 @@ class _TrendLineChartState extends State<TrendLineChart> {
               items: _groupByOptions,
               onChanged: (v) => setState(() => _selectedGroupBy = v!),
             ),
-            _buildDropdown(
-              label: 'BALLISTIC PARAMETER',
-              value: _selectedParam,
-              items: paramOptions,
-              onChanged: (v) => setState(() => _selectedParam = v!),
-            ),
+            if (!_showFourCharts)
+              _buildDropdown(
+                label: 'BALLISTIC PARAMETER',
+                value: _selectedParam,
+                items: paramOptions,
+                onChanged: (v) => setState(() => _selectedParam = v!),
+              ),
             _buildDropdown(
               label: 'TIME RANGE',
               value: _selectedTimeRange,
@@ -527,58 +647,61 @@ class _TrendLineChartState extends State<TrendLineChart> {
               onChanged: (v) => setState(() => _selectedTimeRange = v!),
             ),
             // Metric toggle pills
-            Padding(
-              padding: const EdgeInsets.only(top: 14.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildMetricChip('Mean', _showMean, const Color(0xFF06B6D4), () => setState(() => _showMean = !_showMean)),
-                  const SizedBox(width: 6.0),
-                  _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
-                  const SizedBox(width: 6.0),
-                  _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
-                  const SizedBox(width: 6.0),
-                  _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
-                ],
+            if (!_showFourCharts)
+              Padding(
+                padding: const EdgeInsets.only(top: 14.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildMetricChip('Mean', _showMean, const Color(0xFF06B6D4), () => setState(() => _showMean = !_showMean)),
+                    const SizedBox(width: 6.0),
+                    _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
+                    const SizedBox(width: 6.0),
+                    _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
+                    const SizedBox(width: 6.0),
+                    _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 16.0),
 
         // ─── Chart area ───────────────────────────────────────────────
         Expanded(
-          child: points.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.query_stats_outlined,
-                          color: Colors.white.withOpacity(0.15), size: 48.0),
-                      const SizedBox(height: 12.0),
-                      Text(
-                        'No readings available for "$_selectedParam"\nunder $_selectedGroupBy ($selectedCaliberLabel)',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5),
+          child: _showFourCharts
+              ? _buildFourChartsGrid(filtered)
+              : (points.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.query_stats_outlined,
+                              color: Colors.white.withOpacity(0.15), size: 48.0),
+                          const SizedBox(height: 12.0),
+                          Text(
+                            'No readings available for "$_selectedParam"\nunder $_selectedGroupBy ($selectedCaliberLabel)',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                )
-              : LayoutBuilder(
-                  builder: (ctx, constraints) {
-                    return CustomPaint(
-                      size: Size(constraints.maxWidth, constraints.maxHeight),
-                      painter: _MultiMetricTrendPainter(
-                        points: points,
-                        paramLabel: _selectedParam,
-                        showMean: _showMean,
-                        showMax: _showMax,
-                        showMin: _showMin,
-                        showSD: _showSD,
-                      ),
-                    );
-                  },
-                ),
+                    )
+                  : LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        return CustomPaint(
+                          size: Size(constraints.maxWidth, constraints.maxHeight),
+                          painter: _MultiMetricTrendPainter(
+                            points: points,
+                            paramLabel: _selectedParam,
+                            showMean: _showMean,
+                            showMax: _showMax,
+                            showMin: _showMin,
+                            showSD: _showSD,
+                          ),
+                        );
+                      },
+                    )),
         ),
 
         // ─── Bottom Legend ────────────────────────────────────────────
@@ -594,6 +717,154 @@ class _TrendLineChartState extends State<TrendLineChart> {
             const SizedBox(width: 16.0),
             _buildLegendItem('Std Deviation (SD)', const Color(0xFFA855F7)),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSpcCard(String param, List<BallisticRecord> filtered) {
+    if (param.isEmpty) return const SizedBox.shrink();
+    final pts = _buildGroupPoints(filtered, paramOverride: param);
+
+    double grandMean = 0;
+    double grandSD = 0;
+    double ucl = 0;
+    double lcl = 0;
+    bool isOOC = false;
+
+    if (pts.isNotEmpty) {
+      grandMean = pts.map((p) => p.mean).reduce((a, b) => a + b) / pts.length;
+      grandSD = pts.map((p) => p.sd).reduce((a, b) => a + b) / pts.length;
+      ucl = grandMean + (3 * grandSD);
+      lcl = math.max(0.0, grandMean - (3 * grandSD));
+      isOOC = pts.any((p) => p.mean > ucl || p.mean < lcl);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(
+          color: isOOC ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFF334155),
+          width: 1.2,
+        ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  param,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: isOOC ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5),
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+                child: Text(
+                  isOOC ? 'OOC' : 'In Control',
+                  style: TextStyle(
+                    color: isOOC ? const Color(0xFFDC2626) : const Color(0xFF059669),
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2.0),
+          Row(
+            children: [
+              Text(
+                'x̄ = ${grandMean.toStringAsFixed(2)}',
+                style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+              ),
+              const SizedBox(width: 8.0),
+              Text(
+                'UCL: ${ucl.toStringAsFixed(1)}',
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontFamily: 'JetBrainsMono'),
+              ),
+              const SizedBox(width: 6.0),
+              Text(
+                'LCL: ${lcl.toStringAsFixed(1)}',
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontFamily: 'JetBrainsMono'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4.0),
+          Expanded(
+            child: pts.isEmpty
+                ? Center(
+                    child: Text(
+                      'No readings for $param',
+                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.5),
+                    ),
+                  )
+                : CustomPaint(
+                    size: Size.infinite,
+                    painter: _MultiMetricTrendPainter(
+                      points: pts,
+                      paramLabel: param,
+                      showMean: true,
+                      showMax: false,
+                      showMin: false,
+                      showSD: false,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFourChartsGrid(List<BallisticRecord> filtered) {
+    final params = _get4ParamsForTestType(_selectedTestType);
+    if (params.isEmpty) {
+      return const Center(child: Text('No parameters available', style: TextStyle(color: Color(0xFF8E96A3))));
+    }
+
+    final p0 = params.isNotEmpty ? params[0] : '';
+    final p1 = params.length > 1 ? params[1] : '';
+    final p2 = params.length > 2 ? params[2] : '';
+    final p3 = params.length > 3 ? params[3] : '';
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _buildSpcCard(p0, filtered)),
+              const SizedBox(width: 8.0),
+              Expanded(child: p1.isNotEmpty ? _buildSpcCard(p1, filtered) : const SizedBox.shrink()),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: p2.isNotEmpty ? _buildSpcCard(p2, filtered) : const SizedBox.shrink()),
+              const SizedBox(width: 8.0),
+              Expanded(child: p3.isNotEmpty ? _buildSpcCard(p3, filtered) : const SizedBox.shrink()),
+            ],
+          ),
         ),
       ],
     );

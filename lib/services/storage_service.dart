@@ -279,7 +279,7 @@ class StorageService {
     String refNo = record.referenceNo;
     if (refNo.isEmpty) {
       final refNum = await getNextReferenceNumber();
-      refNo = 'REF-${refNum.toString().padLeft(4, '0')}';
+      refNo = 'REF:${refNum.toString().padLeft(4, '0')}';
     }
     BallisticRecord recordToSave = record.copyWith(id: assignedId, module: cleanModule, referenceNo: refNo);
 
@@ -1188,16 +1188,16 @@ class StorageService {
     try {
       final dirPath = await getDirectoryPath();
       final file = File('$dirPath/test_reference_counter.json');
-      int current = 1000;
+      int current = 0;
       if (await file.exists()) {
         final content = await file.readAsString();
-        current = int.tryParse(content.trim()) ?? 1000;
+        current = int.tryParse(content.trim()) ?? 0;
       }
       current++;
       await file.writeAsString(current.toString(), mode: FileMode.write, flush: true);
       return current;
     } catch (e) {
-      return 1000 + (DateTime.now().millisecondsSinceEpoch % 10000);
+      return 1;
     }
   }
 
@@ -1267,6 +1267,45 @@ class StorageService {
     } catch (e) {
       print("Error saving witness storage consumptions: $e");
     }
+  }
+
+  // Equipment Fleet Issue Reports
+  Future<List<Map<String, dynamic>>> loadEquipmentIssues() async {
+    if (kIsWeb) {
+      return getWebEquipmentIssues();
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/equipment_issues.json');
+      if (!await file.exists()) return [];
+      final content = await file.readAsString();
+      if (content.isEmpty) return [];
+      final List<dynamic> decoded = jsonDecode(content);
+      return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      print("Error loading equipment issues: $e");
+      return [];
+    }
+  }
+
+  Future<void> saveEquipmentIssues(List<Map<String, dynamic>> issues) async {
+    if (kIsWeb) {
+      saveWebEquipmentIssues(issues);
+      return;
+    }
+    try {
+      final dirPath = await getDirectoryPath();
+      final file = File('$dirPath/equipment_issues.json');
+      await file.writeAsString(jsonEncode(issues), mode: FileMode.write, flush: true);
+    } catch (e) {
+      print("Error saving equipment issues: $e");
+    }
+  }
+
+  Future<void> addEquipmentIssue(Map<String, dynamic> issue) async {
+    final issues = await loadEquipmentIssues();
+    issues.insert(0, issue);
+    await saveEquipmentIssues(issues);
   }
 }
 

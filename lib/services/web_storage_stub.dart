@@ -26,7 +26,9 @@ List<Map<String, dynamic>> getWebWitnessLots() => [];
 void saveWebWitnessLots(List<Map<String, dynamic>> lots) {}
 List<Map<String, dynamic>> getWebWitnessConsumptions() => [];
 void saveWebWitnessConsumptions(List<Map<String, dynamic>> consumptions) {}
-int getWebRefCounter() => 1000;
+int getWebRefCounter() => 0;
 void saveWebRefCounter(int val) {}
+List<Map<String, dynamic>> getWebEquipmentIssues() => [];
+void saveWebEquipmentIssues(List<Map<String, dynamic>> issues) {}
 
 

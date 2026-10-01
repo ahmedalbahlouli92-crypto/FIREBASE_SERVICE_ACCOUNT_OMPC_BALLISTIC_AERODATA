@@ -118,6 +118,7 @@ class _EntryTabState extends State<EntryTab> {
   final _formKey = GlobalKey<FormState>();
   final ScrollController _scrollController = ScrollController();
   final _gp6SerialController = TextEditingController();
+  bool _isInstructionsExpanded = false;
 
   // Auto-jump GlobalKeys and FocusNodes for required field validation
   final GlobalKey _operatorFieldKey = GlobalKey();
@@ -2815,7 +2816,7 @@ class _EntryTabState extends State<EntryTab> {
 
     try {
       final refNum = await StorageService().getNextReferenceNumber();
-      final assignedRefNo = 'REF-${refNum.toString().padLeft(4, '0')}';
+      final assignedRefNo = 'REF:${refNum.toString().padLeft(4, '0')}';
 
       if ((_testName == 'EPVAT test' || _testName == 'Propellant Test') && _epvatPressureType == 'Overall') {
         // Save records for temperatures that actually have data entered
@@ -3457,74 +3458,82 @@ class _EntryTabState extends State<EntryTab> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 900;
+
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.only(top: 8.0, bottom: 64.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with Cancel Test Action Button
+            // Compact Header with Cancel Test Action Button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                  child: Row(
+                    children: [
                       Text(
-                        'Record Quality Specification',
-                        style: TextStyle(
-                          fontSize: 26.0,
+                        '${widget.currentModule} Log Entry',
+                        style: const TextStyle(
+                          fontSize: 18.0,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0F172A),
-                          letterSpacing: -0.5,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      SizedBox(height: 4.0),
-                      Text(
-                        'Log fresh ballistic trial, lot tolerances, and mechanical parameters',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          color: Color(0xFF475569),
+                      if (!isCompact) ...[
+                        const SizedBox(width: 12.0),
+                        const Expanded(
+                          child: Text(
+                            'Log fresh ballistic trial, lot tolerances, and mechanical parameters',
+                            style: TextStyle(
+                              fontSize: 12.0,
+                              color: Color(0xFF475569),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 16.0),
+                const SizedBox(width: 12.0),
                 OutlinedButton.icon(
                   onPressed: _confirmCancelTest,
-                  icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFFEF4444), size: 18),
+                  icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFFEF4444), size: 15),
                   label: const Text(
                     'Cancel Test',
-                    style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 13),
+                    style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    side: const BorderSide(color: Color(0xFFEF4444), width: 1.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: const Size(0, 32),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24.0),
+            const SizedBox(height: 6.0),
 
             // Form container card
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 14.0 : 24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14.0),
+                borderRadius: BorderRadius.circular(10.0),
                 border: Border.all(color: const Color(0xFFB8CEE5)),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x0A1E3A8A),
-                    blurRadius: 14.0,
-                    offset: Offset(0, 3),
+                    blurRadius: 10.0,
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
@@ -3664,24 +3673,24 @@ class _EntryTabState extends State<EntryTab> {
                       ),
                     ),
                   ], lockSingleRow: true),
-                  const SizedBox(height: 20.0),
+                  const SizedBox(height: 8.0),
                   _buildComponentAndPrimerFieldsCard(),
                   _buildAdminInstructionsCard(),
 
                   // Function Test Specifications Sub-Card (Dynamic)
                   if (_testName == 'Function Test') ...[
                     _buildFunctionTestSpecsCard(),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 8.0),
                   ],
 
                   // Consolidated Row 2 (Viscosity, Sampling Location, Quality Status, Quantity Tested, Barrel Number, Transducers in 1 or max 2 rows)
                   _buildConsolidatedRow2(),
-                  const SizedBox(height: 20.0),
+                  const SizedBox(height: 8.0),
 
                   // Function Test 4-Level Defects Section (Dynamic)
                   if (_testName == 'Function Test') ...[
                     _buildFunctionTestDefectsCard(),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 8.0),
                   ],
 
                   // Waterproof Leakage Test Results Section (Dynamic)
@@ -5519,104 +5528,128 @@ class _EntryTabState extends State<EntryTab> {
                   if (_testName == 'Primer Sensitivity Test') ...[
                     _buildPrimerSensitivityCard(),
                   ],
-                  const SizedBox(height: 20.0),
+                  const SizedBox(height: 8.0),
 
-                  // Row 4: Notes
-                  Column(
+                  // Row 4: Remarks + Inline Attachment
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Remarks',
-                        style: TextStyle(
-                          color: Color(0xFF8E96A3),
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Remarks',
+                              style: TextStyle(
+                                color: Color(0xFF8E96A3),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4.0),
+                            TextFormField(
+                              controller: _notesController,
+                              maxLines: 2,
+                              style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5),
+                              decoration: InputDecoration(
+                                hintText: 'Enter remarks, observations, or quality anomalies...',
+                                hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0),
+                                filled: true,
+                                fillColor: const Color(0xFFE0F2FE),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 1.5),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8.0),
-                      TextFormField(
-                        controller: _notesController,
-                        maxLines: 4,
-                        style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.5),
-                        decoration: InputDecoration(
-                          hintText: 'Enter any remarks, observations, or quality anomalies...',
-                          hintStyle: const TextStyle(color: Color(0xFF6495BF)),
-                          filled: true,
-                          fillColor: const Color(0xFFE0F2FE),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF7DD3FC)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: const BorderSide(color: Color(0xFF31B9F6), width: 2.0),
-                          ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Attachment / Documentation',
+                              style: TextStyle(
+                                color: Color(0xFF8E96A3),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4.0),
+                            _buildCompactInlineAttachment(),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20.0),
+                  const SizedBox(height: 8.0),
 
                   // Function Test Cartridge Classification Reference Diagram below Remarks
                   if (_testName == 'Function Test') ...[
                     _buildFunctionCartridgeReferenceDiagram(),
-                    const SizedBox(height: 20.0),
+                    const SizedBox(height: 8.0),
                   ],
                   if (_testName == 'Extraction Force Test' && (_caliber.contains('M200') || _caliber.contains('M82'))) ...[
                     Container(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 20.0),
-                      padding: const EdgeInsets.all(12.0),
+                      margin: const EdgeInsets.only(bottom: 8.0),
+                      padding: const EdgeInsets.all(8.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4444).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8.0),
+                        borderRadius: BorderRadius.circular(6.0),
                         border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
                       ),
                       child: Row(
                         children: const [
-                          Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20.0),
-                          SizedBox(width: 10.0),
+                          Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 16.0),
+                          SizedBox(width: 8.0),
                           Expanded(
                             child: Text(
                               'Extraction Force Test is not applicable for blank calibers (M200 / M82). Submission is disabled.',
-                              style: TextStyle(color: Colors.white, fontSize: 13.0),
+                              style: TextStyle(color: Colors.white, fontSize: 12.0),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 10.0),
-
-                  // Attachment card
-                  _buildAttachmentCard(),
-                  const SizedBox(height: 24.0),
 
                   // Submit and Cancel action buttons
                   Row(
                     children: [
                       OutlinedButton.icon(
                         onPressed: _confirmCancelTest,
-                        icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFFEF4444), size: 18.0),
+                        icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFFEF4444), size: 16.0),
                         label: const Text(
                           'Cancel & Erase',
-                          style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 13.5),
+                          style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 12.5),
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
-                          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                          side: const BorderSide(color: Color(0xFFEF4444), width: 1.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+                          minimumSize: const Size(0, 36.0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
                         ),
                       ),
-                      const SizedBox(width: 14.0),
+                      const SizedBox(width: 12.0),
                       Expanded(
                         child: SizedBox(
-                          height: 48.0,
+                          height: 36.0,
                           child: ElevatedButton(
                             onPressed: (_isSubmitting || (_testName == 'Extraction Force Test' && (_caliber.contains('M200') || _caliber.contains('M82')))) ? null : _submitForm,
                             style: ElevatedButton.styleFrom(
@@ -10133,6 +10166,78 @@ class _EntryTabState extends State<EntryTab> {
     return const SizedBox.shrink();
   }
 
+  Widget _buildCompactInlineAttachment() {
+    if (_attachmentName.isEmpty) {
+      return Container(
+        height: 38.0,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(6.0),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(6.0),
+            onTap: () async {
+              final res = await getAttachmentHelper().pickFileAsBase64();
+              if (res != null && res['name'] != null && res['data'] != null) {
+                setState(() {
+                  _attachmentName = res['name']!;
+                  _attachmentBase64 = res['data']!;
+                });
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.upload_file, size: 15.0, color: Color(0xFF0284C7)),
+                  SizedBox(width: 6.0),
+                  Text('Attach File (Optional)', style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 38.0,
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE0F2FE),
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(color: const Color(0xFF0284C7)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, color: Color(0xFF0284C7), size: 15.0),
+          const SizedBox(width: 6.0),
+          Expanded(
+            child: Text(
+              _attachmentName,
+              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.0, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 14.0, color: Color(0xFFEF4444)),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+            tooltip: 'Remove Attachment',
+            onPressed: () => setState(() {
+              _attachmentName = '';
+              _attachmentBase64 = '';
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAdminInstructionsCard() {
     String specText = '';
     String instructionsText = '';
@@ -10141,52 +10246,37 @@ class _EntryTabState extends State<EntryTab> {
       final wpRules = _getWaterproofRulesForCaliber();
       final int retestLimit = wpRules['retest_limit'] ?? 4;
       final int rejectLimit = wpRules['reject_limit'] ?? 7;
-      
-      specText = 'Caliber: $_caliber\n'
-          'Limits: Retest if Leaks >= $retestLimit, Reject if Leaks >= $rejectLimit.';
-      instructionsText = wpRules['instructions'] ?? 'Follow waterproof leakage inspection protocol. Inspect primer and mouth sealings.';
+      specText = 'Caliber: $_caliber | Limits: Retest if Leaks >= $retestLimit, Reject if Leaks >= $rejectLimit.';
+      instructionsText = wpRules['instructions'] ?? 'Follow waterproof leakage inspection protocol.';
     } else if (_testName == 'Residual Stress Test') {
       final rsRules = _getResidualStressRulesForCaliber();
       final int retestLimit = rsRules['retest_limit'] ?? 1;
       final int rejectLimit = rsRules['reject_limit'] ?? 3;
-      
-      specText = 'Caliber: $_caliber\n'
-          'Splits/Cracks limits: Retest if total splits >= $retestLimit, Reject if total splits >= $rejectLimit.';
-      instructionsText = rsRules['instructions'] ?? 'Examine splits on Neck, Shoulder, Body, and Head. No pressure applied.';
+      specText = 'Caliber: $_caliber | Splits/Cracks limits: Retest if total splits >= $retestLimit, Reject if total splits >= $rejectLimit.';
+      instructionsText = rsRules['instructions'] ?? 'Examine splits on Neck, Shoulder, Body, and Head.';
     } else if (_testName == 'Extraction Force Test') {
       final extRules = _getExtractionRulesForCaliber();
       final double limit = (extRules['min_force'] ?? 200.0).toDouble();
-      specText = 'Caliber: $_caliber\n'
-          'Minimum Extraction Force: ${limit.toStringAsFixed(1)} N.';
+      specText = 'Caliber: $_caliber | Min Extraction Force: ${limit.toStringAsFixed(1)} N.';
       instructionsText = extRules['instructions'] ?? 'Perform pull-out test of bullet and record peak force.';
     } else if (_testName == 'Accuracy Test') {
       final accRules = _getAccuracyRulesForCaliber();
       final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
       final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
-      final double condSD = (accRules['cond_sd'] ?? 170.0).toDouble();
       final double velMin = (accRules['vel_min'] ?? 700.0).toDouble();
       final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
-      
-      specText = 'Caliber: $_caliber\n'
-          'Velocity Range: ${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s\n'
-          'Max Mean Radius: ${maxMeanRadius.toStringAsFixed(1)} mm\n'
-          'Max SD (X/Y): ${maxSD.toStringAsFixed(1)} mm, Conditional SD threshold: ${condSD.toStringAsFixed(1)} mm';
-      instructionsText = accRules['instructions'] ?? 'Assess group sizing at target distance and mean velocity bounds.';
+      specText = 'Caliber: $_caliber | Velocity: ${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s | Max Radius: ${maxMeanRadius.toStringAsFixed(1)} mm | Max SD: ${maxSD.toStringAsFixed(1)} mm';
+      instructionsText = accRules['instructions'] ?? 'Assess group sizing at target distance.';
     } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
       final activeTemp = _epvatPressureType == 'Overall' 
           ? ['+21', '+52', '-54'][_activeEpvatTempTabIndex]
           : _cartridgeTempController.text.trim();
-      
       final activeEpv = _getEpvatRulesForCaliber(activeTemp);
       final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
       final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
       final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
       final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
-      
-      specText = 'Caliber: $_caliber | Temperature: $activeTemp °C\n'
-          '- Velocity: ${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s\n'
-          '- P1 Chamber Max: ${p1Max.toStringAsFixed(1)} bar\n'
-          '- P2 Port Min: ${p2Min.toStringAsFixed(1)} bar';
+      specText = 'Caliber: $_caliber ($activeTemp °C) | Vel: ${velMin.toStringAsFixed(1)}-${velMax.toStringAsFixed(1)} m/s | P1 Max: ${p1Max.toStringAsFixed(1)} bar | P2 Min: ${p2Min.toStringAsFixed(1)} bar';
       instructionsText = _getEpvatInstructionsForCaliber();
     } else if (_testName == 'Primer Sensitivity Test') {
       final prRules = _getPrimerRulesForCaliber();
@@ -10194,53 +10284,70 @@ class _EntryTabState extends State<EntryTab> {
       final double hbarMin = ((prRules['hbar_min'] ?? 250.0) as num).toDouble();
       final double hbarMax = ((prRules['hbar_max'] ?? 450.0) as num).toDouble();
       final double allFireLimit = ((prRules['all_fire_h'] ?? 500.0) as num).toDouble();
-      final double noFireLimit = ((prRules['no_fire_h'] ?? 150.0) as num).toDouble();
-      final double maxSD = ((prRules['max_sd'] ?? 60.0) as num).toDouble();
-
-      specText = 'Caliber: $_caliber | Drop Ball Weight: ${dropWeight.toStringAsFixed(1)} g\n'
-          '- Mean Height H̄ Range: ${hbarMin.toStringAsFixed(1)} - ${hbarMax.toStringAsFixed(1)} mm\n'
-          '- All Fire (H̄ + 5S) Max Limit: ${allFireLimit.toStringAsFixed(1)} mm\n'
-          '- No Fire (H̄ - 2S) Min Limit: ${noFireLimit.toStringAsFixed(1)} mm\n'
-          '- Max Allowable SD (S): ${maxSD.toStringAsFixed(1)} mm';
-      instructionsText = prRules['instructions'] ?? 'Perform drop ball sensitivity test. Record drop height (mm) and Fire/Misfire outcome for each round.';
+      specText = 'Caliber: $_caliber | Drop Ball Weight: ${dropWeight.toStringAsFixed(1)} g | H̄: ${hbarMin.toStringAsFixed(1)}-${hbarMax.toStringAsFixed(1)} mm | All Fire (H̄+5S) Max: ${allFireLimit.toStringAsFixed(1)} mm';
+      instructionsText = prRules['instructions'] ?? 'Perform drop ball sensitivity test.';
     } else {
-      return const SizedBox();
+      return const SizedBox.shrink();
     }
-    
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 20.0),
-      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.only(bottom: 8.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2F),
-        borderRadius: BorderRadius.circular(10.0),
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(6.0),
         border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.info_outline, color: Color(0xFF6366F1), size: 18.0),
-              SizedBox(width: 8.0),
-              Text(
-                'Quality Specifications & Admin Instructions',
-                style: TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12.0),
-          Text(
-            'Requirements:\n$specText',
-            style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0, height: 1.4),
-          ),
-          if (instructionsText.isNotEmpty) ...[
-            const SizedBox(height: 8.0),
-            Text(
-              'Remarks/Instructions:\n$instructionsText',
-              style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontStyle: FontStyle.italic, height: 1.4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6.0),
+          onTap: () => setState(() => _isInstructionsExpanded = !_isInstructionsExpanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF6366F1), size: 14.0),
+                    const SizedBox(width: 6.0),
+                    const Text(
+                      'Specs & Admin Instructions',
+                      style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: Text(
+                        specText.replaceAll('\n', ' | '),
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      _isInstructionsExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: const Color(0xFF94A3B8),
+                      size: 16.0,
+                    ),
+                  ],
+                ),
+                if (_isInstructionsExpanded) ...[
+                  const Divider(color: Color(0xFF334155), height: 10.0),
+                  Text(
+                    specText,
+                    style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11.0, height: 1.3),
+                  ),
+                  if (instructionsText.isNotEmpty) ...[
+                    const SizedBox(height: 4.0),
+                    Text(
+                      'Instructions: $instructionsText',
+                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ],
+              ],
             ),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }

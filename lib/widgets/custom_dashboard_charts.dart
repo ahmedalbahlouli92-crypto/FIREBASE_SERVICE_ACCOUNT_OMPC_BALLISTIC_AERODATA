@@ -1348,11 +1348,54 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
   String _selectedTemperature = 'All Temperatures';
 
   List<String> _getMetricOptions() {
-    final hasPrimer = widget.records.any((r) => r.testName == 'Primer Sensitivity Test');
-    final hasPropellant = widget.records.any((r) => r.testName == 'Propellant Test');
-    final hasEpvat = widget.records.any((r) => r.testName.contains('EPVAT'));
+    final hasPrimer = widget.records.any((r) => r.testName.toLowerCase().contains('primer'));
+    final hasPropellant = widget.records.any((r) => r.testName.toLowerCase().contains('propellant'));
+    final hasEpvat = widget.records.any((r) => r.testName.toLowerCase().contains('epvat'));
+    final hasAccuracy = widget.records.any((r) => r.testName.toLowerCase().contains('accuracy'));
+    final hasExtraction = widget.records.any((r) => r.testName.toLowerCase().contains('extraction'));
+    final hasFunction = widget.records.any((r) => r.testName.toLowerCase().contains('function'));
+    final hasWaterproof = widget.records.any((r) => r.testName.toLowerCase().contains('waterproof'));
+    final hasResidual = widget.records.any((r) => r.testName.toLowerCase().contains('residual'));
 
     final options = <String>[];
+    if (hasAccuracy) {
+      options.addAll([
+        'Mean Velocity (m/s)',
+        'Mean Radius (mm)',
+        'Extreme Spread X (mm)',
+        'Extreme Spread Y (mm)',
+        'Velocity SD (m/s)',
+      ]);
+    }
+    if (hasExtraction) {
+      options.addAll([
+        'Extraction Force (N)',
+      ]);
+    }
+    if (hasFunction) {
+      options.addAll([
+        'Defect Rate (%)',
+        'Total Defects',
+        'Level 1 Critical Defects',
+        'Level 2 Major Defects',
+        'Level 3 Minor Defects',
+      ]);
+    }
+    if (hasWaterproof) {
+      options.addAll([
+        'Total Leaks',
+        'Mouth Leaks',
+        'Primer Leaks',
+      ]);
+    }
+    if (hasResidual) {
+      options.addAll([
+        'Total Splits',
+        'Neck Splits',
+        'Shoulder Splits',
+        'Body Splits',
+      ]);
+    }
     if (hasPrimer) {
       options.addAll([
         'Primer Mean Height H̄ (mm)',
@@ -1366,18 +1409,17 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
         'Propellant Velocity (m/s)',
       ]);
     }
-    if (hasEpvat || (!hasPrimer && !hasPropellant)) {
+    if (hasEpvat || options.isEmpty) {
       options.addAll([
-        'Velocity SD (m/s)',
-        'Pressure SD (bar)',
         'Mean Velocity (m/s)',
+        'Velocity SD (m/s)',
         'Mean Chamber Pressure (bar)',
+        'Pressure SD (bar)',
+        'P2 Port Pressure (bar)',
+        'Action Time (ms)',
       ]);
     }
-    if (options.isEmpty) {
-      options.addAll(['Velocity SD (m/s)', 'Pressure SD (bar)']);
-    }
-    return options;
+    return options.toSet().toList();
   }
 
   static const List<String> _temperatureOptions = [
@@ -1391,7 +1433,7 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
   Widget build(BuildContext context) {
     final metricOptions = _getMetricOptions();
     if (!metricOptions.contains(_selectedMetric)) {
-      _selectedMetric = metricOptions.first;
+      _selectedMetric = metricOptions.isNotEmpty ? metricOptions.first : 'Mean Velocity (m/s)';
     }
     final statsList = _computeStats();
 
@@ -1443,7 +1485,7 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
                   ),
                 ),
                 // Temperature Filter Dropdown: All, +21 °C, +52 °C, -54 °C
-                if (!_selectedMetric.startsWith('Primer'))
+                if (!_selectedMetric.startsWith('Primer') && !_selectedMetric.startsWith('Waterproof') && !_selectedMetric.startsWith('Residual'))
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
                     decoration: BoxDecoration(
@@ -1469,7 +1511,7 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
         ),
         const SizedBox(height: 6.0),
         Text(
-          'Distribution of $_selectedMetric across evaluated lots based on inspection logs.',
+          'Distribution of $_selectedMetric across evaluated lots/samples based on inspection logs.',
           style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
         ),
         const SizedBox(height: 16.0),
@@ -1491,21 +1533,29 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
   }
 
   List<BoxPlotStats> _computeStats() {
-    final Map<String, List<double>> lotValues = {};
+    final Map<String, List<double>> groupValues = {};
 
     final isPrimerMetric = _selectedMetric.startsWith('Primer');
     final isPropellantMetric = _selectedMetric.startsWith('Propellant');
+    final isAccuracyMetric = _selectedMetric == 'Mean Radius (mm)' || _selectedMetric.startsWith('Extreme Spread');
+    final isExtractionMetric = _selectedMetric == 'Extraction Force (N)';
+    final isFunctionMetric = _selectedMetric.contains('Defect');
+    final isWaterproofMetric = _selectedMetric.contains('Leak');
+    final isResidualMetric = _selectedMetric.contains('Split');
 
     final relevantRecords = widget.records.where((r) {
-      if (isPrimerMetric) {
-        return r.testName == 'Primer Sensitivity Test';
-      }
-      if (isPropellantMetric) {
-        return r.testName == 'Propellant Test';
-      }
       final name = r.testName.toLowerCase().trim();
-      final isEpvat = name == 'epvat test' || name.contains('epvat');
-      if (!isEpvat && !r.testName.contains('Propellant')) return false;
+      if (isPrimerMetric) return name.contains('primer');
+      if (isPropellantMetric) return name.contains('propellant');
+      if (isAccuracyMetric) return name.contains('accuracy');
+      if (isExtractionMetric) return name.contains('extraction');
+      if (isFunctionMetric) return name.contains('function');
+      if (isWaterproofMetric) return name.contains('waterproof');
+      if (isResidualMetric) return name.contains('residual');
+
+      // EPVAT or general metrics
+      final isEpvat = name.contains('epvat');
+      if (!isEpvat && !name.contains('propellant') && !name.contains('accuracy')) return false;
 
       // Filter by single temperature choice
       if (_selectedTemperature != 'All Temperatures') {
@@ -1518,12 +1568,31 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
       return true;
     }).toList();
 
+    // Check if only one lot exists across all relevant records
+    final distinctLots = relevantRecords.map((r) => r.lotNo.trim()).where((l) => l.isNotEmpty).toSet();
+    final bool isSingleLotEvaluation = distinctLots.length <= 1;
+
+    int testIdx = 1;
     for (var r in relevantRecords) {
-      final lot = (r.primerLot.trim().isNotEmpty
-          ? r.primerLot.trim()
-          : (r.propellantLot.trim().isNotEmpty
-              ? r.propellantLot.trim()
-              : (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? 'Hopper ${r.hopperNo.trim()}' : 'General'))));
+      String groupKey = '';
+      if (isSingleLotEvaluation) {
+        // When focusing on a single lot, break down by Temperature or Test Index to display distribution
+        final temp = r.cartridgeTemp.trim();
+        if (temp.isNotEmpty && temp != 'N/A' && temp != '+21°C' && distinctLots.isNotEmpty) {
+          groupKey = temp;
+        } else if (r.hopperNo.trim().isNotEmpty) {
+          groupKey = 'Hop ${r.hopperNo.trim()}';
+        } else {
+          groupKey = 'Test ${testIdx++}';
+        }
+      } else {
+        groupKey = (r.primerLot.trim().isNotEmpty
+            ? r.primerLot.trim()
+            : (r.propellantLot.trim().isNotEmpty
+                ? r.propellantLot.trim()
+                : (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? 'Hop ${r.hopperNo.trim()}' : 'General'))));
+      }
+
       final List<double> vals = [];
 
       if (_selectedMetric == 'Primer Mean Height H̄ (mm)') {
@@ -1535,9 +1604,18 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
       } else if (_selectedMetric == 'Primer All-Fire Height (mm)') {
         final af = double.tryParse(r.primerAllFireH);
         if (af != null && af > 0) vals.add(af);
+      } else if (_selectedMetric == 'Primer No-Fire Height (mm)') {
+        final nf = double.tryParse(r.primerNoFireH);
+        if (nf != null && nf > 0) vals.add(nf);
       } else if (_selectedMetric == 'Propellant Mean Pressure (bar)' || _selectedMetric == 'Mean Chamber Pressure (bar)') {
         final p = double.tryParse(r.epvatMeanPressure);
         if (p != null && p > 0) vals.add(p);
+      } else if (_selectedMetric == 'P2 Port Pressure (bar)') {
+        final p2 = double.tryParse(r.epvatP2MeanPressure);
+        if (p2 != null && p2 > 0) vals.add(p2);
+      } else if (_selectedMetric == 'Action Time (ms)') {
+        final at = double.tryParse(r.actionTimeMean);
+        if (at != null && at > 0) vals.add(at);
       } else if (_selectedMetric == 'Propellant Velocity (m/s)' || _selectedMetric == 'Mean Velocity (m/s)') {
         final v = double.tryParse(r.velMean);
         if (v != null && v > 0) vals.add(v);
@@ -1575,19 +1653,57 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
             vals.add(math.sqrt(variance));
           }
         }
+      } else if (_selectedMetric == 'Mean Radius (mm)') {
+        final mr = double.tryParse(r.accMeanRadius);
+        if (mr != null && mr > 0) vals.add(mr);
+      } else if (_selectedMetric == 'Extreme Spread X (mm)') {
+        final val = double.tryParse(r.accRangeX) ?? double.tryParse(r.accMeanX);
+        if (val != null && val > 0) vals.add(val);
+      } else if (_selectedMetric == 'Extreme Spread Y (mm)') {
+        final val = double.tryParse(r.accRangeY) ?? double.tryParse(r.accMeanY);
+        if (val != null && val > 0) vals.add(val);
+      } else if (_selectedMetric == 'Extraction Force (N)') {
+        final ef = double.tryParse(r.accMeanX) ?? double.tryParse(r.accMinX);
+        if (ef != null && ef > 0) vals.add(ef);
+      } else if (_selectedMetric == 'Defect Rate (%)') {
+        if (r.produced > 0) {
+          vals.add((r.defects / r.produced) * 100.0);
+        }
+      } else if (_selectedMetric == 'Total Defects') {
+        vals.add(r.defects.toDouble());
+      } else if (_selectedMetric == 'Level 1 Critical Defects') {
+        vals.add(r.functionLevel1.toDouble());
+      } else if (_selectedMetric == 'Level 2 Major Defects') {
+        vals.add(r.functionLevel2.toDouble());
+      } else if (_selectedMetric == 'Level 3 Minor Defects') {
+        vals.add(r.functionLevel3.toDouble());
+      } else if (_selectedMetric == 'Total Leaks') {
+        vals.add((r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast).toDouble());
+      } else if (_selectedMetric == 'Mouth Leaks') {
+        vals.add((r.mouthSlow + r.mouthFast).toDouble());
+      } else if (_selectedMetric == 'Primer Leaks') {
+        vals.add((r.primerSlow + r.primerFast).toDouble());
+      } else if (_selectedMetric == 'Total Splits') {
+        vals.add((r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast).toDouble());
+      } else if (_selectedMetric == 'Neck Splits') {
+        vals.add((r.neckSlow + r.neckFast).toDouble());
+      } else if (_selectedMetric == 'Shoulder Splits') {
+        vals.add((r.shoulderSlow + r.shoulderFast).toDouble());
+      } else if (_selectedMetric == 'Body Splits') {
+        vals.add((r.bodySlow + r.bodyFast).toDouble());
       }
 
       if (vals.isNotEmpty) {
-        lotValues.putIfAbsent(lot, () => []).addAll(vals);
+        groupValues.putIfAbsent(groupKey, () => []).addAll(vals);
       }
     }
 
     final List<BoxPlotStats> result = [];
-    final lots = lotValues.keys.toList();
-    final displayLots = lots.length > 7 ? lots.sublist(lots.length - 7) : lots;
+    final keys = groupValues.keys.toList();
+    final displayKeys = keys.length > 7 ? keys.sublist(keys.length - 7) : keys;
 
-    for (var lot in displayLots) {
-      final values = lotValues[lot]!;
+    for (var key in displayKeys) {
+      final values = groupValues[key]!;
       values.sort();
       final n = values.length;
       final min = values.first;
@@ -1606,7 +1722,7 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
       final double q3 = upperHalf.isNotEmpty ? getMedian(upperHalf) : max;
 
       result.add(BoxPlotStats(
-        label: lot,
+        label: key,
         min: min,
         q1: q1,
         median: median,
@@ -1736,11 +1852,13 @@ class _BoxPlotPainter extends CustomPainter {
       )..layout();
       medPainter.paint(canvas, Offset(centerX - medPainter.width / 2, yMedian - medPainter.height / 2));
 
-      // X Axis Lot Label
-      final String lotStr = s.label.length > 7 ? s.label.substring(s.label.length - 7) : s.label;
+      // X Axis Lot / Group Label
+      final String displayLabel = (s.label.startsWith('Lot') || s.label.startsWith('Hop') || s.label.contains('°C') || s.label.startsWith('Test'))
+          ? s.label
+          : 'Lot ${s.label.length > 7 ? s.label.substring(s.label.length - 7) : s.label}';
       final labelPainter = TextPainter(
         text: TextSpan(
-          text: 'Lot $lotStr',
+          text: displayLabel,
           style: const TextStyle(color: Color(0xFF0F172A), fontSize: 9.5, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
         ),
         textDirection: TextDirection.ltr,

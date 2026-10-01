@@ -289,6 +289,23 @@ class SupabaseService {
           .from(tableName)
           .update(map)
           .eq('id', id);
+
+      if (record.lotNo.isNotEmpty) {
+        try {
+          await client.from(tableName).update({'status': record.status}).match({
+            'lot_no': record.lotNo,
+            'test_name': record.testName,
+            'caliber': record.caliber,
+          });
+          if (dedicatedTable != tableName) {
+            await client.from(dedicatedTable).update({'status': record.status}).match({
+              'lot_no': record.lotNo,
+              'test_name': record.testName,
+              'caliber': record.caliber,
+            });
+          }
+        } catch (_) {}
+      }
       return true;
     } catch (e) {
       debugPrint('Error updating record in Supabase: $e');
@@ -1331,6 +1348,118 @@ class SupabaseService {
       return true;
     } catch (e) {
       debugPrint('Error saving witness consumptions to Supabase: $e');
+      return false;
+    }
+  }
+
+  /// Fetch Equipment Issues from Supabase cloud
+  static Future<List<Map<String, dynamic>>> loadEquipmentIssues() async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return [];
+    }
+    try {
+      try {
+        final res = await client
+            .from('equipment_issues')
+            .select()
+            .order('created_at', ascending: false);
+        if (res.isNotEmpty) {
+          return List<Map<String, dynamic>>.from(res.map((row) => {
+            'id': row['id']?.toString() ?? '',
+            'timestamp': row['timestamp']?.toString() ?? '',
+            'date': row['date']?.toString() ?? '',
+            'equipment': row['equipment']?.toString() ?? '',
+            'title': row['title']?.toString() ?? '',
+            'description': row['description']?.toString() ?? '',
+            'severity': row['severity']?.toString() ?? 'Minor',
+            'status': row['status']?.toString() ?? 'Open',
+            'reporter': row['reporter']?.toString() ?? '',
+            'actionTaken': row['action_taken']?.toString() ?? '',
+          }));
+        }
+      } catch (e) {
+        debugPrint('Dedicated equipment_issues table read note: $e');
+      }
+
+      // Fallback: master ballistic_records (SYSTEM_CONFIG)
+      final existing = await client
+          .from(tableName)
+          .select('notes')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'EQUIPMENT_ISSUES')
+          .limit(1);
+
+      if (existing.isNotEmpty && existing[0]['notes'] != null) {
+        final raw = existing[0]['notes'] as String;
+        if (raw.isNotEmpty) {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) {
+            return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error loading equipment issues from Supabase: $e');
+      return [];
+    }
+  }
+
+  /// Save / sync Equipment Issues to Supabase cloud
+  static Future<bool> saveEquipmentIssues(List<Map<String, dynamic>> issues) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    try {
+      // 1. Try dedicated table
+      try {
+        final rows = issues.map((i) => {
+          'id': i['id']?.toString() ?? '',
+          'timestamp': i['timestamp']?.toString() ?? '',
+          'date': i['date']?.toString() ?? '',
+          'equipment': i['equipment']?.toString() ?? '',
+          'title': i['title']?.toString() ?? '',
+          'description': i['description']?.toString() ?? '',
+          'severity': i['severity']?.toString() ?? 'Minor',
+          'status': i['status']?.toString() ?? 'Open',
+          'reporter': i['reporter']?.toString() ?? '',
+          'action_taken': i['actionTaken']?.toString() ?? '',
+        }).toList();
+        await client.from('equipment_issues').upsert(rows);
+      } catch (e) {
+        debugPrint('equipment_issues upsert note: $e');
+      }
+
+      // 2. Always sync with master ballistic_records (SYSTEM_CONFIG)
+      final jsonString = jsonEncode(issues);
+      final existing = await client
+          .from(tableName)
+          .select('id')
+          .eq('module', 'SYSTEM_CONFIG')
+          .eq('test_name', 'EQUIPMENT_ISSUES')
+          .limit(1);
+
+      if (existing.isNotEmpty) {
+        final existingId = existing[0]['id'];
+        await client.from(tableName).update({
+          'notes': jsonString,
+          'timestamp': DateTime.now().toIso8601String(),
+        }).eq('id', existingId);
+      } else {
+        await client.from(tableName).insert({
+          'module': 'SYSTEM_CONFIG',
+          'test_name': 'EQUIPMENT_ISSUES',
+          'operators': 'System',
+          'notes': jsonString,
+          'status': 'ACTIVE',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error saving equipment issues to Supabase: $e');
       return false;
     }
   }

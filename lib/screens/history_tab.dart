@@ -96,6 +96,9 @@ class _HistoryTabState extends State<HistoryTab> {
   void _showRetestDialog(BallisticRecord r) {
     final bool canPerformRetest = widget.isAdmin ||
         widget.loggedInUser.isEmpty ||
+        r.status.toLowerCase().contains('reject') ||
+        r.status.toLowerCase().contains('retest') ||
+        widget.canEditRecords ||
         r.operators.toLowerCase().contains(widget.loggedInUser.toLowerCase()) ||
         widget.loggedInUser.toLowerCase().contains(r.operators.toLowerCase());
 
@@ -2888,7 +2891,7 @@ class _HistoryTabState extends State<HistoryTab> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 mainAxisSize: MainAxisSize.max,
                 children: [
-                  if (r.status.toLowerCase().contains('retest'))
+                  if (r.status.toLowerCase().contains('retest') || r.status.toLowerCase().contains('reject'))
                     _buildActionIcon(
                       icon: Icons.replay_circle_filled_rounded,
                       color: const Color(0xFFF59E0B),
@@ -3542,6 +3545,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               widget.currentModule,
                               base64Logo: widget.base64Logo,
                               adminRules: widget.adminRules,
+                              loggedInUser: widget.loggedInUser,
                             );
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
                             final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
@@ -3575,6 +3579,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               widget.currentModule,
                               base64Logo: widget.base64Logo,
                               adminRules: widget.adminRules,
+                              loggedInUser: widget.loggedInUser,
                             );
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
                             final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
@@ -3602,6 +3607,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                 widget.currentModule,
                                 base64Logo: widget.base64Logo,
                                 adminRules: widget.adminRules,
+                                loggedInUser: widget.loggedInUser,
                               );
                               final repCaliber = (reportRecords.first.caliber).replaceAll(';', ' ').trim();
                               final repLotNo = reportRecords.first.lotNo;
@@ -3633,6 +3639,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                 widget.currentModule,
                                 base64Logo: widget.base64Logo,
                                 adminRules: widget.adminRules,
+                                loggedInUser: widget.loggedInUser,
                               );
                               final repCaliber = (reportRecords.first.caliber).replaceAll(';', ' ').trim();
                               final repLotNo = reportRecords.first.lotNo;

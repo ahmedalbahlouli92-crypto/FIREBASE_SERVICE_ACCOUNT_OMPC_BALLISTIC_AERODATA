@@ -15,6 +15,7 @@ import 'screens/analysis_recommendation_tab.dart';
 import 'screens/consumables_tab.dart';
 import 'screens/witness_storage_tab.dart';
 import 'screens/executive_reports_tab.dart';
+import 'screens/equipment_report_tab.dart';
 import 'services/epvat_formula_helper.dart';
 import 'services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel, PostgresChangeEvent;
@@ -1741,6 +1742,31 @@ class _MainShellState extends State<MainShell> {
 
   final TextEditingController _ruleNewFuncWeaponCtrl = TextEditingController();
 
+  // Final Lot Acceptance Certificate Template customization controllers
+  bool _isCertTemplateCardExpanded = false;
+  String _certSelectedCaliber = '5.56x45 SS109';
+  final TextEditingController _certSupervisorNameCtrl = TextEditingController();
+  final TextEditingController _certManagerNameCtrl = TextEditingController();
+  final TextEditingController _certWpSampleCtrl = TextEditingController();
+  final TextEditingController _certWpReqCtrl = TextEditingController();
+  final TextEditingController _certExtSampleCtrl = TextEditingController();
+  final TextEditingController _certExtReqCtrl = TextEditingController();
+  final TextEditingController _certAccSampleCtrl = TextEditingController();
+  final TextEditingController _certAccReqCtrl = TextEditingController();
+  final TextEditingController _certEpvSampleCtrl = TextEditingController();
+  final TextEditingController _certEpvReq21Ctrl = TextEditingController();
+  final TextEditingController _certEpvReq52Ctrl = TextEditingController();
+  final TextEditingController _certEpvReq54Ctrl = TextEditingController();
+  final TextEditingController _certEpvFormula21Ctrl = TextEditingController();
+  final TextEditingController _certEpvFormula52Ctrl = TextEditingController();
+  final TextEditingController _certEpvFormula54Ctrl = TextEditingController();
+  final TextEditingController _certFuncSampleCtrl = TextEditingController();
+  final TextEditingController _certFuncReqCtrl = TextEditingController();
+  final TextEditingController _certRsSampleCtrl = TextEditingController();
+  final TextEditingController _certRsReqCtrl = TextEditingController();
+  final TextEditingController _certPrimerSampleCtrl = TextEditingController();
+  final TextEditingController _certPrimerReqCtrl = TextEditingController();
+
   void _loadFunctionCaliberRules(String caliber) {
     final func = _adminRules['function_test'] ?? {};
     final calibersMap = Map<String, dynamic>.from(func['calibers'] ?? {});
@@ -1920,6 +1946,28 @@ class _MainShellState extends State<MainShell> {
     _ruleNewFormulaExprCtrl.dispose();
     _ruleNewFormulaLimitCtrl.dispose();
     _ruleNewFormulaUnitCtrl.dispose();
+
+    _certSupervisorNameCtrl.dispose();
+    _certManagerNameCtrl.dispose();
+    _certWpSampleCtrl.dispose();
+    _certWpReqCtrl.dispose();
+    _certExtSampleCtrl.dispose();
+    _certExtReqCtrl.dispose();
+    _certAccSampleCtrl.dispose();
+    _certAccReqCtrl.dispose();
+    _certEpvSampleCtrl.dispose();
+    _certEpvReq21Ctrl.dispose();
+    _certEpvReq52Ctrl.dispose();
+    _certEpvReq54Ctrl.dispose();
+    _certEpvFormula21Ctrl.dispose();
+    _certEpvFormula52Ctrl.dispose();
+    _certEpvFormula54Ctrl.dispose();
+    _certFuncSampleCtrl.dispose();
+    _certFuncReqCtrl.dispose();
+    _certRsSampleCtrl.dispose();
+    _certRsReqCtrl.dispose();
+    _certPrimerSampleCtrl.dispose();
+    _certPrimerReqCtrl.dispose();
     
     super.dispose();
   }
@@ -2001,6 +2049,91 @@ class _MainShellState extends State<MainShell> {
     // Function Test for selected caliber
     _ruleSelectedFuncCaliber = _ruleSelectedCaliber;
     _loadFunctionCaliberRules(_ruleSelectedCaliber);
+
+    // Final Lot Acceptance Certificate template for selected caliber
+    _loadCertTemplateForCaliber(_certSelectedCaliber);
+  }
+
+  void _loadCertTemplateForCaliber(String caliber) {
+    _certSupervisorNameCtrl.text = (_adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
+    _certManagerNameCtrl.text = (_adminRules['manager_name'] as String? ?? 'Acting QC & Engineering Manager').trim();
+
+    final certTemplates = Map<String, dynamic>.from(_adminRules['certificate_templates'] as Map? ?? {});
+    Map<String, dynamic>? calConfig;
+    for (final k in certTemplates.keys) {
+      if (k.toLowerCase() == caliber.toLowerCase() || caliber.toLowerCase().contains(k.toLowerCase())) {
+        calConfig = Map<String, dynamic>.from(certTemplates[k] as Map? ?? {});
+        break;
+      }
+    }
+    calConfig ??= {};
+
+    _certWpSampleCtrl.text = (calConfig['waterproof_sample'] ?? '20 rounds').toString();
+    _certWpReqCtrl.text = (calConfig['waterproof_req'] ?? 'No. of Leaks ≤ 6 Leaks').toString().replaceAll('<br/>', '\n');
+
+    _certExtSampleCtrl.text = (calConfig['extraction_sample'] ?? '20 rounds').toString();
+    _certExtReqCtrl.text = (calConfig['extraction_req'] ?? 'Min Force ≥ 200').toString().replaceAll('<br/>', '\n');
+
+    _certAccSampleCtrl.text = (calConfig['accuracy_sample'] ?? '30 rounds').toString();
+    _certAccReqCtrl.text = (calConfig['accuracy_req'] ?? 'SD ≤ 200 mm').toString().replaceAll('<br/>', '\n');
+
+    _certEpvSampleCtrl.text = (calConfig['epvat_sample_21'] ?? '90 rounds').toString();
+    _certEpvReq21Ctrl.text = (calConfig['epvat_req_21'] ?? 'Max Mean Chamber +3SD ≤ 4450 Bar\nMin Mean Port - 3SD ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
+    _certEpvReq52Ctrl.text = (calConfig['epvat_req_52'] ?? 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port - 3SD ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
+    _certEpvReq54Ctrl.text = (calConfig['epvat_req_54'] ?? 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
+    _certEpvFormula21Ctrl.text = (calConfig['epvat_result_formula_21'] ?? '').toString();
+    _certEpvFormula52Ctrl.text = (calConfig['epvat_result_formula_52'] ?? '').toString();
+    _certEpvFormula54Ctrl.text = (calConfig['epvat_result_formula_54'] ?? '').toString();
+
+    _certFuncSampleCtrl.text = (calConfig['function_sample'] ?? '500 rounds').toString();
+    _certFuncReqCtrl.text = (calConfig['function_req'] ?? 'Critical Defect 0\nMajor Defects 3\nLevel 3 Defects 6\nLevel 4 Defects 18').toString().replaceAll('<br/>', '\n');
+
+    _certRsSampleCtrl.text = (calConfig['residual_sample'] ?? '50 rounds').toString();
+    _certRsReqCtrl.text = (calConfig['residual_req'] ?? 'No. of cracks I zone ≤ 3 Cracks\nNo. of cracks M, L, K, J & S zone = 0 Crack').toString().replaceAll('<br/>', '\n');
+
+    _certPrimerSampleCtrl.text = (calConfig['primer_sample'] ?? '175 rounds').toString();
+    _certPrimerReqCtrl.text = (calConfig['primer_req'] ?? 'H̄+5SD ≤ 450 mm\nH̄-2SD ≥ 75 mm').toString().replaceAll('<br/>', '\n');
+  }
+
+  Future<void> _handleSaveCertTemplate() async {
+    _adminRules['supervisor_name'] = _certSupervisorNameCtrl.text.trim();
+    _adminRules['manager_name'] = _certManagerNameCtrl.text.trim();
+
+    final certTemplates = Map<String, dynamic>.from(_adminRules['certificate_templates'] as Map? ?? {});
+    certTemplates[_certSelectedCaliber] = {
+      'waterproof_sample': _certWpSampleCtrl.text.trim(),
+      'waterproof_req': _certWpReqCtrl.text.trim().replaceAll('\n', '<br/>'),
+      'extraction_sample': _certExtSampleCtrl.text.trim(),
+      'extraction_req': _certExtReqCtrl.text.trim().replaceAll('\n', '<br/>'),
+      'accuracy_sample': _certAccSampleCtrl.text.trim(),
+      'accuracy_req': _certAccReqCtrl.text.trim().replaceAll('\n', '<br/>'),
+      'epvat_sample_21': _certEpvSampleCtrl.text.trim(),
+      'epvat_req_21': _certEpvReq21Ctrl.text.trim().replaceAll('\n', '<br/>'),
+      'epvat_req_52': _certEpvReq52Ctrl.text.trim().replaceAll('\n', '<br/>'),
+      'epvat_req_54': _certEpvReq54Ctrl.text.trim().replaceAll('\n', '<br/>'),
+      'epvat_result_formula_21': _certEpvFormula21Ctrl.text.trim(),
+      'epvat_result_formula_52': _certEpvFormula52Ctrl.text.trim(),
+      'epvat_result_formula_54': _certEpvFormula54Ctrl.text.trim(),
+      'function_sample': _certFuncSampleCtrl.text.trim(),
+      'function_req': _certFuncReqCtrl.text.trim().replaceAll('\n', '<br/>'),
+      'residual_sample': _certRsSampleCtrl.text.trim(),
+      'residual_req': _certRsReqCtrl.text.trim().replaceAll('\n', '<br/>'),
+      'primer_sample': _certPrimerSampleCtrl.text.trim(),
+      'primer_req': _certPrimerReqCtrl.text.trim().replaceAll('\n', '<br/>'),
+    };
+    _adminRules['certificate_templates'] = certTemplates;
+
+    await _storageService.saveRules(_adminRules);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Final Lot Acceptance Certificate template for "$_certSelectedCaliber" saved successfully.'),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _handleSaveRules() async {
@@ -3272,7 +3405,7 @@ class _MainShellState extends State<MainShell> {
       setState(() {
         _currentUserRole = role;
         _currentUserEmail = displayName;
-        _activeTabIndex = (role == UserRole.admin) ? 0 : 1;
+        _activeTabIndex = 0; // Open Dashboard tab by default for all users
         _loginErrorMessage = '';
       });
       _opEmailController.clear();
@@ -3631,33 +3764,32 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _handleEditRecord(BallisticRecord original, BallisticRecord updated) async {
     setState(() {
+      void updateInList(List<BallisticRecord> list) {
+        for (int i = 0; i < list.length; i++) {
+          final r = list[i];
+          final matchesId = original.id != null && original.id!.isNotEmpty && r.id == original.id;
+          final matchesLot = original.lotNo.isNotEmpty &&
+              r.lotNo == original.lotNo &&
+              r.testName == original.testName &&
+              r.caliber == original.caliber;
+          final matchesAttributes = r.timestamp == original.timestamp &&
+              r.lotNumber == original.lotNumber &&
+              r.produced == original.produced &&
+              r.defects == original.defects;
+          if (matchesId || matchesAttributes) {
+            list[i] = updated;
+          } else if (matchesLot && updated.status != original.status) {
+            list[i] = list[i].copyWith(status: updated.status);
+          }
+        }
+      }
+
       if (_currentModule == 'Lot Acceptance Test') {
-        final idx = _records.indexWhere((r) =>
-          (original.id != null && original.id!.isNotEmpty && r.id == original.id) ||
-          (r.timestamp == original.timestamp &&
-           r.lotNumber == original.lotNumber &&
-           r.produced == original.produced &&
-           r.defects == original.defects)
-        );
-        if (idx != -1) _records[idx] = updated;
+        updateInList(_records);
       } else if (_currentModule == 'Component Test') {
-        final idx = _componentTestRecords.indexWhere((r) =>
-          (original.id != null && original.id!.isNotEmpty && r.id == original.id) ||
-          (r.timestamp == original.timestamp &&
-           r.lotNumber == original.lotNumber &&
-           r.produced == original.produced &&
-           r.defects == original.defects)
-        );
-        if (idx != -1) _componentTestRecords[idx] = updated;
+        updateInList(_componentTestRecords);
       } else {
-        final idx = _dailyTestRecords.indexWhere((r) =>
-          (original.id != null && original.id!.isNotEmpty && r.id == original.id) ||
-          (r.timestamp == original.timestamp &&
-           r.lotNumber == original.lotNumber &&
-           r.produced == original.produced &&
-           r.defects == original.defects)
-        );
-        if (idx != -1) _dailyTestRecords[idx] = updated;
+        updateInList(_dailyTestRecords);
       }
     });
 
@@ -4205,6 +4337,7 @@ class _MainShellState extends State<MainShell> {
                         _isPermissionsCardExpanded = false;
                         _isEquipmentCardExpanded = false;
                         _isRulesCardExpanded = false;
+                        _isCertTemplateCardExpanded = false;
                       });
                     },
                     icon: const Icon(Icons.unfold_less_rounded, size: 16.0, color: Color(0xFF475569)),
@@ -4225,6 +4358,7 @@ class _MainShellState extends State<MainShell> {
                         _isPermissionsCardExpanded = true;
                         _isEquipmentCardExpanded = true;
                         _isRulesCardExpanded = true;
+                        _isCertTemplateCardExpanded = true;
                       });
                     },
                     icon: const Icon(Icons.unfold_more_rounded, size: 16.0, color: Color(0xFF0284C7)),
@@ -4267,6 +4401,8 @@ class _MainShellState extends State<MainShell> {
               if (_currentUserRole == UserRole.admin || _hasPermission('can_manage_rules')) ...[
                 const SizedBox(height: 12.0),
                 _buildRulesManagementCard(double.infinity),
+                const SizedBox(height: 12.0),
+                _buildCertificateTemplateCard(double.infinity),
               ],
             ],
           ),
@@ -8586,6 +8722,569 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  Widget _buildCertificateTemplateCard(double width) {
+    return Container(
+      width: width,
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isCertTemplateCardExpanded ? 20.0 : 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isCertTemplateCardExpanded = !_isCertTemplateCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF16A34A)),
+                  ),
+                  child: const Icon(Icons.verified_outlined, color: Color(0xFF16A34A), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Final Lot Acceptance Certificate Templates',
+                        style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      SizedBox(height: 2.0),
+                      Text(
+                        'Customize sample sizes, requirements, and authorized signatories per caliber',
+                        style: TextStyle(fontSize: 12.0, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.0),
+                    border: Border.all(color: const Color(0xFF16A34A).withOpacity(0.3)),
+                  ),
+                  child: const Text(
+                    'Per-Caliber',
+                    style: TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                Icon(
+                  _isCertTemplateCardExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: const Color(0xFF16A34A),
+                  size: 24.0,
+                ),
+              ],
+            ),
+          ),
+          if (_isCertTemplateCardExpanded) ...[
+            const SizedBox(height: 16.0),
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.info_outline, color: Color(0xFF16A34A), size: 18.0),
+                  SizedBox(width: 10.0),
+                  Expanded(
+                    child: Text(
+                      'The specifications and sample sizes configured below are dynamically injected into the exported Final Lot Acceptance Certificate for this caliber. Use line breaks in requirement boxes to format multi-line conditions.',
+                      style: TextStyle(fontSize: 12.0, color: Color(0xFF166534), height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16.0),
+
+            // Caliber Selection Dropdown
+            const Text('Select Caliber to Configure Template', style: TextStyle(color: Color(0xFF475569), fontSize: 12.0, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6.0),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C415E),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
+              ),
+              child: DropdownButton<String>(
+                value: _certSelectedCaliber,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF344D6E),
+                underline: const SizedBox(),
+                style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _certSelectedCaliber = val;
+                      _loadCertTemplateForCaliber(val);
+                    });
+                  }
+                },
+                items: EntryTab.calibers.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+
+            // Signatories Section
+            Container(
+              padding: const EdgeInsets.all(14.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.draw_outlined, size: 18.0, color: Color(0xFF0284C7)),
+                      SizedBox(width: 8.0),
+                      Text('Certificate Signatories (3-Column Signature Block)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Color(0xFF0F172A))),
+                    ],
+                  ),
+                  const SizedBox(height: 10.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCertInputField(
+                          label: 'Approved By (Column 2 Title / Name)',
+                          controller: _certSupervisorNameCtrl,
+                          hintText: 'Action Ballistic & Engineering Supervisor',
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        child: _buildCertInputField(
+                          label: 'Authorized By (Column 3 Title / Name)',
+                          controller: _certManagerNameCtrl,
+                          hintText: 'Acting QC & Engineering Manager',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Text(
+                    '* Note: Column 1 ("Prepared By / Ballistic Technician") automatically resolves to the technician who logged the test entries.',
+                    style: TextStyle(fontSize: 11.0, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16.0),
+
+            const Text(
+              '7 Standard Acceptance Tests Specification Setup',
+              style: TextStyle(color: Color(0xFF0F172A), fontSize: 14.5, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10.0),
+
+            // 1. Waterproof Test
+            _buildCertTestSection(
+              testNumber: '1',
+              testTitle: 'Waterproof Test',
+              icon: Icons.water_drop_outlined,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size',
+                      controller: _certWpSampleCtrl,
+                      hintText: '20 rounds',
+                    ),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildCertInputField(
+                      label: 'Requirements',
+                      controller: _certWpReqCtrl,
+                      hintText: 'No. of Leaks ≤ 6 Leaks',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 2. Extraction Force Test
+            _buildCertTestSection(
+              testNumber: '2',
+              testTitle: 'Extraction Force Test',
+              icon: Icons.compress_rounded,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size',
+                      controller: _certExtSampleCtrl,
+                      hintText: '20 rounds',
+                    ),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildCertInputField(
+                      label: 'Requirements',
+                      controller: _certExtReqCtrl,
+                      hintText: 'Min Force ≥ 200',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 3. Accuracy Test
+            _buildCertTestSection(
+              testNumber: '3',
+              testTitle: 'Accuracy Test',
+              icon: Icons.track_changes_outlined,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size',
+                      controller: _certAccSampleCtrl,
+                      hintText: '30 rounds',
+                    ),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildCertInputField(
+                      label: 'Requirements',
+                      controller: _certAccReqCtrl,
+                      hintText: 'SD ≤ 200 mm',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 4. EPVAT test
+            _buildCertTestSection(
+              testNumber: '4',
+              testTitle: 'EPVAT test (Electronic Pressure, Velocity & Action Time)',
+              icon: Icons.speed_rounded,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size (+21 °C)',
+                      controller: _certEpvSampleCtrl,
+                      hintText: '90 rounds',
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _buildCertInputField(
+                          label: '+21 °C Ambient Requirements',
+                          controller: _certEpvReq21Ctrl,
+                          isMultiline: true,
+                          hintText: 'Max Mean Chamber +3SD ≤ 4450 Bar\nMin Mean Port - 3SD ≥ 1030 Bar',
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        flex: 2,
+                        child: _buildCertInputField(
+                          label: '+21 °C Result Formula',
+                          controller: _certEpvFormula21Ctrl,
+                          hintText: 'e.g. P1+3SD or leave blank',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8.0),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _buildCertInputField(
+                          label: '+52 °C High Temp Requirements',
+                          controller: _certEpvReq52Ctrl,
+                          isMultiline: true,
+                          hintText: 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port - 3SD ≥ 1030 Bar',
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        flex: 2,
+                        child: _buildCertInputField(
+                          label: '+52 °C Result Formula',
+                          controller: _certEpvFormula52Ctrl,
+                          hintText: 'e.g. mean_chamber or leave blank',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8.0),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _buildCertInputField(
+                          label: '-54 °C Cold Temp Requirements',
+                          controller: _certEpvReq54Ctrl,
+                          isMultiline: true,
+                          hintText: 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port ≥ 1030 Bar',
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        flex: 2,
+                        child: _buildCertInputField(
+                          label: '-54 °C Result Formula',
+                          controller: _certEpvFormula54Ctrl,
+                          hintText: 'e.g. mean_chamber or leave blank',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // 5. Function Test
+            _buildCertTestSection(
+              testNumber: '5',
+              testTitle: 'Function Test',
+              icon: Icons.precision_manufacturing_outlined,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size',
+                      controller: _certFuncSampleCtrl,
+                      hintText: '500 rounds',
+                    ),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildCertInputField(
+                      label: 'Requirements (Multi-line Levels / Limits)',
+                      controller: _certFuncReqCtrl,
+                      isMultiline: true,
+                      hintText: 'Critical Defect 0\nMajor Defects 3\nLevel 3 Defects 6\nLevel 4 Defects 18',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 6. Residual Stress Test
+            _buildCertTestSection(
+              testNumber: '6',
+              testTitle: 'Residual Stress Test',
+              icon: Icons.science_outlined,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size',
+                      controller: _certRsSampleCtrl,
+                      hintText: '50 rounds',
+                    ),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildCertInputField(
+                      label: 'Requirements (Zones & Allowed Cracks)',
+                      controller: _certRsReqCtrl,
+                      isMultiline: true,
+                      hintText: 'No. of cracks I zone ≤ 3 Cracks\nNo. of cracks M, L, K, J & S zone = 0 Crack',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 7. Primer Sensitivity Test
+            _buildCertTestSection(
+              testNumber: '7',
+              testTitle: 'Primer Sensitivity Test',
+              icon: Icons.bolt_outlined,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size',
+                      controller: _certPrimerSampleCtrl,
+                      hintText: '175 rounds',
+                    ),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildCertInputField(
+                      label: 'Requirements (H̄ Limits)',
+                      controller: _certPrimerReqCtrl,
+                      isMultiline: true,
+                      hintText: 'H̄+5SD ≤ 450 mm\nH̄-2SD ≥ 75 mm',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8.0),
+            SizedBox(
+              width: double.infinity,
+              height: 42.0,
+              child: ElevatedButton.icon(
+                onPressed: _handleSaveCertTemplate,
+                icon: const Icon(Icons.save_outlined, size: 18.0),
+                label: Text(
+                  'Save Certificate Template for $_certSelectedCaliber',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF16A34A),
+                  foregroundColor: Colors.white,
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCertTestSection({
+    required String testNumber,
+    required String testTitle,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.all(14.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6.0),
+                ),
+                child: Icon(icon, size: 16.0, color: const Color(0xFF0284C7)),
+              ),
+              const SizedBox(width: 8.0),
+              Text(
+                '$testNumber. $testTitle',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13.5,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10.0),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCertInputField({
+    required String label,
+    required TextEditingController controller,
+    String? hintText,
+    bool isMultiline = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4.0),
+          TextField(
+            controller: controller,
+            maxLines: isMultiline ? 3 : 1,
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 12.5,
+              fontFamily: 'JetBrainsMono',
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6.0),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6.0),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6.0),
+                borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -8667,7 +9366,10 @@ class _MainShellState extends State<MainShell> {
         ],
       );
     } else if (_currentModule == 'Equipment Report') {
-      mainContent = _buildModulePlaceholder('Equipment Report', Icons.construction_outlined, const Color(0xFFF59E0B));
+      mainContent = EquipmentReportTab(
+        loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
+        isAdmin: _currentUserRole == UserRole.admin,
+      );
     } else if (_currentModule == 'Executive Reports') {
       mainContent = ExecutiveReportsTab(
         lotAcceptanceRecords: _records,

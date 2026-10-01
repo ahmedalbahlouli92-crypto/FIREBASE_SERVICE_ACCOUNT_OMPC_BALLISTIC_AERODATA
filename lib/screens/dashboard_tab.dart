@@ -878,7 +878,7 @@ class _DashboardTabState extends State<DashboardTab> {
           // ── Trend Line Chart (full width) ──────────────────────────────
           Container(
             width: double.infinity,
-            height: 460.0,
+            height: 580.0,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
               color: Colors.white,

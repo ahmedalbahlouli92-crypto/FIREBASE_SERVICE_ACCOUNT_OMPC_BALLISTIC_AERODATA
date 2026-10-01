@@ -864,6 +864,29 @@ ALTER TABLE IF EXISTS public.daily_primer_sensitivity_test ADD COLUMN IF NOT EXI
 ALTER TABLE IF EXISTS public.component_propellant_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
 ALTER TABLE IF EXISTS public.component_primer_sensitivity_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
 
+-- 15. Equipment Issues & Maintenance Log Table
+CREATE TABLE IF NOT EXISTS public.equipment_issues (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    timestamp TEXT DEFAULT '',
+    date TEXT DEFAULT '',
+    equipment TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    severity TEXT DEFAULT 'Minor',
+    status TEXT DEFAULT 'Open',
+    reporter TEXT DEFAULT '',
+    action_taken TEXT DEFAULT '',
+    resolved_at TIMESTAMPTZ
+);
+ALTER TABLE public.equipment_issues ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.equipment_issues;
+CREATE POLICY "Public access policy" ON public.equipment_issues FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.equipment_issues TO anon, authenticated, service_role;
+CREATE INDEX IF NOT EXISTS idx_equipment_issues_equipment ON public.equipment_issues (equipment);
+CREATE INDEX IF NOT EXISTS idx_equipment_issues_status ON public.equipment_issues (status);
+
 -- Confirmation output
-SELECT 'Successfully created all 20 test tables, 8 consumable category tables, component inventory, witness storage tables, and admin control tables.' as result;
+SELECT 'Successfully created all 20 test tables, 8 consumable category tables, component inventory, witness storage tables, equipment issues, and admin control tables.' as result;
+
 

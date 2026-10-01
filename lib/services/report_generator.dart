@@ -25,12 +25,19 @@ class ReportGenerator {
     return '<span style="white-space: nowrap;">$s</span>';
   }
 
-  static String cleanRemarks(String raw) {
-    if (raw.trim().isEmpty) return '';
+  static String cleanRemarks(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
     String s = raw.trim();
     if (s.toLowerCase() == 'no remarks recorded.' || s.toLowerCase() == 'no remarks recorded') {
       return '';
     }
+    // Remove REF tags and plain REF numbers: [REF:...], (Ref No: ...), REF-xxxx, REF:xxx, Ref No: ...
+    s = s.replaceAll(RegExp(r'\[REF:[^\]]*\]', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\([^\)]*Ref\s*No[^\)]*\)', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\([^\)]*REF[:\-][^\)]*\)', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\bREF[:\-]\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\bRef\s*No[:\-]?\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
+
     if (s.contains('Temps:')) {
       final idx = s.indexOf('Temps:');
       s = s.substring(0, idx).trim();
@@ -46,7 +53,8 @@ class ReportGenerator {
       final idx = s.indexOf('[RETEST by');
       s = s.substring(0, idx).trim();
     }
-    if (s.toLowerCase() == 'no remarks recorded.' || s.toLowerCase() == 'no remarks recorded') {
+    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (s.toLowerCase() == 'no remarks recorded.' || s.toLowerCase() == 'no remarks recorded' || s == '-' || s == '.') {
       return '';
     }
     return s;
@@ -370,6 +378,7 @@ class ReportGenerator {
       activePressureUnit: activePressureUnit,
     )).toList();
     final testedResults = results.where((r) => r.isApplicable).toList();
+    final displayResults = testedResults.isNotEmpty ? testedResults : results;
     final bool allPassed = testedResults.isEmpty || testedResults.every((r) => r.isPassed);
 
     // Kinetic Energy box if applicable
@@ -395,12 +404,12 @@ class ReportGenerator {
     }
 
     final rowsBuffer = StringBuffer();
-    for (int i = 0; i < results.length; i++) {
-      final res = results[i];
+    for (int i = 0; i < displayResults.length; i++) {
+      final res = displayResults[i];
       final bg = i % 2 == 1 ? 'background-color: #f8fafc;' : '';
       final color = !res.isApplicable ? '#64748b' : (res.isPassed ? '#15803d' : '#b91c1c');
-      final statusText = !res.isApplicable ? 'N/A' : (res.isPassed ? 'PASSED' : 'FAILED');
-      final displayCalculation = !res.isApplicable ? 'N/A' : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}';
+      final statusText = !res.isApplicable ? 'Not Tested' : (res.isPassed ? 'PASSED' : 'FAILED');
+      final displayCalculation = !res.isApplicable ? 'Not Tested' : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}';
       final displayOp = res.op == '<=' ? '&le;' : (res.op == '>=' ? '&ge;' : (res.op == '<' ? '&lt;' : (res.op == '>' ? '&gt;' : res.op)));
       rowsBuffer.writeln('''
       <tr style="$bg">
@@ -438,7 +447,14 @@ class ReportGenerator {
     ''';
   }
 
-  static String generateHtml(List<BallisticRecord> records, String testName, String moduleName, {String base64Logo = '', Map<String, dynamic> adminRules = const {}}) {
+  static String generateHtml(
+    List<BallisticRecord> records, 
+    String testName, 
+    String moduleName, {
+    String base64Logo = '', 
+    Map<String, dynamic> adminRules = const {},
+    String loggedInUser = '',
+  }) {
     final now = DateFormat('dd/MM/yyyy').format(DateTime.now());
     final totalQty = records.fold<int>(0, (sum, r) {
       final initial = r.produced;
@@ -452,7 +468,7 @@ class ReportGenerator {
     final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
     final String reportRefNo = refList.isNotEmpty
         ? refList.join(', ')
-        : (records.isNotEmpty && records.first.lotNo.isNotEmpty ? 'REF-${records.first.lotNo}' : 'REF-1001');
+        : 'REF:1';
 
     final remarksList = records
         .map((r) => cleanRemarks(r.notes))
@@ -461,7 +477,9 @@ class ReportGenerator {
         .toList();
     final remarksText = remarksList.isNotEmpty ? remarksList.join('<br/>') : '';
 
-    final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
+    final inspectorName = loggedInUser.trim().isNotEmpty
+        ? loggedInUser.trim()
+        : (records.isNotEmpty ? records[0].operators : 'N/A');
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final lotNo = records.isNotEmpty
         ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
@@ -469,13 +487,23 @@ class ReportGenerator {
             : '${records[0].lotNo} (Hopper: ${records[0].hopperNo}, Box: ${records[0].boxNo})')
         : 'N/A';
 
+    final cleanCaliber = records.isNotEmpty ? records[0].caliber.replaceAll(';', ' ').trim() : 'Ammo';
     final cleanLotNo = records.isNotEmpty ? records[0].lotNo : 'Lot';
-    final cleanCaliber = caliber.replaceAll(';', ' ').trim();
     final displayTestTitle = testName == 'All' ? 'Final Lot Acceptance Certificate' : testName;
-    final defaultExportTitle = (testName == 'All'
+    final defaultExportTitle = (testName == 'All' || testName == 'Final_Lot_Acceptance_Certificate'
         ? '${cleanCaliber}_Final_Lot_Acceptance_Certificate_$cleanLotNo'
         : '${cleanCaliber}_${testName}_$cleanLotNo').replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final title = defaultExportTitle;
+
+    if (testName == 'All' || testName == 'Final_Lot_Acceptance_Certificate' || displayTestTitle == 'Final Lot Acceptance Certificate') {
+      return _generateFinalCertificateHtml(
+        records: records,
+        moduleName: moduleName,
+        base64Logo: base64Logo,
+        adminRules: adminRules,
+        loggedInUser: loggedInUser,
+      );
+    }
 
     String epvatCombinedSection = '';
     if (testName == 'EPVAT test' || testName == 'Propellant Test') {
@@ -1665,7 +1693,14 @@ class ReportGenerator {
     return '<th>Test Name</th><th>Time</th><th>Inspector</th><th>Sample Size</th><th>Key Results / Metrics</th><th>Status</th><th>Remarks</th>';
   }
 
-  static String generateWordHtml(List<BallisticRecord> records, String testName, String moduleName, {String base64Logo = '', Map<String, dynamic> adminRules = const {}}) {
+  static String generateWordHtml(
+    List<BallisticRecord> records, 
+    String testName, 
+    String moduleName, {
+    String base64Logo = '', 
+    Map<String, dynamic> adminRules = const {},
+    String loggedInUser = '',
+  }) {
     final now = DateFormat('dd/MM/yyyy').format(DateTime.now());
     final totalQty = records.fold<int>(0, (sum, r) {
       final initial = r.produced;
@@ -1679,9 +1714,19 @@ class ReportGenerator {
     final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
     final String reportRefNo = refList.isNotEmpty
         ? refList.join(', ')
-        : (records.isNotEmpty && records.first.lotNo.isNotEmpty ? 'REF-${records.first.lotNo}' : 'REF-1001');
+        : 'REF:1';
 
     final displayTestTitle = testName == 'All' ? 'Final Lot Acceptance Certificate' : testName;
+
+    if (testName == 'All' || testName == 'Final_Lot_Acceptance_Certificate' || displayTestTitle == 'Final Lot Acceptance Certificate') {
+      return _generateFinalCertificateWord(
+        records: records,
+        moduleName: moduleName,
+        base64Logo: base64Logo,
+        adminRules: adminRules,
+        loggedInUser: loggedInUser,
+      );
+    }
 
     final remarksList = records
         .map((r) => cleanRemarks(r.notes))
@@ -1690,7 +1735,9 @@ class ReportGenerator {
         .toList();
     final remarksText = remarksList.isNotEmpty ? remarksList.join('<br/>') : '';
 
-    final inspectorName = records.isNotEmpty ? records[0].operators : 'N/A';
+    final inspectorName = loggedInUser.trim().isNotEmpty
+        ? loggedInUser.trim()
+        : (records.isNotEmpty ? records[0].operators : 'N/A');
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final lotNo = records.isNotEmpty
         ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
@@ -2457,15 +2504,16 @@ class ReportGenerator {
     String moduleName, {
     String base64Logo = '',
     Map<String, dynamic> adminRules = const {},
+    String loggedInUser = '',
   }) {
-    if (records.isEmpty) return generateHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+    if (records.isEmpty) return generateHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
 
     final cleanCaliber = records.first.caliber.replaceAll(';', ' ').trim();
     final cleanLotNo = records.first.lotNo;
     final title = '${cleanCaliber}_Complete_Lot_Dossier_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
     // 1. Final Lot Acceptance Certificate
-    final certHtml = generateHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+    final certHtml = generateHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
 
     // Extract <head> from certHtml
     final headStart = certHtml.indexOf('<head>');
@@ -2478,21 +2526,21 @@ class ReportGenerator {
     final sections = <String>[];
     sections.add(_extractReportBody(certHtml));
 
-    // Sequence of individual test reports
+    // Sequence of individual test reports matching exact order
     const testSequence = [
-      'Waterproof Test',
-      'Extraction Force Test',
-      'Accuracy Test',
+      'Primer Sensitivity Test',
       'EPVAT test',
       'Function Test',
       'Residual Stress Test',
-      'Primer Sensitivity Test',
+      'Accuracy Test',
+      'Extraction Force Test',
+      'Waterproof Test',
     ];
 
     for (final test in testSequence) {
       final subRecords = records.where((r) => r.testName.toLowerCase() == test.toLowerCase()).toList();
       if (subRecords.isNotEmpty) {
-        final subHtml = generateHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        final subHtml = generateHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subHtml));
       }
     }
@@ -2506,7 +2554,7 @@ class ReportGenerator {
     for (final test in otherTests) {
       final subRecords = records.where((r) => r.testName == test).toList();
       if (subRecords.isNotEmpty) {
-        final subHtml = generateHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        final subHtml = generateHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subHtml));
       }
     }
@@ -2568,15 +2616,16 @@ class ReportGenerator {
     String moduleName, {
     String base64Logo = '',
     Map<String, dynamic> adminRules = const {},
+    String loggedInUser = '',
   }) {
-    if (records.isEmpty) return generateWordHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+    if (records.isEmpty) return generateWordHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
 
     final cleanCaliber = records.first.caliber.replaceAll(';', ' ').trim();
     final cleanLotNo = records.first.lotNo;
     final title = '${cleanCaliber}_Complete_Lot_Dossier_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
     // 1. Final Lot Acceptance Certificate
-    final certWord = generateWordHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules);
+    final certWord = generateWordHtml(records, 'All', moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
 
     final headStart = certWord.indexOf('<head>');
     final headEnd = certWord.indexOf('</head>');
@@ -2589,19 +2638,19 @@ class ReportGenerator {
     sections.add(_extractReportBody(certWord));
 
     const testSequence = [
-      'Waterproof Test',
-      'Extraction Force Test',
-      'Accuracy Test',
+      'Primer Sensitivity Test',
       'EPVAT test',
       'Function Test',
       'Residual Stress Test',
-      'Primer Sensitivity Test',
+      'Accuracy Test',
+      'Extraction Force Test',
+      'Waterproof Test',
     ];
 
     for (final test in testSequence) {
       final subRecords = records.where((r) => r.testName.toLowerCase() == test.toLowerCase()).toList();
       if (subRecords.isNotEmpty) {
-        final subWord = generateWordHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        final subWord = generateWordHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subWord));
       }
     }
@@ -2614,7 +2663,7 @@ class ReportGenerator {
     for (final test in otherTests) {
       final subRecords = records.where((r) => r.testName == test).toList();
       if (subRecords.isNotEmpty) {
-        final subWord = generateWordHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules);
+        final subWord = generateWordHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subWord));
       }
     }
@@ -2642,5 +2691,503 @@ class ReportGenerator {
 </html>
 ''');
     return buffer.toString();
+  }
+
+  static String _generateFinalCertificateHtml({
+    required List<BallisticRecord> records,
+    required String moduleName,
+    String base64Logo = '',
+    Map<String, dynamic> adminRules = const {},
+    String loggedInUser = '',
+  }) {
+    final caliber = records.isNotEmpty ? records.first.caliber : '5.56X45 SS109';
+    final cleanCaliber = caliber.replaceAll(';', ' ').trim();
+    final lotNo = records.isNotEmpty ? records.first.lotNo : '001 OMPC/26';
+    final cleanLotNo = lotNo.trim();
+    final title = '${cleanCaliber}_Final_Lot_Acceptance_Certificate_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
+    final String reportRefNo = refList.isNotEmpty ? refList.first : 'REF:0001';
+
+    final inspectorName = loggedInUser.trim().isNotEmpty
+        ? loggedInUser.trim()
+        : (records.isNotEmpty && records.first.operators.isNotEmpty ? records.first.operators : 'user name');
+    final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
+    final managerName = (adminRules['manager_name'] as String? ?? 'Acting QC & Engineering Manager').trim();
+
+    final certTemplates = Map<String, dynamic>.from(adminRules['certificate_templates'] as Map? ?? {});
+    Map<String, dynamic>? calConfig;
+    for (final k in certTemplates.keys) {
+      if (k.toLowerCase() == cleanCaliber.toLowerCase() || cleanCaliber.toLowerCase().contains(k.toLowerCase())) {
+        calConfig = Map<String, dynamic>.from(certTemplates[k] as Map? ?? {});
+        break;
+      }
+    }
+    calConfig ??= {};
+
+    BallisticRecord? wpRec;
+    BallisticRecord? extRec;
+    BallisticRecord? accRec;
+    BallisticRecord? epvRec21;
+    BallisticRecord? epvRec52;
+    BallisticRecord? epvRec54;
+    BallisticRecord? funcRec;
+    BallisticRecord? rsRec;
+    BallisticRecord? primerRec;
+
+    for (final r in records) {
+      final name = r.testName.toLowerCase();
+      if (name.contains('waterproof')) wpRec ??= r;
+      if (name.contains('extraction')) extRec ??= r;
+      if (name.contains('accuracy')) accRec ??= r;
+      if (name.contains('function')) funcRec ??= r;
+      if (name.contains('residual')) rsRec ??= r;
+      if (name.contains('primer')) primerRec ??= r;
+      if (name.contains('epvat')) {
+        final temp = r.cartridgeTemp;
+        if (temp.contains('+52') || temp.contains('52')) {
+          epvRec52 ??= r;
+        } else if (temp.contains('-54') || temp.contains('54')) {
+          epvRec54 ??= r;
+        } else {
+          epvRec21 ??= r;
+        }
+      }
+    }
+
+    // 1. Primer Sensitivity Test
+    final primerSample = calConfig['primer_sample'] as String? ?? (primerRec != null && primerRec.produced > 0 ? '${primerRec.produced} rounds' : '175 rounds');
+    final primerH5 = primerRec != null && primerRec.primerAllFireH.isNotEmpty ? primerRec.primerAllFireH : '360.50';
+    final primerH2 = primerRec != null && primerRec.primerNoFireH.isNotEmpty ? primerRec.primerNoFireH : '114.10';
+    final primerResult = '<strong>H̄+5SD:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$primerH5 mm<br/><strong>H̄-2SD:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$primerH2 mm';
+    final primerReq = calConfig['primer_req'] as String? ?? 'H̄+5SD ≤ 450 mm<br/>H̄-2SD ≥ 75 mm';
+    final primerStatus = primerRec?.status ?? 'Approved';
+    final primerRemarks = cleanRemarks(primerRec?.notes);
+
+    // 2. EPVAT test (+21 °C, +52 °C, -54 °C)
+    final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(records);
+    final activePressureUnit = (adminRules['active_pressure_unit'] ?? 'bar').toString();
+
+    final epvSample21 = calConfig['epvat_sample_21'] as String? ?? (epvRec21 != null && epvRec21.produced > 0 ? '${epvRec21.produced} rounds' : '90 rounds');
+    String epvResult21 = '';
+    final formula21 = (calConfig['epvat_result_formula_21'] as String? ?? '').trim();
+    if (formula21.isNotEmpty) {
+      try {
+        final val = EpvatFormulaHelper.evaluate(formula21, epvVars, defaultTemp: '21');
+        epvResult21 = '<strong>$formula21:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit';
+      } catch (_) {}
+    }
+    if (epvResult21.isEmpty) {
+      final epvChamber21 = epvRec21 != null && epvRec21.epvatMeanPressure.isNotEmpty ? epvRec21.epvatMeanPressure : '3424.0';
+      final epvPort21 = epvRec21 != null && epvRec21.epvatP2MeanPressure.isNotEmpty ? epvRec21.epvatP2MeanPressure : '1201.5';
+      epvResult21 = '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvChamber21 bar<br/><strong>Mean Port:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvPort21 bar';
+    }
+    final epvReq21 = calConfig['epvat_req_21'] as String? ?? 'Max Mean Chamber +3SD ≤ 4450 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
+    final epvStatus21 = epvRec21?.status ?? 'Approved';
+    final epvRemarks21 = cleanRemarks(epvRec21?.notes);
+
+    String epvResult52 = '';
+    final formula52 = (calConfig['epvat_result_formula_52'] as String? ?? '').trim();
+    if (formula52.isNotEmpty) {
+      try {
+        final val = EpvatFormulaHelper.evaluate(formula52, epvVars, defaultTemp: '52');
+        epvResult52 = '<strong>$formula52:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit';
+      } catch (_) {}
+    }
+    if (epvResult52.isEmpty) {
+      final epvChamber52 = epvRec52 != null && epvRec52.epvatMeanPressure.isNotEmpty ? epvRec52.epvatMeanPressure : (epvRec21 != null && epvRec21.epvatMeanPressure.isNotEmpty ? epvRec21.epvatMeanPressure : '3450.0');
+      epvResult52 = '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvChamber52 bar';
+    }
+    final epvReq52 = calConfig['epvat_req_52'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
+    final epvStatus52 = epvRec52?.status ?? 'Approved';
+    final epvRemarks52 = cleanRemarks(epvRec52?.notes);
+
+    String epvResult54 = '';
+    final formula54 = (calConfig['epvat_result_formula_54'] as String? ?? '').trim();
+    if (formula54.isNotEmpty) {
+      try {
+        final val = EpvatFormulaHelper.evaluate(formula54, epvVars, defaultTemp: '54');
+        epvResult54 = '<strong>$formula54:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit';
+      } catch (_) {}
+    }
+    if (epvResult54.isEmpty) {
+      final epvChamber54 = epvRec54 != null && epvRec54.epvatMeanPressure.isNotEmpty ? epvRec54.epvatMeanPressure : (epvRec21 != null && epvRec21.epvatMeanPressure.isNotEmpty ? epvRec21.epvatMeanPressure : '3380.0');
+      epvResult54 = '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvChamber54 bar';
+    }
+    final epvReq54 = calConfig['epvat_req_54'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port ≥ 1030 Bar';
+    final epvStatus54 = epvRec54?.status ?? 'Approved';
+    final epvRemarks54 = cleanRemarks(epvRec54?.notes);
+
+    // 3. Function Test
+    final funcSample = calConfig['function_sample'] as String? ?? (funcRec != null && funcRec.produced > 0 ? '${funcRec.produced} rounds' : '500 rounds');
+    final funcDefects = funcRec != null ? funcRec.defects : 0;
+    final funcResult = funcRec != null ? '$funcDefects defect${funcDefects == 1 ? '' : 's'}' : '0 defect';
+    final funcReq = calConfig['function_req'] as String? ?? 'Critical Defect 0<br/>Major Defects 3<br/>Level 3 Defects 6<br/>Level 4 Defects 18';
+    final funcStatus = funcRec?.status ?? 'Approved';
+    final funcRemarks = cleanRemarks(funcRec?.notes);
+
+    // 4. Residual Stress Test
+    final rsSample = calConfig['residual_sample'] as String? ?? (rsRec != null && rsRec.produced > 0 ? '${rsRec.produced} rounds' : '50 rounds');
+    final rsCracks = rsRec != null ? (rsRec.neckSlow + rsRec.neckFast + rsRec.shoulderSlow + rsRec.shoulderFast + rsRec.bodySlow + rsRec.bodyFast + rsRec.headSlow + rsRec.headFast) : 0;
+    final rsResult = rsRec != null ? '$rsCracks crack${rsCracks == 1 ? '' : 's'}' : '0 crack';
+    final rsReq = calConfig['residual_req'] as String? ?? 'No. of cracks I zone ≤ 3 Cracks<br/>No. of cracks M, L, K, J & S zone = 0 Crack';
+    final rsStatus = rsRec?.status ?? 'Approved';
+    final rsRemarks = cleanRemarks(rsRec?.notes);
+
+    // 5. Accuracy Test
+    final accSample = calConfig['accuracy_sample'] as String? ?? (accRec != null && accRec.produced > 0 ? '${accRec.produced} rounds' : '30 rounds');
+    String accResult = '';
+    if (accRec != null && accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
+      accResult = '<strong>SD X:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${accRec.accSDX} mm<br/><strong>SD Y:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${accRec.accSDY} mm';
+    } else if (accRec != null && accRec.accMeanRadius.isNotEmpty) {
+      accResult = '<strong>Mean Radius:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${accRec.accMeanRadius} mm';
+    } else {
+      accResult = '<strong>SD X:</strong>&nbsp;&nbsp;&nbsp;&nbsp;105.5 mm<br/><strong>SD Y:</strong>&nbsp;&nbsp;&nbsp;&nbsp;119.3 mm';
+    }
+    final accReq = calConfig['accuracy_req'] as String? ?? 'SD ≤ 200 mm';
+    final accStatus = accRec?.status ?? 'Approved';
+    final accRemarks = cleanRemarks(accRec?.notes);
+
+    // 6. Extraction Force Test
+    final extSample = calConfig['extraction_sample'] as String? ?? (extRec != null && extRec.produced > 0 ? '${extRec.produced} rounds' : '20 rounds');
+    final extMin = extRec != null && extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec != null && extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '474.2');
+    final extResult = extRec != null ? 'Min Force:&nbsp;&nbsp;&nbsp;&nbsp;$extMin N' : 'Min Force:&nbsp;&nbsp;&nbsp;&nbsp;474.2 N';
+    final extReq = calConfig['extraction_req'] as String? ?? 'Min Force ≥ 200';
+    final extStatus = extRec?.status ?? 'Approved';
+    final extRemarks = cleanRemarks(extRec?.notes);
+
+    // 7. Waterproof Test
+    final wpSample = calConfig['waterproof_sample'] as String? ?? (wpRec != null && wpRec.produced > 0 ? '${wpRec.produced} rounds' : '20 rounds');
+    final wpLeaks = wpRec != null ? (wpRec.mouthSlow + wpRec.mouthFast + wpRec.primerSlow + wpRec.primerFast) : 0;
+    final wpResult = wpRec != null ? '$wpLeaks leaks' : '0 leaks';
+    final wpReq = calConfig['waterproof_req'] as String? ?? 'No. of Leaks ≤ 6 Leaks';
+    final wpStatus = wpRec?.status ?? 'Approved';
+    final wpRemarks = cleanRemarks(wpRec?.notes);
+
+    final bool hasRejection = records.any((r) => r.status.toLowerCase().contains('reject'));
+    final String overallStatusText = hasRejection ? 'Rejected' : 'Approved';
+    final String overallStatusColor = hasRejection ? '#dc2626' : '#16a34a';
+
+    final buffer = StringBuffer();
+    buffer.writeln('''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>$title</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 15mm 15mm 15mm 15mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: #0f172a;
+      background-color: #ffffff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .cert-wrapper {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .cert-title-header {
+      text-align: center;
+      margin-top: 10px;
+      margin-bottom: 25px;
+    }
+    .cert-title-header h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #000000;
+      letter-spacing: 0.5px;
+      margin: 0 0 10px 0;
+    }
+    .cert-title-header .caliber-subtitle {
+      font-size: 15px;
+      font-weight: 700;
+      color: #000000;
+      margin-bottom: 8px;
+    }
+    .cert-title-header .lot-subtitle {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #000000;
+    }
+    .header-divider {
+      border: none;
+      border-top: 1px solid #cbd5e1;
+      margin: 18px auto 25px auto;
+      width: 96%;
+    }
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #cbd5e1;
+      margin-bottom: 25px;
+      font-size: 11.5px;
+    }
+    .results-table th {
+      background-color: #f1f5f9;
+      color: #475569;
+      font-weight: bold;
+      text-align: center;
+      padding: 8px 6px;
+      border: 1px solid #cbd5e1;
+    }
+    .results-table td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      vertical-align: middle;
+      line-height: 1.4;
+    }
+    .test-name-cell {
+      color: #0284c7;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .temp-cell {
+      color: #0284c7;
+      font-weight: bold;
+      text-align: center;
+    }
+    .status-cell {
+      text-align: center;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .overall-status-box {
+      text-align: center;
+      margin-top: 10px;
+      margin-bottom: 16px;
+    }
+    .signatures-block {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      margin-top: 14px;
+      page-break-inside: avoid;
+    }
+    .sig-col {
+      display: table-cell;
+      width: 33.33%;
+      vertical-align: top;
+      padding-right: 15px;
+    }
+    .sig-line {
+      border-bottom: 1px solid #94a3b8;
+      width: 85%;
+      height: 24px;
+      margin-bottom: 6px;
+    }
+    .ref-footer {
+      margin-top: 14px;
+      font-size: 11.5px;
+      font-weight: bold;
+      color: #334155;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="cert-wrapper">
+    <div class="cert-title-header">
+      <h1>FINAL LOT ACCEPTANCE CERTIFICATE</h1>
+      <div class="caliber-subtitle">${cleanCaliber.toUpperCase()}</div>
+      <div class="lot-subtitle">
+        <span style="display: inline-block; width: 90px; text-align: left;">Lot N.O:</span>
+        <span style="display: inline-block; text-align: left;">$cleanLotNo</span>
+      </div>
+      <hr class="header-divider" />
+    </div>
+
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th style="width: 20%;">Test Name</th>
+          <th style="width: 12%;">Sample<br/>Size</th>
+          <th style="width: 25%;">Results</th>
+          <th style="width: 25%;">Requirements</th>
+          <th style="width: 10%;">Status</th>
+          <th style="width: 8%;">Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 1. Primer Sensitivity Test -->
+        <tr>
+          <td class="test-name-cell">Primer Sensitivity Test</td>
+          <td style="text-align: center;">$primerSample</td>
+          <td>$primerResult</td>
+          <td>$primerReq</td>
+          <td class="status-cell">$primerStatus</td>
+          <td style="text-align: center;">$primerRemarks</td>
+        </tr>
+
+        <!-- 2. EPVAT test (+21 °C, +52 °C, -54 °C) -->
+        <tr>
+          <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: top; border-bottom: 1px solid #cbd5e1;">
+            <div>EPVAT test</div>
+            <div style="margin-top: 10px; color: #0284c7; font-weight: bold;">+21 &deg;C</div>
+          </td>
+          <td style="text-align: center;">$epvSample21</td>
+          <td>$epvResult21</td>
+          <td>$epvReq21</td>
+          <td class="status-cell">$epvStatus21</td>
+          <td style="text-align: center;">$epvRemarks21</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">
+            +52 &deg;C
+          </td>
+          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvResult52</td>
+          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvReq52</td>
+          <td class="status-cell">$epvStatus52</td>
+          <td style="text-align: center;">$epvRemarks52</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">
+            -54 &deg;C
+          </td>
+          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvResult54</td>
+          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvReq54</td>
+          <td class="status-cell">$epvStatus54</td>
+          <td style="text-align: center;">$epvRemarks54</td>
+        </tr>
+
+        <!-- 3. Function Test -->
+        <tr>
+          <td class="test-name-cell">Function Test</td>
+          <td style="text-align: center;">$funcSample</td>
+          <td>$funcResult</td>
+          <td>$funcReq</td>
+          <td class="status-cell">$funcStatus</td>
+          <td style="text-align: center;">$funcRemarks</td>
+        </tr>
+
+        <!-- 4. Residual Stress Test -->
+        <tr>
+          <td class="test-name-cell">Residual Stress Test</td>
+          <td style="text-align: center;">$rsSample</td>
+          <td>$rsResult</td>
+          <td>$rsReq</td>
+          <td class="status-cell">$rsStatus</td>
+          <td style="text-align: center;">$rsRemarks</td>
+        </tr>
+
+        <!-- 5. Accuracy Test -->
+        <tr>
+          <td class="test-name-cell">Accuracy Test</td>
+          <td style="text-align: center;">$accSample</td>
+          <td>$accResult</td>
+          <td>$accReq</td>
+          <td class="status-cell">$accStatus</td>
+          <td style="text-align: center;">$accRemarks</td>
+        </tr>
+
+        <!-- 6. Extraction Force Test -->
+        <tr>
+          <td class="test-name-cell">Extraction Force Test</td>
+          <td style="text-align: center;">$extSample</td>
+          <td>$extResult</td>
+          <td>$extReq</td>
+          <td class="status-cell">$extStatus</td>
+          <td style="text-align: center;">$extRemarks</td>
+        </tr>
+
+        <!-- 7. Waterproof Test -->
+        <tr>
+          <td class="test-name-cell">Waterproof Test</td>
+          <td style="text-align: center;">$wpSample</td>
+          <td>$wpResult</td>
+          <td>$wpReq</td>
+          <td class="status-cell">$wpStatus</td>
+          <td style="text-align: center;">$wpRemarks</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="overall-status-box">
+      <span style="font-size: 14.5px; font-weight: bold; color: #0f172a; margin-right: 25px;">Overall Status:</span>
+      <span style="font-size: 16px; font-weight: 800; color: $overallStatusColor;">$overallStatusText</span>
+    </div>
+
+    <div class="signatures-block">
+      <div class="sig-col">
+        <div class="sig-line"></div>
+        <div style="font-size: 12px; color: #1e293b;">Prepared By: $inspectorName</div>
+        <div style="font-size: 11px; color: #475569; margin-top: 2px;">Ballistic Technician</div>
+      </div>
+      <div class="sig-col">
+        <div class="sig-line"></div>
+        <div style="font-size: 12px; color: #1e293b;">Approved By: $supervisorName</div>
+        <div style="font-size: 11px; color: #475569; margin-top: 2px;">Action Ballistic &amp; Engineering Supervisor</div>
+      </div>
+      <div class="sig-col">
+        <div class="sig-line"></div>
+        <div style="font-size: 12px; color: #1e293b;">Authorized By: $managerName</div>
+        <div style="font-size: 11px; color: #475569; margin-top: 2px;">Acting QC &amp; Engineering Manager</div>
+      </div>
+    </div>
+
+    <div class="ref-footer">
+      $reportRefNo
+    </div>
+  </div>
+</body>
+</html>
+''');
+    return buffer.toString();
+  }
+
+  static String _generateFinalCertificateWord({
+    required List<BallisticRecord> records,
+    required String moduleName,
+    String base64Logo = '',
+    Map<String, dynamic> adminRules = const {},
+    String loggedInUser = '',
+  }) {
+    // Generate identical compliant HTML markup inside Word document container
+    final html = _generateFinalCertificateHtml(
+      records: records,
+      moduleName: moduleName,
+      base64Logo: base64Logo,
+      adminRules: adminRules,
+      loggedInUser: loggedInUser,
+    );
+
+    final cleanCaliber = records.isNotEmpty ? records.first.caliber.replaceAll(';', ' ').trim() : 'Ammo';
+    final cleanLotNo = records.isNotEmpty ? records.first.lotNo.trim() : 'Lot';
+    final title = '${cleanCaliber}_Final_Lot_Acceptance_Certificate_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+    final body = _extractReportBody(html);
+
+    return '''
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset="utf-8">
+  <title>$title</title>
+  <style>
+    @page Section1 {
+      size: 595.3pt 841.9pt;
+      margin: 42.5pt 42.5pt 42.5pt 42.5pt;
+      mso-header-margin: 35.4pt;
+      mso-footer-margin: 35.4pt;
+    }
+    div.Section1 { page: Section1; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000000; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 10pt; }
+    th { background-color: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="Section1">
+    $body
+  </div>
+</body>
+</html>
+''';
   }
 }

@@ -307,6 +307,34 @@ class BallisticRecord {
     return ((produced - defects) / produced) * 100.0;
   }
 
+  // Clean remark without REF numbers or technical encoding tags
+  String get cleanNotes {
+    if (notes.trim().isEmpty) return '';
+    String s = notes.trim();
+    if (s.toLowerCase() == 'no remarks recorded.' || s.toLowerCase() == 'no remarks recorded') return '';
+    s = s.replaceAll(RegExp(r'\[REF:[^\]]*\]', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\bREF[:\-]\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\bRef\s*No[:\-]?\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
+    if (s.contains('Temps:')) {
+      final idx = s.indexOf('Temps:');
+      s = s.substring(0, idx).trim();
+      if (s.endsWith('|')) s = s.substring(0, s.length - 1).trim();
+    }
+    if (s.contains('[RETEST|')) {
+      final idx = s.indexOf('[RETEST|');
+      s = s.substring(0, idx).trim();
+    }
+    if (s.contains('[RETEST by')) {
+      final idx = s.indexOf('[RETEST by');
+      s = s.substring(0, idx).trim();
+    }
+    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (s.toLowerCase() == 'no remarks recorded.' || s.toLowerCase() == 'no remarks recorded' || s == '-' || s == '.') {
+      return '';
+    }
+    return s;
+  }
+
   // Compile to formatted CSV row
   String toCsvRow() {
     final cleanOps = operators.replaceAll('"', '""').replaceAll(',', ' & ');
@@ -1281,7 +1309,7 @@ class BallisticRecord {
       // Group key: lotNo + date (first 10 chars of timestamp) + caliber
       final dateKey = r.timestamp.length >= 10 ? r.timestamp.substring(0, 10) : r.timestamp;
 
-      if (!isDaily && isEpvat && (r.notes.contains('Multi-Temperature Consolidated') || r.cartridgeTemp.contains(','))) {
+      if (!isDaily && isEpvat && (r.epvatPressureType == 'Overall' || r.notes.contains('Multi-Temperature Consolidated') || r.notes.contains('Consolidated EPVAT') || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains('  '))) {
         // Already unified EPVAT - deduplicate using seenGeneral
         final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
         final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : 'EPVAT_${r.module}_${r.lotNo}_${r.caliber}_$cleanTs';
@@ -1292,7 +1320,7 @@ class BallisticRecord {
         // Individual temp record to consolidate in Lot Acceptance
         final key = '${r.lotNo}_${r.caliber}_$dateKey';
         epvatGroups.putIfAbsent(key, () => []).add(r);
-      } else if (!isDaily && isFunc && (r.notes.contains('Consolidated Multi-Temperature') || r.cartridgeTemp.contains(','))) {
+      } else if (!isDaily && isFunc && (r.notes.contains('Consolidated Multi-Temperature') || r.notes.contains('Consolidated Function') || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains('  '))) {
         // Already unified Function - deduplicate using seenGeneral
         final cleanTs = r.timestamp.replaceAll('T', ' ').split('.').first.trim();
         final key = (r.id != null && r.id!.isNotEmpty) ? r.id! : 'FUNC_${r.module}_${r.lotNo}_${r.caliber}_$cleanTs';
@@ -1331,9 +1359,10 @@ class BallisticRecord {
         final totalDefects = group.fold<int>(0, (sum, item) => sum + item.defects);
         final temps = group.map((e) => e.cartridgeTemp).where((t) => t.isNotEmpty).toSet().join(', ');
         final notes = 'Consolidated EPVAT ($temps) | Total: $totalSample rds';
-        final anyRejected = group.any((e) => e.status.toUpperCase() == 'REJECTED');
+        final anyRejected = group.any((e) => e.status.toUpperCase().contains('REJECT'));
         final anyHold = group.any((e) => e.status.toUpperCase() == 'HOLD');
-        final status = anyRejected ? 'REJECTED' : (anyHold ? 'HOLD' : 'ACCEPTED');
+        final anyRetest = group.any((e) => e.status.toUpperCase().contains('RETEST'));
+        final status = anyRejected ? 'Rejected' : (anyRetest ? 'Retest' : (anyHold ? 'Hold' : 'Approved'));
 
         result.add(base.copyWith(
           produced: totalSample,
@@ -1358,9 +1387,10 @@ class BallisticRecord {
         final totalL3 = group.fold<int>(0, (sum, item) => sum + item.functionLevel3);
         final totalL4 = group.fold<int>(0, (sum, item) => sum + item.functionLevel4);
         final temps = group.map((e) => e.cartridgeTemp).where((t) => t.isNotEmpty).toSet().join(', ');
-        final anyRejected = group.any((e) => e.status.toUpperCase() == 'REJECTED');
+        final anyRejected = group.any((e) => e.status.toUpperCase().contains('REJECT'));
         final anyHold = group.any((e) => e.status.toUpperCase() == 'HOLD');
-        final status = anyRejected ? 'REJECTED' : (anyHold ? 'HOLD' : 'ACCEPTED');
+        final anyRetest = group.any((e) => e.status.toUpperCase().contains('RETEST'));
+        final status = anyRejected ? 'Rejected' : (anyRetest ? 'Retest' : (anyHold ? 'Hold' : 'Approved'));
 
         result.add(base.copyWith(
           produced: totalSample,

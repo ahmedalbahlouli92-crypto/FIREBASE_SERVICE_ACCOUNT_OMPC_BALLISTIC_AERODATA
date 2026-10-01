@@ -240,11 +240,26 @@ void saveWebWitnessConsumptions(List<Map<String, dynamic>> consumptions) {
 
 int getWebRefCounter() {
   final val = _getItem('ompc_test_ref_counter');
-  if (val == null || val.isEmpty) return 1000;
-  return int.tryParse(val) ?? 1000;
+  if (val == null || val.isEmpty) return 0;
+  return int.tryParse(val) ?? 0;
 }
 
 void saveWebRefCounter(int val) {
   _setItem('ompc_test_ref_counter', val.toString());
+}
+
+List<Map<String, dynamic>> getWebEquipmentIssues() {
+  final data = _getItem('ompc_equipment_issues');
+  if (data == null || data.isEmpty) return [];
+  try {
+    final List<dynamic> decoded = jsonDecode(data);
+    return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  } catch (e) {
+    return [];
+  }
+}
+
+void saveWebEquipmentIssues(List<Map<String, dynamic>> issues) {
+  _setItem('ompc_equipment_issues', jsonEncode(issues));
 }
 
