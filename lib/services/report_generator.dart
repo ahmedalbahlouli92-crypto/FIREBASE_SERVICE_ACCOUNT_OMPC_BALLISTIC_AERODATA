@@ -2875,7 +2875,7 @@ class ReportGenerator {
     final primerSample = calConfig['primer_sample'] as String? ?? (primerRec != null && primerRec.produced > 0 ? '${primerRec.produced} rounds' : '175 rounds');
     final primerH5 = primerRec != null && primerRec.primerAllFireH.isNotEmpty ? primerRec.primerAllFireH : '360.50';
     final primerH2 = primerRec != null && primerRec.primerNoFireH.isNotEmpty ? primerRec.primerNoFireH : '114.10';
-    final primerResult = '<strong>H̄+5SD:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$primerH5 mm<br/><strong>H̄-2SD:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$primerH2 mm';
+    final primerResult = '<div style="font-weight: bold; color: #1e293b;">H̄+5SD: <span style="font-weight: normal;">$primerH5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">H̄-2SD: <span style="font-weight: normal;">$primerH2 mm</span></div>';
     final primerReq = calConfig['primer_req'] as String? ?? 'H̄+5SD ≤ 450 mm<br/>H̄-2SD ≥ 75 mm';
     final primerStatus = primerRec?.status ?? 'Approved';
     final primerRemarks = cleanRemarks(primerRec?.notes);
@@ -2893,7 +2893,7 @@ class ReportGenerator {
         for (final f in configuredLines) {
           try {
             final val = EpvatFormulaHelper.evaluate(f, epvVars, defaultTemp: temp);
-            resList.add('<strong>$f:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit');
+            resList.add('<div style="font-weight: bold; color: #1e293b;">$f: <span style="font-weight: normal;">${val.toStringAsFixed(1)} $activePressureUnit</span></div>');
           } catch (_) {
             if (f.contains(':')) {
               final idx = f.indexOf(':');
@@ -2901,31 +2901,31 @@ class ReportGenerator {
               final expr = f.substring(idx + 1).trim();
               try {
                 final val = EpvatFormulaHelper.evaluate(expr, epvVars, defaultTemp: temp);
-                resList.add('<strong>$lbl:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit');
+                resList.add('<div style="font-weight: bold; color: #1e293b;">$lbl: <span style="font-weight: normal;">${val.toStringAsFixed(1)} $activePressureUnit</span></div>');
                 continue;
               } catch (_) {}
             }
-            resList.add('<strong>$f:</strong>&nbsp;&nbsp;&nbsp;&nbsp;- $activePressureUnit');
+            resList.add('<div style="font-weight: bold; color: #1e293b;">$f: <span style="font-weight: normal;">- $activePressureUnit</span></div>');
           }
         }
-        if (resList.isNotEmpty) return resList.join('<br/>');
+        if (resList.isNotEmpty) return resList.join('');
       }
 
       if (rec != null) {
         final p1 = rec.epvatMeanPressure.isNotEmpty ? rec.epvatMeanPressure : '';
         final p2 = rec.epvatP2MeanPressure.isNotEmpty ? rec.epvatP2MeanPressure : '';
         final parts = <String>[];
-        if (p1.isNotEmpty) parts.add('<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$p1 $activePressureUnit');
-        if (p2.isNotEmpty) parts.add('<strong>Mean Port:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$p2 $activePressureUnit');
-        if (parts.isNotEmpty) return parts.join('<br/>');
+        if (p1.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>');
+        if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
+        if (parts.isNotEmpty) return parts.join('');
       }
 
       if (temp == '21') {
-        return '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;3424.0 $activePressureUnit<br/><strong>Mean Port:</strong>&nbsp;&nbsp;&nbsp;&nbsp;1201.5 $activePressureUnit';
+        return '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">3424.0 $activePressureUnit</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">1201.5 $activePressureUnit</span></div>';
       } else if (temp == '52') {
-        return '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;3450.0 $activePressureUnit';
+        return rec != null ? '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">3450.0 $activePressureUnit</span></div>' : '<span style="color: #94a3b8; font-style: italic;">-</span>';
       } else {
-        return '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;3380.0 $activePressureUnit';
+        return rec != null ? '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">3380.0 $activePressureUnit</span></div>' : '<span style="color: #94a3b8; font-style: italic;">-</span>';
       }
     }
 
@@ -2934,14 +2934,14 @@ class ReportGenerator {
     final epvStatus21 = epvRec21?.status ?? 'Approved';
     final epvRemarks21 = cleanRemarks(epvRec21?.notes);
 
-    final epvResult52 = buildEpvatTempResult(calConfig['epvat_result_formula_52'] as String? ?? '', '52', epvRec52 ?? epvRec21);
+    final epvResult52 = buildEpvatTempResult(calConfig['epvat_result_formula_52'] as String? ?? '', '52', epvRec52);
     final epvReq52 = calConfig['epvat_req_52'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
-    final epvStatus52 = epvRec52?.status ?? 'Approved';
+    final epvStatus52 = epvRec52?.status ?? (epvRec21 != null ? 'Approved' : 'Approved');
     final epvRemarks52 = cleanRemarks(epvRec52?.notes);
 
-    final epvResult54 = buildEpvatTempResult(calConfig['epvat_result_formula_54'] as String? ?? '', '54', epvRec54 ?? epvRec21);
+    final epvResult54 = buildEpvatTempResult(calConfig['epvat_result_formula_54'] as String? ?? '', '54', epvRec54);
     final epvReq54 = calConfig['epvat_req_54'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port ≥ 1030 Bar';
-    final epvStatus54 = epvRec54?.status ?? 'Approved';
+    final epvStatus54 = epvRec54?.status ?? (epvRec21 != null ? 'Approved' : 'Approved');
     final epvRemarks54 = cleanRemarks(epvRec54?.notes);
 
     // 3. Function Test
@@ -2954,7 +2954,7 @@ class ReportGenerator {
 
     // 4. Residual Stress Test
     final rsSample = calConfig['residual_sample'] as String? ?? (rsRec != null && rsRec.produced > 0 ? '${rsRec.produced} rounds' : '50 rounds');
-    final rsCracks = rsRec != null ? (rsRec.neckSlow + rsRec.neckFast + rsRec.shoulderSlow + rsRec.shoulderFast + rsRec.bodySlow + rsRec.bodyFast + rsRec.headSlow + rsRec.headFast) : 0;
+    final rsCracks = rsRec != null ? (rsRec.neckSlow + rsRec.neckFast + rsRec.shoulderSlow + rsRec.shoulderFast + rsRec.bodySlow + rsRec.headSlow + rsRec.headFast) : 0;
     final rsResult = rsRec != null ? '$rsCracks crack${rsCracks == 1 ? '' : 's'}' : '0 crack';
     final rsReq = calConfig['residual_req'] as String? ?? 'No. of cracks I zone ≤ 3 Cracks<br/>No. of cracks M, L, K, J & S zone = 0 Crack';
     final rsStatus = rsRec?.status ?? 'Approved';
@@ -2964,11 +2964,11 @@ class ReportGenerator {
     final accSample = calConfig['accuracy_sample'] as String? ?? (accRec != null && accRec.produced > 0 ? '${accRec.produced} rounds' : '30 rounds');
     String accResult = '';
     if (accRec != null && accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
-      accResult = '<strong>SD X:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${accRec.accSDX} mm<br/><strong>SD Y:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${accRec.accSDY} mm';
+      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">${accRec.accSDX} mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">${accRec.accSDY} mm</span></div>';
     } else if (accRec != null && accRec.accMeanRadius.isNotEmpty) {
-      accResult = '<strong>Mean Radius:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${accRec.accMeanRadius} mm';
+      accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Radius: <span style="font-weight: normal;">${accRec.accMeanRadius} mm</span></div>';
     } else {
-      accResult = '<strong>SD X:</strong>&nbsp;&nbsp;&nbsp;&nbsp;105.5 mm<br/><strong>SD Y:</strong>&nbsp;&nbsp;&nbsp;&nbsp;119.3 mm';
+      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">105.5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">119.3 mm</span></div>';
     }
     final accReq = calConfig['accuracy_req'] as String? ?? 'SD ≤ 200 mm';
     final accStatus = accRec?.status ?? 'Approved';
@@ -2977,7 +2977,7 @@ class ReportGenerator {
     // 6. Extraction Force Test
     final extSample = calConfig['extraction_sample'] as String? ?? (extRec != null && extRec.produced > 0 ? '${extRec.produced} rounds' : '20 rounds');
     final extMin = extRec != null && extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec != null && extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '474.2');
-    final extResult = extRec != null ? 'Min Force:&nbsp;&nbsp;&nbsp;&nbsp;$extMin N' : 'Min Force:&nbsp;&nbsp;&nbsp;&nbsp;474.2 N';
+    final extResult = '<div style="font-weight: bold; color: #1e293b;">Min Force: <span style="font-weight: normal;">$extMin N</span></div>';
     final extReq = calConfig['extraction_req'] as String? ?? 'Min Force ≥ 200';
     final extStatus = extRec?.status ?? 'Approved';
     final extRemarks = cleanRemarks(extRec?.notes);
@@ -2992,21 +2992,31 @@ class ReportGenerator {
 
     final bool hasRejection = records.any((r) => r.status.toLowerCase().contains('reject'));
     final String overallStatusText = hasRejection ? 'Rejected' : 'Approved';
-    final String overallStatusColor = hasRejection ? '#dc2626' : '#16a34a';
+    final String overallStatusColor = hasRejection ? '#dc2626' : '#15803d';
 
     final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
     final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
     final managerSig = _findSignatureBase64(managerName, adminRules);
 
     final inspectorSigImg = inspectorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 38px;"></div>';
+        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 44px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
+        : '<div style="height: 34px;"></div>';
     final supervisorSigImg = supervisorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 38px;"></div>';
+        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 44px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
+        : '<div style="height: 34px;"></div>';
     final managerSigImg = managerSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(managerSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 38px;"></div>';
+        ? '<img src="${_formatImageSrc(managerSig)}" style="max-height: 44px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
+        : '<div style="height: 34px;"></div>';
+
+    String formatStatusBadge(String status) {
+      final s = status.trim().isEmpty ? 'Approved' : status.trim();
+      final isApproved = s.toLowerCase().contains('approved') || s.toLowerCase() == 'pass';
+      final isRejected = s.toLowerCase().contains('reject') || s.toLowerCase() == 'fail';
+      final bg = isApproved ? '#dcfce7' : (isRejected ? '#fee2e2' : '#fef3c7');
+      final fg = isApproved ? '#15803d' : (isRejected ? '#b91c1c' : '#b45309');
+      final border = isApproved ? '#86efac' : (isRejected ? '#fca5a5' : '#fde68a');
+      return '<span style="display: inline-block; padding: 2px 7px; border-radius: 4px; background-color: $bg; color: $fg; font-weight: bold; font-size: 7.5pt; border: 1px solid $border; white-space: nowrap;">$s</span>';
+    }
 
     final buffer = StringBuffer();
     buffer.writeln('''
@@ -3014,130 +3024,126 @@ class ReportGenerator {
 <html>
 <head>
   <meta charset="utf-8">
-  <title></title>
+  <title>$title</title>
   <style>
     @page {
       size: A4 portrait;
-      margin: 0;
+      margin: 8mm 10mm;
     }
     @media print {
       @page {
-        margin: 0;
+        margin: 8mm 10mm;
       }
       body {
-        margin: 12mm 15mm !important;
+        margin: 0 !important;
         padding: 0 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+      }
+      .cert-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       margin: 0;
-      padding: 16px 20px;
+      padding: 12px 16px;
       color: #0f172a;
       background-color: #ffffff;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .cert-wrapper {
-      max-width: 900px;
+      max-width: 860px;
       margin: 0 auto;
     }
     .cert-title-header {
       text-align: center;
-      margin-top: 10px;
-      margin-bottom: 25px;
+      margin-top: 4px;
+      margin-bottom: 14px;
     }
     .cert-title-header h1 {
-      font-size: 20px;
+      font-size: 15pt;
       font-weight: 800;
       color: #000000;
       letter-spacing: 0.5px;
-      margin: 0 0 10px 0;
+      margin: 0 0 4px 0;
+      text-transform: uppercase;
     }
     .cert-title-header .caliber-subtitle {
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 11pt;
+      font-weight: bold;
       color: #000000;
-      margin-bottom: 8px;
+      margin-bottom: 3px;
     }
     .cert-title-header .lot-subtitle {
-      font-size: 14.5px;
-      font-weight: 700;
+      font-size: 10.5pt;
+      font-weight: bold;
       color: #000000;
     }
     .header-divider {
       border: none;
       border-top: 1px solid #cbd5e1;
-      margin: 18px auto 25px auto;
+      margin: 10px auto 14px auto;
       width: 96%;
     }
     .results-table {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid #cbd5e1;
-      margin-bottom: 25px;
-      font-size: 11.5px;
+      margin-bottom: 12px;
+      font-size: 8pt;
     }
     .results-table th {
       background-color: #f1f5f9;
-      color: #475569;
+      color: #1e293b;
       font-weight: bold;
       text-align: center;
-      padding: 8px 6px;
+      vertical-align: middle;
+      padding: 5px 4px;
       border: 1px solid #cbd5e1;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
     .results-table td {
       border: 1px solid #cbd5e1;
-      padding: 8px 10px;
+      padding: 4px 6px;
       vertical-align: middle;
-      line-height: 1.4;
+      font-size: 8pt;
+      line-height: 1.35;
     }
     .test-name-cell {
       color: #0284c7;
       font-weight: bold;
-      font-size: 12px;
+      font-size: 8.5pt;
+      text-align: center;
     }
     .temp-cell {
       color: #0284c7;
       font-weight: bold;
       text-align: center;
+      font-size: 8pt;
     }
     .status-cell {
       text-align: center;
-      font-weight: 600;
-      color: #1e293b;
+      vertical-align: middle;
     }
-    .overall-status-box {
-      text-align: center;
-      margin-top: 10px;
-      margin-bottom: 16px;
-    }
-    .signatures-block {
+    .signatures-table {
       width: 100%;
-      display: table;
-      table-layout: fixed;
-      margin-top: 14px;
+      border-collapse: collapse;
+      margin-top: 8px;
+      border: none;
       page-break-inside: avoid;
     }
-    .sig-col {
-      display: table-cell;
-      width: 33.33%;
-      vertical-align: top;
-      padding-right: 15px;
-    }
-    .sig-line {
-      border-bottom: 1px solid #94a3b8;
-      width: 85%;
-      height: 24px;
-      margin-bottom: 6px;
-    }
     .ref-footer {
-      margin-top: 14px;
-      font-size: 11.5px;
+      margin-top: 10px;
+      font-size: 8.5pt;
       font-weight: bold;
-      color: #334155;
+      color: #475569;
       text-align: left;
     }
   </style>
@@ -3145,24 +3151,21 @@ class ReportGenerator {
 <body>
   <div class="cert-wrapper">
     <div class="cert-title-header">
-      <h1>FINAL LOT ACCEPTANCE CERTIFICATE</h1>
+      <h1>Final Lot Acceptance Certificate</h1>
       <div class="caliber-subtitle">${cleanCaliber.toUpperCase()}</div>
-      <div class="lot-subtitle">
-        <span style="display: inline-block; width: 90px; text-align: left;">Lot N.O:</span>
-        <span style="display: inline-block; text-align: left;">$cleanLotNo</span>
-      </div>
+      <div class="lot-subtitle">Lot N.O: $cleanLotNo</div>
       <hr class="header-divider" />
     </div>
 
     <table class="results-table">
       <thead>
         <tr>
-          <th colspan="2" style="width: 22%;">Test Name</th>
-          <th style="width: 12%;">Sample Size</th>
-          <th style="width: 25%;">Results</th>
-          <th style="width: 25%;">Requirements</th>
-          <th style="width: 8%;">Status</th>
-          <th style="width: 8%;">Remarks</th>
+          <th colspan="2" style="width: 20%; text-align: center;">Test Name</th>
+          <th style="width: 13%; text-align: center;">Sample Size</th>
+          <th style="width: 27%; text-align: center;">Results</th>
+          <th style="width: 26%; text-align: center;">Requirements</th>
+          <th style="width: 8%; text-align: center;">Status</th>
+          <th style="width: 6%; text-align: center;">Remarks</th>
         </tr>
       </thead>
       <tbody>
@@ -3170,34 +3173,34 @@ class ReportGenerator {
         <tr>
           <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
           <td style="text-align: center;">$primerSample</td>
-          <td>$primerResult</td>
-          <td>$primerReq</td>
-          <td class="status-cell">$primerStatus</td>
+          <td style="text-align: center;">$primerResult</td>
+          <td style="text-align: center;">$primerReq</td>
+          <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
           <td style="text-align: center;">$primerRemarks</td>
         </tr>
 
         <!-- 2. EPVAT test (+21 °C, +52 °C, -54 °C) -->
         <tr>
-          <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: left; width: 14%;">EPVAT test</td>
-          <td style="text-align: center; color: #0284c7; font-weight: bold; width: 8%;">+21 &deg;C</td>
+          <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
+          <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
           <td rowspan="3" style="text-align: center; vertical-align: middle;">$epvSample21</td>
-          <td>$epvResult21</td>
-          <td>$epvReq21</td>
-          <td class="status-cell">$epvStatus21</td>
+          <td style="text-align: center;">$epvResult21</td>
+          <td style="text-align: center;">$epvReq21</td>
+          <td class="status-cell">${formatStatusBadge(epvStatus21)}</td>
           <td style="text-align: center;">$epvRemarks21</td>
         </tr>
         <tr>
-          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">+52 &deg;C</td>
-          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvResult52</td>
-          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvReq52</td>
-          <td class="status-cell">$epvStatus52</td>
+          <td class="temp-cell">+52 &deg;C</td>
+          <td style="text-align: center;">$epvResult52</td>
+          <td style="text-align: center;">$epvReq52</td>
+          <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
           <td style="text-align: center;">$epvRemarks52</td>
         </tr>
         <tr>
-          <td style="border: 1px solid #cbd5e1; text-align: center; color: #0284c7; font-weight: bold;">-54 &deg;C</td>
-          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvResult54</td>
-          <td style="border: 1px solid #cbd5e1; padding: 8px 10px;">$epvReq54</td>
-          <td class="status-cell">$epvStatus54</td>
+          <td class="temp-cell">-54 &deg;C</td>
+          <td style="text-align: center;">$epvResult54</td>
+          <td style="text-align: center;">$epvReq54</td>
+          <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
           <td style="text-align: center;">$epvRemarks54</td>
         </tr>
 
@@ -3205,9 +3208,9 @@ class ReportGenerator {
         <tr>
           <td colspan="2" class="test-name-cell">Function Test</td>
           <td style="text-align: center;">$funcSample</td>
-          <td>$funcResult</td>
-          <td>$funcReq</td>
-          <td class="status-cell">$funcStatus</td>
+          <td style="text-align: center;">$funcResult</td>
+          <td style="text-align: center;">$funcReq</td>
+          <td class="status-cell">${formatStatusBadge(funcStatus)}</td>
           <td style="text-align: center;">$funcRemarks</td>
         </tr>
 
@@ -3215,9 +3218,9 @@ class ReportGenerator {
         <tr>
           <td colspan="2" class="test-name-cell">Residual Stress Test</td>
           <td style="text-align: center;">$rsSample</td>
-          <td>$rsResult</td>
-          <td>$rsReq</td>
-          <td class="status-cell">$rsStatus</td>
+          <td style="text-align: center;">$rsResult</td>
+          <td style="text-align: center;">$rsReq</td>
+          <td class="status-cell">${formatStatusBadge(rsStatus)}</td>
           <td style="text-align: center;">$rsRemarks</td>
         </tr>
 
@@ -3225,9 +3228,9 @@ class ReportGenerator {
         <tr>
           <td colspan="2" class="test-name-cell">Accuracy Test</td>
           <td style="text-align: center;">$accSample</td>
-          <td>$accResult</td>
-          <td>$accReq</td>
-          <td class="status-cell">$accStatus</td>
+          <td style="text-align: center;">$accResult</td>
+          <td style="text-align: center;">$accReq</td>
+          <td class="status-cell">${formatStatusBadge(accStatus)}</td>
           <td style="text-align: center;">$accRemarks</td>
         </tr>
 
@@ -3235,9 +3238,9 @@ class ReportGenerator {
         <tr>
           <td colspan="2" class="test-name-cell">Extraction Force Test</td>
           <td style="text-align: center;">$extSample</td>
-          <td>$extResult</td>
-          <td>$extReq</td>
-          <td class="status-cell">$extStatus</td>
+          <td style="text-align: center;">$extResult</td>
+          <td style="text-align: center;">$extReq</td>
+          <td class="status-cell">${formatStatusBadge(extStatus)}</td>
           <td style="text-align: center;">$extRemarks</td>
         </tr>
 
@@ -3245,45 +3248,53 @@ class ReportGenerator {
         <tr>
           <td colspan="2" class="test-name-cell">Waterproof Test</td>
           <td style="text-align: center;">$wpSample</td>
-          <td>$wpResult</td>
-          <td>$wpReq</td>
-          <td class="status-cell">$wpStatus</td>
+          <td style="text-align: center;">$wpResult</td>
+          <td style="text-align: center;">$wpReq</td>
+          <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
           <td style="text-align: center;">$wpRemarks</td>
         </tr>
       </tbody>
     </table>
 
-    <!-- Overall Status (Placed ABOVE names and signatures) -->
-    <div class="overall-status-box" style="margin-top: 18px; margin-bottom: 22px; padding: 10px 18px; border: 1.5px solid ${hasRejection ? '#fca5a5' : '#86efac'}; border-radius: 8px; background-color: ${hasRejection ? '#fef2f2' : '#f0fdf4'}; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid;">
-      <span style="font-size: 13.5px; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">Overall Lot Acceptance Status:</span>
-      <span style="font-size: 14.5px; font-weight: 900; color: $overallStatusColor; background-color: ${hasRejection ? '#fee2e2' : '#dcfce7'}; padding: 4px 16px; border-radius: 6px; letter-spacing: 0.5px;">$overallStatusText</span>
-    </div>
-
-    <!-- Signatures Table (Table 1 from Reference Docx) -->
-    <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 10px; border: none; page-break-inside: avoid;">
+    <!-- Overall Status Table (Placed ABOVE names and signatures) -->
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 12px; border: 1.5px solid ${hasRejection ? '#fca5a5' : '#86efac'}; border-radius: 6px; background-color: ${hasRejection ? '#fef2f2' : '#f0fdf4'}; page-break-inside: avoid;">
       <tr>
-        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: bottom; text-align: center;">
-          $inspectorSigImg
-          <div style="border-bottom: 1.5px solid #94a3b8; width: 85%; margin: 0 auto 6px auto;"></div>
-          <div style="font-size: 11.5px; color: #1e293b;"><strong>Prepared By:</strong> $inspectorName</div>
-          <div style="font-size: 10px; color: #475569; margin-top: 2px;">Ballistic Technician</div>
+        <td style="border: none; padding: 6px 12px; font-size: 9.5pt; font-weight: 800; color: #1e293b; text-align: left; text-transform: uppercase; letter-spacing: 0.5px;">
+          Overall Lot Acceptance Status:
         </td>
-        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: bottom; text-align: center;">
-          $supervisorSigImg
-          <div style="border-bottom: 1.5px solid #94a3b8; width: 85%; margin: 0 auto 6px auto;"></div>
-          <div style="font-size: 11.5px; color: #1e293b;"><strong>Approved By:</strong> $supervisorName</div>
-          <div style="font-size: 10px; color: #475569; margin-top: 2px;">Action Ballistic &amp; Engineering Supervisor</div>
-        </td>
-        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: bottom; text-align: center;">
-          $managerSigImg
-          <div style="border-bottom: 1.5px solid #94a3b8; width: 85%; margin: 0 auto 6px auto;"></div>
-          <div style="font-size: 11.5px; color: #1e293b;"><strong>Authorized By:</strong> $managerName</div>
-          <div style="font-size: 10px; color: #475569; margin-top: 2px;">Acting QC &amp; Engineering Manager</div>
+        <td style="border: none; padding: 6px 12px; text-align: right;">
+          <span style="display: inline-block; font-size: 10pt; font-weight: 900; color: $overallStatusColor; background-color: ${hasRejection ? '#fee2e2' : '#dcfce7'}; padding: 3px 16px; border-radius: 4px; border: 1px solid ${hasRejection ? '#f87171' : '#4ade80'}; letter-spacing: 0.5px;">
+            $overallStatusText
+          </span>
         </td>
       </tr>
     </table>
 
-    <div class="ref-footer" style="margin-top: 18px; font-size: 11.5px; font-weight: bold; color: #334155;">
+    <!-- Signatures Table (Table 1 from Reference Docx) -->
+    <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 6px; border: none; page-break-inside: avoid;">
+      <tr>
+        <td style="width: 33.33%; border: none; padding: 4px 8px; vertical-align: bottom; text-align: center;">
+          $inspectorSigImg
+          <div style="border-bottom: 1.5px solid #94a3b8; width: 82%; margin: 0 auto 5px auto;"></div>
+          <div style="font-size: 8.5pt; color: #1e293b; font-weight: bold;">Prepared By: <span style="font-weight: normal;">$inspectorName</span></div>
+          <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px;">Ballistic Technician</div>
+        </td>
+        <td style="width: 33.33%; border: none; padding: 4px 8px; vertical-align: bottom; text-align: center;">
+          $supervisorSigImg
+          <div style="border-bottom: 1.5px solid #94a3b8; width: 82%; margin: 0 auto 5px auto;"></div>
+          <div style="font-size: 8.5pt; color: #1e293b; font-weight: bold;">Approved By: <span style="font-weight: normal;">$supervisorName</span></div>
+          <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px;">Action Ballistic &amp; Engineering Supervisor</div>
+        </td>
+        <td style="width: 33.33%; border: none; padding: 4px 8px; vertical-align: bottom; text-align: center;">
+          $managerSigImg
+          <div style="border-bottom: 1.5px solid #94a3b8; width: 82%; margin: 0 auto 5px auto;"></div>
+          <div style="font-size: 8.5pt; color: #1e293b; font-weight: bold;">Authorized By: <span style="font-weight: normal;">$managerName</span></div>
+          <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px;">Acting QC &amp; Engineering Manager</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="ref-footer" style="margin-top: 10px; font-size: 8.5pt; font-weight: bold; color: #475569;">
       $reportRefNo
     </div>
   </div>
@@ -3323,15 +3334,27 @@ class ReportGenerator {
   <style>
     @page Section1 {
       size: 595.3pt 841.9pt;
-      margin: 42.5pt 42.5pt 42.5pt 42.5pt;
+      margin: 36.0pt 36.0pt 36.0pt 36.0pt;
       mso-header-margin: 35.4pt;
       mso-footer-margin: 35.4pt;
     }
     div.Section1 { page: Section1; }
-    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000000; }
+    body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000000; }
+    .cert-wrapper { width: 100%; margin: 0; }
+    .cert-title-header { text-align: center; margin-bottom: 12pt; }
+    .cert-title-header h1 { font-size: 14pt; font-weight: bold; color: #000000; margin: 0 0 4pt 0; text-transform: uppercase; }
+    .caliber-subtitle { font-size: 11pt; font-weight: bold; color: #000000; margin-bottom: 3pt; text-align: center; }
+    .lot-subtitle { font-size: 10.5pt; font-weight: bold; color: #000000; text-align: center; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 10pt; }
-    th { background-color: #f1f5f9; }
+    table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 10pt; }
+    table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 4pt 3pt; font-size: 8pt; text-transform: uppercase; }
+    table.results-table td { border: 1px solid #cbd5e1; padding: 4pt 4pt; font-size: 8pt; vertical-align: middle; }
+    .test-name-cell { color: #0284c7; font-weight: bold; font-size: 8.5pt; text-align: center; }
+    .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 8pt; }
+    .status-cell { text-align: center; font-size: 8pt; }
+    .signatures-table { border: none !important; margin-top: 6pt; width: 100%; }
+    .signatures-table td { border: none !important; padding: 3pt 6pt; vertical-align: bottom; text-align: center; }
+    .ref-footer { margin-top: 8pt; font-size: 8.5pt; font-weight: bold; color: #475569; text-align: left; }
   </style>
 </head>
 <body>

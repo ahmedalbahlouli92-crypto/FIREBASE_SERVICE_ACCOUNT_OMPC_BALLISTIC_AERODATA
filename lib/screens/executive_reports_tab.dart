@@ -7,6 +7,7 @@ import '../services/report_generator.dart';
 import '../services/supabase_service.dart';
 import '../services/svg_chart_generator.dart';
 import '../widgets/trend_chart.dart';
+import '../widgets/custom_dashboard_charts.dart';
 
 class ExecutiveReportsTab extends StatefulWidget {
   final List<BallisticRecord> lotAcceptanceRecords;
@@ -42,6 +43,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   bool _includeConsumables = true;
   bool _includeEquipmentIssues = true;
   bool _includeWitnessStorage = true;
+  int _spcChartViewMode = 0; // 0: SPC & Trend Line Charts, 1: Box & Whisker Distribution, 2: Combined View
 
   // SPC & Box-Whisker Parameters
   static const List<Map<String, String>> _spcParameterOptions = [
@@ -802,6 +804,43 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                 const SizedBox(height: 16.0),
                 const Divider(color: Color(0xFFE2E8F0)),
                 const SizedBox(height: 12.0),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Chart Visualization Mode:',
+                      style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                    ),
+                    SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment<int>(
+                          value: 0,
+                          icon: Icon(Icons.show_chart, size: 16),
+                          label: Text('SPC & Trends', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                        ButtonSegment<int>(
+                          value: 1,
+                          icon: Icon(Icons.candlestick_chart_outlined, size: 16),
+                          label: Text('Box & Whisker', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                        ButtonSegment<int>(
+                          value: 2,
+                          icon: Icon(Icons.dashboard_outlined, size: 16),
+                          label: Text('Combined', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                      selected: {_spcChartViewMode},
+                      onSelectionChanged: (val) {
+                        setState(() => _spcChartViewMode = val.first);
+                      },
+                      style: const ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14.0),
                 if (_selectedSpcParams.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24.0),
@@ -812,11 +851,25 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                       ),
                     ),
                   )
-                else
-                  TrendLineChart(
-                    records: records,
-                    selectedTestType: 'All',
-                  ),
+                else ...[
+                  if (_spcChartViewMode == 0 || _spcChartViewMode == 2)
+                    TrendLineChart(
+                      records: records,
+                      selectedTestType: 'All',
+                    ),
+                  if (_spcChartViewMode == 2)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      child: Divider(color: Color(0xFFE2E8F0)),
+                    ),
+                  if (_spcChartViewMode == 1 || _spcChartViewMode == 2)
+                    SizedBox(
+                      height: 520,
+                      child: BoxPlotChart(
+                        records: records,
+                      ),
+                    ),
+                ],
               ],
             ),
           ),

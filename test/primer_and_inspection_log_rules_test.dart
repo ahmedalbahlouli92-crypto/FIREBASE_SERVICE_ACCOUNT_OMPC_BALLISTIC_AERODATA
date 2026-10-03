@@ -118,7 +118,7 @@ void main() {
       );
 
       // Generate report for 'All' to check _getRecordMetricsSummary
-      final html = ReportGenerator.generateHtml([accRecord, epvatRecord], 'All', 'Lot Acceptance Test');
+      final html = ReportGenerator.generateHtml([accRecord, epvatRecord], 'All', 'Daily Test');
       expect(html.contains('SD X: 12.4 mm, SD Y: 14.8 mm, Mean Vel: 835 m/s'), isTrue);
       expect(html.contains('Mean Chamber: 3500 bar, Mean Port: 1200 bar, Mean Vel (+21 °C): 915 m/s'), isTrue);
     });
