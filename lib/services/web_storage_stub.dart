@@ -11,7 +11,7 @@ void saveWebDeletedRecords(Set<String> keys) {}
 Set<String> getWebPendingSyncIds() => {};
 void saveWebPendingSyncIds(Set<String> ids) {}
 List<Map<String, String>> getWebOperators() => [];
-void saveWebOperator(String email, String password, {String role = 'operator', String name = ''}) {}
+void saveWebOperator(String email, String password, {String role = 'operator', String name = '', String signatureBase64 = ''}) {}
 void deleteWebOperator(String username) {}
 Map<String, dynamic> getWebRules() => {};
 void saveWebRules(Map<String, dynamic> rules) {}

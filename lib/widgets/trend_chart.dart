@@ -12,8 +12,9 @@ import '../services/report_helper.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 class TrendLineChart extends StatefulWidget {
   final List<BallisticRecord> records;
+  final String? selectedTestType;
 
-  const TrendLineChart({Key? key, required this.records}) : super(key: key);
+  const TrendLineChart({Key? key, required this.records, this.selectedTestType}) : super(key: key);
 
   @override
   State<TrendLineChart> createState() => _TrendLineChartState();
@@ -195,12 +196,33 @@ class _TrendLineChartState extends State<TrendLineChart> {
   @override
   void initState() {
     super.initState();
-    if (widget.records.any((r) => double.tryParse(r.velMean) != null)) {
+    if (widget.selectedTestType != null && widget.selectedTestType!.isNotEmpty) {
+      _selectedTestType = widget.selectedTestType!;
+    }
+    final available = _getParamsForTestType(_selectedTestType);
+    if (available.contains('Mean Velocity (m/s)')) {
       _selectedParam = 'Mean Velocity (m/s)';
+    } else if (available.isNotEmpty) {
+      _selectedParam = available.first;
     } else {
       _selectedParam = 'Defect Rate (%)';
     }
     _initMultiParamsForTest(_selectedTestType);
+  }
+
+  @override
+  void didUpdateWidget(TrendLineChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedTestType != null && widget.selectedTestType != _selectedTestType) {
+      setState(() {
+        _selectedTestType = widget.selectedTestType!;
+        _initMultiParamsForTest(_selectedTestType);
+        final available = _getParamsForTestType(_selectedTestType);
+        if (!available.contains(_selectedParam)) {
+          _selectedParam = available.isNotEmpty ? available.first : 'Mean Velocity (m/s)';
+        }
+      });
+    }
   }
 
   _RecordMetric? _extractRecordMetric(BallisticRecord r, {String? paramOverride}) {

@@ -117,6 +117,7 @@ class _HistoryTabState extends State<HistoryTab> {
     final retestProducedCtrl = TextEditingController(text: '${r.produced}');
     final retestDefectsCtrl = TextEditingController(text: '${r.defects}');
     final retestNotesCtrl = TextEditingController();
+    final retestLocationCtrl = TextEditingController(text: r.samplingLocation);
     String selectedOutcome = 'Approved';
 
     // Test-specific parameter controllers pre-filled from r:
@@ -337,6 +338,7 @@ class _HistoryTabState extends State<HistoryTab> {
                                 children: [
                                   buildParamField('Retest Sample Qty', retestProducedCtrl),
                                   buildParamField('Total Leaks / Defects', retestDefectsCtrl),
+                                  buildParamField('Sampling Location', retestLocationCtrl, isNumber: false),
                                 ],
                               ),
                               Row(
@@ -640,6 +642,7 @@ class _HistoryTabState extends State<HistoryTab> {
 
                     final retestMetricsMap = <String, dynamic>{
                       if (r.testName == 'Waterproof Test') ...{
+                        'samplingLocation': retestLocationCtrl.text.trim(),
                         'mouthSlow': int.tryParse(mouthSlowCtrl.text.trim()) ?? 0,
                         'mouthFast': int.tryParse(mouthFastCtrl.text.trim()) ?? 0,
                         'primerSlow': int.tryParse(primerSlowCtrl.text.trim()) ?? 0,
@@ -734,6 +737,9 @@ class _HistoryTabState extends State<HistoryTab> {
                       originalStatus: r.originalStatus.isNotEmpty ? r.originalStatus : r.status,
                       status: finalStatus,
                       notes: updatedNotes,
+                      samplingLocation: (r.testName == 'Waterproof Test' && retestLocationCtrl.text.trim().isNotEmpty)
+                          ? retestLocationCtrl.text.trim()
+                          : r.samplingLocation,
                       retestProduced: parsedRetestProduced,
                       retestDefects: calculatedRetestDefects,
                       retestMetrics: retestMetricsJson,
@@ -3512,9 +3518,10 @@ class _HistoryTabState extends State<HistoryTab> {
                         ),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
+                            final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
                             final csvContent = ReportGenerator.generateCsv(reportRecords, selectedReportTest, widget.currentModule);
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
-                            final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
+                            final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadCsv(
@@ -3539,6 +3546,7 @@ class _HistoryTabState extends State<HistoryTab> {
                         ),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
+                            final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
                             final docContent = ReportGenerator.generateWordHtml(
                               reportRecords, 
                               selectedReportTest,
@@ -3548,7 +3556,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               loggedInUser: widget.loggedInUser,
                             );
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
-                            final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
+                            final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadDoc(
@@ -3563,7 +3571,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             );
                           },
                           icon: const Icon(Icons.description, size: 16.0),
-                          label: Text(selectedReportTest == 'All' ? 'Export Certificate (Word)' : 'Export Word'),
+                          label: Text(selectedReportTest == 'All' && widget.currentModule == 'Lot Acceptance Test' ? 'Export Certificate (Word)' : 'Export Word'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0284C7),
                             foregroundColor: Colors.white,
@@ -3573,6 +3581,7 @@ class _HistoryTabState extends State<HistoryTab> {
                         ),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
+                            final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
                             final htmlContent = ReportGenerator.generateHtml(
                               reportRecords, 
                               selectedReportTest,
@@ -3582,7 +3591,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               loggedInUser: widget.loggedInUser,
                             );
                             final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
-                            final repTestName = selectedReportTest == 'All' ? 'Final_Lot_Acceptance_Certificate' : (singleRecord?.testName ?? selectedReportTest);
+                            final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.printHtml(
@@ -3591,7 +3600,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             );
                           },
                           icon: const Icon(Icons.print_outlined, size: 16.0),
-                          label: Text(selectedReportTest == 'All' ? 'Certificate (PDF / Print)' : 'Download / Print PDF'),
+                          label: Text(selectedReportTest == 'All' && widget.currentModule == 'Lot Acceptance Test' ? 'Certificate (PDF / Print)' : 'Download / Print PDF'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0EA5E9),
                             foregroundColor: Colors.white,
@@ -3599,7 +3608,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
                         ),
-                        if (selectedReportTest == 'All' && reportRecords.length > 1) ...[
+                        if (selectedReportTest == 'All' && widget.currentModule == 'Lot Acceptance Test' && reportRecords.length > 1) ...[
                           ElevatedButton.icon(
                             onPressed: () async {
                               final docContent = ReportGenerator.generateLotDossierWord(

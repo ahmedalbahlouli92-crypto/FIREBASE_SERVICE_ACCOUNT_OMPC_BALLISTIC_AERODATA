@@ -1588,7 +1588,7 @@ class _MainShellState extends State<MainShell> {
   
   UserRole? _currentUserRole;
   String _currentUserEmail = '';
-  String _currentModule = 'Lot Acceptance Test';
+  String _currentModule = 'Daily Test';
   String _selectedEntryCaliber = '5.56x45 SS109';
   String _selectedEntryTestName = 'Waterproof Test';
 
@@ -2082,9 +2082,21 @@ class _MainShellState extends State<MainShell> {
     _certEpvReq21Ctrl.text = (calConfig['epvat_req_21'] ?? 'Max Mean Chamber +3SD ≤ 4450 Bar\nMin Mean Port - 3SD ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
     _certEpvReq52Ctrl.text = (calConfig['epvat_req_52'] ?? 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port - 3SD ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
     _certEpvReq54Ctrl.text = (calConfig['epvat_req_54'] ?? 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
-    _certEpvFormula21Ctrl.text = (calConfig['epvat_result_formula_21'] ?? '').toString();
-    _certEpvFormula52Ctrl.text = (calConfig['epvat_result_formula_52'] ?? '').toString();
-    _certEpvFormula54Ctrl.text = (calConfig['epvat_result_formula_54'] ?? '').toString();
+    if (calConfig['epvat_result_formulas_21'] is List) {
+      _certEpvFormula21Ctrl.text = (calConfig['epvat_result_formulas_21'] as List).map((e) => e.toString().trim()).where((e) => e.isNotEmpty).join('\n');
+    } else {
+      _certEpvFormula21Ctrl.text = (calConfig['epvat_result_formula_21'] ?? '').toString();
+    }
+    if (calConfig['epvat_result_formulas_52'] is List) {
+      _certEpvFormula52Ctrl.text = (calConfig['epvat_result_formulas_52'] as List).map((e) => e.toString().trim()).where((e) => e.isNotEmpty).join('\n');
+    } else {
+      _certEpvFormula52Ctrl.text = (calConfig['epvat_result_formula_52'] ?? '').toString();
+    }
+    if (calConfig['epvat_result_formulas_54'] is List) {
+      _certEpvFormula54Ctrl.text = (calConfig['epvat_result_formulas_54'] as List).map((e) => e.toString().trim()).where((e) => e.isNotEmpty).join('\n');
+    } else {
+      _certEpvFormula54Ctrl.text = (calConfig['epvat_result_formula_54'] ?? '').toString();
+    }
 
     _certFuncSampleCtrl.text = (calConfig['function_sample'] ?? '500 rounds').toString();
     _certFuncReqCtrl.text = (calConfig['function_req'] ?? 'Critical Defect 0\nMajor Defects 3\nLevel 3 Defects 6\nLevel 4 Defects 18').toString().replaceAll('<br/>', '\n');
@@ -2101,6 +2113,10 @@ class _MainShellState extends State<MainShell> {
     _adminRules['manager_name'] = _certManagerNameCtrl.text.trim();
 
     final certTemplates = Map<String, dynamic>.from(_adminRules['certificate_templates'] as Map? ?? {});
+    final formulas21 = _certEpvFormula21Ctrl.text.split(RegExp(r'[\r\n]+')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final formulas52 = _certEpvFormula52Ctrl.text.split(RegExp(r'[\r\n]+')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final formulas54 = _certEpvFormula54Ctrl.text.split(RegExp(r'[\r\n]+')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+
     certTemplates[_certSelectedCaliber] = {
       'waterproof_sample': _certWpSampleCtrl.text.trim(),
       'waterproof_req': _certWpReqCtrl.text.trim().replaceAll('\n', '<br/>'),
@@ -2112,9 +2128,12 @@ class _MainShellState extends State<MainShell> {
       'epvat_req_21': _certEpvReq21Ctrl.text.trim().replaceAll('\n', '<br/>'),
       'epvat_req_52': _certEpvReq52Ctrl.text.trim().replaceAll('\n', '<br/>'),
       'epvat_req_54': _certEpvReq54Ctrl.text.trim().replaceAll('\n', '<br/>'),
-      'epvat_result_formula_21': _certEpvFormula21Ctrl.text.trim(),
-      'epvat_result_formula_52': _certEpvFormula52Ctrl.text.trim(),
-      'epvat_result_formula_54': _certEpvFormula54Ctrl.text.trim(),
+      'epvat_result_formula_21': formulas21.join('\n'),
+      'epvat_result_formulas_21': formulas21,
+      'epvat_result_formula_52': formulas52.join('\n'),
+      'epvat_result_formulas_52': formulas52,
+      'epvat_result_formula_54': formulas54.join('\n'),
+      'epvat_result_formulas_54': formulas54,
       'function_sample': _certFuncSampleCtrl.text.trim(),
       'function_req': _certFuncReqCtrl.text.trim().replaceAll('\n', '<br/>'),
       'residual_sample': _certRsSampleCtrl.text.trim(),
@@ -2499,9 +2518,7 @@ class _MainShellState extends State<MainShell> {
 
       if (mounted) {
         setState(() {
-          if (savedModule != null && savedModule.isNotEmpty) {
-            _currentModule = savedModule;
-          }
+          _currentModule = 'Daily Test';
           _records = localRecordsList;
           _dailyTestRecords = localDailyList;
           _componentTestRecords = localComponentList;
@@ -3560,6 +3577,7 @@ class _MainShellState extends State<MainShell> {
     final passwordCtrl = TextEditingController(text: op['password'] ?? '');
     final nameCtrl = TextEditingController(text: op['name'] ?? '');
     String selectedRole = (op['role'] ?? 'operator').toString().toLowerCase();
+    String currentSig = (op['signature_base64'] ?? '').toString();
 
     final roles = ['admin', 'manager', 'supervisor', 'technician', 'operator'];
     if (!roles.contains(selectedRole)) selectedRole = 'operator';
@@ -3648,6 +3666,59 @@ class _MainShellState extends State<MainShell> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 14),
+                    const Text('Electronic Signature (Optional)', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+                    const SizedBox(height: 6),
+                    if (currentSig.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF38BDF8)),
+                        ),
+                        child: Row(
+                          children: [
+                            Image.memory(
+                              base64Decode(currentSig.contains(',') ? currentSig.split(',').last : currentSig),
+                              height: 38,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Remove Signature',
+                              onPressed: () => setDlgState(() => currentSig = ''),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F172A),
+                          foregroundColor: const Color(0xFF38BDF8),
+                          side: const BorderSide(color: Color(0xFF38BDF8)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        icon: const Icon(Icons.draw_rounded, size: 16),
+                        label: Text(
+                          currentSig.isNotEmpty ? 'Replace Electronic Signature' : 'Upload Electronic Signature (PNG/JPG)',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        onPressed: () async {
+                          final res = await getAttachmentHelper().pickFileAsBase64(accept: 'image/*');
+                          if (res != null && res['data'] != null) {
+                            setDlgState(() {
+                              currentSig = res['data']!;
+                            });
+                          }
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -3679,6 +3750,7 @@ class _MainShellState extends State<MainShell> {
                       newPassword: newPassword,
                       newRole: selectedRole,
                       newName: newName,
+                      newSignatureBase64: currentSig,
                     );
                     final updated = await _storageService.loadOperators();
                     setState(() {
@@ -9301,9 +9373,7 @@ class _MainShellState extends State<MainShell> {
     required TextEditingController controller,
     required String temp,
   }) {
-    final List<Map<String, String>> formulaOptions = [
-      {'name': 'None / Default Formula', 'value': ''},
-    ];
+    final List<Map<String, String>> formulaOptions = [];
 
     try {
       final customFormulas = EpvatFormulaHelper.getFormulasForCaliber(_adminRules, _certSelectedCaliber);
@@ -9336,29 +9406,78 @@ class _MainShellState extends State<MainShell> {
       }
     }
 
-    final curValue = controller.text.trim();
-    if (curValue.isNotEmpty && !formulaOptions.any((opt) => opt['value'] == curValue)) {
-      formulaOptions.add({'name': 'Custom: $curValue', 'value': curValue});
-    }
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF475569),
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Insert Formula',
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.add_circle_outline, size: 13.0, color: Color(0xFF16A34A)),
+                      SizedBox(width: 3.0),
+                      Text(
+                        '+ Add Formula',
+                        style: TextStyle(
+                          fontSize: 11.0,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF16A34A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                itemBuilder: (ctx) => formulaOptions.map((opt) {
+                  return PopupMenuItem<String>(
+                    value: opt['value'],
+                    child: Text(
+                      opt['name']!,
+                      style: const TextStyle(fontSize: 12.0, fontFamily: 'JetBrainsMono'),
+                    ),
+                  );
+                }).toList(),
+                onSelected: (val) {
+                  if (val.isNotEmpty) {
+                    setState(() {
+                      final currentLines = controller.text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+                      if (!currentLines.contains(val)) {
+                        currentLines.add(val);
+                        controller.text = currentLines.join('\n');
+                      }
+                    });
+                  }
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 4.0),
-          DropdownButtonFormField<String>(
-            value: formulaOptions.any((opt) => opt['value'] == curValue) ? curValue : '',
-            isExpanded: true,
+          TextField(
+            controller: controller,
+            maxLines: 3,
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 12.0,
+              fontFamily: 'JetBrainsMono',
+            ),
             decoration: InputDecoration(
+              hintText: 'Enter formulas (one per line)\ne.g. P1 Mean + 3 * P1 SD\nP2 Mean - 3 * P2 SD',
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
               filled: true,
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
@@ -9375,32 +9494,6 @@ class _MainShellState extends State<MainShell> {
                 borderSide: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
               ),
             ),
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 12.0,
-              fontFamily: 'JetBrainsMono',
-            ),
-            dropdownColor: Colors.white,
-            items: formulaOptions.map((opt) {
-              return DropdownMenuItem<String>(
-                value: opt['value'],
-                child: Text(
-                  opt['name']!,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontFamily: opt['value']!.isEmpty ? 'sans-serif' : 'JetBrainsMono',
-                    color: opt['value']!.isEmpty ? const Color(0xFF64748B) : const Color(0xFF0F172A),
-                    fontStyle: opt['value']!.isEmpty ? FontStyle.italic : FontStyle.normal,
-                  ),
-                ),
-              );
-            }).toList(),
-            onChanged: (val) {
-              setState(() {
-                controller.text = val ?? '';
-              });
-            },
           ),
         ],
       ),
@@ -9441,6 +9534,7 @@ class _MainShellState extends State<MainShell> {
         onCaliberChanged: (val) => setState(() => _selectedEntryCaliber = val),
         onTestNameChanged: (val) => setState(() => _selectedEntryTestName = val),
         adminRules: _adminRules,
+        base64Logo: _base64Logo,
         componentPrimerRecords: _componentTestRecords.where((r) => r.testName == 'Primer Sensitivity Test').toList(),
         componentPropellantRecords: _componentTestRecords.where((r) => r.testName == 'Propellant Test').toList(),
         onOpenEpvatRulesInControl: () {

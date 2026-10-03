@@ -279,7 +279,7 @@ class StorageService {
     String refNo = record.referenceNo;
     if (refNo.isEmpty) {
       final refNum = await getNextReferenceNumber();
-      refNo = 'REF:${refNum.toString().padLeft(4, '0')}';
+      refNo = 'REF:${refNum.toString().padLeft(2, '0')}';
     }
     BallisticRecord recordToSave = record.copyWith(id: assignedId, module: cleanModule, referenceNo: refNo);
 
@@ -774,6 +774,7 @@ class StorageService {
                   'password': (item['password'] ?? '') as String,
                   'role': (item['role'] ?? 'operator') as String,
                   'name': (item['name'] ?? item['email'] ?? '') as String,
+                  'signature_base64': (item['signature_base64'] ?? '') as String,
                 };
               }
             }
@@ -809,7 +810,13 @@ class StorageService {
     // 4. Save merged list locally to ensure offline operation
     if (kIsWeb) {
       for (var op in combinedList) {
-        saveWebOperator(op['email'] ?? '', op['password'] ?? '', role: op['role'] ?? 'operator', name: op['name'] ?? '');
+        saveWebOperator(
+          op['email'] ?? '',
+          op['password'] ?? '',
+          role: op['role'] ?? 'operator',
+          name: op['name'] ?? '',
+          signatureBase64: op['signature_base64'] ?? '',
+        );
       }
     } else {
       try {
@@ -828,7 +835,7 @@ class StorageService {
   }
 
   // Save new user credentials with role (syncs to both local and Supabase cloud)
-  Future<void> saveOperator(String email, String password, {String role = 'operator', String name = ''}) async {
+  Future<void> saveOperator(String email, String password, {String role = 'operator', String name = '', String signatureBase64 = ''}) async {
     final operators = await loadOperators();
     operators.removeWhere((op) => (op['email'] ?? '').toLowerCase() == email.toLowerCase());
     operators.add({
@@ -836,11 +843,12 @@ class StorageService {
       'password': password,
       'role': role,
       'name': name.isNotEmpty ? name : email,
+      'signature_base64': signatureBase64,
     });
 
     // 1. Immediate local save
     if (kIsWeb) {
-      saveWebOperator(email, password, role: role, name: name);
+      saveWebOperator(email, password, role: role, name: name, signatureBase64: signatureBase64);
     } else {
       try {
         final dirPath = await getDirectoryPath();
@@ -893,20 +901,28 @@ class StorageService {
     required String newPassword,
     required String newRole,
     required String newName,
+    String newSignatureBase64 = '',
   }) async {
     final operators = await loadOperators();
+    final existingOp = operators.firstWhere(
+      (op) => (op['email'] ?? '').toLowerCase() == oldIdentifier.toLowerCase(),
+      orElse: () => {},
+    );
+    final effectiveSig = newSignatureBase64.isNotEmpty ? newSignatureBase64 : (existingOp['signature_base64'] ?? '');
+
     operators.removeWhere((op) => (op['email'] ?? '').toLowerCase() == oldIdentifier.toLowerCase());
     final updatedOp = {
       'email': newEmail,
       'password': newPassword,
       'role': newRole,
       'name': newName.isNotEmpty ? newName : newEmail,
+      'signature_base64': effectiveSig,
     };
     operators.add(updatedOp);
 
     if (kIsWeb) {
       deleteWebOperator(oldIdentifier);
-      saveWebOperator(newEmail, newPassword, role: newRole, name: newName);
+      saveWebOperator(newEmail, newPassword, role: newRole, name: newName, signatureBase64: effectiveSig);
     } else {
       try {
         final dirPath = await getDirectoryPath();

@@ -88,23 +88,22 @@ class ReportHelperImpl implements ReportHelper {
         doc.write(html);
         doc.close();
 
-        var desiredTitle = '$safeFilename';
-        if (desiredTitle) {
-          doc.title = desiredTitle;
-        }
+        var isCert = html.indexOf('FINAL LOT ACCEPTANCE CERTIFICATE') !== -1 || '$safeFilename'.indexOf('Certificate') !== -1;
         var origTitle = document.title;
-        if (desiredTitle) {
-          document.title = desiredTitle;
+        if (isCert) {
+          doc.title = '';
+          document.title = '';
+        } else if ('$safeFilename') {
+          doc.title = '$safeFilename';
+          document.title = '$safeFilename';
         }
 
         setTimeout(function() {
           iframe.contentWindow.focus();
           iframe.contentWindow.print();
-          if (desiredTitle) {
-            setTimeout(function() {
-              document.title = origTitle;
-            }, 3000);
-          }
+          setTimeout(function() {
+            document.title = origTitle;
+          }, 3000);
         }, 500);
       })()
       '''

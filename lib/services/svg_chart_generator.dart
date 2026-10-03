@@ -531,6 +531,38 @@ class SvgChartGenerator {
     return buffer.toString();
   }
 
+  /// Extracts numeric metric value for any ballistic parameter across tests
+  static double? extractParamValue(BallisticRecord r, String param) {
+    final p = param.toLowerCase();
+    if (p.contains('velocity sd') || p.contains('vel sd')) return double.tryParse(r.velSD);
+    if (p.contains('velocity') || p.contains('vel')) return double.tryParse(r.velMean);
+    if (p.contains('p2') || p.contains('port')) return double.tryParse(r.epvatP2MeanPressure);
+    if (p.contains('p1 max') || p.contains('chamber max')) return double.tryParse(r.epvatMaxPressure);
+    if (p.contains('p1 sd') || p.contains('chamber sd')) return double.tryParse(r.epvatSDPressure);
+    if (p.contains('pressure') || p.contains('p1') || p.contains('chamber')) return double.tryParse(r.epvatMeanPressure);
+    if (p.contains('action time') || p.contains('at mean')) return double.tryParse(r.actionTimeMean);
+    if (p.contains('mean radius') || p.contains('radius')) return double.tryParse(r.accMeanRadius);
+    if (p.contains('sd x')) return double.tryParse(r.accSDX);
+    if (p.contains('sd y')) return double.tryParse(r.accSDY);
+    if (p.contains('extraction') || p.contains('min force')) return double.tryParse(r.accMinX.isNotEmpty ? r.accMinX : r.accMeanX);
+    if (p.contains('mean force')) return double.tryParse(r.accMeanX);
+    if (p.contains('leak') || p.contains('waterproof')) {
+      final leaks = r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast;
+      return leaks.toDouble();
+    }
+    if (p.contains('split') || p.contains('crack') || p.contains('residual')) {
+      final cracks = r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast;
+      return cracks.toDouble();
+    }
+    if (p.contains('defect') || p.contains('function')) return r.defects.toDouble();
+    if (p.contains('cyclic') || p.contains('rpm') || p.contains('rate')) return double.tryParse(r.cyclicRateValue);
+    if (p.contains('hbar') || p.contains('mean height')) return double.tryParse(r.primerHbar);
+    if (p.contains('all fire') || p.contains('h+5') || p.contains('h + 5')) return double.tryParse(r.primerAllFireH);
+    if (p.contains('no fire') || p.contains('h-2') || p.contains('h - 2')) return double.tryParse(r.primerNoFireH);
+    if (p.contains('primer sd')) return double.tryParse(r.primerSD);
+    return double.tryParse(r.velMean) ?? double.tryParse(r.epvatMeanPressure) ?? double.tryParse(r.accMeanRadius);
+  }
+
   /// Generates an SVG Statistical Process Control (SPC) Chart with UCL, CL, and LCL limits
   static String generateSpcChartSvg(
     List<BallisticRecord> records, {
@@ -542,22 +574,9 @@ class SvgChartGenerator {
     final List<Map<String, dynamic>> points = [];
     for (int i = 0; i < records.length; i++) {
       final r = records[i];
-      double? val;
-      if (param.contains('Velocity')) {
-        val = double.tryParse(r.velMean);
-      } else if (param.contains('Pressure') || param.contains('P1')) {
-        val = double.tryParse(r.epvatMeanPressure);
-      } else if (param.contains('Radius')) {
-        val = double.tryParse(r.accMeanRadius);
-      } else {
-        // Fallback to velocity or pressure or defect rate
-        val = double.tryParse(r.velMean) ?? double.tryParse(r.epvatMeanPressure);
-        if (val == null && r.produced > 0) {
-          val = (r.defects / r.produced) * 100.0;
-        }
-      }
+      final double? val = extractParamValue(r, param);
 
-      if (val != null && val > 0) {
+      if (val != null && (val > 0 || param.toLowerCase().contains('leak') || param.toLowerCase().contains('defect') || param.toLowerCase().contains('split') || param.toLowerCase().contains('crack'))) {
         final lot = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : 'Test ${i + 1}');
         points.add({
           'val': val,
@@ -700,16 +719,7 @@ class SvgChartGenerator {
     // Group records by lot or caliber
     final Map<String, List<double>> groups = {};
     for (var r in records) {
-      double? val = double.tryParse(r.velMean);
-      if (val == null || val <= 0) {
-        val = double.tryParse(r.epvatMeanPressure);
-      }
-      if (val == null || val <= 0) {
-        val = double.tryParse(r.accMeanRadius);
-      }
-      if (val == null && r.produced > 0) {
-        val = (r.defects / r.produced) * 100.0;
-      }
+      final double? val = extractParamValue(r, metric);
       if (val != null) {
         final key = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : r.caliber;
         groups.putIfAbsent(key, () => []).add(val);
@@ -720,7 +730,7 @@ class SvgChartGenerator {
     if (groups.length < 2) {
       groups.clear();
       for (var r in records) {
-        double? val = double.tryParse(r.velMean) ?? double.tryParse(r.epvatMeanPressure);
+        final double? val = extractParamValue(r, metric);
         if (val != null) {
           groups.putIfAbsent(r.caliber, () => []).add(val);
         }

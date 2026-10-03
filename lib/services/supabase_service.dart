@@ -577,6 +577,7 @@ class SupabaseService {
             'password': (m['password_hash'] ?? m['password'] ?? '').toString(),
             'role': (m['role'] ?? 'operator').toString(),
             'name': (m['name'] ?? m['username'] ?? '').toString(),
+            'signature_base64': (m['signature_base64'] ?? '').toString(),
           };
         }).toList();
       }
@@ -601,6 +602,7 @@ class SupabaseService {
             'password': ((item['password'] ?? '') as String),
             'role': ((item['role'] ?? 'operator') as String),
             'name': ((item['name'] ?? item['email'] ?? '') as String),
+            'signature_base64': ((item['signature_base64'] ?? '') as String),
           }).toList();
         }
       }

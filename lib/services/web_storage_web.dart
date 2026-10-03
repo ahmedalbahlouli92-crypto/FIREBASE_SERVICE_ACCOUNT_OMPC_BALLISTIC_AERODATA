@@ -122,6 +122,7 @@ List<Map<String, String>> getWebOperators() {
       'password': ((item['password'] ?? '') as String),
       'role': ((item['role'] ?? 'operator') as String),
       'name': ((item['name'] ?? item['email'] ?? '') as String),
+      'signature_base64': ((item['signature_base64'] ?? '') as String),
     }).toList();
   } catch (e) {
     print("Error loading web operators: $e");
@@ -129,7 +130,7 @@ List<Map<String, String>> getWebOperators() {
   }
 }
 
-void saveWebOperator(String email, String password, {String role = 'operator', String name = ''}) {
+void saveWebOperator(String email, String password, {String role = 'operator', String name = '', String signatureBase64 = ''}) {
   final operators = getWebOperators();
   operators.removeWhere((op) => op['email']?.toLowerCase() == email.toLowerCase());
   operators.add({
@@ -137,6 +138,7 @@ void saveWebOperator(String email, String password, {String role = 'operator', S
     'password': password,
     'role': role,
     'name': name.isNotEmpty ? name : email,
+    'signature_base64': signatureBase64,
   });
   _setItem('operators', jsonEncode(operators));
 }

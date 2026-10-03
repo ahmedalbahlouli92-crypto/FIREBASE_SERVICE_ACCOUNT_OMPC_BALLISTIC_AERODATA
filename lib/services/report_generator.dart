@@ -121,6 +121,32 @@ class ReportGenerator {
     return 0.0;
   }
 
+  static String _findSignatureBase64(String name, Map<String, dynamic>? adminRules) {
+    if (name.trim().isEmpty || adminRules == null) return '';
+    final cleanName = name.trim().toLowerCase();
+
+    final ops = adminRules['operators'];
+    if (ops is List) {
+      for (final op in ops) {
+        if (op is Map) {
+          final opName = (op['name'] ?? '').toString().trim().toLowerCase();
+          final sig = (op['signature_base64'] ?? op['signatureBase64'] ?? '').toString().trim();
+          if (sig.isNotEmpty && (opName == cleanName || cleanName.contains(opName) || opName.contains(cleanName))) {
+            return sig;
+          }
+        }
+      }
+    }
+
+    if (cleanName.contains('supervisor') && adminRules['supervisor_signature_base64'] != null) {
+      return (adminRules['supervisor_signature_base64'] as String).trim();
+    }
+    if (cleanName.contains('manager') && adminRules['manager_signature_base64'] != null) {
+      return (adminRules['manager_signature_base64'] as String).trim();
+    }
+    return '';
+  }
+
   static String _getRecordMetricsSummary(BallisticRecord r) {
     final m = r.parsedRetestMetrics;
     if (r.testName == 'Waterproof Test') {
@@ -421,7 +447,13 @@ class ReportGenerator {
       final bg = i % 2 == 1 ? 'background-color: #f8fafc;' : '';
       final color = !res.isApplicable ? '#64748b' : (res.isPassed ? '#15803d' : '#b91c1c');
       final statusText = !res.isApplicable ? 'Not Tested' : (res.isPassed ? 'PASSED' : 'FAILED');
-      final displayCalculation = !res.isApplicable ? 'Not Tested' : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}';
+      final displayCalculation = !res.isApplicable
+          ? 'Not Tested'
+          : (res.substitutedText.isNotEmpty && res.substitutedText != 'Not Tested' && res.substitutedText != 'N/A'
+              ? (res.substitutedText.contains('=')
+                  ? '${res.substitutedText} ${res.unit}'
+                  : '${res.substitutedText} = ${res.calculatedValue.toStringAsFixed(1)} ${res.unit}')
+              : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}');
       final displayOp = res.op == '<=' ? '&le;' : (res.op == '>=' ? '&ge;' : (res.op == '<' ? '&lt;' : (res.op == '>' ? '&gt;' : res.op)));
       rowsBuffer.writeln('''
       <tr style="$bg">
@@ -492,6 +524,16 @@ class ReportGenerator {
     final inspectorName = loggedInUser.trim().isNotEmpty
         ? loggedInUser.trim()
         : (records.isNotEmpty ? records[0].operators : 'N/A');
+    final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
+    final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
+    final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
+    final inspectorSigImg = inspectorSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 38px;"></div>';
+    final supervisorSigImg = supervisorSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 38px;"></div>';
+
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final lotNo = records.isNotEmpty
         ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
@@ -507,7 +549,8 @@ class ReportGenerator {
         : '${cleanCaliber}_${testName}_$cleanLotNo').replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final title = defaultExportTitle;
 
-    if (testName == 'All' || testName == 'Final_Lot_Acceptance_Certificate' || displayTestTitle == 'Final Lot Acceptance Certificate') {
+    final bool isLotAcceptanceModule = moduleName.trim() == 'Lot Acceptance Test';
+    if (isLotAcceptanceModule && (testName == 'All' || testName == 'Final_Lot_Acceptance_Certificate' || displayTestTitle == 'Final Lot Acceptance Certificate')) {
       return _generateFinalCertificateHtml(
         records: records,
         moduleName: moduleName,
@@ -975,7 +1018,7 @@ class ReportGenerator {
         padding: 0;
       }
       .report-content {
-        min-height: 5.0in;
+        min-height: 3.5in;
         box-sizing: border-box;
       }
       .report-footer {
@@ -985,14 +1028,14 @@ class ReportGenerator {
       .summary-card, .data-table, .sentence-box, .signatures { page-break-inside: avoid; }
     }
     .report-content {
-      min-height: 5.0in;
+      min-height: 3.5in;
       box-sizing: border-box;
     }
   </style>
 </head>
 <body>
   <div class="report-wrapper">
-    <div class="report-content" style="min-height: 5.0in; box-sizing: border-box;">
+    <div class="report-content" style="min-height: 3.5in; box-sizing: border-box;">
       <!-- Header Text & Logo Section -->
   <table class="header-table">
     <tr>
@@ -1001,7 +1044,17 @@ class ReportGenerator {
         <div style="font-size: 12px; font-weight: bold; color: #475569; margin-top: 2px;">QC And Engineering Department</div>
         <div style="font-size: 11px; color: #64748b; margin-top: 1px;">Ballistic Lab Section</div>
         <div style="font-size: 11px; font-style: italic; color: #64748b; margin-top: 1px; margin-bottom: 15px;">
-          ${testName == 'All' ? 'Final Lot Acceptance Certificate' : (moduleName == 'Daily Test' ? 'Ballistic Daily Test Report' : 'Lot Acceptance Test Report')}
+          ${testName == 'All'
+              ? 'Final Lot Acceptance Certificate'
+              : (moduleName == 'Daily Test'
+                  ? 'Ballistic Daily Test Report'
+                  : (moduleName == 'Component Test'
+                      ? (testName == 'Primer Sensitivity Test'
+                          ? 'Component Acceptance Report - Primer Sensitivity Test'
+                          : (testName == 'Propellant Test'
+                              ? 'Component Acceptance Report - Propellant Acceptance Test'
+                              : 'Component Acceptance Test Report'))
+                      : 'Lot Acceptance Test Report'))}
         </div>
       </td>
       <td style="width: 35%; text-align: right; vertical-align: middle;">
@@ -1443,8 +1496,20 @@ class ReportGenerator {
       $attachmentsSection
 
       <div class="signatures">
-        <div class="sig-box">Ballistic Inspector Signature</div>
-        <div class="sig-box">Ballistic Technician Approval</div>
+        <div style="width: 42%; text-align: center;">
+          $inspectorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
+            <div>Ballistic Inspector Signature</div>
+          </div>
+        </div>
+        <div style="width: 42%; text-align: center;">
+          $supervisorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
+            <div>Ballistic Technician Approval</div>
+          </div>
+        </div>
       </div>
     </div> <!-- end report-footer -->
   </div> <!-- end report-wrapper -->
@@ -1738,7 +1803,8 @@ class ReportGenerator {
 
     final displayTestTitle = testName == 'All' ? 'Final Lot Acceptance Certificate' : testName;
 
-    if (testName == 'All' || testName == 'Final_Lot_Acceptance_Certificate' || displayTestTitle == 'Final Lot Acceptance Certificate') {
+    final bool isLotAcceptanceModule = moduleName.trim() == 'Lot Acceptance Test';
+    if (isLotAcceptanceModule && (testName == 'All' || testName == 'Final_Lot_Acceptance_Certificate' || displayTestTitle == 'Final Lot Acceptance Certificate')) {
       return _generateFinalCertificateWord(
         records: records,
         moduleName: moduleName,
@@ -1758,6 +1824,15 @@ class ReportGenerator {
     final inspectorName = loggedInUser.trim().isNotEmpty
         ? loggedInUser.trim()
         : (records.isNotEmpty ? records[0].operators : 'N/A');
+    final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
+    final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
+    final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
+    final inspectorSigImg = inspectorSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 38px;"></div>';
+    final supervisorSigImg = supervisorSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 38px;"></div>';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final lotNo = records.isNotEmpty
         ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
@@ -2121,12 +2196,12 @@ class ReportGenerator {
     .sentence-box { padding: 10px; border: 1px solid #cbd5e1; background-color: #f8fafc; font-size: 11px; font-weight: bold; color: #1e293b; white-space: pre-wrap; }
     .signatures { margin-top: 25px; width: 100%; }
     .signatures td { width: 50%; text-align: center; font-size: 11px; color: #475569; padding-top: 20px; border-top: 1px solid #cbd5e1; }
-    .report-content { min-height: 5.0in; box-sizing: border-box; }
+    .report-content { min-height: 3.5in; box-sizing: border-box; }
     @media print { @page { margin: 0; } body { margin: 12mm 15mm; -webkit-print-color-adjust: exact; } }
   </style>
 </head>
 <body>
-  <div class="report-content" style="min-height: 5.0in; box-sizing: border-box;">
+  <div class="report-content" style="min-height: 3.5in; box-sizing: border-box;">
   <table class="header-table">
     <tr>
       <td style="width: 65%; text-align: left; vertical-align: middle; padding-bottom: 15px;">
@@ -2134,7 +2209,17 @@ class ReportGenerator {
         <p style="margin: 2px 0; font-size: 12px; font-weight: bold; color: #475569;">QC And Engineering Department</p>
         <p style="margin: 1px 0; font-size: 11px; color: #64748b;">Ballistic Lab Section</p>
         <p style="margin: 1px 0 15px 0; font-size: 11px; font-style: italic; color: #64748b;">
-          ${testName == 'All' ? 'Final Lot Acceptance Certificate' : (moduleName == 'Daily Test' ? 'Ballistic Daily Test Report' : 'Lot Acceptance Test Report')}
+          ${testName == 'All'
+              ? 'Final Lot Acceptance Certificate'
+              : (moduleName == 'Daily Test'
+                  ? 'Ballistic Daily Test Report'
+                  : (moduleName == 'Component Test'
+                      ? (testName == 'Primer Sensitivity Test'
+                          ? 'Component Acceptance Report - Primer Sensitivity Test'
+                          : (testName == 'Propellant Test'
+                              ? 'Component Acceptance Report - Propellant Acceptance Test'
+                              : 'Component Acceptance Test Report'))
+                      : 'Lot Acceptance Test Report'))}
         </p>
       </td>
       <td style="width: 35%; text-align: right; vertical-align: middle; padding-bottom: 15px;">
@@ -2488,11 +2573,19 @@ class ReportGenerator {
 
     $attachmentsSection
 
-    <table class="signatures" style="margin-top: 15px;">
+    <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
       <tr>
-        <td style="border-top: 1px solid #cbd5e1; width: 45%;">Ballistic Inspector Signature</td>
+        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $inspectorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Inspector Signature</div>
+        </td>
         <td style="width: 10%; border: none;"></td>
-        <td style="border-top: 1px solid #cbd5e1; width: 45%;">Ballistic Technician Approval</td>
+        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $supervisorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Technician Approval</div>
+        </td>
       </tr>
     </table>
   </div>
@@ -2792,51 +2885,61 @@ class ReportGenerator {
     final activePressureUnit = (adminRules['active_pressure_unit'] ?? 'bar').toString();
 
     final epvSample21 = calConfig['epvat_sample_21'] as String? ?? (epvRec21 != null && epvRec21.produced > 0 ? '${epvRec21.produced} rounds' : '90 rounds');
-    String epvResult21 = '';
-    final formula21 = (calConfig['epvat_result_formula_21'] as String? ?? '').trim();
-    if (formula21.isNotEmpty) {
-      try {
-        final val = EpvatFormulaHelper.evaluate(formula21, epvVars, defaultTemp: '21');
-        epvResult21 = '<strong>$formula21:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit';
-      } catch (_) {}
+
+    String buildEpvatTempResult(String rawConfig, String temp, BallisticRecord? rec) {
+      final configuredLines = rawConfig.split(RegExp(r'\r?\n|;')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      if (configuredLines.isNotEmpty) {
+        final resList = <String>[];
+        for (final f in configuredLines) {
+          try {
+            final val = EpvatFormulaHelper.evaluate(f, epvVars, defaultTemp: temp);
+            resList.add('<strong>$f:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit');
+          } catch (_) {
+            if (f.contains(':')) {
+              final idx = f.indexOf(':');
+              final lbl = f.substring(0, idx).trim();
+              final expr = f.substring(idx + 1).trim();
+              try {
+                final val = EpvatFormulaHelper.evaluate(expr, epvVars, defaultTemp: temp);
+                resList.add('<strong>$lbl:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit');
+                continue;
+              } catch (_) {}
+            }
+            resList.add('<strong>$f:</strong>&nbsp;&nbsp;&nbsp;&nbsp;- $activePressureUnit');
+          }
+        }
+        if (resList.isNotEmpty) return resList.join('<br/>');
+      }
+
+      if (rec != null) {
+        final p1 = rec.epvatMeanPressure.isNotEmpty ? rec.epvatMeanPressure : '';
+        final p2 = rec.epvatP2MeanPressure.isNotEmpty ? rec.epvatP2MeanPressure : '';
+        final parts = <String>[];
+        if (p1.isNotEmpty) parts.add('<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$p1 $activePressureUnit');
+        if (p2.isNotEmpty) parts.add('<strong>Mean Port:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$p2 $activePressureUnit');
+        if (parts.isNotEmpty) return parts.join('<br/>');
+      }
+
+      if (temp == '21') {
+        return '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;3424.0 $activePressureUnit<br/><strong>Mean Port:</strong>&nbsp;&nbsp;&nbsp;&nbsp;1201.5 $activePressureUnit';
+      } else if (temp == '52') {
+        return '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;3450.0 $activePressureUnit';
+      } else {
+        return '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;3380.0 $activePressureUnit';
+      }
     }
-    if (epvResult21.isEmpty) {
-      final epvChamber21 = epvRec21 != null && epvRec21.epvatMeanPressure.isNotEmpty ? epvRec21.epvatMeanPressure : '3424.0';
-      final epvPort21 = epvRec21 != null && epvRec21.epvatP2MeanPressure.isNotEmpty ? epvRec21.epvatP2MeanPressure : '1201.5';
-      epvResult21 = '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvChamber21 bar<br/><strong>Mean Port:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvPort21 bar';
-    }
+
+    final epvResult21 = buildEpvatTempResult(calConfig['epvat_result_formula_21'] as String? ?? '', '21', epvRec21);
     final epvReq21 = calConfig['epvat_req_21'] as String? ?? 'Max Mean Chamber +3SD ≤ 4450 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
     final epvStatus21 = epvRec21?.status ?? 'Approved';
     final epvRemarks21 = cleanRemarks(epvRec21?.notes);
 
-    String epvResult52 = '';
-    final formula52 = (calConfig['epvat_result_formula_52'] as String? ?? '').trim();
-    if (formula52.isNotEmpty) {
-      try {
-        final val = EpvatFormulaHelper.evaluate(formula52, epvVars, defaultTemp: '52');
-        epvResult52 = '<strong>$formula52:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit';
-      } catch (_) {}
-    }
-    if (epvResult52.isEmpty) {
-      final epvChamber52 = epvRec52 != null && epvRec52.epvatMeanPressure.isNotEmpty ? epvRec52.epvatMeanPressure : (epvRec21 != null && epvRec21.epvatMeanPressure.isNotEmpty ? epvRec21.epvatMeanPressure : '3450.0');
-      epvResult52 = '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvChamber52 bar';
-    }
+    final epvResult52 = buildEpvatTempResult(calConfig['epvat_result_formula_52'] as String? ?? '', '52', epvRec52 ?? epvRec21);
     final epvReq52 = calConfig['epvat_req_52'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
     final epvStatus52 = epvRec52?.status ?? 'Approved';
     final epvRemarks52 = cleanRemarks(epvRec52?.notes);
 
-    String epvResult54 = '';
-    final formula54 = (calConfig['epvat_result_formula_54'] as String? ?? '').trim();
-    if (formula54.isNotEmpty) {
-      try {
-        final val = EpvatFormulaHelper.evaluate(formula54, epvVars, defaultTemp: '54');
-        epvResult54 = '<strong>$formula54:</strong>&nbsp;&nbsp;&nbsp;&nbsp;${val.toStringAsFixed(1)} $activePressureUnit';
-      } catch (_) {}
-    }
-    if (epvResult54.isEmpty) {
-      final epvChamber54 = epvRec54 != null && epvRec54.epvatMeanPressure.isNotEmpty ? epvRec54.epvatMeanPressure : (epvRec21 != null && epvRec21.epvatMeanPressure.isNotEmpty ? epvRec21.epvatMeanPressure : '3380.0');
-      epvResult54 = '<strong>Mean Chamber:</strong>&nbsp;&nbsp;&nbsp;&nbsp;$epvChamber54 bar';
-    }
+    final epvResult54 = buildEpvatTempResult(calConfig['epvat_result_formula_54'] as String? ?? '', '54', epvRec54 ?? epvRec21);
     final epvReq54 = calConfig['epvat_req_54'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port ≥ 1030 Bar';
     final epvStatus54 = epvRec54?.status ?? 'Approved';
     final epvRemarks54 = cleanRemarks(epvRec54?.notes);
@@ -2891,22 +2994,47 @@ class ReportGenerator {
     final String overallStatusText = hasRejection ? 'Rejected' : 'Approved';
     final String overallStatusColor = hasRejection ? '#dc2626' : '#16a34a';
 
+    final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
+    final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
+    final managerSig = _findSignatureBase64(managerName, adminRules);
+
+    final inspectorSigImg = inspectorSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 38px;"></div>';
+    final supervisorSigImg = supervisorSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 38px;"></div>';
+    final managerSigImg = managerSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(managerSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 38px;"></div>';
+
     final buffer = StringBuffer();
     buffer.writeln('''
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>$title</title>
+  <title></title>
   <style>
     @page {
       size: A4 portrait;
-      margin: 15mm 15mm 15mm 15mm;
+      margin: 0;
+    }
+    @media print {
+      @page {
+        margin: 0;
+      }
+      body {
+        margin: 12mm 15mm !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       margin: 0;
-      padding: 20px;
+      padding: 16px 20px;
       color: #0f172a;
       background-color: #ffffff;
       -webkit-print-color-adjust: exact;
@@ -3125,32 +3253,37 @@ class ReportGenerator {
       </tbody>
     </table>
 
+    <!-- Overall Status (Placed ABOVE names and signatures) -->
+    <div class="overall-status-box" style="margin-top: 18px; margin-bottom: 22px; padding: 10px 18px; border: 1.5px solid ${hasRejection ? '#fca5a5' : '#86efac'}; border-radius: 8px; background-color: ${hasRejection ? '#fef2f2' : '#f0fdf4'}; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid;">
+      <span style="font-size: 13.5px; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">Overall Lot Acceptance Status:</span>
+      <span style="font-size: 14.5px; font-weight: 900; color: $overallStatusColor; background-color: ${hasRejection ? '#fee2e2' : '#dcfce7'}; padding: 4px 16px; border-radius: 6px; letter-spacing: 0.5px;">$overallStatusText</span>
+    </div>
+
     <!-- Signatures Table (Table 1 from Reference Docx) -->
-    <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 14px; border: none; page-break-inside: avoid;">
+    <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 10px; border: none; page-break-inside: avoid;">
       <tr>
-        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: top;">
-          <div style="border-bottom: 1px solid #94a3b8; width: 85%; height: 20px; margin-bottom: 6px;"></div>
+        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: bottom; text-align: center;">
+          $inspectorSigImg
+          <div style="border-bottom: 1.5px solid #94a3b8; width: 85%; margin: 0 auto 6px auto;"></div>
           <div style="font-size: 11.5px; color: #1e293b;"><strong>Prepared By:</strong> $inspectorName</div>
           <div style="font-size: 10px; color: #475569; margin-top: 2px;">Ballistic Technician</div>
         </td>
-        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: top;">
-          <div style="border-bottom: 1px solid #94a3b8; width: 85%; height: 20px; margin-bottom: 6px;"></div>
+        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: bottom; text-align: center;">
+          $supervisorSigImg
+          <div style="border-bottom: 1.5px solid #94a3b8; width: 85%; margin: 0 auto 6px auto;"></div>
           <div style="font-size: 11.5px; color: #1e293b;"><strong>Approved By:</strong> $supervisorName</div>
           <div style="font-size: 10px; color: #475569; margin-top: 2px;">Action Ballistic &amp; Engineering Supervisor</div>
         </td>
-        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: top;">
-          <div style="border-bottom: 1px solid #94a3b8; width: 85%; height: 20px; margin-bottom: 6px;"></div>
+        <td style="width: 33.33%; border: none; padding: 4px 10px; vertical-align: bottom; text-align: center;">
+          $managerSigImg
+          <div style="border-bottom: 1.5px solid #94a3b8; width: 85%; margin: 0 auto 6px auto;"></div>
           <div style="font-size: 11.5px; color: #1e293b;"><strong>Authorized By:</strong> $managerName</div>
           <div style="font-size: 10px; color: #475569; margin-top: 2px;">Acting QC &amp; Engineering Manager</div>
         </td>
       </tr>
     </table>
 
-    <div style="margin-top: 14px; font-size: 13.5px; font-weight: bold; color: #0f172a; page-break-inside: avoid;">
-      Overall Status:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: $overallStatusColor; font-weight: 800;">$overallStatusText</span>
-    </div>
-
-    <div class="ref-footer">
+    <div class="ref-footer" style="margin-top: 18px; font-size: 11.5px; font-weight: bold; color: #334155;">
       $reportRefNo
     </div>
   </div>

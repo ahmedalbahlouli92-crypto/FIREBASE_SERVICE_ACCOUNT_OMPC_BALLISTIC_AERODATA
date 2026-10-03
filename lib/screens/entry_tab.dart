@@ -8,6 +8,8 @@ import '../models/ballistic_record.dart';
 import '../services/attachment_helper.dart';
 import '../services/epvat_formula_helper.dart';
 import '../services/storage_service.dart';
+import '../services/report_generator.dart';
+import '../services/report_helper.dart';
 
 /// Formatter restricting Action Time inputs to at most 2 digits before decimal (supports 00.000, 1.5, 12.345)
 class ActionTimeInputFormatter extends TextInputFormatter {
@@ -61,6 +63,7 @@ class EntryTab extends StatefulWidget {
   final List<BallisticRecord> componentPrimerRecords;
   final List<BallisticRecord> componentPropellantRecords;
   final String userRole;
+  final String base64Logo;
 
   const EntryTab({
     Key? key,
@@ -71,6 +74,7 @@ class EntryTab extends StatefulWidget {
     this.componentPrimerRecords = const [],
     this.componentPropellantRecords = const [],
     this.userRole = 'Operator',
+    this.base64Logo = '',
     required this.initialCaliber,
     required this.initialTestName,
     required this.onCaliberChanged,
@@ -2773,30 +2777,7 @@ class _EntryTabState extends State<EntryTab> {
     calcMetrics(_overallEpvatP2RoundsControllers[temp] ?? [], 'p2');
   }
 
-  void _submitForm() async {
-    if (!_validateAndAutoJump()) return;
-    if (!_formKey.currentState!.validate()) return;
-
-    final producedStr = _producedController.text.trim();
-    final defectsStr = _defectsController.text.trim();
-    
-    final int produced = int.tryParse(producedStr) ?? 0;
-    final int defects = int.tryParse(defectsStr) ?? 0;
-
-    if (defects > produced) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Validation Error: Defects cannot exceed quantity tested.'),
-          backgroundColor: Color(0xFFEF4444),
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
+  BallisticRecord _buildCurrentRecord({String refNo = 'PREVIEW'}) {
     final now = DateTime.now();
     // Format timestamp exactly like Node version (e.g. "6/23/2026 4:30:15 PM")
     final String formattedDate = DateFormat('M/d/yyyy h:mm:ss a').format(now);
@@ -2817,12 +2798,14 @@ class _EntryTabState extends State<EntryTab> {
     }
 
     final String finalStatus = _getCalculatedStatus();
+    final producedStr = _producedController.text.trim();
+    final defectsStr = _defectsController.text.trim();
+    final int produced = int.tryParse(producedStr) ?? 0;
+    final int defects = int.tryParse(defectsStr) ?? 0;
 
-    try {
-      final refNum = await StorageService().getNextReferenceNumber();
-      final assignedRefNo = 'REF:${refNum.toString().padLeft(4, '0')}';
+    final assignedRefNo = refNo;
 
-      if ((_testName == 'EPVAT test' || _testName == 'Propellant Test') && _epvatPressureType == 'Overall') {
+    if ((_testName == 'EPVAT test' || _testName == 'Propellant Test') && _epvatPressureType == 'Overall') {
         // Save records for temperatures that actually have data entered
         final temps = ['+21', '+52', '-54'];
         final validTemps = temps.where((t) {
@@ -3037,7 +3020,7 @@ class _EntryTabState extends State<EntryTab> {
           propellantLot: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? (_selectedComponentPropellantLot ?? _propellantLotController.text.trim()) : '',
           propellantCharge: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _propellantChargeController.text.trim() : '',
         );
-        await widget.onSubmit(record);
+        return record;
       } else if (_testName == 'Function Test' && _functionTempMode == 'All') {
         final temps = _functionTempList;
         final validTemps = temps.where((t) {
@@ -3122,7 +3105,7 @@ class _EntryTabState extends State<EntryTab> {
           propellantCode: '',
           propellantLot: '',
         );
-        await widget.onSubmit(record);
+        return record;
       } else {
         // Individual or other test name
         final record = BallisticRecord(
@@ -3262,8 +3245,58 @@ class _EntryTabState extends State<EntryTab> {
           propellantLot: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? (_selectedComponentPropellantLot ?? _propellantLotController.text.trim()) : '',
           propellantCharge: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantChargeController.text.trim() : '',
         );
-        await widget.onSubmit(record);
+        return record;
       }
+    }
+
+  void _openReportWithoutSaving() async {
+    final record = _buildCurrentRecord(refNo: 'PREVIEW');
+    final htmlContent = ReportGenerator.generateHtml(
+      [record],
+      record.testName,
+      widget.currentModule,
+      base64Logo: widget.base64Logo,
+      adminRules: widget.adminRules,
+      loggedInUser: widget.loggedInUser.isNotEmpty ? widget.loggedInUser : record.operators,
+    );
+    final cleanCaliber = record.caliber.replaceAll(';', ' ').trim();
+    final cleanLotNo = record.lotNo.trim();
+    final previewFilename = '${cleanCaliber}_${record.testName}_Preview_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    await ReportHelper.instance.printHtml(
+      htmlContent: htmlContent,
+      filename: previewFilename,
+    );
+  }
+
+  void _submitForm() async {
+    if (!_validateAndAutoJump()) return;
+    if (!_formKey.currentState!.validate()) return;
+
+    final producedStr = _producedController.text.trim();
+    final defectsStr = _defectsController.text.trim();
+    
+    final int produced = int.tryParse(producedStr) ?? 0;
+    final int defects = int.tryParse(defectsStr) ?? 0;
+
+    if (defects > produced) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Validation Error: Defects cannot exceed quantity tested.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final refNum = await StorageService().getNextReferenceNumber();
+      final assignedRefNo = 'REF:${refNum.toString().padLeft(2, '0')}';
+      final record = _buildCurrentRecord(refNo: assignedRefNo);
+      await widget.onSubmit(record);
 
       // Clear form on success
       _attachmentName = '';
@@ -5531,6 +5564,21 @@ class _EntryTabState extends State<EntryTab> {
                         ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFEF4444), width: 1.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+                          minimumSize: const Size(0, 36.0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                        ),
+                      ),
+                      const SizedBox(width: 8.0),
+                      OutlinedButton.icon(
+                        onPressed: _openReportWithoutSaving,
+                        icon: const Icon(Icons.visibility_outlined, color: Color(0xFF38BDF8), size: 16.0),
+                        label: const Text(
+                          'Preview / Open Report',
+                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 12.5),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF38BDF8), width: 1.0),
                           padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
                           minimumSize: const Size(0, 36.0),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
@@ -8415,7 +8463,42 @@ class _EntryTabState extends State<EntryTab> {
       return 'Approved';
     }
 
-    if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+    if (_testName == 'EPVAT test') {
+      final epv = widget.adminRules['epvat'] ?? {};
+      final bool isThreeTemp = _epvatPressureType == 'Overall';
+      final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
+      final list = EpvatFormulaHelper.getFormulasForCaliber(
+        formulasMap,
+        _caliber,
+        isThreeTemp: isThreeTemp,
+      );
+
+      final defaultTemp = isThreeTemp
+          ? '21'
+          : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
+              ? '21'
+              : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
+
+      final variables = _getEpvatVariablesMap();
+
+      if (list.isNotEmpty) {
+        for (var f in list) {
+          final item = Map<String, dynamic>.from(f as Map);
+          final res = EpvatFormulaHelper.evaluateFormulaItem(
+            item,
+            variables,
+            defaultTemp: defaultTemp,
+            activePressureUnit: _epvatPressureUnit,
+          );
+          if (res.isApplicable && !res.isPassed) {
+            return 'Rejected';
+          }
+        }
+      }
+      return 'Approved';
+    }
+
+    if (_testName == 'Propellant Test') {
       final epv = widget.adminRules['epvat'] ?? {};
       final bool isThreeTemp = _epvatPressureType == 'Overall';
       final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
@@ -10310,7 +10393,9 @@ class _EntryTabState extends State<EntryTab> {
       final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
       specText = 'Caliber: $_caliber | Velocity: ${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s | Max Radius: ${maxMeanRadius.toStringAsFixed(1)} mm | Max SD: ${maxSD.toStringAsFixed(1)} mm';
       instructionsText = accRules['instructions'] ?? 'Assess group sizing at target distance.';
-    } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+    } else if (_testName == 'EPVAT test') {
+      return const SizedBox.shrink();
+    } else if (_testName == 'Propellant Test') {
       final activeTemp = _epvatPressureType == 'Overall' 
           ? ['+21', '+52', '-54'][_activeEpvatTempTabIndex]
           : _cartridgeTempController.text.trim();

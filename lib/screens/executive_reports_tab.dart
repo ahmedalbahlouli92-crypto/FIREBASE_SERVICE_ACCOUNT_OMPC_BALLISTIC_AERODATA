@@ -6,6 +6,7 @@ import '../services/report_helper.dart';
 import '../services/report_generator.dart';
 import '../services/supabase_service.dart';
 import '../services/svg_chart_generator.dart';
+import '../widgets/trend_chart.dart';
 
 class ExecutiveReportsTab extends StatefulWidget {
   final List<BallisticRecord> lotAcceptanceRecords;
@@ -41,6 +42,36 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   bool _includeConsumables = true;
   bool _includeEquipmentIssues = true;
   bool _includeWitnessStorage = true;
+
+  // SPC & Box-Whisker Parameters
+  static const List<Map<String, String>> _spcParameterOptions = [
+    {'id': 'Mean Velocity (m/s)', 'label': 'Mean Velocity (m/s)', 'test': 'EPVAT / Propellant'},
+    {'id': 'Velocity SD (m/s)', 'label': 'Velocity SD (m/s)', 'test': 'EPVAT / Propellant'},
+    {'id': 'P1 Chamber Mean Pressure (bar)', 'label': 'Chamber P1 Mean Pressure', 'test': 'EPVAT / Propellant'},
+    {'id': 'P1 Chamber Max Pressure (bar)', 'label': 'Chamber P1 Max Pressure', 'test': 'EPVAT / Propellant'},
+    {'id': 'P1 Chamber SD Pressure (bar)', 'label': 'Chamber P1 SD Pressure', 'test': 'EPVAT / Propellant'},
+    {'id': 'P2 Port Mean Pressure (bar)', 'label': 'Port P2 Mean Pressure', 'test': 'EPVAT / Propellant'},
+    {'id': 'Action Time (ms)', 'label': 'Action Time Mean (ms)', 'test': 'EPVAT / Propellant'},
+    {'id': 'Mean Radius (mm)', 'label': 'Mean Radius (mm)', 'test': 'Accuracy Test'},
+    {'id': 'SD X (mm)', 'label': 'Accuracy SD X (mm)', 'test': 'Accuracy Test'},
+    {'id': 'SD Y (mm)', 'label': 'Accuracy SD Y (mm)', 'test': 'Accuracy Test'},
+    {'id': 'Mean Extraction Force (N)', 'label': 'Mean Extraction Force (N)', 'test': 'Extraction Force'},
+    {'id': 'Min Extraction Force (N)', 'label': 'Min Extraction Force (N)', 'test': 'Extraction Force'},
+    {'id': 'Waterproof Leaks (Count)', 'label': 'Waterproof Leaks (Count)', 'test': 'Waterproof Test'},
+    {'id': 'Function Defects (Count)', 'label': 'Function Defects (Count)', 'test': 'Function Test'},
+    {'id': 'Residual Splits (Count)', 'label': 'Residual Splits / Cracks', 'test': 'Residual Stress'},
+    {'id': 'Cyclic Rate (RPM)', 'label': 'Cyclic Rate (RPM)', 'test': 'Firing Rate'},
+    {'id': 'Mean Height H̄ (cm)', 'label': 'Primer Mean Height H̄', 'test': 'Primer Sensitivity'},
+    {'id': 'Primer SD (cm)', 'label': 'Primer SD (cm)', 'test': 'Primer Sensitivity'},
+  ];
+
+  Set<String> _selectedSpcParams = {
+    'Mean Velocity (m/s)',
+    'P1 Chamber Mean Pressure (bar)',
+    'Mean Radius (mm)',
+    'Mean Extraction Force (N)',
+    'Function Defects (Count)',
+  };
 
   List<Map<String, dynamic>> _consumables = [];
   List<Map<String, dynamic>> _witnessLots = [];
@@ -440,6 +471,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             _buildInspectionLogsTable(inspections),
             const SizedBox(height: 24.0),
 
+            // Section 2: SPC & Box-Whisker Analytics Section
+            _buildSpcAnalyticsSection(inspections.map((e) => e['record'] as BallisticRecord).toList()),
+            const SizedBox(height: 24.0),
+
             // Section 2: Equipment Issues Table (Requirement 8 & 9)
             if (_includeEquipmentIssues) ...[
               _buildEquipmentIssuesTable(equipmentIssues),
@@ -645,6 +680,206 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSpcAnalyticsSection(List<BallisticRecord> records) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFD6E4F0)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 10.0, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(14.0)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.analytics_outlined, color: Color(0xFF0284C7), size: 18.0),
+                    const SizedBox(width: 8.0),
+                    Text(
+                      '2. STATISTICAL PROCESS CONTROL (SPC) & BOX-WHISKER ANALYTICS (${_selectedSpcParams.length} ACTIVE)',
+                      style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 12.5),
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: 8.0,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          if (_selectedSpcParams.length == _spcParameterOptions.length) {
+                            _selectedSpcParams.clear();
+                          } else {
+                            _selectedSpcParams = _spcParameterOptions.map((e) => e['id']!).toSet();
+                          }
+                        });
+                      },
+                      icon: Icon(_selectedSpcParams.length == _spcParameterOptions.length ? Icons.clear_all : Icons.select_all, size: 15.0),
+                      label: Text(_selectedSpcParams.length == _spcParameterOptions.length ? 'Clear All' : 'Select All'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF475569),
+                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                        textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _exportAllSpcCharts(records),
+                      icon: const Icon(Icons.picture_as_pdf, size: 15.0),
+                      label: const Text('Export All SPC Charts'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0284C7),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                        textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Toggle / Filter Ballistic Parameters to Monitor & Export:',
+                  style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                ),
+                const SizedBox(height: 10.0),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 8.0,
+                  children: _spcParameterOptions.map((param) {
+                    final id = param['id']!;
+                    final label = param['label']!;
+                    final test = param['test']!;
+                    final isSelected = _selectedSpcParams.contains(id);
+                    return FilterChip(
+                      selected: isSelected,
+                      label: Text('$label ($test)'),
+                      labelStyle: TextStyle(
+                        fontSize: 11.0,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? const Color(0xFF0369A1) : const Color(0xFF475569),
+                      ),
+                      selectedColor: const Color(0xFFE0F2FE),
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      side: BorderSide(
+                        color: isSelected ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1),
+                        width: isSelected ? 1.5 : 1.0,
+                      ),
+                      checkmarkColor: const Color(0xFF0284C7),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedSpcParams.add(id);
+                          } else {
+                            _selectedSpcParams.remove(id);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16.0),
+                const Divider(color: Color(0xFFE2E8F0)),
+                const SizedBox(height: 12.0),
+                if (_selectedSpcParams.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24.0),
+                    child: Center(
+                      child: Text(
+                        'No parameters selected. Select one or more parameters above to display SPC control charts and distribution analysis.',
+                        style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  )
+                else
+                  TrendLineChart(
+                    records: records,
+                    selectedTestType: 'All',
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportAllSpcCharts(List<BallisticRecord> allRecords) async {
+    final now = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+    final activeParams = _selectedSpcParams.isNotEmpty
+        ? _selectedSpcParams
+        : {'Mean Velocity (m/s)', 'P1 Chamber Mean Pressure (bar)'};
+    final blocksBuffer = StringBuffer();
+
+    for (final paramId in activeParams) {
+      final spcSvg = SvgChartGenerator.generateSpcChartSvg(allRecords, param: paramId, width: 800, height: 210);
+      final boxSvg = SvgChartGenerator.generateBoxPlotSvg(allRecords, metric: paramId, width: 800, height: 210);
+      blocksBuffer.writeln('''
+      <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-bottom: 24px; background: #fff; page-break-inside: avoid;">
+        <div style="font-size: 13px; font-weight: bold; color: #0284c7; text-transform: uppercase; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">
+          Parameter Analysis: $paramId
+        </div>
+        <div style="margin-bottom: 14px;">
+          <div style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 6px; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart (Mean &plusmn; 3SD)</div>
+          $spcSvg
+        </div>
+        <div>
+          <div style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 6px; text-transform: uppercase;">2. Box &amp; Whisker Distribution Profile</div>
+          $boxSvg
+        </div>
+      </div>
+      ''');
+    }
+
+    final html = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OMPC SPC Analytics Report - $_periodLabel</title>
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 15px; color: #1e293b; background: #fff; }
+    .header { border-bottom: 2.5px solid #0284c7; padding-bottom: 10px; margin-bottom: 18px; }
+    .title { font-size: 18px; font-weight: bold; color: #0f172a; }
+    .subtitle { font-size: 11.5px; color: #64748b; margin-top: 3px; }
+    @media print { body { margin: 10mm 12mm; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">OMPC BALLISTIC AERODATA - STATISTICAL PROCESS CONTROL (SPC) REPORT</div>
+    <div class="subtitle">PERIOD: <strong>$_periodLabel</strong> | Generated: $now | Inspector: ${widget.loggedInUser} | Monitored Parameters: ${activeParams.length}</div>
+  </div>
+  ${blocksBuffer.toString()}
+</body>
+</html>
+''';
+
+    await ReportHelper.instance.printHtml(
+      htmlContent: html,
+      filename: 'OMPC_SPC_Analytics_Report_${_periodLabel.replaceAll(' ', '_')}',
     );
   }
 
@@ -1017,8 +1252,28 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     final passRate = totalTests > 0 ? ((approved / totalTests) * 100).toStringAsFixed(1) : '0.0';
 
     final allRecords = inspections.map((e) => e['record'] as BallisticRecord).toList();
-    final spcChartSvg = SvgChartGenerator.generateSpcChartSvg(allRecords, width: 800, height: 220);
-    final boxPlotSvg = SvgChartGenerator.generateBoxPlotSvg(allRecords, width: 800, height: 220);
+    final spcBuffer = StringBuffer();
+    final activeParams = _selectedSpcParams.isNotEmpty
+        ? _selectedSpcParams
+        : {'Mean Velocity (m/s)', 'P1 Chamber Mean Pressure (bar)'};
+
+    for (final paramId in activeParams) {
+      final spcSvg = SvgChartGenerator.generateSpcChartSvg(allRecords, param: paramId, width: 800, height: 210);
+      final boxSvg = SvgChartGenerator.generateBoxPlotSvg(allRecords, metric: paramId, width: 800, height: 210);
+      spcBuffer.writeln('''
+      <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 20px; background: #fff; page-break-inside: avoid;">
+        <h4 style="margin: 0 0 8px 0; font-size: 11.5px; font-weight: bold; color: #0284c7; text-transform: uppercase;">&bull; Parameter: $paramId</h4>
+        <div style="margin-bottom: 10px;">
+          <div style="font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart</div>
+          $spcSvg
+        </div>
+        <div>
+          <div style="font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px; text-transform: uppercase;">2. Box &amp; Whisker Distribution Profile</div>
+          $boxSvg
+        </div>
+      </div>
+      ''');
+    }
 
     final lotAcceptanceList = inspections.where((e) => e['module'] == 'Lot Acceptance').toList();
     final dailyTestList = inspections.where((e) => e['module'] == 'Daily Test').toList();
@@ -1143,17 +1398,8 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     </div>
 
     <span class="module-badge" style="background-color: #0284c7;">SPC & DISTRIBUTION ANALYSIS</span>
-    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">Statistical Process Control (SPC) & Distribution Analysis</h3>
-    
-    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; background: #fff;">
-      <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: bold; color: #334155; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart</h4>
-      $spcChartSvg
-    </div>
-
-    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; background: #fff;">
-      <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: bold; color: #334155; text-transform: uppercase;">2. Box & Whisker Distribution Analysis Chart</h4>
-      $boxPlotSvg
-    </div>
+    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">Statistical Process Control (SPC) & Distribution Analysis (${activeParams.length} Monitored Parameters)</h3>
+    ${spcBuffer.toString()}
   </div>
 
   <!-- PAGE 3: DAILY TEST MODULE -->
