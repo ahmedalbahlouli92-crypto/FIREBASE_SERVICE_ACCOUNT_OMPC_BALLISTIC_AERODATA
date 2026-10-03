@@ -19,30 +19,29 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.7.2';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.7.2 (Supabase Save Fix, Schema Resilience & UI Persistence Guard)';
-const BODY = `## OMPC Ballistic AeroData v1.7.2
+const TAG_NAME = 'v1.8.0';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.8.0 (EPVAT Formulas, Certificate Redesign, Electronic Signatures & SPC Analytics)';
+const BODY = `## OMPC Ballistic AeroData v1.8.0
 
-Critical fix release resolving report submission failures to Supabase, eliminating PostgREST schema cache errors (PGRST204), and guarding client-side in-memory persistence so submitted reports never disappear.
+Major update introducing multi-formula EPVAT evaluation, dedicated Component Module report templates, redesigned Lot Acceptance Certificates with browser header/footer suppression, electronic signatures, report preview, and executive SPC analytics.
 
-### Key Fixes:
-1. **Supabase Database Insert & Update Fix (PGRST204 Resolved)**:
-   - Fixed schema incompatibility where client-generated \`reference_no\` caused Supabase PostgREST to reject all record insertions with HTTP 400 (\`Could not find the 'reference_no' column of 'ballistic_records' in the schema cache\`).
-   - Implemented automatic payload sanitization in \`SupabaseService.sanitizeForSupabase\` to strip \`reference_no\` before REST network calls while safely embedding reference metadata in the notes field (\`[REF:REF-xxxx]\`).
-   - Added automatic recovery in \`BallisticRecord.fromSupabaseMap\` to parse reference numbers from either database column or embedded notes tag.
-
-2. **Client-Side Report Persistence & UI Eviction Guard**:
-   - Fixed issue where optimistic in-memory records could be overwritten by cloud query response if Supabase insertion failed or lagged.
-   - Guaranteed that newly submitted records remain in active state and local storage regardless of cloud sync status.
-
-3. **Database Schema Migration Script**:
-   - Added SQL \`ALTER TABLE ... ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';\` statements to \`supabase_tables_setup.sql\` for both master and all 20 dedicated test tables.
-
-4. **Cross-Platform Release Artifacts**:
-   - Web application updated and deployed to Firebase Hosting.
-   - Windows Desktop 1-Click Installer and Portable ZIP packages generated.
-   - Android release APK built and published.
-   - All 62 automated unit and integration tests passing.
+### Key Features & Enhancements:
+1. **EPVAT Auto-Calculation Arithmetic Restoration**: Restored full substitution arithmetic strings (e.g. \`3424.0 + 3 * 35.2 = 3529.6 bar\`) in exported HTML and Word reports.
+2. **Waterproof Retest Sampling Location**: Inspectors can now adjust and persist the sampling location during waterproof retests in the Inspection Log.
+3. **Browser Print Header & Footer Suppression**: Suppressed unwanted browser headers and footers (page title, time, date, and URL) during Certificate printing.
+4. **Sequential Reference Numbering**: Standardized sequential reference counters across all modules starting at \`REF:01\`.
+5. **Prominent Certificate Status Positioning**: Repositioned the Overall Lot Acceptance Status card directly above the signatures block.
+6. **Dynamic Dashboard SPC Parameter Filtering**: SPC charts and metrics in the Dashboard dynamically adapt strictly to the user-selected test.
+7. **Default Startup Module**: Default module on app launch set to Daily Test.
+8. **Certificate Module Isolation**: Final Lot Acceptance Certificate and Lot Dossier exports strictly restricted to the Lot Acceptance Test module.
+9. **Dedicated Component Report Templates**: Created specialized certificate templates for Primer Sensitivity Test and Propellant Acceptance Test.
+10. **Multiple EPVAT Formulas per Temperature**: Admin can configure and evaluate multiple custom formulas per temperature (+21 °C, +52 °C, -54 °C).
+11. **Decoupled EPVAT Log Entry Rules**: Removed hardcoded velocity and max pressure tolerance overrides; hid advisory instruction card for EPVAT log entries.
+12. **Inspection Log Export Vertical Clearance**: Shifted recommendations, remarks, and signatures up by 1.5 inches to provide ample signature clearance.
+13. **Electronic Signature Management**: Admin can upload, edit, preview, and delete electronic signatures for operators; signatures render above signature lines in reports.
+14. **Preview Report Without Saving**: Added "Preview / Open Report" button in Log Entry to preview formatted reports without database commit.
+15. **Executive Reports SPC & Box-Whisker Analytics**: Interactive parameter filter chips, Box & Whisker distribution plots, and one-click "Export All SPC Charts".
+16. **Polished Certificate Aesthetics**: Refined table borders, header hierarchy, typography, and status card badge styling.
 `;
 
 function request(options, postData) {
