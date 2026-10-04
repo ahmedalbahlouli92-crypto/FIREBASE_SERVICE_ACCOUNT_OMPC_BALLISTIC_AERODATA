@@ -37,12 +37,81 @@ class _TrendLineChartState extends State<TrendLineChart> {
   List<String> _selectedMultiParams = [];
 
   void _initMultiParamsForTest(String testType) {
+    if (testType == 'Waterproof Test') {
+      _showFourCharts = false;
+      _selectedParam = 'Total Leaks';
+      _showMean = true;
+      _showMax = false;
+      _showMin = false;
+      _showSD = false;
+      _selectedMultiParams = ['Total Leaks'];
+      return;
+    }
+    if (testType == 'Extraction Force Test') {
+      _showFourCharts = false;
+      _selectedParam = 'Extraction Force (N)';
+      _showMean = true;
+      _showMax = true;
+      _showMin = true;
+      _showSD = true;
+      _selectedMultiParams = ['Extraction Force (N)'];
+      return;
+    }
+    if (testType == 'Function Test') {
+      _showFourCharts = false;
+      _selectedParam = 'Total Defects';
+      _showMean = true;
+      _showMax = false;
+      _showMin = false;
+      _showSD = false;
+      _selectedMultiParams = ['Total Defects'];
+      return;
+    }
+    if (testType == 'Residual Stress Test') {
+      _showFourCharts = false;
+      _selectedParam = 'Total Splits';
+      _showMean = true;
+      _showMax = false;
+      _showMin = false;
+      _showSD = false;
+      _selectedMultiParams = ['Total Splits'];
+      return;
+    }
+    if (testType == 'Firing Rate Cycle Test') {
+      _showFourCharts = false;
+      _selectedParam = 'Cyclic Rate (RPM)';
+      _showMean = true;
+      _showMax = false;
+      _showMin = false;
+      _showSD = false;
+      _selectedMultiParams = ['Cyclic Rate (RPM)'];
+      return;
+    }
+    if (testType == 'Primer Sensitivity Test') {
+      _showFourCharts = false;
+      _selectedParam = 'Mean Height H̄ (mm)';
+      _showMean = true;
+      _showMax = true;
+      _showMin = true;
+      _showSD = true;
+      _selectedMultiParams = ['Mean Height H̄ (mm)'];
+      return;
+    }
+
     final available = _getParamsForTestType(testType);
     final default4 = _get4ParamsForTestType(testType);
     _selectedMultiParams = default4.where((p) => available.contains(p)).toList();
     if (_selectedMultiParams.isEmpty && available.isNotEmpty) {
       _selectedMultiParams = available.take(4).toList();
     }
+    if (!available.contains(_selectedParam)) {
+      _selectedParam = available.isNotEmpty ? available.first : 'Mean Velocity (m/s)';
+    }
+    _showFourCharts = true;
+    _showMean = true;
+    _showMax = true;
+    _showMin = true;
+    _showSD = true;
   }
 
   static const List<String> _timeRangeOptions = [
@@ -144,32 +213,19 @@ class _TrendLineChartState extends State<TrendLineChart> {
         ];
       case 'Function Test':
         return [
-          'Defect Rate (%)',
           'Total Defects',
-          'Level 1 Critical Defects',
-          'Level 2 Major Defects',
-          'Level 3 Minor Defects',
         ];
       case 'Waterproof Test':
         return [
           'Total Leaks',
-          'Mouth Leaks',
-          'Primer Leaks',
         ];
       case 'Residual Stress Test':
         return [
           'Total Splits',
-          'Neck Splits',
-          'Shoulder Splits',
-          'Body Splits',
-          'Head Splits',
         ];
       case 'Primer Sensitivity Test':
         return [
           'Mean Height H̄ (mm)',
-          'Std Deviation S (mm)',
-          'All Fire H̄+5S (mm)',
-          'No Fire H̄-2S (mm)',
         ];
       case 'Firing Rate Cycle Test':
         return [
@@ -199,14 +255,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
     if (widget.selectedTestType != null && widget.selectedTestType!.isNotEmpty) {
       _selectedTestType = widget.selectedTestType!;
     }
-    final available = _getParamsForTestType(_selectedTestType);
-    if (available.contains('Mean Velocity (m/s)')) {
-      _selectedParam = 'Mean Velocity (m/s)';
-    } else if (available.isNotEmpty) {
-      _selectedParam = available.first;
-    } else {
-      _selectedParam = 'Defect Rate (%)';
-    }
     _initMultiParamsForTest(_selectedTestType);
   }
 
@@ -217,10 +265,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
       setState(() {
         _selectedTestType = widget.selectedTestType!;
         _initMultiParamsForTest(_selectedTestType);
-        final available = _getParamsForTestType(_selectedTestType);
-        if (!available.contains(_selectedParam)) {
-          _selectedParam = available.isNotEmpty ? available.first : 'Mean Velocity (m/s)';
-        }
       });
     }
   }
@@ -543,6 +587,13 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
     final points = _buildGroupPoints(filtered);
 
+    final bool isSingleParamTest = _selectedTestType == 'Waterproof Test' ||
+        _selectedTestType == 'Extraction Force Test' ||
+        _selectedTestType == 'Function Test' ||
+        _selectedTestType == 'Residual Stress Test' ||
+        _selectedTestType == 'Firing Rate Cycle Test' ||
+        _selectedTestType == 'Primer Sensitivity Test';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -565,50 +616,68 @@ class _TrendLineChartState extends State<TrendLineChart> {
             ),
             const SizedBox(width: 8.0),
             // Mode toggle pills: Single SPC vs 4 SPC Charts Grid (Simultaneous)
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(6.0),
-                border: Border.all(color: const Color(0xFF334155)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  InkWell(
-                    onTap: () => setState(() => _showFourCharts = false),
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(5.0)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                      color: !_showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.show_chart_rounded, size: 14.0, color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
-                          const SizedBox(width: 4.0),
-                          Text('Single SPC', style: TextStyle(color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
-                        ],
+            if (!isSingleParamTest)
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => setState(() => _showFourCharts = false),
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(5.0)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                        color: !_showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.show_chart_rounded, size: 14.0, color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
+                            const SizedBox(width: 4.0),
+                            Text('Single SPC', style: TextStyle(color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  InkWell(
-                    onTap: () => setState(() => _showFourCharts = true),
-                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(5.0)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                      color: _showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.grid_view_rounded, size: 14.0, color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
-                          const SizedBox(width: 4.0),
-                          Text('4 SPC Charts (Simultaneous)', style: TextStyle(color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
-                        ],
+                    InkWell(
+                      onTap: () => setState(() => _showFourCharts = true),
+                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(5.0)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                        color: _showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.grid_view_rounded, size: 14.0, color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
+                            const SizedBox(width: 4.0),
+                            Text('4 SPC Charts (Simultaneous)', style: TextStyle(color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.show_chart_rounded, size: 14.0, color: Color(0xFF38BDF8)),
+                    const SizedBox(width: 4.0),
+                    Text('$_selectedTestType SPC', style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(width: 8.0),
             ElevatedButton.icon(
               onPressed: points.isEmpty ? null : () => _exportTrendReport(points),
@@ -663,10 +732,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
                 if (v != null) {
                   setState(() {
                     _selectedTestType = v;
-                    final newParams = _getParamsForTestType(v);
-                    if (!newParams.contains(_selectedParam)) {
-                      _selectedParam = newParams.first;
-                    }
                     _initMultiParamsForTest(v);
                   });
                 }
@@ -678,7 +743,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
               items: _groupByOptions,
               onChanged: (v) => setState(() => _selectedGroupBy = v!),
             ),
-            if (!_showFourCharts)
+            if (!_showFourCharts && !isSingleParamTest)
               _buildDropdown(
                 label: 'BALLISTIC PARAMETER',
                 value: _selectedParam,
@@ -699,12 +764,14 @@ class _TrendLineChartState extends State<TrendLineChart> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildMetricChip('Mean', _showMean, const Color(0xFF06B6D4), () => setState(() => _showMean = !_showMean)),
-                    const SizedBox(width: 6.0),
-                    _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
-                    const SizedBox(width: 6.0),
-                    _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
-                    const SizedBox(width: 6.0),
-                    _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
+                    if (_selectedTestType == 'Extraction Force Test' || !isSingleParamTest) ...[
+                      const SizedBox(width: 6.0),
+                      _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
+                      const SizedBox(width: 6.0),
+                      _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
+                      const SizedBox(width: 6.0),
+                      _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
+                    ],
                   ],
                 ),
               ),
@@ -713,8 +780,10 @@ class _TrendLineChartState extends State<TrendLineChart> {
         const SizedBox(height: 8.0),
 
         // ─── Parameter Selection Chips (Filtered by Test Type) ─────────
-        _buildParameterSelectorChips(paramOptions),
-        const SizedBox(height: 10.0),
+        if (!isSingleParamTest) ...[
+          _buildParameterSelectorChips(paramOptions),
+          const SizedBox(height: 10.0),
+        ],
 
         // ─── Chart area ───────────────────────────────────────────────
         Expanded(

@@ -3541,6 +3541,21 @@ class _EntryTabState extends State<EntryTab> {
                 ),
                 const SizedBox(width: 12.0),
                 OutlinedButton.icon(
+                  onPressed: _openReportWithoutSaving,
+                  icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFF0284C7), size: 15),
+                  label: const Text(
+                    'Open Report Without Saving',
+                    style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF0284C7), width: 1.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: const Size(0, 32),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                OutlinedButton.icon(
                   onPressed: _confirmCancelTest,
                   icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFFEF4444), size: 15),
                   label: const Text(
@@ -5572,9 +5587,9 @@ class _EntryTabState extends State<EntryTab> {
                       const SizedBox(width: 8.0),
                       OutlinedButton.icon(
                         onPressed: _openReportWithoutSaving,
-                        icon: const Icon(Icons.visibility_outlined, color: Color(0xFF38BDF8), size: 16.0),
+                        icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFF38BDF8), size: 16.0),
                         label: const Text(
-                          'Preview / Open Report',
+                          'Open Report Without Saving',
                           style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 12.5),
                         ),
                         style: OutlinedButton.styleFrom(
@@ -8463,7 +8478,7 @@ class _EntryTabState extends State<EntryTab> {
       return 'Approved';
     }
 
-    if (_testName == 'EPVAT test') {
+    if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
       final epv = widget.adminRules['epvat'] ?? {};
       final bool isThreeTemp = _epvatPressureType == 'Overall';
       final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
@@ -8496,106 +8511,6 @@ class _EntryTabState extends State<EntryTab> {
         }
       }
       return 'Approved';
-    }
-
-    if (_testName == 'Propellant Test') {
-      final epv = widget.adminRules['epvat'] ?? {};
-      final bool isThreeTemp = _epvatPressureType == 'Overall';
-      final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
-      final list = EpvatFormulaHelper.getFormulasForCaliber(
-        formulasMap,
-        _caliber,
-        isThreeTemp: isThreeTemp,
-      );
-
-      final defaultTemp = isThreeTemp
-          ? '21'
-          : (_cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
-              ? '21'
-              : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
-
-      final variables = _getEpvatVariablesMap();
-
-      if (list.isNotEmpty) {
-        // Authoritative sentencing: If custom caliber formulas are configured, they determine the quality verdict
-        for (var f in list) {
-          final item = Map<String, dynamic>.from(f as Map);
-          final res = EpvatFormulaHelper.evaluateFormulaItem(
-            item,
-            variables,
-            defaultTemp: defaultTemp,
-            activePressureUnit: _epvatPressureUnit,
-          );
-          if (res.isApplicable && !res.isPassed) {
-            return 'Rejected';
-          }
-        }
-        return 'Approved';
-      }
-
-      // Fallback only when no custom formulas exist for the caliber
-      bool isRejected = false;
-      void checkTemp(String t) {
-        final activeEpv = _getEpvatRulesForCaliber(t);
-        final double velMin = (activeEpv['vel_min'] ?? 0.0).toDouble();
-        final double velMax = (activeEpv['vel_max'] ?? 9999.0).toDouble();
-        double p1Max = (activeEpv['p1_max'] ?? 9999.0).toDouble();
-        double p2Min = (activeEpv['p2_min'] ?? 0.0).toDouble();
-        final double maxActionTime = (activeEpv['max_action_time'] ?? epv['max_action_time'] ?? 4.0).toDouble();
-
-        // Convert pressure limits from bar to active unit
-        if (_epvatPressureUnit != 'bar') {
-          p1Max = EpvatFormulaHelper.convertPressure(p1Max, 'bar', _epvatPressureUnit);
-          p2Min = EpvatFormulaHelper.convertPressure(p2Min, 'bar', _epvatPressureUnit);
-        }
-
-        final sfx = t.replaceAll('+', '').replaceAll('-', '');
-        final double vMean = variables['vel_mean_$sfx'] ?? 0.0;
-        final double p1MeanVal = variables['p1_mean_$sfx'] ?? 0.0;
-        final double p1MaxVal = variables['p1_max_$sfx'] ?? 0.0;
-        final double p2MeanVal = variables['p2_mean_$sfx'] ?? 0.0;
-        final double aMean = variables['action_time_mean_$sfx'] ?? 0.0;
-
-        final bool isBlank = _caliber.contains('M82') || _caliber.contains('M200') || _caliber.toLowerCase().contains('blank');
-        if (!isBlank && vMean > 0 && (vMean < velMin || vMean > velMax)) {
-          isRejected = true;
-        }
-        if (p1MeanVal > 0 && p1MeanVal > p1Max) {
-          isRejected = true;
-        }
-        // NATO STANAG allows individual round peak up to 15% over mean limit
-        if (p1MaxVal > 0 && p1MaxVal > (p1Max * 1.15)) {
-          isRejected = true;
-        }
-        if (!_isCaliber9mm && !isBlank && p2MeanVal > 0 && p2MeanVal < p2Min) {
-          isRejected = true;
-        }
-        if (aMean > 0 && aMean > maxActionTime) {
-          isRejected = true;
-        }
-      }
-
-      if (_epvatPressureType == 'Overall') {
-        final bool isBlank = _caliber.contains('M82') || _caliber.contains('M200') || _caliber.toLowerCase().contains('blank');
-        final coldT = isBlank ? '-32' : '-54';
-        final temps = ['+21', '+52', coldT];
-        final validTemps = temps.where((t) {
-          final p1 = _overallEpvatControllers[t]?['p1_mean']?.text.trim() ?? '';
-          final p2 = _overallEpvatControllers[t]?['p2_mean']?.text.trim() ?? '';
-          final v = _overallEpvatControllers[t]?['vel_mean']?.text.trim() ?? '';
-          return p1.isNotEmpty || p2.isNotEmpty || v.isNotEmpty;
-        }).toList();
-        final tempsToCheck = validTemps.isNotEmpty ? validTemps : [temps[_activeEpvatTempTabIndex]];
-        for (var t in tempsToCheck) {
-          checkTemp(t);
-        }
-      } else {
-        final activeTemp = _cartridgeTempController.text.trim();
-        final tKey = activeTemp.contains('52') ? '+52' : (activeTemp.contains('32') ? '-32' : (activeTemp.contains('54') ? '-54' : '+21'));
-        checkTemp(tKey);
-      }
-
-      return isRejected ? 'Rejected' : 'Approved';
     }
 
     return 'Approved';
@@ -10393,19 +10308,8 @@ class _EntryTabState extends State<EntryTab> {
       final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
       specText = 'Caliber: $_caliber | Velocity: ${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s | Max Radius: ${maxMeanRadius.toStringAsFixed(1)} mm | Max SD: ${maxSD.toStringAsFixed(1)} mm';
       instructionsText = accRules['instructions'] ?? 'Assess group sizing at target distance.';
-    } else if (_testName == 'EPVAT test') {
+    } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
       return const SizedBox.shrink();
-    } else if (_testName == 'Propellant Test') {
-      final activeTemp = _epvatPressureType == 'Overall' 
-          ? ['+21', '+52', '-54'][_activeEpvatTempTabIndex]
-          : _cartridgeTempController.text.trim();
-      final activeEpv = _getEpvatRulesForCaliber(activeTemp);
-      final double velMin = (activeEpv['vel_min'] ?? 900.0).toDouble();
-      final double velMax = (activeEpv['vel_max'] ?? 930.0).toDouble();
-      final double p1Max = (activeEpv['p1_max'] ?? 3800.0).toDouble();
-      final double p2Min = (activeEpv['p2_min'] ?? 200.0).toDouble();
-      specText = 'Caliber: $_caliber ($activeTemp °C) | Vel: ${velMin.toStringAsFixed(1)}-${velMax.toStringAsFixed(1)} m/s | P1 Max: ${p1Max.toStringAsFixed(1)} bar | P2 Min: ${p2Min.toStringAsFixed(1)} bar';
-      instructionsText = _getEpvatInstructionsForCaliber();
     } else if (_testName == 'Primer Sensitivity Test') {
       final prRules = _getPrimerRulesForCaliber();
       final double dropWeight = ((prRules['drop_weight'] ?? 55.0) as num).toDouble();

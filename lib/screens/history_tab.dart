@@ -175,7 +175,7 @@ class _HistoryTabState extends State<HistoryTab> {
     final termSteelCtrl = TextEditingController(text: r.terminalSteelPenetration);
     final termVelCtrl = TextEditingController(text: r.terminalVelocity);
 
-    Widget buildParamField(String label, TextEditingController ctrl, {bool isNumber = true, int flex = 1}) {
+    Widget buildParamField(String label, TextEditingController ctrl, {bool isNumber = true, int flex = 1, Widget? suffixIcon}) {
       return Expanded(
         flex: flex,
         child: Padding(
@@ -194,6 +194,7 @@ class _HistoryTabState extends State<HistoryTab> {
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF334155))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF334155))),
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF59E0B))),
+              suffixIcon: suffixIcon,
             ),
           ),
         ),
@@ -338,7 +339,46 @@ class _HistoryTabState extends State<HistoryTab> {
                                 children: [
                                   buildParamField('Retest Sample Qty', retestProducedCtrl),
                                   buildParamField('Total Leaks / Defects', retestDefectsCtrl),
-                                  buildParamField('Sampling Location', retestLocationCtrl, isNumber: false),
+                                  buildParamField(
+                                    'Sampling Location',
+                                    retestLocationCtrl,
+                                    isNumber: false,
+                                    suffixIcon: PopupMenuButton<String>(
+                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8), size: 20),
+                                      tooltip: 'Select Sampling Location',
+                                      color: const Color(0xFF1E293B),
+                                      onSelected: (val) {
+                                        setDialogState(() {
+                                          retestLocationCtrl.text = val;
+                                        });
+                                      },
+                                      itemBuilder: (context) {
+                                        final locList = <String>{
+                                          'After Packing machine',
+                                          'Priming machine',
+                                          'PC530',
+                                          'PB31/14',
+                                          'PD26',
+                                          'After visual inspection',
+                                          'After link machine',
+                                          if (r.samplingLocation.isNotEmpty) r.samplingLocation,
+                                        };
+                                        final adminLocs = widget.adminRules['sample_locations'];
+                                        if (adminLocs is List) {
+                                          for (final l in adminLocs) {
+                                            if (l != null && l.toString().trim().isNotEmpty) {
+                                              locList.add(l.toString().trim());
+                                            }
+                                          }
+                                        }
+                                        return locList.map((loc) => PopupMenuItem<String>(
+                                          value: loc,
+                                          height: 32,
+                                          child: Text(loc, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                        )).toList();
+                                      },
+                                    ),
+                                  ),
                                 ],
                               ),
                               Row(

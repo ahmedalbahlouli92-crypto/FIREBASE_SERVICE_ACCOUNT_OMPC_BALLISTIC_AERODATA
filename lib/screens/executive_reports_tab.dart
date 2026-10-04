@@ -45,34 +45,25 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   bool _includeWitnessStorage = true;
   int _spcChartViewMode = 0; // 0: SPC & Trend Line Charts, 1: Box & Whisker Distribution, 2: Combined View
 
-  // SPC & Box-Whisker Parameters
-  static const List<Map<String, String>> _spcParameterOptions = [
-    {'id': 'Mean Velocity (m/s)', 'label': 'Mean Velocity (m/s)', 'test': 'EPVAT / Propellant'},
-    {'id': 'Velocity SD (m/s)', 'label': 'Velocity SD (m/s)', 'test': 'EPVAT / Propellant'},
-    {'id': 'P1 Chamber Mean Pressure (bar)', 'label': 'Chamber P1 Mean Pressure', 'test': 'EPVAT / Propellant'},
-    {'id': 'P1 Chamber Max Pressure (bar)', 'label': 'Chamber P1 Max Pressure', 'test': 'EPVAT / Propellant'},
-    {'id': 'P1 Chamber SD Pressure (bar)', 'label': 'Chamber P1 SD Pressure', 'test': 'EPVAT / Propellant'},
-    {'id': 'P2 Port Mean Pressure (bar)', 'label': 'Port P2 Mean Pressure', 'test': 'EPVAT / Propellant'},
-    {'id': 'Action Time (ms)', 'label': 'Action Time Mean (ms)', 'test': 'EPVAT / Propellant'},
-    {'id': 'Mean Radius (mm)', 'label': 'Mean Radius (mm)', 'test': 'Accuracy Test'},
-    {'id': 'SD X (mm)', 'label': 'Accuracy SD X (mm)', 'test': 'Accuracy Test'},
-    {'id': 'SD Y (mm)', 'label': 'Accuracy SD Y (mm)', 'test': 'Accuracy Test'},
-    {'id': 'Mean Extraction Force (N)', 'label': 'Mean Extraction Force (N)', 'test': 'Extraction Force'},
-    {'id': 'Min Extraction Force (N)', 'label': 'Min Extraction Force (N)', 'test': 'Extraction Force'},
-    {'id': 'Waterproof Leaks (Count)', 'label': 'Waterproof Leaks (Count)', 'test': 'Waterproof Test'},
-    {'id': 'Function Defects (Count)', 'label': 'Function Defects (Count)', 'test': 'Function Test'},
-    {'id': 'Residual Splits (Count)', 'label': 'Residual Splits / Cracks', 'test': 'Residual Stress'},
-    {'id': 'Cyclic Rate (RPM)', 'label': 'Cyclic Rate (RPM)', 'test': 'Firing Rate'},
-    {'id': 'Mean Height H̄ (cm)', 'label': 'Primer Mean Height H̄', 'test': 'Primer Sensitivity'},
-    {'id': 'Primer SD (cm)', 'label': 'Primer SD (cm)', 'test': 'Primer Sensitivity'},
+  // SPC & Box-Whisker Tests
+  static const List<Map<String, String>> _spcTestOptions = [
+    {'id': 'EPVAT test', 'name': 'EPVAT Test', 'param': 'Mean Velocity (m/s)'},
+    {'id': 'Accuracy Test', 'name': 'Accuracy Test', 'param': 'Mean Radius (mm)'},
+    {'id': 'Extraction Force Test', 'name': 'Extraction Force Test', 'param': 'Mean Extraction Force (N)'},
+    {'id': 'Waterproof Test', 'name': 'Waterproof Test', 'param': 'Waterproof Leaks (Count)'},
+    {'id': 'Function Test', 'name': 'Function Test', 'param': 'Function Defects (Count)'},
+    {'id': 'Residual Stress Test', 'name': 'Residual Stress Test', 'param': 'Residual Splits (Count)'},
+    {'id': 'Primer Sensitivity Test', 'name': 'Primer Sensitivity Test', 'param': 'Mean Height H̄ (cm)'},
   ];
 
-  Set<String> _selectedSpcParams = {
-    'Mean Velocity (m/s)',
-    'P1 Chamber Mean Pressure (bar)',
-    'Mean Radius (mm)',
-    'Mean Extraction Force (N)',
-    'Function Defects (Count)',
+  Set<String> _selectedSpcTests = {
+    'EPVAT test',
+    'Accuracy Test',
+    'Extraction Force Test',
+    'Waterproof Test',
+    'Function Test',
+    'Residual Stress Test',
+    'Primer Sensitivity Test',
   };
 
   List<Map<String, dynamic>> _consumables = [];
@@ -713,7 +704,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                     const Icon(Icons.analytics_outlined, color: Color(0xFF0284C7), size: 18.0),
                     const SizedBox(width: 8.0),
                     Text(
-                      '2. STATISTICAL PROCESS CONTROL (SPC) & BOX-WHISKER ANALYTICS (${_selectedSpcParams.length} ACTIVE)',
+                      '2. STATISTICAL PROCESS CONTROL (SPC) & BOX-WHISKER ANALYTICS (${_selectedSpcTests.length} ACTIVE)',
                       style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 12.5),
                     ),
                   ],
@@ -724,15 +715,15 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                     TextButton.icon(
                       onPressed: () {
                         setState(() {
-                          if (_selectedSpcParams.length == _spcParameterOptions.length) {
-                            _selectedSpcParams.clear();
+                          if (_selectedSpcTests.length == _spcTestOptions.length) {
+                            _selectedSpcTests.clear();
                           } else {
-                            _selectedSpcParams = _spcParameterOptions.map((e) => e['id']!).toSet();
+                            _selectedSpcTests = _spcTestOptions.map((e) => e['id']!).toSet();
                           }
                         });
                       },
-                      icon: Icon(_selectedSpcParams.length == _spcParameterOptions.length ? Icons.clear_all : Icons.select_all, size: 15.0),
-                      label: Text(_selectedSpcParams.length == _spcParameterOptions.length ? 'Clear All' : 'Select All'),
+                      icon: Icon(_selectedSpcTests.length == _spcTestOptions.length ? Icons.clear_all : Icons.select_all, size: 15.0),
+                      label: Text(_selectedSpcTests.length == _spcTestOptions.length ? 'Clear All' : 'Select All'),
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF475569),
                         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
@@ -762,21 +753,20 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Toggle / Filter Ballistic Parameters to Monitor & Export:',
+                  'Filter Tests to Display SPC & Box-Whisker Charts:',
                   style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                 ),
                 const SizedBox(height: 10.0),
                 Wrap(
                   spacing: 8.0,
                   runSpacing: 8.0,
-                  children: _spcParameterOptions.map((param) {
-                    final id = param['id']!;
-                    final label = param['label']!;
-                    final test = param['test']!;
-                    final isSelected = _selectedSpcParams.contains(id);
+                  children: _spcTestOptions.map((test) {
+                    final id = test['id']!;
+                    final name = test['name']!;
+                    final isSelected = _selectedSpcTests.contains(id);
                     return FilterChip(
                       selected: isSelected,
-                      label: Text('$label ($test)'),
+                      label: Text(name),
                       labelStyle: TextStyle(
                         fontSize: 11.0,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -792,9 +782,9 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                       onSelected: (selected) {
                         setState(() {
                           if (selected) {
-                            _selectedSpcParams.add(id);
+                            _selectedSpcTests.add(id);
                           } else {
-                            _selectedSpcParams.remove(id);
+                            _selectedSpcTests.remove(id);
                           }
                         });
                       },
@@ -841,34 +831,70 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                   ],
                 ),
                 const SizedBox(height: 14.0),
-                if (_selectedSpcParams.isEmpty)
+                if (_selectedSpcTests.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24.0),
                     child: Center(
                       child: Text(
-                        'No parameters selected. Select one or more parameters above to display SPC control charts and distribution analysis.',
+                        'No tests selected. Select one or more tests above to display SPC control charts and distribution analysis.',
                         style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
                       ),
                     ),
                   )
                 else ...[
-                  if (_spcChartViewMode == 0 || _spcChartViewMode == 2)
-                    TrendLineChart(
-                      records: records,
-                      selectedTestType: 'All',
-                    ),
-                  if (_spcChartViewMode == 2)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      child: Divider(color: Color(0xFFE2E8F0)),
-                    ),
-                  if (_spcChartViewMode == 1 || _spcChartViewMode == 2)
-                    SizedBox(
-                      height: 520,
-                      child: BoxPlotChart(
-                        records: records,
+                  for (final test in _spcTestOptions)
+                    if (_selectedSpcTests.contains(test['id'])) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 24.0),
+                        padding: const EdgeInsets.all(14.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(10.0),
+                          border: Border.all(color: const Color(0xFF334155), width: 1.2),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.analytics_outlined, color: Color(0xFF38BDF8), size: 18.0),
+                                const SizedBox(width: 8.0),
+                                Text(
+                                  '${test['name']} - Statistical Process Control (SPC) & Distribution',
+                                  style: const TextStyle(
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14.0),
+                            if (_spcChartViewMode == 0 || _spcChartViewMode == 2) ...[
+                              TrendLineChart(
+                                records: records,
+                                selectedTestType: test['id']!,
+                              ),
+                              if (_spcChartViewMode == 2) ...[
+                                const SizedBox(height: 16.0),
+                                const Divider(color: Color(0xFF334155)),
+                                const SizedBox(height: 16.0),
+                              ],
+                            ],
+                            if (_spcChartViewMode == 1 || _spcChartViewMode == 2)
+                              SizedBox(
+                                height: 460,
+                                child: BoxPlotChart(
+                                  records: records.where((r) => r.testName.toLowerCase() == test['id']!.toLowerCase()).toList(),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                 ],
               ],
             ),
@@ -880,21 +906,31 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 
   Future<void> _exportAllSpcCharts(List<BallisticRecord> allRecords) async {
     final now = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
-    final activeParams = _selectedSpcParams.isNotEmpty
-        ? _selectedSpcParams
-        : {'Mean Velocity (m/s)', 'P1 Chamber Mean Pressure (bar)'};
+    final activeTests = _selectedSpcTests.isNotEmpty
+        ? _selectedSpcTests
+        : {'EPVAT test', 'Accuracy Test', 'Extraction Force Test', 'Waterproof Test', 'Function Test', 'Residual Stress Test', 'Primer Sensitivity Test'};
     final blocksBuffer = StringBuffer();
 
-    for (final paramId in activeParams) {
-      final spcSvg = SvgChartGenerator.generateSpcChartSvg(allRecords, param: paramId, width: 800, height: 210);
-      final boxSvg = SvgChartGenerator.generateBoxPlotSvg(allRecords, metric: paramId, width: 800, height: 210);
+    for (final testId in activeTests) {
+      final testOpt = _spcTestOptions.firstWhere(
+        (t) => t['id'] == testId,
+        orElse: () => {'id': testId, 'name': testId, 'param': 'Mean Velocity (m/s)'},
+      );
+      final testName = testOpt['name']!;
+      final testParam = testOpt['param']!;
+
+      final testRecords = allRecords.where((r) => r.testName.toLowerCase() == testId.toLowerCase()).toList();
+      final evalRecords = testRecords.isNotEmpty ? testRecords : allRecords;
+
+      final spcSvg = SvgChartGenerator.generateSpcChartSvg(evalRecords, param: testParam, width: 800, height: 210);
+      final boxSvg = SvgChartGenerator.generateBoxPlotSvg(evalRecords, metric: testParam, width: 800, height: 210);
       blocksBuffer.writeln('''
       <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-bottom: 24px; background: #fff; page-break-inside: avoid;">
         <div style="font-size: 13px; font-weight: bold; color: #0284c7; text-transform: uppercase; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">
-          Parameter Analysis: $paramId
+          Test Analysis: $testName
         </div>
         <div style="margin-bottom: 14px;">
-          <div style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 6px; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart (Mean &plusmn; 3SD)</div>
+          <div style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 6px; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart</div>
           $spcSvg
         </div>
         <div>
@@ -923,7 +959,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 <body>
   <div class="header">
     <div class="title">OMPC BALLISTIC AERODATA - STATISTICAL PROCESS CONTROL (SPC) REPORT</div>
-    <div class="subtitle">PERIOD: <strong>$_periodLabel</strong> | Generated: $now | Inspector: ${widget.loggedInUser} | Monitored Parameters: ${activeParams.length}</div>
+    <div class="subtitle">PERIOD: <strong>$_periodLabel</strong> | Generated: $now | Inspector: ${widget.loggedInUser} | Monitored Tests: ${activeTests.length}</div>
   </div>
   ${blocksBuffer.toString()}
 </body>
@@ -1306,16 +1342,26 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 
     final allRecords = inspections.map((e) => e['record'] as BallisticRecord).toList();
     final spcBuffer = StringBuffer();
-    final activeParams = _selectedSpcParams.isNotEmpty
-        ? _selectedSpcParams
-        : {'Mean Velocity (m/s)', 'P1 Chamber Mean Pressure (bar)'};
+    final activeTests = _selectedSpcTests.isNotEmpty
+        ? _selectedSpcTests
+        : {'EPVAT test', 'Accuracy Test', 'Extraction Force Test', 'Waterproof Test', 'Function Test', 'Residual Stress Test', 'Primer Sensitivity Test'};
 
-    for (final paramId in activeParams) {
-      final spcSvg = SvgChartGenerator.generateSpcChartSvg(allRecords, param: paramId, width: 800, height: 210);
-      final boxSvg = SvgChartGenerator.generateBoxPlotSvg(allRecords, metric: paramId, width: 800, height: 210);
+    for (final testId in activeTests) {
+      final testOpt = _spcTestOptions.firstWhere(
+        (t) => t['id'] == testId,
+        orElse: () => {'id': testId, 'name': testId, 'param': 'Mean Velocity (m/s)'},
+      );
+      final testName = testOpt['name']!;
+      final testParam = testOpt['param']!;
+
+      final testRecords = allRecords.where((r) => r.testName.toLowerCase() == testId.toLowerCase()).toList();
+      final evalRecords = testRecords.isNotEmpty ? testRecords : allRecords;
+
+      final spcSvg = SvgChartGenerator.generateSpcChartSvg(evalRecords, param: testParam, width: 800, height: 210);
+      final boxSvg = SvgChartGenerator.generateBoxPlotSvg(evalRecords, metric: testParam, width: 800, height: 210);
       spcBuffer.writeln('''
       <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 20px; background: #fff; page-break-inside: avoid;">
-        <h4 style="margin: 0 0 8px 0; font-size: 11.5px; font-weight: bold; color: #0284c7; text-transform: uppercase;">&bull; Parameter: $paramId</h4>
+        <h4 style="margin: 0 0 8px 0; font-size: 11.5px; font-weight: bold; color: #0284c7; text-transform: uppercase;">&bull; Test Analysis: $testName</h4>
         <div style="margin-bottom: 10px;">
           <div style="font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart</div>
           $spcSvg
@@ -1451,7 +1497,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     </div>
 
     <span class="module-badge" style="background-color: #0284c7;">SPC & DISTRIBUTION ANALYSIS</span>
-    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">Statistical Process Control (SPC) & Distribution Analysis (${activeParams.length} Monitored Parameters)</h3>
+    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">Statistical Process Control (SPC) & Distribution Analysis (${activeTests.length} Monitored Tests)</h3>
     ${spcBuffer.toString()}
   </div>
 

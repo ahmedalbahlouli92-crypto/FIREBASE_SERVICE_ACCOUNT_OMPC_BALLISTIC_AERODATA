@@ -1102,26 +1102,11 @@ class _DashboardTabState extends State<DashboardTab> {
                           ),
                         ),
                         const SizedBox(width: 8.0),
-                        const Text(
-                          'Statistical Process Control (SPC) - 4-Chart Process Matrix',
-                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                        ),
-                        const SizedBox(width: 10.0),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12.0),
-                            border: Border.all(color: const Color(0xFF10B981), width: 1.0),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.check_circle, size: 12.0, color: Color(0xFF10B981)),
-                              SizedBox(width: 4.0),
-                              Text('4 Charts Default', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
-                            ],
-                          ),
+                        Text(
+                          _selectedTestName == 'All'
+                              ? 'Statistical Process Control (SPC) Matrix'
+                              : 'Statistical Process Control (SPC) - $_selectedTestName',
+                          style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                       ],
                     ),

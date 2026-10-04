@@ -226,22 +226,22 @@ void main() {
 
       // Sequence verification
       final certPos = dossierHtml.indexOf('Final Lot Acceptance Certificate');
-      final waterPos = dossierHtml.indexOf('Waterproof Test');
-      final extractPos = dossierHtml.indexOf('Extraction Force Test');
-      final accPos = dossierHtml.indexOf('Accuracy Test');
+      final primerPos = dossierHtml.indexOf('Primer Sensitivity Test');
       final epvatPos = dossierHtml.indexOf('EPVAT test');
       final funcPos = dossierHtml.indexOf('Function Test');
       final resPos = dossierHtml.indexOf('Residual Stress Test');
-      final primerPos = dossierHtml.indexOf('Primer Sensitivity Test');
+      final accPos = dossierHtml.indexOf('Accuracy Test');
+      final extractPos = dossierHtml.indexOf('Extraction Force Test');
+      final waterPos = dossierHtml.indexOf('Waterproof Test');
 
       expect(certPos, isNonNegative);
-      expect(waterPos, greaterThan(certPos));
-      expect(extractPos, greaterThan(waterPos));
-      expect(accPos, greaterThan(extractPos));
-      expect(epvatPos, greaterThan(accPos));
+      expect(primerPos, greaterThan(certPos));
+      expect(epvatPos, greaterThan(primerPos));
       expect(funcPos, greaterThan(epvatPos));
       expect(resPos, greaterThan(funcPos));
-      expect(primerPos, greaterThan(resPos));
+      expect(accPos, greaterThan(resPos));
+      expect(extractPos, greaterThan(accPos));
+      expect(waterPos, greaterThan(extractPos));
 
       // Word format test
       final dossierWord = ReportGenerator.generateLotDossierWord(records, 'Lot Acceptance Test', base64Logo: '');

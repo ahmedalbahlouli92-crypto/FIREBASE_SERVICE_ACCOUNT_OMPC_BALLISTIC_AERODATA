@@ -512,7 +512,7 @@ class ReportGenerator {
     final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
     final String reportRefNo = refList.isNotEmpty
         ? refList.join(', ')
-        : 'REF:1';
+        : 'REF:01';
 
     final remarksList = records
         .map((r) => cleanRemarks(r.notes))
@@ -529,10 +529,10 @@ class ReportGenerator {
     final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
     final inspectorSigImg = inspectorSig.isNotEmpty
         ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 38px;"></div>';
+        : '<div style="height: 55px;"></div>';
     final supervisorSigImg = supervisorSig.isNotEmpty
         ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 38px;"></div>';
+        : '<div style="height: 55px;"></div>';
 
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final lotNo = records.isNotEmpty
@@ -561,7 +561,7 @@ class ReportGenerator {
     }
 
     String epvatCombinedSection = '';
-    if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+    if (testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) {
       epvatCombinedSection = _buildEpvatCombinedSectionHtml(
         records: records,
         adminRules: adminRules,
@@ -867,8 +867,9 @@ class ReportGenerator {
       flex: 1 0 auto;
     }
     .report-footer {
-      margin-top: auto;
-      padding-top: 14px;
+      margin-top: 12px;
+      padding-top: 8px;
+      margin-bottom: 1.5in;
     }
     .header-table {
       width: 100%;
@@ -1022,7 +1023,8 @@ class ReportGenerator {
         box-sizing: border-box;
       }
       .report-footer {
-        margin-top: auto;
+        margin-top: 14px;
+        margin-bottom: 1.5in;
         page-break-inside: avoid;
       }
       .summary-card, .data-table, .sentence-box, .signatures { page-break-inside: avoid; }
@@ -1799,7 +1801,7 @@ class ReportGenerator {
     final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
     final String reportRefNo = refList.isNotEmpty
         ? refList.join(', ')
-        : 'REF:1';
+        : 'REF:01';
 
     final displayTestTitle = testName == 'All' ? 'Final Lot Acceptance Certificate' : testName;
 
@@ -1829,10 +1831,10 @@ class ReportGenerator {
     final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
     final inspectorSigImg = inspectorSig.isNotEmpty
         ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 38px;"></div>';
+        : '<div style="height: 55px;"></div>';
     final supervisorSigImg = supervisorSig.isNotEmpty
         ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 38px;"></div>';
+        : '<div style="height: 55px;"></div>';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final lotNo = records.isNotEmpty
         ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
@@ -1841,7 +1843,7 @@ class ReportGenerator {
         : 'N/A';
 
     String epvatCombinedSection = '';
-    if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+    if (testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) {
       epvatCombinedSection = _buildEpvatCombinedSectionHtml(
         records: records,
         adminRules: adminRules,
@@ -2820,10 +2822,9 @@ class ReportGenerator {
     final cleanCaliber = caliber.replaceAll(';', ' ').trim();
     final lotNo = records.isNotEmpty ? records.first.lotNo : '001 OMPC/26';
     final cleanLotNo = lotNo.trim();
-    final title = '${cleanCaliber}_Final_Lot_Acceptance_Certificate_$cleanLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
     final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
-    final String reportRefNo = refList.isNotEmpty ? refList.first : 'REF:0001';
+    final String reportRefNo = refList.isNotEmpty ? refList.first : 'REF:01';
 
     final inspectorName = loggedInUser.trim().isNotEmpty
         ? loggedInUser.trim()
@@ -2945,23 +2946,33 @@ class ReportGenerator {
     final epvRemarks54 = cleanRemarks(epvRec54?.notes);
 
     // 3. Function Test
-    final funcSample = calConfig['function_sample'] as String? ?? (funcRec != null && funcRec.produced > 0 ? '${funcRec.produced} rounds' : '500 rounds');
+    final int funcInitial = funcRec != null ? funcRec.produced : 0;
+    final int funcRetest = (funcRec != null && (funcRec.isRetest || funcRec.retestProduced > 0)) ? (funcRec.retestProduced > 0 ? funcRec.retestProduced : funcRec.produced) : 0;
+    final int funcTotalProduced = funcInitial + funcRetest;
+    final funcSample = calConfig['function_sample'] as String? ?? (funcTotalProduced > 0 ? '$funcTotalProduced rounds' : '500 rounds');
     final funcDefects = funcRec != null ? funcRec.defects : 0;
-    final funcResult = funcRec != null ? '$funcDefects defect${funcDefects == 1 ? '' : 's'}' : '0 defect';
+    final String funcResult = (funcRec != null && (funcRec.isRetest || funcRec.retestProduced > 0))
+        ? 'Test: $funcDefects defect${funcDefects == 1 ? '' : 's'}<br/>Retest: ${funcRec.retestDefects} defect${funcRec.retestDefects == 1 ? '' : 's'}'
+        : (funcRec != null ? '$funcDefects defect${funcDefects == 1 ? '' : 's'}' : '0 defect');
     final funcReq = calConfig['function_req'] as String? ?? 'Critical Defect 0<br/>Major Defects 3<br/>Level 3 Defects 6<br/>Level 4 Defects 18';
     final funcStatus = funcRec?.status ?? 'Approved';
     final funcRemarks = cleanRemarks(funcRec?.notes);
 
     // 4. Residual Stress Test
-    final rsSample = calConfig['residual_sample'] as String? ?? (rsRec != null && rsRec.produced > 0 ? '${rsRec.produced} rounds' : '50 rounds');
-    final rsCracks = rsRec != null ? (rsRec.neckSlow + rsRec.neckFast + rsRec.shoulderSlow + rsRec.shoulderFast + rsRec.bodySlow + rsRec.headSlow + rsRec.headFast) : 0;
-    final rsResult = rsRec != null ? '$rsCracks crack${rsCracks == 1 ? '' : 's'}' : '0 crack';
+    final int rsInitial = rsRec != null ? rsRec.produced : 0;
+    final int rsRetest = (rsRec != null && (rsRec.isRetest || rsRec.retestProduced > 0)) ? (rsRec.retestProduced > 0 ? rsRec.retestProduced : rsRec.produced) : 0;
+    final int rsTotalProduced = rsInitial + rsRetest;
+    final rsSample = calConfig['residual_sample'] as String? ?? (rsTotalProduced > 0 ? '$rsTotalProduced rounds' : '50 rounds');
+    final String rsResult = rsRec != null ? _getRecordMetricsSummary(rsRec) : '0 crack';
     final rsReq = calConfig['residual_req'] as String? ?? 'No. of cracks I zone ≤ 3 Cracks<br/>No. of cracks M, L, K, J & S zone = 0 Crack';
     final rsStatus = rsRec?.status ?? 'Approved';
     final rsRemarks = cleanRemarks(rsRec?.notes);
 
     // 5. Accuracy Test
-    final accSample = calConfig['accuracy_sample'] as String? ?? (accRec != null && accRec.produced > 0 ? '${accRec.produced} rounds' : '30 rounds');
+    final int accInitial = accRec != null ? accRec.produced : 0;
+    final int accRetest = (accRec != null && (accRec.isRetest || accRec.retestProduced > 0)) ? (accRec.retestProduced > 0 ? accRec.retestProduced : accRec.produced) : 0;
+    final int accTotalProduced = accInitial + accRetest;
+    final accSample = calConfig['accuracy_sample'] as String? ?? (accTotalProduced > 0 ? '$accTotalProduced rounds' : '30 rounds');
     String accResult = '';
     if (accRec != null && accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
       accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">${accRec.accSDX} mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">${accRec.accSDY} mm</span></div>';
@@ -2975,7 +2986,10 @@ class ReportGenerator {
     final accRemarks = cleanRemarks(accRec?.notes);
 
     // 6. Extraction Force Test
-    final extSample = calConfig['extraction_sample'] as String? ?? (extRec != null && extRec.produced > 0 ? '${extRec.produced} rounds' : '20 rounds');
+    final int extInitial = extRec != null ? extRec.produced : 0;
+    final int extRetest = (extRec != null && (extRec.isRetest || extRec.retestProduced > 0)) ? (extRec.retestProduced > 0 ? extRec.retestProduced : extRec.produced) : 0;
+    final int extTotalProduced = extInitial + extRetest;
+    final extSample = calConfig['extraction_sample'] as String? ?? (extTotalProduced > 0 ? '$extTotalProduced rounds' : '20 rounds');
     final extMin = extRec != null && extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec != null && extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '474.2');
     final extResult = '<div style="font-weight: bold; color: #1e293b;">Min Force: <span style="font-weight: normal;">$extMin N</span></div>';
     final extReq = calConfig['extraction_req'] as String? ?? 'Min Force ≥ 200';
@@ -2983,9 +2997,11 @@ class ReportGenerator {
     final extRemarks = cleanRemarks(extRec?.notes);
 
     // 7. Waterproof Test
-    final wpSample = calConfig['waterproof_sample'] as String? ?? (wpRec != null && wpRec.produced > 0 ? '${wpRec.produced} rounds' : '20 rounds');
-    final wpLeaks = wpRec != null ? (wpRec.mouthSlow + wpRec.mouthFast + wpRec.primerSlow + wpRec.primerFast) : 0;
-    final wpResult = wpRec != null ? '$wpLeaks leaks' : '0 leaks';
+    final int wpInitial = wpRec != null ? wpRec.produced : 0;
+    final int wpRetest = (wpRec != null && (wpRec.isRetest || wpRec.retestProduced > 0)) ? (wpRec.retestProduced > 0 ? wpRec.retestProduced : wpRec.produced) : 0;
+    final int wpTotalProduced = wpInitial + wpRetest;
+    final wpSample = calConfig['waterproof_sample'] as String? ?? (wpTotalProduced > 0 ? '$wpTotalProduced rounds' : '200 rounds');
+    final String wpResult = wpRec != null ? _getRecordMetricsSummary(wpRec) : '0 leaks';
     final wpReq = calConfig['waterproof_req'] as String? ?? 'No. of Leaks ≤ 6 Leaks';
     final wpStatus = wpRec?.status ?? 'Approved';
     final wpRemarks = cleanRemarks(wpRec?.notes);
@@ -3024,19 +3040,19 @@ class ReportGenerator {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>$title</title>
+  <title></title>
   <style>
     @page {
       size: A4 portrait;
-      margin: 8mm 10mm;
+      margin: 0 !important;
     }
     @media print {
       @page {
-        margin: 8mm 10mm;
+        margin: 0 !important;
       }
       body {
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 8mm 10mm !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }

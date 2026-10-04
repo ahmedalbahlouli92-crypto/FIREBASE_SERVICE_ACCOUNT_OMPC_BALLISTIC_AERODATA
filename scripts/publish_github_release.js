@@ -19,29 +19,33 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.8.0';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.8.0 (EPVAT Formulas, Certificate Redesign, Electronic Signatures & SPC Analytics)';
-const BODY = `## OMPC Ballistic AeroData v1.8.0
+const TAG_NAME = 'v1.8.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.8.1 (14 Key Ballistic Quality & Reporting Enhancements)';
+const BODY = `## OMPC Ballistic AeroData v1.8.1
 
-Major update introducing multi-formula EPVAT evaluation, dedicated Component Module report templates, redesigned Lot Acceptance Certificates with browser header/footer suppression, electronic signatures, report preview, and executive SPC analytics.
+Comprehensive release delivering all 14 requested enhancements across ballistic testing, quality reporting, and statistical process control.
 
-### Key Features & Enhancements:
-1. **EPVAT Auto-Calculation Arithmetic Restoration**: Restored full substitution arithmetic strings (e.g. \`3424.0 + 3 * 35.2 = 3529.6 bar\`) in exported HTML and Word reports.
-2. **Waterproof Retest Sampling Location**: Inspectors can now adjust and persist the sampling location during waterproof retests in the Inspection Log.
-3. **Browser Print Header & Footer Suppression**: Suppressed unwanted browser headers and footers (page title, time, date, and URL) during Certificate printing.
-4. **Sequential Reference Numbering**: Standardized sequential reference counters across all modules starting at \`REF:01\`.
-5. **Prominent Certificate Status Positioning**: Repositioned the Overall Lot Acceptance Status card directly above the signatures block.
-6. **Dynamic Dashboard SPC Parameter Filtering**: SPC charts and metrics in the Dashboard dynamically adapt strictly to the user-selected test.
-7. **Default Startup Module**: Default module on app launch set to Daily Test.
-8. **Certificate Module Isolation**: Final Lot Acceptance Certificate and Lot Dossier exports strictly restricted to the Lot Acceptance Test module.
-9. **Dedicated Component Report Templates**: Created specialized certificate templates for Primer Sensitivity Test and Propellant Acceptance Test.
-10. **Multiple EPVAT Formulas per Temperature**: Admin can configure and evaluate multiple custom formulas per temperature (+21 °C, +52 °C, -54 °C).
-11. **Decoupled EPVAT Log Entry Rules**: Removed hardcoded velocity and max pressure tolerance overrides; hid advisory instruction card for EPVAT log entries.
-12. **Inspection Log Export Vertical Clearance**: Shifted recommendations, remarks, and signatures up by 1.5 inches to provide ample signature clearance.
-13. **Electronic Signature Management**: Admin can upload, edit, preview, and delete electronic signatures for operators; signatures render above signature lines in reports.
-14. **Preview Report Without Saving**: Added "Preview / Open Report" button in Log Entry to preview formatted reports without database commit.
-15. **Executive Reports SPC & Box-Whisker Analytics**: Interactive parameter filter chips, Box & Whisker distribution plots, and one-click "Export All SPC Charts".
-16. **Polished Certificate Aesthetics**: Refined table borders, header hierarchy, typography, and status card badge styling.
+### Summary of Completed Enhancements:
+1. **EPVAT Report Auto-Calculation Restoration**: Restored full arithmetic substitution string formatting (e.g., \`3500 + 5 * 100 = 4000 bar\`) with auto-calculation in exported HTML and Word reports.
+2. **Waterproof Retest Sampling Location**: Enabled inspectors to select standard locations or enter custom sampling locations during waterproof retest execution.
+3. **Print Header & Footer Suppression**: Suppressed browser print headers and footers (document title, timestamp, and local URL) during Final Lot Acceptance Certificate printing.
+4. **Unified Reference Numbering**: Standardized test and certificate reference counters across all modules starting at \`REF:01\`.
+5. **Adaptive SPC Parameters**: SPC visualization on the Dashboard automatically defaults to appropriate metrics based on the chosen test:
+   - Waterproof Test: Single chart for Total Leaks.
+   - Extraction Force Test: Single chart displaying Mean, Min, Max, and SD simultaneously.
+   - Function Test: Single chart for Total Defects.
+   - Residual Stress Test: Single chart for Total Splits.
+   - Firing Rate: Single chart for Cyclic Rate (RPM).
+   - Primer Sensitivity: Single chart for Mean Height H̄ (mm).
+6. **Default Startup Module**: Set default startup module to "Daily Test".
+7. **Certificate Module Isolation**: Restricted Final Lot Acceptance Certificate and Lot Dossier exports strictly to the Lot Acceptance module.
+8. **Dedicated Component Report Templates**: Implemented specialized report layouts and headers for Component Acceptance testing (Primer and Propellant).
+9. **Multi-Formula EPVAT Rules in Control**: Admin can configure and evaluate multiple custom formulas per temperature (+21 °C, +52 °C, -54 °C).
+10. **Removed Hardcoded EPVAT Tolerances from Log Entry**: Removed hardcoded velocity tolerance and max pressure overrides, suppressing advisory spec cards for EPVAT and Propellant tests.
+11. **Inspection Log Vertical Clearance**: Shifted recommendations, remarks, and signatures up by 1.5 inches to provide ample physical signature space.
+12. **Open Report Without Saving**: Added "Open Report Without Saving" button in Log Entry allowing preview/opening in a new window without database submission.
+13. **Executive Test-Level SPC & Box-Whisker Analytics**: Redesigned Executive Reports to filter by Test rather than individual parameters, generating SPC and Box & Whisker distribution plots for each test.
+14. **Organized Lot Acceptance Certificate Layout**: Formatted table alignment, typography, and status cards to achieve complete parity with reference Word documentation on single A4 portrait.
 `;
 
 function request(options, postData) {
