@@ -2128,6 +2128,13 @@ class ReportGenerator {
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta charset="utf-8">
   <style>
+    @page Section1 {
+      size: 595.3pt 841.9pt;
+      margin: 36.0pt 36.0pt 36.0pt 36.0pt;
+      mso-header-margin: 35.4pt;
+      mso-footer-margin: 35.4pt;
+    }
+    div.Section1 { page: Section1; }
     body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; }
     .header-table {
       width: 100%;
@@ -2203,7 +2210,8 @@ class ReportGenerator {
   </style>
 </head>
 <body>
-  <div class="report-content" style="min-height: 3.5in; box-sizing: border-box;">
+  <div class="Section1">
+    <div class="report-content" style="min-height: 3.5in; box-sizing: border-box;">
   <table class="header-table">
     <tr>
       <td style="width: 65%; text-align: left; vertical-align: middle; padding-bottom: 15px;">
@@ -2590,6 +2598,7 @@ class ReportGenerator {
         </td>
       </tr>
     </table>
+    </div>
   </div>
 </body>
 </html>
@@ -2932,18 +2941,45 @@ class ReportGenerator {
 
     final epvResult21 = buildEpvatTempResult(calConfig['epvat_result_formula_21'] as String? ?? '', '21', epvRec21);
     final epvReq21 = calConfig['epvat_req_21'] as String? ?? 'Max Mean Chamber +3SD ≤ 4450 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
-    final epvStatus21 = epvRec21?.status ?? 'Approved';
     final epvRemarks21 = cleanRemarks(epvRec21?.notes);
 
     final epvResult52 = buildEpvatTempResult(calConfig['epvat_result_formula_52'] as String? ?? '', '52', epvRec52);
     final epvReq52 = calConfig['epvat_req_52'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
-    final epvStatus52 = epvRec52?.status ?? (epvRec21 != null ? 'Approved' : 'Approved');
     final epvRemarks52 = cleanRemarks(epvRec52?.notes);
 
     final epvResult54 = buildEpvatTempResult(calConfig['epvat_result_formula_54'] as String? ?? '', '54', epvRec54);
     final epvReq54 = calConfig['epvat_req_54'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port ≥ 1030 Bar';
-    final epvStatus54 = epvRec54?.status ?? (epvRec21 != null ? 'Approved' : 'Approved');
     final epvRemarks54 = cleanRemarks(epvRec54?.notes);
+
+    // Evaluate EPVAT custom formulas if configured or available
+    final epvRules = adminRules['epvat'] ?? {};
+    final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
+    final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
+        records.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
+    final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
+      formulasMap,
+      cleanCaliber,
+      isThreeTemp: isThreeTemp,
+    );
+
+    bool epvatFormulasPassed = true;
+    final epvatRecords = records.where((r) => r.testName.toLowerCase().contains('epvat') || r.testName.toLowerCase().contains('propellant')).toList();
+    if (epvatRecords.isNotEmpty && epvFormulaList.isNotEmpty) {
+      final evaluatedResults = epvFormulaList.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
+        Map<String, dynamic>.from(f as Map),
+        epvVars,
+        defaultTemp: '21',
+        activePressureUnit: activePressureUnit,
+      )).toList();
+      final applicableResults = evaluatedResults.where((r) => r.isApplicable).toList();
+      if (applicableResults.isNotEmpty) {
+        epvatFormulasPassed = applicableResults.every((r) => r.isPassed);
+      }
+    }
+
+    final epvStatus21 = epvatFormulasPassed ? 'Approved' : (epvRec21?.status ?? 'Approved');
+    final epvStatus52 = epvatFormulasPassed ? 'Approved' : (epvRec52?.status ?? (epvRec21 != null ? 'Approved' : 'Approved'));
+    final epvStatus54 = epvatFormulasPassed ? 'Approved' : (epvRec54?.status ?? (epvRec21 != null ? 'Approved' : 'Approved'));
 
     // 3. Function Test
     final int funcInitial = funcRec != null ? funcRec.produced : 0;
@@ -3006,9 +3042,30 @@ class ReportGenerator {
     final wpStatus = wpRec?.status ?? 'Approved';
     final wpRemarks = cleanRemarks(wpRec?.notes);
 
-    final bool hasRejection = records.any((r) => r.status.toLowerCase().contains('reject'));
+    // Check if any test evaluated to rejected (avoiding false rejection from legacy raw records if auto calculation passed)
+    final bool hasRejection = [
+      primerStatus,
+      epvStatus21,
+      epvStatus52,
+      epvStatus54,
+      funcStatus,
+      rsStatus,
+      accStatus,
+      extStatus,
+      wpStatus,
+    ].any((s) => s.toLowerCase().contains('reject') || s.toLowerCase() == 'failed');
     final String overallStatusText = hasRejection ? 'Rejected' : 'Approved';
     final String overallStatusColor = hasRejection ? '#dc2626' : '#15803d';
+
+    final String sentenceRequirement = hasRejection
+        ? 'The inspected lot fails to satisfy quality and ballistic specification criteria. The lot is officially REJECTED and quarantined.'
+        : 'The lot meets all quality and ballistic specifications and is approved for final packaging and shipment.';
+
+    final String now = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    final totalQty = records.fold<int>(0, (sum, r) => sum + r.produced + (r.isRetest ? r.retestProduced : 0));
+    final logoHtml = base64Logo.isNotEmpty
+        ? '<img src="data:image/png;base64,$base64Logo" width="140" height="85" style="object-fit: contain;" />'
+        : '';
 
     final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
     final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
@@ -3048,6 +3105,7 @@ class ReportGenerator {
     }
     @media print {
       @page {
+        size: A4 portrait;
         margin: 0 !important;
       }
       body {
@@ -3076,41 +3134,76 @@ class ReportGenerator {
       max-width: 860px;
       margin: 0 auto;
     }
-    .cert-title-header {
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+    }
+    .header-table td {
+      border: none !important;
+      background: none !important;
+      padding: 0 !important;
+    }
+    .title-section {
       text-align: center;
       margin-top: 4px;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
-    .cert-title-header h1 {
+    .title-section h1 {
       font-size: 15pt;
       font-weight: 800;
       color: #000000;
       letter-spacing: 0.5px;
-      margin: 0 0 4px 0;
+      margin: 0 0 3px 0;
       text-transform: uppercase;
     }
-    .cert-title-header .caliber-subtitle {
+    .caliber-subtitle {
       font-size: 11pt;
       font-weight: bold;
       color: #000000;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
-    .cert-title-header .lot-subtitle {
+    .lot-subtitle {
       font-size: 10.5pt;
       font-weight: bold;
       color: #000000;
     }
-    .header-divider {
-      border: none;
-      border-top: 1px solid #cbd5e1;
-      margin: 10px auto 14px auto;
-      width: 96%;
+    .title-line {
+      height: 2px;
+      width: 100%;
+      background-color: #06b6d4;
+      margin-top: 6px;
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      border-bottom: 1.5px solid #cbd5e1;
+      padding-bottom: 2px;
+      margin-top: 6px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .details-table {
+      width: 100%;
+      margin-bottom: 8px;
+      border-collapse: collapse;
+    }
+    .details-table td {
+      padding: 2.5px 6px;
+      font-size: 9.5pt;
+      border: none !important;
+      background: none !important;
     }
     .results-table {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid #cbd5e1;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       font-size: 8pt;
     }
     .results-table th {
@@ -3148,6 +3241,17 @@ class ReportGenerator {
       text-align: center;
       vertical-align: middle;
     }
+    .sentence-box {
+      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      background-color: #f8fafc;
+      font-size: 9.5pt;
+      font-weight: bold;
+      line-height: 1.35;
+      color: #1e293b;
+      white-space: pre-wrap;
+    }
     .signatures-table {
       width: 100%;
       border-collapse: collapse;
@@ -3156,7 +3260,7 @@ class ReportGenerator {
       page-break-inside: avoid;
     }
     .ref-footer {
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 8.5pt;
       font-weight: bold;
       color: #475569;
@@ -3166,114 +3270,160 @@ class ReportGenerator {
 </head>
 <body>
   <div class="cert-wrapper">
-    <div class="cert-title-header">
+    <!-- Corporate Header Text & Logo Section -->
+    <table class="header-table">
+      <tr>
+        <td style="width: 65%; text-align: left; vertical-align: middle;">
+          <div style="font-size: 16px; font-weight: bold; color: #0f172a; font-family: Arial, sans-serif;">Oman Munition Production Company</div>
+          <div style="font-size: 12px; font-weight: bold; color: #475569; margin-top: 2px;">QC And Engineering Department</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 1px;">Ballistic Lab Section</div>
+          <div style="font-size: 11px; font-style: italic; color: #64748b; margin-top: 1px; margin-bottom: 4px;">Final Lot Acceptance Certificate</div>
+        </td>
+        <td style="width: 35%; text-align: right; vertical-align: middle;">
+          $logoHtml
+          <div style="margin-top: 6px; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">Ref No: $reportRefNo</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Title section with cyan #06b6d4 line -->
+    <div class="title-section">
       <h1>Final Lot Acceptance Certificate</h1>
       <div class="caliber-subtitle">${cleanCaliber.toUpperCase()}</div>
       <div class="lot-subtitle">Lot N.O: $cleanLotNo</div>
-      <hr class="header-divider" />
+      <div class="title-line"></div>
     </div>
 
-    <table class="results-table">
-      <thead>
+    <!-- Details Table -->
+    <div>
+      <h3 class="section-title">Details</h3>
+      <table class="details-table">
         <tr>
-          <th colspan="2" style="width: 20%; text-align: center;">Test Name</th>
-          <th style="width: 13%; text-align: center;">Sample Size</th>
-          <th style="width: 27%; text-align: center;">Results</th>
-          <th style="width: 26%; text-align: center;">Requirements</th>
-          <th style="width: 8%; text-align: center;">Status</th>
-          <th style="width: 6%; text-align: center;">Remarks</th>
+          <td style="width: 25%; font-weight: bold; color: #475569;">Inspector Name:</td>
+          <td>$inspectorName</td>
+          <td style="width: 25%; font-weight: bold; color: #475569;">Date:</td>
+          <td>$now</td>
         </tr>
-      </thead>
-      <tbody>
-        <!-- 1. Primer Sensitivity Test -->
         <tr>
-          <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
-          <td style="text-align: center;">$primerSample</td>
-          <td style="text-align: center;">$primerResult</td>
-          <td style="text-align: center;">$primerReq</td>
-          <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
-          <td style="text-align: center;">$primerRemarks</td>
+          <td style="font-weight: bold; color: #475569;">Caliber Specification:</td>
+          <td style="font-weight: bold; color: #0f172a;">${cleanCaliber.toUpperCase()}</td>
+          <td style="font-weight: bold; color: #475569;">Lot Number:</td>
+          <td style="font-weight: bold; color: #0f172a;">Lot N.O: $cleanLotNo</td>
         </tr>
+        <tr>
+          <td style="font-weight: bold; color: #475569;">Total Quantity Tested:</td>
+          <td>$totalQty rounds</td>
+          <td style="font-weight: bold; color: #475569;">Overall Status:</td>
+          <td style="font-weight: bold; color: $overallStatusColor;">$overallStatusText</td>
+        </tr>
+      </table>
+    </div>
 
-        <!-- 2. EPVAT test (+21 °C, +52 °C, -54 °C) -->
-        <tr>
-          <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
-          <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
-          <td rowspan="3" style="text-align: center; vertical-align: middle;">$epvSample21</td>
-          <td style="text-align: center;">$epvResult21</td>
-          <td style="text-align: center;">$epvReq21</td>
-          <td class="status-cell">${formatStatusBadge(epvStatus21)}</td>
-          <td style="text-align: center;">$epvRemarks21</td>
-        </tr>
-        <tr>
-          <td class="temp-cell">+52 &deg;C</td>
-          <td style="text-align: center;">$epvResult52</td>
-          <td style="text-align: center;">$epvReq52</td>
-          <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
-          <td style="text-align: center;">$epvRemarks52</td>
-        </tr>
-        <tr>
-          <td class="temp-cell">-54 &deg;C</td>
-          <td style="text-align: center;">$epvResult54</td>
-          <td style="text-align: center;">$epvReq54</td>
-          <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
-          <td style="text-align: center;">$epvRemarks54</td>
-        </tr>
+    <!-- Acceptance Test Results -->
+    <div>
+      <h3 class="section-title">Acceptance Test Results</h3>
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th colspan="2" style="width: 20%; text-align: center;">Test Name</th>
+            <th style="width: 13%; text-align: center;">Sample Size</th>
+            <th style="width: 27%; text-align: center;">Results</th>
+            <th style="width: 26%; text-align: center;">Requirements</th>
+            <th style="width: 8%; text-align: center;">Status</th>
+            <th style="width: 6%; text-align: center;">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 1. Primer Sensitivity Test -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
+            <td style="text-align: center;">$primerSample</td>
+            <td style="text-align: center;">$primerResult</td>
+            <td style="text-align: center;">$primerReq</td>
+            <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
+            <td style="text-align: center;">$primerRemarks</td>
+          </tr>
 
-        <!-- 3. Function Test -->
-        <tr>
-          <td colspan="2" class="test-name-cell">Function Test</td>
-          <td style="text-align: center;">$funcSample</td>
-          <td style="text-align: center;">$funcResult</td>
-          <td style="text-align: center;">$funcReq</td>
-          <td class="status-cell">${formatStatusBadge(funcStatus)}</td>
-          <td style="text-align: center;">$funcRemarks</td>
-        </tr>
+          <!-- 2. EPVAT test (+21 °C, +52 °C, -54 °C) -->
+          <tr>
+            <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
+            <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
+            <td rowspan="3" style="text-align: center; vertical-align: middle;">$epvSample21</td>
+            <td style="text-align: center;">$epvResult21</td>
+            <td style="text-align: center;">$epvReq21</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus21)}</td>
+            <td style="text-align: center;">$epvRemarks21</td>
+          </tr>
+          <tr>
+            <td class="temp-cell">+52 &deg;C</td>
+            <td style="text-align: center;">$epvResult52</td>
+            <td style="text-align: center;">$epvReq52</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
+            <td style="text-align: center;">$epvRemarks52</td>
+          </tr>
+          <tr>
+            <td class="temp-cell">-54 &deg;C</td>
+            <td style="text-align: center;">$epvResult54</td>
+            <td style="text-align: center;">$epvReq54</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
+            <td style="text-align: center;">$epvRemarks54</td>
+          </tr>
 
-        <!-- 4. Residual Stress Test -->
-        <tr>
-          <td colspan="2" class="test-name-cell">Residual Stress Test</td>
-          <td style="text-align: center;">$rsSample</td>
-          <td style="text-align: center;">$rsResult</td>
-          <td style="text-align: center;">$rsReq</td>
-          <td class="status-cell">${formatStatusBadge(rsStatus)}</td>
-          <td style="text-align: center;">$rsRemarks</td>
-        </tr>
+          <!-- 3. Function Test -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Function Test</td>
+            <td style="text-align: center;">$funcSample</td>
+            <td style="text-align: center;">$funcResult</td>
+            <td style="text-align: center;">$funcReq</td>
+            <td class="status-cell">${formatStatusBadge(funcStatus)}</td>
+            <td style="text-align: center;">$funcRemarks</td>
+          </tr>
 
-        <!-- 5. Accuracy Test -->
-        <tr>
-          <td colspan="2" class="test-name-cell">Accuracy Test</td>
-          <td style="text-align: center;">$accSample</td>
-          <td style="text-align: center;">$accResult</td>
-          <td style="text-align: center;">$accReq</td>
-          <td class="status-cell">${formatStatusBadge(accStatus)}</td>
-          <td style="text-align: center;">$accRemarks</td>
-        </tr>
+          <!-- 4. Residual Stress Test -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Residual Stress Test</td>
+            <td style="text-align: center;">$rsSample</td>
+            <td style="text-align: center;">$rsResult</td>
+            <td style="text-align: center;">$rsReq</td>
+            <td class="status-cell">${formatStatusBadge(rsStatus)}</td>
+            <td style="text-align: center;">$rsRemarks</td>
+          </tr>
 
-        <!-- 6. Extraction Force Test -->
-        <tr>
-          <td colspan="2" class="test-name-cell">Extraction Force Test</td>
-          <td style="text-align: center;">$extSample</td>
-          <td style="text-align: center;">$extResult</td>
-          <td style="text-align: center;">$extReq</td>
-          <td class="status-cell">${formatStatusBadge(extStatus)}</td>
-          <td style="text-align: center;">$extRemarks</td>
-        </tr>
+          <!-- 5. Accuracy Test -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Accuracy Test</td>
+            <td style="text-align: center;">$accSample</td>
+            <td style="text-align: center;">$accResult</td>
+            <td style="text-align: center;">$accReq</td>
+            <td class="status-cell">${formatStatusBadge(accStatus)}</td>
+            <td style="text-align: center;">$accRemarks</td>
+          </tr>
 
-        <!-- 7. Waterproof Test -->
-        <tr>
-          <td colspan="2" class="test-name-cell">Waterproof Test</td>
-          <td style="text-align: center;">$wpSample</td>
-          <td style="text-align: center;">$wpResult</td>
-          <td style="text-align: center;">$wpReq</td>
-          <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
-          <td style="text-align: center;">$wpRemarks</td>
-        </tr>
-      </tbody>
-    </table>
+          <!-- 6. Extraction Force Test -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Extraction Force Test</td>
+            <td style="text-align: center;">$extSample</td>
+            <td style="text-align: center;">$extResult</td>
+            <td style="text-align: center;">$extReq</td>
+            <td class="status-cell">${formatStatusBadge(extStatus)}</td>
+            <td style="text-align: center;">$extRemarks</td>
+          </tr>
+
+          <!-- 7. Waterproof Test -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Waterproof Test</td>
+            <td style="text-align: center;">$wpSample</td>
+            <td style="text-align: center;">$wpResult</td>
+            <td style="text-align: center;">$wpReq</td>
+            <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
+            <td style="text-align: center;">$wpRemarks</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <!-- Overall Status Table (Placed ABOVE names and signatures) -->
-    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 12px; border: 1.5px solid ${hasRejection ? '#fca5a5' : '#86efac'}; border-radius: 6px; background-color: ${hasRejection ? '#fef2f2' : '#f0fdf4'}; page-break-inside: avoid;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 6px; margin-bottom: 8px; border: 1.5px solid ${hasRejection ? '#fca5a5' : '#86efac'}; border-radius: 6px; background-color: ${hasRejection ? '#fef2f2' : '#f0fdf4'}; page-break-inside: avoid;">
       <tr>
         <td style="border: none; padding: 6px 12px; font-size: 9.5pt; font-weight: 800; color: #1e293b; text-align: left; text-transform: uppercase; letter-spacing: 0.5px;">
           Overall Lot Acceptance Status:
@@ -3285,6 +3435,14 @@ class ReportGenerator {
         </td>
       </tr>
     </table>
+
+    <!-- Lot Sentencing & Compliance Evaluation -->
+    <div style="margin-bottom: 8px; page-break-inside: avoid;">
+      <h3 class="section-title">Lot Sentencing &amp; Compliance Evaluation</h3>
+      <div class="sentence-box">
+        $sentenceRequirement
+      </div>
+    </div>
 
     <!-- Signatures Table (Table 1 from Reference Docx) -->
     <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 6px; border: none; page-break-inside: avoid;">
@@ -3310,7 +3468,7 @@ class ReportGenerator {
       </tr>
     </table>
 
-    <div class="ref-footer" style="margin-top: 10px; font-size: 8.5pt; font-weight: bold; color: #475569;">
+    <div class="ref-footer" style="margin-top: 8px; font-size: 8.5pt; font-weight: bold; color: #475569;">
       $reportRefNo
     </div>
   </div>
@@ -3357,10 +3515,16 @@ class ReportGenerator {
     div.Section1 { page: Section1; }
     body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000000; }
     .cert-wrapper { width: 100%; margin: 0; }
-    .cert-title-header { text-align: center; margin-bottom: 12pt; }
-    .cert-title-header h1 { font-size: 14pt; font-weight: bold; color: #000000; margin: 0 0 4pt 0; text-transform: uppercase; }
-    .caliber-subtitle { font-size: 11pt; font-weight: bold; color: #000000; margin-bottom: 3pt; text-align: center; }
-    .lot-subtitle { font-size: 10.5pt; font-weight: bold; color: #000000; text-align: center; }
+    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10pt; }
+    .header-table td { border: none !important; }
+    .title-section { text-align: center; margin-bottom: 10pt; }
+    .title-section h1 { font-size: 14pt; font-weight: bold; color: #000000; margin: 0 0 3pt 0; text-transform: uppercase; }
+    .caliber-subtitle { font-size: 11pt; font-weight: bold; color: #000000; margin-bottom: 2pt; text-align: center; }
+    .lot-subtitle { font-size: 10.5pt; font-weight: bold; color: #475569; text-align: center; }
+    .title-line { height: 2px; width: 100%; background-color: #06b6d4; margin-top: 4pt; margin-bottom: 8pt; border-bottom: 2px solid #06b6d4; }
+    .section-title { font-size: 10pt; font-weight: bold; color: #0f172a; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 2pt; margin-top: 6pt; margin-bottom: 4pt; text-transform: uppercase; }
+    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; }
+    .details-table td { border: none !important; padding: 2pt 4pt; font-size: 8.5pt; }
     table { border-collapse: collapse; width: 100%; }
     table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 10pt; }
     table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 4pt 3pt; font-size: 8pt; text-transform: uppercase; }
@@ -3368,6 +3532,7 @@ class ReportGenerator {
     .test-name-cell { color: #0284c7; font-weight: bold; font-size: 8.5pt; text-align: center; }
     .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 8pt; }
     .status-cell { text-align: center; font-size: 8pt; }
+    .sentence-box { padding: 5pt 8pt; border: 1px solid #cbd5e1; border-radius: 4px; background-color: #f8fafc; font-size: 9pt; font-weight: bold; color: #1e293b; }
     .signatures-table { border: none !important; margin-top: 6pt; width: 100%; }
     .signatures-table td { border: none !important; padding: 3pt 6pt; vertical-align: bottom; text-align: center; }
     .ref-footer { margin-top: 8pt; font-size: 8.5pt; font-weight: bold; color: #475569; text-align: left; }

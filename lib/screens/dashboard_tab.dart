@@ -233,7 +233,21 @@ class _DashboardTabState extends State<DashboardTab> {
 
     // 5. Test Name Filter
     if (_selectedTestName != 'All') {
-      filtered = filtered.where((r) => r.testName == _selectedTestName).toList();
+      filtered = filtered.where((r) {
+        final rTest = r.testName.trim().toLowerCase();
+        final sTest = _selectedTestName.trim().toLowerCase();
+        return rTest == sTest ||
+            (rTest.contains('epvat') && sTest.contains('epvat')) ||
+            (rTest.contains('waterproof') && sTest.contains('waterproof')) ||
+            (rTest.contains('accuracy') && sTest.contains('accuracy')) ||
+            (rTest.contains('stress') && sTest.contains('stress')) ||
+            (rTest.contains('primer') && sTest.contains('primer')) ||
+            (rTest.contains('propellant') && sTest.contains('propellant')) ||
+            (rTest.contains('function') && sTest.contains('function')) ||
+            (rTest.contains('extraction') && sTest.contains('extraction')) ||
+            (rTest.contains('terminal') && sTest.contains('terminal')) ||
+            ((rTest.contains('firing rate') || rTest.contains('cyclic')) && (sTest.contains('firing rate') || sTest.contains('cyclic')));
+      }).toList();
     }
 
     // Calculate metrics
@@ -1121,7 +1135,9 @@ class _DashboardTabState extends State<DashboardTab> {
                 Expanded(
                   child: TrendLineChart(
                     records: widget.records,
-                    selectedTestType: _selectedTestName == 'All' ? 'Select Test Type' : _selectedTestName,
+                    selectedCaliber: _selectedCaliber,
+                    selectedTestType: _selectedTestName,
+                    currentModule: widget.currentModule,
                   ),
                 ),
               ],
@@ -2444,17 +2460,28 @@ class _DashboardTabState extends State<DashboardTab> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
                         ),
-                        items: const [
-                          'EPVAT test',
-                          'Accuracy Test',
-                          'Function Test',
-                          'Waterproof Test',
-                          'Residual Stress Test',
-                          'Extraction Force Test',
-                          'Firing Rate Cycle Test',
-                          'Terminal Effect Test',
-                          'Primer Sensitivity Test',
-                        ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        items: (widget.currentModule == 'Daily Test'
+                            ? const [
+                                'EPVAT test',
+                                'Accuracy Test',
+                                'Function Test',
+                                'Waterproof Test',
+                                'Residual Stress Test',
+                                'Extraction Force Test',
+                                'Firing Rate Cycle Test',
+                                'Terminal Effect Test',
+                              ]
+                            : const [
+                                'EPVAT test',
+                                'Accuracy Test',
+                                'Function Test',
+                                'Waterproof Test',
+                                'Residual Stress Test',
+                                'Extraction Force Test',
+                                'Firing Rate Cycle Test',
+                                'Terminal Effect Test',
+                                'Primer Sensitivity Test',
+                              ]).map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                         onChanged: (v) => setDialogState(() => targetTest = v!),
                       ),
                     ),

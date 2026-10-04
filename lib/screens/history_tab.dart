@@ -72,7 +72,7 @@ class _HistoryTabState extends State<HistoryTab> {
     '9x19mm 124 grains CMJ',
   ];
 
-  static const List<String> testNames = [
+  static const List<String> _baseTestNames = [
     'Waterproof Test',
     'Extraction Force Test',
     'Accuracy Test',
@@ -2414,8 +2414,43 @@ class _HistoryTabState extends State<HistoryTab> {
     );
   }
 
+  List<String> get testNames {
+    if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
+      return _baseTestNames.where((t) => t != 'Primer Sensitivity Test' && t != 'Propellant Test').toList();
+    }
+    if (widget.currentModule == 'Component Test') {
+      return const ['Primer Sensitivity Test', 'Propellant Test'];
+    }
+    return _baseTestNames.where((t) => t != 'Propellant Test').toList();
+  }
+
+  void _openRecordReportNoSave(BallisticRecord r) {
+    try {
+      final html = ReportGenerator.generateHtml(
+        [r],
+        r.testName,
+        widget.currentModule,
+        base64Logo: widget.base64Logo,
+        adminRules: widget.adminRules,
+        loggedInUser: widget.loggedInUser,
+      );
+      final repCaliber = r.caliber.replaceAll(';', ' ').trim();
+      final repTestName = r.testName;
+      final repLotNo = r.lotNo;
+      final safeName = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      ReportHelper.instance.openReport(htmlContent: html, title: safeName);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to open report: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!testNames.contains(_testNameFilter) && _testNameFilter != 'All') {
+      _testNameFilter = 'All';
+    }
     final availableLots = {'All', ...widget.records.map((r) => r.lotNo.trim()).where((s) => s.isNotEmpty)}.toList()..sort();
     final availableHoppers = {'All', ...widget.records.map((r) => r.hopperNo.trim()).where((s) => s.isNotEmpty)}.toList()..sort();
     if (!availableLots.contains(_lotFilter)) _lotFilter = 'All';
@@ -2753,9 +2788,9 @@ class _HistoryTabState extends State<HistoryTab> {
   static const int _flexLot = 9;
   static const int _flexStatus = 9;
   static const int _flexSample = 6;
-  static const int _flexResults = 16;
-  static const int _flexRemarks = 9;
-  static const int _flexActions = 15;
+  static const int _flexResults = 15;
+  static const int _flexRemarks = 8;
+  static const int _flexActions = 17;
 
   Widget _buildInspectionLogTable(List<BallisticRecord> displayRecords) {
     return Column(
@@ -3141,6 +3176,12 @@ class _HistoryTabState extends State<HistoryTab> {
                     color: const Color(0xFF0284C7),
                     tooltip: 'AI Analysis & Recommendations',
                     onPressed: () => _showAiAnalysisDialog(r),
+                  ),
+                  _buildActionIcon(
+                    icon: Icons.open_in_browser_rounded,
+                    color: const Color(0xFF0284C7),
+                    tooltip: 'Open',
+                    onPressed: () => _openRecordReportNoSave(r),
                   ),
                   if (r.attachmentBase64.isNotEmpty)
                     _buildActionIcon(

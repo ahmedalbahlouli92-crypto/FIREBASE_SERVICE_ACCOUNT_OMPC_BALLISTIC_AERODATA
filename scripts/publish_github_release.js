@@ -19,48 +19,37 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.0';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.0 (13 Ballistic System Enhancements: Admin Sampling Locations, SPC Matrix, Edit Authority & Edge Suppression)';
-const BODY = `## OMPC Ballistic AeroData v1.9.0
+const TAG_NAME = 'v1.9.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.1 (Multi-Test SPC Matrix, Inspection Log Open Report, Certificate Formatting & Auto-Status)';
+const BODY = `## OMPC Ballistic AeroData v1.9.1
 
-Major release implementing 13 core ballistic quality, statistical process control, and system enhancements:
+Production release implementing dedicated SPC matrix charts, enhanced certificate formatting, instant inspection report viewer, and quality status integrity:
 
 ### Key Enhancements & Features:
-1. **Admin Sampling Locations Management**:
-   - Quality Administrators can dynamically Add, Edit/Rename, or Delete sampling locations directly in the Admin Control tab.
-   - Preserves both standard industrial presets (Lines 1-6, QA Lab, Hopper Machine, Assembly Line, etc.) and custom locations.
-2. **Retest Sampling Location Dropdown**:
-   - Converted Retest dialog sampling location into a dynamic dropdown populated with all system sampling locations (including custom added locations).
-   - Retest location is now persisted for all test types upon retest submission.
-3. **EPVAT Rules & Status Decoupling**:
-   - Decoupled attached advisory spec rules / admin recommendations from the final status in Lot Entry and Inspection Log.
-   - Manual status overrides are strictly respected and preserved when calculations pass.
-4. **Admin Full Record Edit Authority**:
-   - Quality Administrators have unrestricted authority to edit any field of submitted records (Test Protocol, Caliber, Timestamp, Test Time, Sampling Location, all Test Metrics, Retest Metrics, Status, and Notes).
-5. **Dashboard Test-First SPC Matrix**:
-   - Dashboard Statistical Process Control chart now enforces selecting a Test Type first.
-   - Shows an intuitive guidance message until a test is selected; no parameters appear beforehand.
-6. **Test-Specific SPC Metrics**:
-   - **Waterproof Test**: Total Fast Leaks, Total Slow Leaks, Total Leaks.
-   - **Accuracy Test**: Average SD (X & Y), Mean Radius, SD X, SD Y.
-   - **EPVAT Test**: All EPVAT parameters selectable.
-   - **Residual Stress Test**: Number of cracks / total splits.
-   - **Primer Sensitivity Test**: HM+5SD and HM-2SD.
-   - **Function Test**: Level 1, 2, 3, 4 Defects, and Total Defects.
-7. **Multi-Parameter Selection Filter**:
-   - Strict test-level filtering with support for selecting up to 4 parameters/charts simultaneously.
-8. **Admin Control "Approved with Condition" Field**:
-   - Dedicated configuration field under Admin Rules allowing quality managers to set specific criteria for conditional approvals across all ballistic tests.
-9. **Waterproof 0 to 3 Leaks Sentenced as "Approved"**:
-   - Waterproof tests with 0 to 3 leaks are automatically sentenced as "Approved" (instead of "Approved with condition").
-10. **Instant Report Opening Without Saving**:
-    - Added instant "Open Report (No Save)" and "Open Dossier (No Save)" actions in report dialogs. Opens inspection documents in-memory via temporary blob/file without requiring download or local disk save.
-11. **Edge Deprecation Warning Permanent Suppression**:
-    - Automated suppression of the Windows notification banner (*"Microsoft edge is no longer supported on this version of windows..."*) across client PCs via registry policies and browser startup arguments.
-12. **Firebase Cloud Web Deployment**:
-    - Compiled and deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
-13. **Supabase Cloud Sync & GitHub Publication**:
-    - Complete cross-platform sync and GitHub distribution with 1-Click Setup Installer and Portable Zip.
+1. **Inspection Log Direct Report Viewer (No Save)**:
+   - Added a dedicated "Open" action icon (\`Icons.open_in_browser_rounded\`, tooltip 'Open') positioned beside the AI Analysis button.
+   - Instantly opens the test report in an in-memory browser tab/window without triggering file download or prompting for save locations.
+2. **Admin Rename Sampling Location**:
+   - Quality Administrators can explicitly rename any configured sampling location directly from the Admin Rules panel with immediate persistent synchronization across Supabase and local storage.
+3. **EPVAT 5.56x45 SS109 Lot 001 OMPC/26 Fix & Automated Quality Approval**:
+   - Repaired historical EPVAT record in Supabase to "Approved" quality status.
+   - Enforced automated status sync: whenever all automated EPVAT formulas pass criteria, the quality status is guaranteed to be "Approved".
+4. **Primer Sensitivity Test Removed from Daily Test**:
+   - Completely filtered out Primer Sensitivity Test from Daily Test module entry forms, test type selectors, and inspection log filters.
+5. **Dashboard SPC Chart Matrix (Up to 4 Tests & 1 Chart per Test)**:
+   - Enabled selecting up to 4 tests simultaneously via intuitive selection chips.
+   - Each selected test receives its own dedicated chart card (strictly one chart for one test only) with individual metric dropdowns and custom statistical process control lines (Mean, UCL, LCL, SD).
+6. **Dashboard SPC Filter Cleanup & Test Selection Bug Fix**:
+   - Removed redundant Test Type and Time Range dropdowns from the top filter bar, keeping Caliber Specification and Grouping Mode.
+   - Resolved the widget update bug that caused selecting tests to reset the UI as if nothing was selected.
+7. **Final Lot Acceptance Certificate Format**:
+   - Upgraded Final Lot Acceptance Certificate layout to match EPVAT exported reports: corporate header with logo and Ref No, title section with cyan (#06b6d4) line, Details table, Acceptance Test Results table, Sentencing callout box, and 3-column signature block.
+8. **Word Export Formatting**:
+   - Ensured exported Word (.doc) files match PDF report styling with @page Section1 margins (36.0pt), corporate header, table borders, and colors.
+9. **Firebase Cloud Web Deployment**:
+   - Compiled and deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
+10. **Distribution Deliverables**:
+    - Synchronized standalone executable, 1-Click Setup Installer, and portable zip on Desktop.
 `;
 
 function request(options, postData) {

@@ -1758,7 +1758,15 @@ class _EntryTabState extends State<EntryTab> {
     }
     return EntryTab.calibers;
   }
-  List<String> get testNames => EntryTab.testNames;
+  List<String> get testNames {
+    if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
+      return EntryTab.testNames.where((t) => t != 'Primer Sensitivity Test' && t != 'Propellant Test').toList();
+    }
+    if (widget.currentModule == 'Component Test') {
+      return const ['Primer Sensitivity Test', 'Propellant Test'];
+    }
+    return EntryTab.testNames.where((t) => t != 'Propellant Test').toList();
+  }
 
   // Caliber-specific test matrix and sample sizing
   bool _isTestAllowedForCaliber(String test, String cal) {
@@ -1766,6 +1774,9 @@ class _EntryTabState extends State<EntryTab> {
       return test == 'Propellant Test' || test == 'Primer Sensitivity Test';
     }
     if (test == 'Propellant Test') return false;
+    if ((widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') && test == 'Primer Sensitivity Test') {
+      return false;
+    }
 
     final c = cal.toLowerCase();
     if (test == 'Waterproof Test') {
@@ -1793,7 +1804,7 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   List<String> _allowedTestsForCaliber(String cal) {
-    return EntryTab.testNames.where((t) => _isTestAllowedForCaliber(t, cal)).toList();
+    return testNames.where((t) => _isTestAllowedForCaliber(t, cal)).toList();
   }
 
   int _getDefaultSampleSize({
@@ -2320,6 +2331,10 @@ class _EntryTabState extends State<EntryTab> {
       if (_testName != 'Propellant Test' && _testName != 'Primer Sensitivity Test') {
         _testName = 'Primer Sensitivity Test';
       }
+    } else if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
+      if (_testName == 'Primer Sensitivity Test' || _testName == 'Propellant Test') {
+        _testName = 'Waterproof Test';
+      }
     }
     _operatorsController.text = widget.loggedInUser;
     _locationController.text = _getDefaultSamplingLocation(
@@ -2526,6 +2541,11 @@ class _EntryTabState extends State<EntryTab> {
       _operatorsController.text = widget.loggedInUser;
     }
     if (oldWidget.currentModule != widget.currentModule) {
+      if ((widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') && (_testName == 'Primer Sensitivity Test' || _testName == 'Propellant Test')) {
+        setState(() {
+          _testName = 'Waterproof Test';
+        });
+      }
       _locationController.text = _getDefaultSamplingLocation(
         module: widget.currentModule,
         test: _testName,
@@ -2798,7 +2818,17 @@ class _EntryTabState extends State<EntryTab> {
       }
     }
 
-    final String finalStatus = _isManualStatusSelected && _status.isNotEmpty ? _status : _getCalculatedStatus();
+    final String calculatedStatus = _getCalculatedStatus();
+    final String finalStatus;
+    if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+      if (calculatedStatus == 'Approved') {
+        finalStatus = 'Approved';
+      } else {
+        finalStatus = _isManualStatusSelected && _status.isNotEmpty ? _status : calculatedStatus;
+      }
+    } else {
+      finalStatus = _isManualStatusSelected && _status.isNotEmpty ? _status : calculatedStatus;
+    }
     final producedStr = _producedController.text.trim();
     final defectsStr = _defectsController.text.trim();
     final int produced = int.tryParse(producedStr) ?? 0;
@@ -3470,6 +3500,7 @@ class _EntryTabState extends State<EntryTab> {
       
       setState(() {
         _status = 'Approved';
+        _isManualStatusSelected = false;
         _autoSaveStatus = '';
         _lastAutoSaveTime = null;
       });
@@ -9005,6 +9036,10 @@ class _EntryTabState extends State<EntryTab> {
         } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
           // Quality status is based strictly on EPVAT calculated results (custom formulas or standard limits). Admin instruction is an advisory recommendation only.
           autoStatus = _getCalculatedStatus();
+          if (autoStatus == 'Approved' && _status != 'Approved') {
+            _status = 'Approved';
+            _isManualStatusSelected = false;
+          }
         }
 
         if (!_isManualStatusSelected && autoStatus != null && _status != autoStatus) {

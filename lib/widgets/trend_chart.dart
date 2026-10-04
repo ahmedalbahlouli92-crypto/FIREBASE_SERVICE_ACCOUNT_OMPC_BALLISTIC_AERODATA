@@ -12,9 +12,17 @@ import '../services/report_helper.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 class TrendLineChart extends StatefulWidget {
   final List<BallisticRecord> records;
+  final String? selectedCaliber;
   final String? selectedTestType;
+  final String currentModule;
 
-  const TrendLineChart({Key? key, required this.records, this.selectedTestType}) : super(key: key);
+  const TrendLineChart({
+    Key? key,
+    required this.records,
+    this.selectedCaliber,
+    this.selectedTestType,
+    this.currentModule = 'Daily Test',
+  }) : super(key: key);
 
   @override
   State<TrendLineChart> createState() => _TrendLineChartState();
@@ -22,46 +30,76 @@ class TrendLineChart extends StatefulWidget {
 
 class _TrendLineChartState extends State<TrendLineChart> {
   String _selectedCaliber = 'All';
-  String _selectedTestType = 'Select Test Type';
   String _selectedGroupBy = 'By Lot Number'; // 'By Lot Number' | 'By Hopper No.' | 'By Individual Test'
-  String _selectedParam = '';
-  String _selectedTimeRange = 'All Time';
+  List<String> _selectedTests = [];
+  final Map<String, String> _testActiveParam = {};
 
   bool _showMean = true;
   bool _showMax = true;
   bool _showMin = true;
   bool _showSD = true;
 
-  bool _showFourCharts = true;
+  static const List<String> _groupByOptions = [
+    'By Lot Number',
+    'By Hopper No.',
+    'By Individual Test',
+  ];
 
-  List<String> _selectedMultiParams = [];
-
-  bool get _isTestChosen =>
-      _selectedTestType.isNotEmpty &&
-      _selectedTestType != 'Select Test Type' &&
-      _selectedTestType != 'All';
-
-  void _initMultiParamsForTest(String testType) {
-    if (testType.isEmpty || testType == 'Select Test Type' || testType == 'All') {
-      _selectedMultiParams = [];
-      _selectedParam = '';
-      return;
+  List<String> get _availableTests {
+    if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
+      return [
+        'Waterproof Test',
+        'Accuracy Test',
+        'EPVAT test',
+        'Residual Stress Test',
+        'Function Test',
+        'Extraction Force Test',
+        'Firing Rate Cycle Test',
+        'Terminal Effect Test',
+      ];
+    } else if (widget.currentModule == 'Component Test') {
+      return [
+        'Primer Sensitivity Test',
+        'Propellant Test',
+      ];
+    } else {
+      return [
+        'EPVAT test',
+        'Accuracy Test',
+        'Waterproof Test',
+        'Residual Stress Test',
+        'Function Test',
+        'Extraction Force Test',
+        'Primer Sensitivity Test',
+        'Firing Rate Cycle Test',
+        'Terminal Effect Test',
+      ];
     }
+  }
 
-    final available = _getParamsForTestType(testType);
-    final default4 = _get4ParamsForTestType(testType);
-    _selectedMultiParams = default4.where((p) => available.contains(p)).take(4).toList();
-    if (_selectedMultiParams.isEmpty && available.isNotEmpty) {
-      _selectedMultiParams = available.take(math.min(4, available.length)).toList();
+  bool _matchesTestName(String rTest, String target) {
+    final rLower = rTest.trim().toLowerCase();
+    final tLower = target.trim().toLowerCase();
+    if (rLower == tLower) return true;
+    if (rLower.contains('epvat') && tLower.contains('epvat')) return true;
+    if (rLower.contains('waterproof') && tLower.contains('waterproof')) return true;
+    if (rLower.contains('accuracy') && tLower.contains('accuracy')) return true;
+    if (rLower.contains('stress') && tLower.contains('stress')) return true;
+    if (rLower.contains('primer') && tLower.contains('primer')) return true;
+    if (rLower.contains('propellant') && tLower.contains('propellant')) return true;
+    if (rLower.contains('function') && tLower.contains('function')) return true;
+    if (rLower.contains('extraction') && tLower.contains('extraction')) return true;
+    if (rLower.contains('terminal') && tLower.contains('terminal')) return true;
+    if ((rLower.contains('firing rate') || rLower.contains('cyclic')) &&
+        (tLower.contains('firing rate') || tLower.contains('cyclic'))) return true;
+    return false;
+  }
+
+  String? _findMatchingTestName(String input) {
+    for (final t in _availableTests) {
+      if (_matchesTestName(input, t)) return t;
     }
-    if (!available.contains(_selectedParam)) {
-      _selectedParam = available.isNotEmpty ? available.first : '';
-    }
-    _showFourCharts = _selectedMultiParams.length > 1;
-    _showMean = true;
-    _showMax = true;
-    _showMin = true;
-    _showSD = true;
+    return null;
   }
 
   static const List<String> _timeRangeOptions = [
@@ -73,11 +111,19 @@ class _TrendLineChartState extends State<TrendLineChart> {
     'This Year',
   ];
 
-  static const List<String> _groupByOptions = [
-    'By Lot Number',
-    'By Hopper No.',
-    'By Individual Test',
-  ];
+  String get _selectedTestType {
+    if (_selectedTests.isNotEmpty) return _selectedTests.first;
+    return _availableTests.isNotEmpty ? _availableTests.first : 'EPVAT test';
+  }
+
+  String get _selectedParam {
+    final t = _selectedTestType;
+    if (_testActiveParam.containsKey(t) && _testActiveParam[t]!.isNotEmpty) {
+      return _testActiveParam[t]!;
+    }
+    final pList = _getParamsForTestType(t);
+    return pList.isNotEmpty ? pList.first : '';
+  }
 
   List<String> _get4ParamsForTestType(String testType) {
     final lower = testType.toLowerCase();
@@ -213,35 +259,88 @@ class _TrendLineChartState extends State<TrendLineChart> {
   @override
   void initState() {
     super.initState();
+    if (widget.selectedCaliber != null && widget.selectedCaliber!.isNotEmpty) {
+      _selectedCaliber = widget.selectedCaliber!;
+    } else {
+      _selectedCaliber = 'All';
+    }
+
+    _initSelectedTests();
+  }
+
+  void _initSelectedTests() {
+    final available = _availableTests;
+    _selectedTests = [];
+
+    // Initialize default parameter for each available test
+    for (final t in available) {
+      final pList = _getParamsForTestType(t);
+      if (pList.isNotEmpty) {
+        _testActiveParam[t] = pList.first;
+      }
+    }
+
+    // 1. If incoming test matches an available test, put it first
     if (widget.selectedTestType != null &&
         widget.selectedTestType!.isNotEmpty &&
         widget.selectedTestType != 'All' &&
         widget.selectedTestType != 'Select Test Type') {
-      _selectedTestType = widget.selectedTestType!;
-    } else {
-      _selectedTestType = 'Select Test Type';
+      final match = _findMatchingTestName(widget.selectedTestType!);
+      if (match != null && available.contains(match)) {
+        _selectedTests.add(match);
+      }
     }
-    _initMultiParamsForTest(_selectedTestType);
+
+    // 2. Add tests that have records in widget.records
+    for (final t in available) {
+      if (_selectedTests.length >= 4) break;
+      if (_selectedTests.contains(t)) continue;
+      final hasData = widget.records.any((r) => _matchesTestName(r.testName, t));
+      if (hasData) {
+        _selectedTests.add(t);
+      }
+    }
+
+    // 3. Fill remaining slots from available up to 4 (or available.length)
+    for (final t in available) {
+      if (_selectedTests.length >= 4) break;
+      if (!_selectedTests.contains(t)) {
+        _selectedTests.add(t);
+      }
+    }
   }
 
   @override
   void didUpdateWidget(TrendLineChart oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.selectedTestType != null && widget.selectedTestType != _selectedTestType) {
-      final newType = (widget.selectedTestType!.isNotEmpty && widget.selectedTestType != 'All')
-          ? widget.selectedTestType!
-          : 'Select Test Type';
-      if (newType != _selectedTestType) {
+    if (widget.selectedCaliber != null && widget.selectedCaliber != oldWidget.selectedCaliber) {
+      if (widget.selectedCaliber != _selectedCaliber) {
         setState(() {
-          _selectedTestType = newType;
-          _initMultiParamsForTest(_selectedTestType);
+          _selectedCaliber = widget.selectedCaliber!;
+        });
+      }
+    }
+    if (widget.selectedTestType != null &&
+        widget.selectedTestType != oldWidget.selectedTestType &&
+        widget.selectedTestType!.isNotEmpty &&
+        widget.selectedTestType != 'All' &&
+        widget.selectedTestType != 'Select Test Type') {
+      final match = _findMatchingTestName(widget.selectedTestType!);
+      if (match != null && _availableTests.contains(match)) {
+        setState(() {
+          if (!_selectedTests.contains(match)) {
+            if (_selectedTests.length >= 4) {
+              _selectedTests.removeLast();
+            }
+            _selectedTests.insert(0, match);
+          }
         });
       }
     }
   }
 
   _RecordMetric? _extractRecordMetric(BallisticRecord r, {String? paramOverride}) {
-    final param = paramOverride ?? _selectedParam;
+    final param = paramOverride ?? '';
     switch (param) {
       case 'Mean Velocity (m/s)':
         final mean = double.tryParse(r.velMean);
@@ -534,110 +633,29 @@ class _TrendLineChartState extends State<TrendLineChart> {
     return pts;
   }
 
+  List<_TrendGroupPoint> _buildGroupPointsForTest(String testName, String activeParam) {
+    final filtered = widget.records.where((r) {
+      final matchesCal = _selectedCaliber == 'All' || r.caliber == _selectedCaliber;
+      final matchesTest = _matchesTestName(r.testName, testName);
+      return matchesCal && matchesTest;
+    }).toList();
+
+    return _buildGroupPoints(filtered, paramOverride: activeParam);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Caliber filter list
     final calibers = ['All', ...widget.records.map((r) => r.caliber).where((c) => c.isNotEmpty).toSet().toList()..sort()];
     if (!calibers.contains(_selectedCaliber)) _selectedCaliber = 'All';
 
-    // Test Type filter list
-    final testTypes = [
-      'Select Test Type',
-      'Waterproof Test',
-      'Accuracy Test',
-      'EPVAT test',
-      'Residual Stress Test',
-      'Primer Sensitivity Test',
-      'Function Test',
-      'Extraction Force Test',
-      'Firing Rate Cycle Test',
-      'Terminal Effect Test',
-    ];
-    if (!testTypes.contains(_selectedTestType)) {
-      _selectedTestType = 'Select Test Type';
+    // Total groups across selected tests
+    int totalEvaluatedGroups = 0;
+    for (final t in _selectedTests) {
+      final pList = _getParamsForTestType(t);
+      final activeP = _testActiveParam[t] ?? (pList.isNotEmpty ? pList.first : '');
+      totalEvaluatedGroups += _buildGroupPointsForTest(t, activeP).length;
     }
-
-    final bool isTestChosen = _selectedTestType.isNotEmpty &&
-        _selectedTestType != 'Select Test Type' &&
-        _selectedTestType != 'All';
-
-    // Dynamic parameter options based on chosen test type
-    final paramOptions = isTestChosen ? _getParamsForTestType(_selectedTestType) : <String>[];
-    if (isTestChosen) {
-      if (!paramOptions.contains(_selectedParam) && paramOptions.isNotEmpty) {
-        _selectedParam = paramOptions.first;
-      }
-      if (_selectedMultiParams.isEmpty) {
-        _initMultiParamsForTest(_selectedTestType);
-      } else {
-        final valid = _selectedMultiParams.where((p) => paramOptions.contains(p)).toList();
-        if (valid.isEmpty && paramOptions.isNotEmpty) {
-          _initMultiParamsForTest(_selectedTestType);
-        } else if (valid.length != _selectedMultiParams.length) {
-          _selectedMultiParams = valid;
-        }
-      }
-    } else {
-      _selectedParam = '';
-      _selectedMultiParams = [];
-    }
-
-    // Filter by caliber, test type, and time range
-    final filtered = isTestChosen
-        ? widget.records.where((r) {
-            final matchesCal = _selectedCaliber == 'All' || r.caliber == _selectedCaliber;
-            final rTestLower = r.testName.trim().toLowerCase();
-            final sTestLower = _selectedTestType.trim().toLowerCase();
-            final matchesTest = rTestLower == sTestLower ||
-                (rTestLower.contains('epvat') && sTestLower.contains('epvat')) ||
-                (rTestLower.contains('waterproof') && sTestLower.contains('waterproof')) ||
-                (rTestLower.contains('accuracy') && sTestLower.contains('accuracy')) ||
-                (rTestLower.contains('stress') && sTestLower.contains('stress')) ||
-                (rTestLower.contains('primer') && sTestLower.contains('primer')) ||
-                (rTestLower.contains('function') && sTestLower.contains('function')) ||
-                (rTestLower.contains('extraction') && sTestLower.contains('extraction')) ||
-                (rTestLower.contains('terminal') && sTestLower.contains('terminal')) ||
-                ((rTestLower.contains('firing rate') || rTestLower.contains('cyclic')) && (sTestLower.contains('firing rate') || sTestLower.contains('cyclic')));
-
-            bool matchesTime = true;
-            if (_selectedTimeRange != 'All Time') {
-              final now = DateTime.now();
-              DateTime? recordDate;
-              try {
-                final raw = r.timestamp.trim();
-                if (raw.isNotEmpty) {
-                  recordDate = DateTime.tryParse(raw.split(' ')[0]);
-                }
-              } catch (_) {}
-
-              if (recordDate != null) {
-                switch (_selectedTimeRange) {
-                  case 'Today':
-                    matchesTime = recordDate.year == now.year && recordDate.month == now.month && recordDate.day == now.day;
-                    break;
-                  case 'Last 7 Days':
-                    final diff = now.difference(recordDate).inDays;
-                    matchesTime = diff >= 0 && diff <= 7;
-                    break;
-                  case 'Last 30 Days':
-                    final diff = now.difference(recordDate).inDays;
-                    matchesTime = diff >= 0 && diff <= 30;
-                    break;
-                  case 'This Month':
-                    matchesTime = recordDate.year == now.year && recordDate.month == now.month;
-                    break;
-                  case 'This Year':
-                    matchesTime = recordDate.year == now.year;
-                    break;
-                }
-              }
-            }
-            return matchesCal && matchesTest && matchesTime;
-          }).toList()
-        : <BallisticRecord>[];
-
-    final points = isTestChosen ? _buildGroupPoints(filtered) : <_TrendGroupPoint>[];
-    final selectedCaliberLabel = _selectedCaliber == 'All' ? 'All Calibers' : _selectedCaliber;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -649,7 +667,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
             const SizedBox(width: 8.0),
             const Expanded(
               child: Text(
-                'Lot & Hopper Statistical Trend Analysis (SPC)',
+                'Lot & Hopper Statistical Trend Analysis (SPC Matrix)',
                 style: TextStyle(
                   fontSize: 15.0,
                   fontWeight: FontWeight.bold,
@@ -660,55 +678,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
               ),
             ),
             const SizedBox(width: 8.0),
-            // Mode toggle pills: Single SPC vs Multi-SPC Charts Grid (Up to 4)
-            if (isTestChosen)
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFF334155)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      onTap: () => setState(() => _showFourCharts = false),
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(5.0)),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                        color: !_showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.show_chart_rounded, size: 14.0, color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
-                            const SizedBox(width: 4.0),
-                            Text('Single SPC', style: TextStyle(color: !_showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => setState(() => _showFourCharts = true),
-                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(5.0)),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                        color: _showFourCharts ? const Color(0xFF0284C7) : Colors.transparent,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.grid_view_rounded, size: 14.0, color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
-                            const SizedBox(width: 4.0),
-                            Text('Multi-SPC (Up to 4)', style: TextStyle(color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(width: 8.0),
             ElevatedButton.icon(
-              onPressed: points.isEmpty ? null : () => _exportTrendReport(points),
+              onPressed: totalEvaluatedGroups == 0 ? null : () => _exportTrendReport(),
               icon: const Icon(Icons.print_outlined, size: 15.0),
               label: const Text('Export Trend Report', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
               style: ElevatedButton.styleFrom(
@@ -727,7 +698,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
                 border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
               ),
               child: Text(
-                '${points.length} Groups Evaluated',
+                '${_selectedTests.length} Tests | $totalEvaluatedGroups Groups',
                 style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0, fontWeight: FontWeight.bold),
               ),
             ),
@@ -735,12 +706,12 @@ class _TrendLineChartState extends State<TrendLineChart> {
         ),
         const SizedBox(height: 4.0),
         const Text(
-          'Statistical process control chart displaying Min, Max, Mean, and SD readings from each lot or hopper.',
+          'Statistical process control chart displaying Min, Max, Mean, and SD readings from each lot or hopper across up to 4 tests simultaneously.',
           style: TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3)),
         ),
-        const SizedBox(height: 14.0),
+        const SizedBox(height: 12.0),
 
-        // ─── Filter row & Group By ───────────────────────────────────
+        // ─── Filter row (Caliber Specification & Group By only) ────────
         Wrap(
           spacing: 12.0,
           runSpacing: 10.0,
@@ -753,139 +724,38 @@ class _TrendLineChartState extends State<TrendLineChart> {
               onChanged: (v) => setState(() => _selectedCaliber = v!),
             ),
             _buildDropdown(
-              label: 'TEST TYPE',
-              value: _selectedTestType,
-              items: testTypes,
-              onChanged: (v) {
-                if (v != null) {
-                  setState(() {
-                    _selectedTestType = v;
-                    _initMultiParamsForTest(v);
-                  });
-                }
-              },
-            ),
-            _buildDropdown(
               label: 'GROUP READINGS BY',
               value: _selectedGroupBy,
               items: _groupByOptions,
               onChanged: (v) => setState(() => _selectedGroupBy = v!),
             ),
-            if (isTestChosen && !_showFourCharts)
-              _buildDropdown(
-                label: 'BALLISTIC PARAMETER',
-                value: _selectedParam,
-                items: paramOptions,
-                onChanged: (v) => setState(() => _selectedParam = v!),
-              ),
-            _buildDropdown(
-              label: 'TIME RANGE',
-              value: _selectedTimeRange,
-              items: _timeRangeOptions,
-              onChanged: (v) => setState(() => _selectedTimeRange = v!),
-            ),
             // Metric toggle pills
-            if (isTestChosen && !_showFourCharts)
-              Padding(
-                padding: const EdgeInsets.only(top: 14.0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildMetricChip('Mean', _showMean, const Color(0xFF06B6D4), () => setState(() => _showMean = !_showMean)),
-                    const SizedBox(width: 6.0),
-                    _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
-                    const SizedBox(width: 6.0),
-                    _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
-                    const SizedBox(width: 6.0),
-                    _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
-                  ],
-                ),
+            Padding(
+              padding: const EdgeInsets.only(top: 14.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildMetricChip('Mean', _showMean, const Color(0xFF06B6D4), () => setState(() => _showMean = !_showMean)),
+                  const SizedBox(width: 6.0),
+                  _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
+                  const SizedBox(width: 6.0),
+                  _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
+                  const SizedBox(width: 6.0),
+                  _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
+                ],
               ),
+            ),
           ],
         ),
         const SizedBox(height: 8.0),
 
-        // ─── Parameter Selection Chips (Filtered by Test Type) ─────────
-        if (isTestChosen) ...[
-          _buildParameterSelectorChips(paramOptions),
-          const SizedBox(height: 10.0),
-        ],
+        // ─── Test Selection Chips (Choose up to 4 tests) ───────────────
+        _buildTestSelectorChips(),
+        const SizedBox(height: 10.0),
 
-        // ─── Chart area ───────────────────────────────────────────────
+        // ─── Chart area: 1 chart per selected test (Up to 4) ───────────
         Expanded(
-          child: !isTestChosen
-              ? Center(
-                  child: Container(
-                    margin: const EdgeInsets.all(24.0),
-                    padding: const EdgeInsets.all(28.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(16.0),
-                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4), width: 1.5),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x33000000), blurRadius: 16.0, offset: Offset(0, 4)),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0284C7).withOpacity(0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.touch_app_rounded, color: Color(0xFF38BDF8), size: 36.0),
-                        ),
-                        const SizedBox(height: 16.0),
-                        const Text(
-                          'Select a Test Type to Begin SPC Matrix Analysis',
-                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8.0),
-                        const Text(
-                          'Choose a test type from the "TEST TYPE" dropdown above.\nParameters tailored to that specific test will appear, allowing you to select up to 4 parameters for simultaneous SPC statistical control tracking.',
-                          style: TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8), height: 1.4),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : (_showFourCharts
-                  ? _buildFourChartsGrid(filtered)
-                  : (points.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.query_stats_outlined,
-                                  color: Colors.white.withOpacity(0.15), size: 48.0),
-                              const SizedBox(height: 12.0),
-                              Text(
-                                'No readings available for "$_selectedParam"\nunder $_selectedGroupBy ($selectedCaliberLabel)',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5),
-                              ),
-                            ],
-                          ),
-                        )
-                      : LayoutBuilder(
-                          builder: (ctx, constraints) {
-                            return CustomPaint(
-                              size: Size(constraints.maxWidth, constraints.maxHeight),
-                              painter: _MultiMetricTrendPainter(
-                                points: points,
-                                paramLabel: _selectedParam,
-                                showMean: _showMean,
-                                showMax: _showMax,
-                                showMin: _showMin,
-                                showSD: _showSD,
-                              ),
-                            );
-                          },
-                        ))),
+          child: _buildTestsGrid(),
         ),
 
         // ─── Bottom Legend ────────────────────────────────────────────
@@ -893,22 +763,114 @@ class _TrendLineChartState extends State<TrendLineChart> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildLegendItem('Mean Reading', const Color(0xFF06B6D4)),
+            _buildLegendItem('Mean Reading (x̄)', const Color(0xFF06B6D4)),
             const SizedBox(width: 16.0),
             _buildLegendItem('Max Reading', const Color(0xFFF59E0B)),
             const SizedBox(width: 16.0),
             _buildLegendItem('Min Reading', const Color(0xFF10B981)),
             const SizedBox(width: 16.0),
             _buildLegendItem('Std Deviation (SD)', const Color(0xFFA855F7)),
+            const SizedBox(width: 16.0),
+            _buildLegendItem('Control Limits (UCL/LCL)', const Color(0xFFEF4444)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildSpcCard(String param, List<BallisticRecord> filtered) {
-    if (param.isEmpty) return const SizedBox.shrink();
-    final pts = _buildGroupPoints(filtered, paramOverride: param);
+  Widget _buildTestSelectorChips() {
+    final available = _availableTests;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: const Color(0xFF1E293B)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.touch_app_rounded, size: 13.0, color: Color(0xFF38BDF8)),
+              const SizedBox(width: 6.0),
+              Text(
+                'CHOOSE TESTS FOR SPC MATRIX (${_selectedTests.length}/4 CHOSEN - 1 CHART FOR ONE TEST ONLY):',
+                style: const TextStyle(
+                  fontSize: 10.0,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF94A3B8),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6.0),
+          Wrap(
+            spacing: 6.0,
+            runSpacing: 6.0,
+            children: available.map((test) {
+              final isSelected = _selectedTests.contains(test);
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      if (_selectedTests.length > 1) {
+                        _selectedTests.remove(test);
+                      }
+                    } else {
+                      if (_selectedTests.length < 4) {
+                        _selectedTests.add(test);
+                      } else {
+                        _selectedTests.removeLast();
+                        _selectedTests.add(test);
+                      }
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(6.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9.0, vertical: 4.5),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF0284C7).withOpacity(0.25) : const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF38BDF8) : const Color(0xFF334155),
+                      width: isSelected ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+                        size: 13.0,
+                        color: isSelected ? const Color(0xFF38BDF8) : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 5.0),
+                      Text(
+                        test,
+                        style: TextStyle(
+                          fontSize: 11.0,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSingleTestSpcCard(String testName) {
+    final availableParams = _getParamsForTestType(testName);
+    final activeParam = _testActiveParam[testName] ?? (availableParams.isNotEmpty ? availableParams.first : '');
+    final pts = _buildGroupPointsForTest(testName, activeParam);
 
     double grandMean = 0;
     double grandSD = 0;
@@ -930,30 +892,73 @@ class _TrendLineChartState extends State<TrendLineChart> {
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
-          color: isOOC ? const Color(0xFFEF4444).withOpacity(0.5) : const Color(0xFF334155),
+          color: isOOC ? const Color(0xFFEF4444).withOpacity(0.6) : const Color(0xFF334155),
           width: 1.2,
         ),
         boxShadow: const [
-          BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(color: Color(0x2A000000), blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row 1: Test Name & Icon + Parameter Selector Dropdown + Status Badge
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Container(
+                padding: const EdgeInsets.all(3.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+                child: const Icon(Icons.analytics_rounded, size: 13.0, color: Color(0xFF38BDF8)),
+              ),
+              const SizedBox(width: 6.0),
               Expanded(
                 child: Text(
-                  param,
+                  testName,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 11.5,
+                    fontSize: 12.0,
                     fontWeight: FontWeight.bold,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (availableParams.isNotEmpty) ...[
+                const SizedBox(width: 6.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(5.0),
+                    border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: availableParams.contains(activeParam) ? activeParam : availableParams.first,
+                      isDense: true,
+                      dropdownColor: const Color(0xFF1E293B),
+                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8), size: 15.0),
+                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _testActiveParam[testName] = val;
+                          });
+                        }
+                      },
+                      items: availableParams.map((p) {
+                        return DropdownMenuItem<String>(
+                          value: p,
+                          child: Text(p, style: const TextStyle(fontSize: 10.5, color: Colors.white)),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 6.0),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
                 decoration: BoxDecoration(
@@ -964,38 +969,51 @@ class _TrendLineChartState extends State<TrendLineChart> {
                   isOOC ? 'OOC' : 'In Control',
                   style: TextStyle(
                     color: isOOC ? const Color(0xFFDC2626) : const Color(0xFF059669),
-                    fontSize: 9.5,
+                    fontSize: 9.0,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 2.0),
+          const SizedBox(height: 3.0),
+          // Row 2: Stats (Mean, UCL, LCL, SD, Groups Count)
           Row(
             children: [
               Text(
                 'x̄ = ${grandMean.toStringAsFixed(2)}',
-                style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 10.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
               ),
               const SizedBox(width: 8.0),
               Text(
                 'UCL: ${ucl.toStringAsFixed(1)}',
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontFamily: 'JetBrainsMono'),
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
               ),
               const SizedBox(width: 6.0),
               Text(
                 'LCL: ${lcl.toStringAsFixed(1)}',
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontFamily: 'JetBrainsMono'),
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
+              ),
+              const SizedBox(width: 6.0),
+              Text(
+                'SD: ${grandSD.toStringAsFixed(2)}',
+                style: const TextStyle(color: Color(0xFFA855F7), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
+              ),
+              const Spacer(),
+              Text(
+                '${pts.length} groups',
+                style: const TextStyle(color: Color(0xFF64748B), fontSize: 9.0, fontWeight: FontWeight.w600),
               ),
             ],
           ),
           const SizedBox(height: 4.0),
+          // Chart
           Expanded(
             child: pts.isEmpty
                 ? Center(
                     child: Text(
-                      'No readings for $param',
+                      'No readings for "$activeParam"\nunder $_selectedGroupBy (${_selectedCaliber == 'All' ? 'All Calibers' : _selectedCaliber})',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.5),
                     ),
                   )
@@ -1003,11 +1021,11 @@ class _TrendLineChartState extends State<TrendLineChart> {
                     size: Size.infinite,
                     painter: _MultiMetricTrendPainter(
                       points: pts,
-                      paramLabel: param,
-                      showMean: true,
-                      showMax: false,
-                      showMin: false,
-                      showSD: false,
+                      paramLabel: activeParam,
+                      showMean: _showMean,
+                      showMax: _showMax,
+                      showMin: _showMin,
+                      showSD: _showSD,
                     ),
                   ),
           ),
@@ -1016,187 +1034,83 @@ class _TrendLineChartState extends State<TrendLineChart> {
     );
   }
 
-  Widget _buildParameterSelectorChips(List<String> availableParams) {
-    if (availableParams.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                _showFourCharts ? Icons.view_compact_rounded : Icons.tune_rounded,
-                size: 14.0,
-                color: const Color(0xFF38BDF8),
-              ),
-              const SizedBox(width: 6.0),
-              Text(
-                _showFourCharts
-                    ? 'CHOOSE PARAMETERS TO DISPLAY IN SPC GRID (CHOSEN TEST: $_selectedTestType - SELECT UP TO 4):'
-                    : 'CHOOSE PARAMETER TO DISPLAY (CHOSEN TEST: $_selectedTestType):',
-                style: const TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF94A3B8),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6.0),
-          Wrap(
-            spacing: 6.0,
-            runSpacing: 6.0,
-            children: availableParams.map((param) {
-              final isSelected = _showFourCharts
-                  ? _selectedMultiParams.contains(param)
-                  : (_selectedParam == param);
-
-              return InkWell(
-                onTap: () {
-                  setState(() {
-                    if (_showFourCharts) {
-                      if (_selectedMultiParams.contains(param)) {
-                        if (_selectedMultiParams.length > 1) {
-                          _selectedMultiParams.remove(param);
-                        }
-                      } else {
-                        if (_selectedMultiParams.length < 4) {
-                          _selectedMultiParams.add(param);
-                        } else {
-                          _selectedMultiParams.removeLast();
-                          _selectedMultiParams.add(param);
-                        }
-                      }
-                    } else {
-                      _selectedParam = param;
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(6.0),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF0284C7).withOpacity(0.25)
-                        : const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(6.0),
-                    border: Border.all(
-                      color: isSelected
-                          ? const Color(0xFF38BDF8)
-                          : const Color(0xFF334155),
-                      width: isSelected ? 1.5 : 1.0,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSelected
-                            ? (_showFourCharts ? Icons.check_box : Icons.radio_button_checked)
-                            : (_showFourCharts ? Icons.check_box_outline_blank : Icons.radio_button_unchecked),
-                        size: 13.0,
-                        color: isSelected ? const Color(0xFF38BDF8) : const Color(0xFF64748B),
-                      ),
-                      const SizedBox(width: 5.0),
-                      Text(
-                        param,
-                        style: TextStyle(
-                          fontSize: 11.0,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFourChartsGrid(List<BallisticRecord> filtered) {
-    final params = _selectedMultiParams.isNotEmpty
-        ? _selectedMultiParams
-        : _get4ParamsForTestType(_selectedTestType);
-
-    if (params.isEmpty) {
-      return const Center(child: Text('No parameters available', style: TextStyle(color: Color(0xFF8E96A3))));
+  Widget _buildTestsGrid() {
+    if (_selectedTests.isEmpty) {
+      return const Center(child: Text('No test selected. Please select up to 4 tests above.', style: TextStyle(color: Color(0xFF94A3B8))));
     }
 
-    if (params.length == 1) {
-      return _buildSpcCard(params[0], filtered);
-    } else if (params.length == 2) {
+    if (_selectedTests.length == 1) {
+      return _buildSingleTestSpcCard(_selectedTests[0]);
+    } else if (_selectedTests.length == 2) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: _buildSpcCard(params[0], filtered)),
+          Expanded(child: _buildSingleTestSpcCard(_selectedTests[0])),
           const SizedBox(width: 8.0),
-          Expanded(child: _buildSpcCard(params[1], filtered)),
+          Expanded(child: _buildSingleTestSpcCard(_selectedTests[1])),
         ],
       );
-    } else if (params.length == 3) {
+    } else if (_selectedTests.length == 3) {
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: _buildSpcCard(params[0], filtered)),
+                Expanded(child: _buildSingleTestSpcCard(_selectedTests[0])),
                 const SizedBox(width: 8.0),
-                Expanded(child: _buildSpcCard(params[1], filtered)),
+                Expanded(child: _buildSingleTestSpcCard(_selectedTests[1])),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          Expanded(child: _buildSingleTestSpcCard(_selectedTests[2])),
+        ],
+      );
+    } else {
+      // 4 tests: 2x2 grid
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildSingleTestSpcCard(_selectedTests[0])),
+                const SizedBox(width: 8.0),
+                Expanded(child: _buildSingleTestSpcCard(_selectedTests[1])),
               ],
             ),
           ),
           const SizedBox(height: 8.0),
           Expanded(
-            child: _buildSpcCard(params[2], filtered),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildSingleTestSpcCard(_selectedTests[2])),
+                const SizedBox(width: 8.0),
+                Expanded(child: _buildSingleTestSpcCard(_selectedTests[3])),
+              ],
+            ),
           ),
         ],
       );
     }
-
-    final p0 = params[0];
-    final p1 = params.length > 1 ? params[1] : '';
-    final p2 = params.length > 2 ? params[2] : '';
-    final p3 = params.length > 3 ? params[3] : '';
-
-    return Column(
-      children: [
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: _buildSpcCard(p0, filtered)),
-              const SizedBox(width: 8.0),
-              Expanded(child: p1.isNotEmpty ? _buildSpcCard(p1, filtered) : const SizedBox.shrink()),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8.0),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: p2.isNotEmpty ? _buildSpcCard(p2, filtered) : const SizedBox.shrink()),
-              const SizedBox(width: 8.0),
-              Expanded(child: p3.isNotEmpty ? _buildSpcCard(p3, filtered) : const SizedBox.shrink()),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 
   String get selectedCaliberLabel => _selectedCaliber == 'All' ? 'All Calibers' : _selectedCaliber;
 
-  void _exportTrendReport(List<_TrendGroupPoint> points) {
-    if (points.isEmpty) return;
+  void _exportTrendReport([List<_TrendGroupPoint>? customPoints]) {
+    final points = customPoints ?? () {
+      final List<_TrendGroupPoint> all = [];
+      for (final t in _selectedTests) {
+        final pList = _getParamsForTestType(t);
+        final activeP = _testActiveParam[t] ?? (pList.isNotEmpty ? pList.first : '');
+        all.addAll(_buildGroupPointsForTest(t, activeP));
+      }
+      return all;
+    }();
 
     final double overallMin = points.map((p) => p.min).reduce(math.min);
     final double overallMax = points.map((p) => p.max).reduce(math.max);

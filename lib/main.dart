@@ -2892,6 +2892,12 @@ class _MainShellState extends State<MainShell> {
       } else {
         activeRules['propellant_supplier_codes'] = Map<String, dynamic>.from(activeRules['propellant_supplier_codes'] as Map);
       }
+      if (activeRules['sample_locations'] == null || (activeRules['sample_locations'] is List && (activeRules['sample_locations'] as List).isEmpty)) {
+        activeRules['sample_locations'] = List<String>.from(_defaultRules['sample_locations']);
+        schemaMigrated = true;
+      } else {
+        activeRules['sample_locations'] = List<String>.from(activeRules['sample_locations'] as List);
+      }
 
       // Cross-populate and synchronize equipment fleets across all keys:
       final barrelNumbers = List<String>.from(activeRules['barrel_serial_numbers'] as List? ?? []);
@@ -8627,11 +8633,17 @@ class _MainShellState extends State<MainShell> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 18),
-                                constraints: const BoxConstraints(),
-                                padding: EdgeInsets.zero,
-                                tooltip: 'Edit / Rename Location',
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.drive_file_rename_outline, size: 14),
+                                label: const Text('Rename', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0284C7),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                                ),
                                 onPressed: () {
                                   _ruleEditSampleLocationCtrl.text = locName;
                                   showDialog(
@@ -8639,17 +8651,32 @@ class _MainShellState extends State<MainShell> {
                                     builder: (ctx) => AlertDialog(
                                       backgroundColor: const Color(0xFF1E293B),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0), side: const BorderSide(color: Color(0xFF334155))),
-                                      title: const Text('Edit Sampling Location', style: TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
-                                      content: TextField(
-                                        controller: _ruleEditSampleLocationCtrl,
-                                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                                        decoration: InputDecoration(
-                                          labelText: 'Location Name',
-                                          labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
-                                          filled: true,
-                                          fillColor: const Color(0xFF0F172A),
-                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0)),
-                                        ),
+                                      title: Row(
+                                        children: const [
+                                          Icon(Icons.drive_file_rename_outline, color: Color(0xFF38BDF8), size: 20),
+                                          SizedBox(width: 8),
+                                          Text('Rename Sampling Location', style: TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Current Location: $locName', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0)),
+                                          const SizedBox(height: 12),
+                                          TextField(
+                                            controller: _ruleEditSampleLocationCtrl,
+                                            autofocus: true,
+                                            style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                                            decoration: InputDecoration(
+                                              labelText: 'New Location Name',
+                                              labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                                              filled: true,
+                                              fillColor: const Color(0xFF0F172A),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0)),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       actions: [
                                         TextButton(
@@ -8667,10 +8694,17 @@ class _MainShellState extends State<MainShell> {
                                                 _adminRules = Map<String, dynamic>.from(_adminRules);
                                               });
                                               Navigator.pop(ctx);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Sampling location renamed from "$locName" to "$updated".'),
+                                                  backgroundColor: const Color(0xFF0284C7),
+                                                  behavior: SnackBarBehavior.floating,
+                                                ),
+                                              );
                                             }
                                           },
                                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-                                          child: const Text('Save'),
+                                          child: const Text('Save Rename'),
                                         ),
                                       ],
                                     ),
