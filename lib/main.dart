@@ -25,6 +25,21 @@ import 'services/report_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+    try {
+      Process.run('reg', [
+        'add',
+        r'HKCU\SOFTWARE\Policies\Microsoft\Edge',
+        '/v',
+        'SuppressUnsupportedOSWarning',
+        '/t',
+        'REG_DWORD',
+        '/d',
+        '1',
+        '/f'
+      ]);
+    } catch (_) {}
+  }
   try {
     await SupabaseService.initialize().timeout(const Duration(seconds: 15));
   } catch (e) {
@@ -1548,6 +1563,31 @@ final Map<String, dynamic> _defaultRules = {
     },
   },
   'submission_alerts_enabled': true,
+  'sample_locations': [
+    'After Packing machine',
+    'Priming machine',
+    'PC530',
+    'PB31/14',
+    'PD26',
+    'After visual inspection',
+    'After link machine',
+    'Warehouse A',
+    'Warehouse B',
+    'Production Line 1',
+    'Production Line 2',
+    'Ballistic Range 1',
+    'Storage Room',
+  ],
+  'approved_with_condition': {
+    'waterproof': 'Total leaks between 1 and 3 (or configured criteria)',
+    'residual_stress': 'Total splits between 1 and 2 in I zone',
+    'extraction': 'Extraction force within marginal range',
+    'accuracy': 'Mean Radius or SD within marginal range',
+    'epvat': 'Velocity or Pressure within secondary tolerance bounds',
+    'primer_sensitivity': 'Hbar between standard and secondary limits',
+    'function_test': 'Level 3 or Level 4 defects within advisory limit',
+    'cyclic_rate': 'RPM within advisory margin',
+  },
 };
 
 class MainShell extends StatefulWidget {
@@ -1696,6 +1736,20 @@ class _MainShellState extends State<MainShell> {
 
   // Barrel S.N. rule controller
   final TextEditingController _ruleNewBarrelSNCtrl = TextEditingController();
+
+  // Sampling Locations rule controllers
+  final TextEditingController _ruleNewSampleLocationCtrl = TextEditingController();
+  final TextEditingController _ruleEditSampleLocationCtrl = TextEditingController();
+  String? _editingSampleLocationOriginal;
+
+  // Approved with Condition rule controllers
+  final TextEditingController _ruleWaterproofCondCtrl = TextEditingController();
+  final TextEditingController _ruleStressCondCtrl = TextEditingController();
+  final TextEditingController _ruleExtCondCtrl = TextEditingController();
+  final TextEditingController _ruleEpvCondCtrl = TextEditingController();
+  final TextEditingController _rulePrimerCondCtrl = TextEditingController();
+  final TextEditingController _ruleFunctionCondCtrl = TextEditingController();
+  final TextEditingController _ruleCyclicCondCtrl = TextEditingController();
 
   // GP Transducers rule controllers
   String _ruleSelectedGPType = 'GP1'; // 'GP1' or 'GP2'
@@ -1968,6 +2022,15 @@ class _MainShellState extends State<MainShell> {
     _certRsReqCtrl.dispose();
     _certPrimerSampleCtrl.dispose();
     _certPrimerReqCtrl.dispose();
+    _ruleNewSampleLocationCtrl.dispose();
+    _ruleEditSampleLocationCtrl.dispose();
+    _ruleWaterproofCondCtrl.dispose();
+    _ruleStressCondCtrl.dispose();
+    _ruleExtCondCtrl.dispose();
+    _ruleEpvCondCtrl.dispose();
+    _rulePrimerCondCtrl.dispose();
+    _ruleFunctionCondCtrl.dispose();
+    _ruleCyclicCondCtrl.dispose();
     
     super.dispose();
   }
@@ -2050,6 +2113,16 @@ class _MainShellState extends State<MainShell> {
     // Function Test for selected caliber
     _ruleSelectedFuncCaliber = _ruleSelectedCaliber;
     _loadFunctionCaliberRules(_ruleSelectedCaliber);
+
+    // Approved with Condition thresholds
+    final condMap = Map<String, dynamic>.from(_adminRules['approved_with_condition'] ?? {});
+    _ruleWaterproofCondCtrl.text = (condMap['waterproof'] ?? '').toString();
+    _ruleStressCondCtrl.text = (condMap['residual_stress'] ?? '').toString();
+    _ruleExtCondCtrl.text = (condMap['extraction'] ?? '').toString();
+    _ruleEpvCondCtrl.text = (condMap['epvat'] ?? '').toString();
+    _rulePrimerCondCtrl.text = (condMap['primer_sensitivity'] ?? '').toString();
+    _ruleFunctionCondCtrl.text = (condMap['function_test'] ?? '').toString();
+    _ruleCyclicCondCtrl.text = (condMap['cyclic_rate'] ?? '').toString();
 
     // Final Lot Acceptance Certificate template for selected caliber
     _loadCertTemplateForCaliber(_certSelectedCaliber);
@@ -2272,6 +2345,17 @@ class _MainShellState extends State<MainShell> {
     // Function Test
     _ruleSelectedFuncCaliber = _ruleSelectedCaliber;
     _saveCurrentFunctionCaliberRules();
+
+    // Approved with Condition thresholds
+    final condMap = Map<String, dynamic>.from(_adminRules['approved_with_condition'] ?? {});
+    condMap['waterproof'] = _ruleWaterproofCondCtrl.text.trim();
+    condMap['residual_stress'] = _ruleStressCondCtrl.text.trim();
+    condMap['extraction'] = _ruleExtCondCtrl.text.trim();
+    condMap['epvat'] = _ruleEpvCondCtrl.text.trim();
+    condMap['primer_sensitivity'] = _rulePrimerCondCtrl.text.trim();
+    condMap['function_test'] = _ruleFunctionCondCtrl.text.trim();
+    condMap['cyclic_rate'] = _ruleCyclicCondCtrl.text.trim();
+    _adminRules['approved_with_condition'] = condMap;
 
     await _storageService.saveRules(_adminRules);
     setState(() {
@@ -6591,6 +6675,7 @@ class _MainShellState extends State<MainShell> {
                   'GP6 Transducers (EPVAT)',
                   'Barrels',
                   'Weapons',
+                  'Sampling Locations',
                 ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
               ),
             ),
@@ -6603,7 +6688,8 @@ class _MainShellState extends State<MainShell> {
                 _selectedRuleTest != 'Barrels' &&
                 _selectedRuleTest != 'GP6 Transducers (EPVAT)' &&
                 _selectedRuleTest != 'GP Transducers (GP1 & GP2)' &&
-                _selectedRuleTest != 'Weapons';
+                _selectedRuleTest != 'Weapons' &&
+                _selectedRuleTest != 'Sampling Locations';
             if (!isCaliberAware) return const SizedBox.shrink();
 
             return Container(
@@ -6699,6 +6785,7 @@ class _MainShellState extends State<MainShell> {
           if (_selectedRuleTest == 'Waterproof Test') ...[
             _buildRuleTextField('Retest Limit for $_ruleSelectedCaliber (Total Leaks >=)', _ruleWaterproofRetestCtrl),
             _buildRuleTextField('Reject Limit for $_ruleSelectedCaliber (Total Leaks >=)', _ruleWaterproofRejectCtrl),
+            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria', _ruleWaterproofCondCtrl, isMultiline: true),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _ruleWaterproofInstructionsCtrl, isMultiline: true),
             const SizedBox(height: 8.0),
             const Text('Fallback Blank Caliber Defaults (if not configured per caliber):', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
@@ -6713,10 +6800,12 @@ class _MainShellState extends State<MainShell> {
           ] else if (_selectedRuleTest == 'Residual Stress Test') ...[
             _buildRuleTextField('Retest Limit for $_ruleSelectedCaliber (Total Splits/Cracks >=)', _ruleStressRetestCtrl),
             _buildRuleTextField('Reject Limit for $_ruleSelectedCaliber (Total Splits/Cracks >=)', _ruleStressRejectCtrl),
+            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria', _ruleStressCondCtrl, isMultiline: true),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _ruleStressInstructionsCtrl, isMultiline: true),
             _buildClassificationImageSection('residual_stress', 'Residual Stress Classification Reference Picture for $_ruleSelectedCaliber'),
           ] else if (_selectedRuleTest == 'Extraction Force Test') ...[
             _buildRuleTextField('Minimum Extraction Force for $_ruleSelectedCaliber (N)', _ruleExtMinForceCtrl),
+            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria', _ruleExtCondCtrl, isMultiline: true),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _ruleExtInstructionsCtrl, isMultiline: true),
           ] else if (_selectedRuleTest == 'Accuracy Test') ...[
             _buildRuleTextField('Max Mean Radius for $_ruleSelectedCaliber (mm)', _ruleAccMaxMeanRadiusCtrl),
@@ -6738,6 +6827,8 @@ class _MainShellState extends State<MainShell> {
             ),
             const SizedBox(height: 10.0),
             _buildRuleTextField('Bullet Mass (grams) for $_ruleSelectedCaliber', _ruleEpvBulletMassCtrl),
+            const SizedBox(height: 12.0),
+            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria for EPVAT', _ruleEpvCondCtrl, isMultiline: true),
             const SizedBox(height: 12.0),
             _buildRuleTextField(
               'Admin Instruction / Recommendation for $_ruleSelectedCaliber (Advisory only — does not decide quality status)',
@@ -7471,12 +7562,15 @@ class _MainShellState extends State<MainShell> {
                 Expanded(child: _buildRuleTextField('Reject Misfires Limit (>=)', _rulePrimerRejectMisfiresCtrl)),
               ],
             ),
+            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria for Primer Sensitivity', _rulePrimerCondCtrl, isMultiline: true),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _rulePrimerInstructionsCtrl, isMultiline: true),
           ] else if (_selectedRuleTest == 'Firing Rate Cycle Test') ...[
             const Text(
               'Configure weapon types and cyclic rate limits. The operator selects a weapon category (Rifle or Machine Gun) and weapon model, then inputs the measured cyclic rate which must fall within the configured range (empty max limit means no upper limit).',
               style: TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3), height: 1.4),
             ),
+            const SizedBox(height: 12.0),
+            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria for Cyclic Rate', _ruleCyclicCondCtrl, isMultiline: true),
             const SizedBox(height: 16.0),
             Builder(builder: (context) {
               final weapons = List<Map<String, dynamic>>.from(
@@ -8171,6 +8265,8 @@ class _MainShellState extends State<MainShell> {
               'Configure max allowed defect thresholds and specify what defect types belong to each of the 4 severity levels per caliber. Also manage authorized weapons and defect classification pictures.',
               style: TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3), height: 1.4),
             ),
+            const SizedBox(height: 12.0),
+            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria for Function Test', _ruleFunctionCondCtrl, isMultiline: true),
             const SizedBox(height: 16.0),
 
             const Text('Caliber Specification (Defect Limits & Types)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold)),
@@ -8426,6 +8522,185 @@ class _MainShellState extends State<MainShell> {
               );
             }),
             _buildClassificationImageSection('function_test', 'Function Test Defect Classification Reference Picture'),
+          ] else if (_selectedRuleTest == 'Sampling Locations') ...[
+            const Text(
+              'Add, edit, rename, or remove sampling locations used during test entries and retests. All configured locations will appear in the sampling location dropdown across all tests and retest dialogs.',
+              style: TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3), height: 1.4),
+            ),
+            const SizedBox(height: 16.0),
+            // Add new sampling location row
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _ruleNewSampleLocationCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                      decoration: InputDecoration(
+                        labelText: 'New Sampling Location Name',
+                        labelStyle: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0),
+                        hintText: 'e.g. Warehouse C, Line 3, Range 3...',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12.0),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.2),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF6366F1))),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10.0),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final newLoc = _ruleNewSampleLocationCtrl.text.trim();
+                      if (newLoc.isNotEmpty) {
+                        final locs = List<String>.from((_adminRules['sample_locations'] as List<dynamic>? ?? []).map((e) => e.toString()));
+                        if (!locs.any((l) => l.toLowerCase() == newLoc.toLowerCase())) {
+                          locs.add(newLoc);
+                          _adminRules['sample_locations'] = locs;
+                          await _storageService.saveRules(_adminRules);
+                          setState(() {
+                            _adminRules = Map<String, dynamic>.from(_adminRules);
+                            _ruleNewSampleLocationCtrl.clear();
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Sampling location "$newLoc" added successfully.')),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.add_location_alt_outlined, size: 16),
+                    label: const Text('Add Location'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            const Text('Configured Sampling Locations:', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8.0),
+            Builder(builder: (context) {
+              final locs = List<String>.from((_adminRules['sample_locations'] as List<dynamic>? ?? []).map((e) => e.toString()));
+              if (locs.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text('No custom sampling locations configured.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0, fontStyle: FontStyle.italic)),
+                );
+              }
+              return Container(
+                constraints: const BoxConstraints(maxHeight: 320),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: locs.length,
+                  separatorBuilder: (_, __) => const Divider(color: Color(0xFF1F293D), height: 1),
+                  itemBuilder: (context, idx) {
+                    final locName = locs[idx];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.place_outlined, color: Color(0xFF06B6D4), size: 18),
+                              const SizedBox(width: 8),
+                              Text(locName, style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 18),
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                                tooltip: 'Edit / Rename Location',
+                                onPressed: () {
+                                  _ruleEditSampleLocationCtrl.text = locName;
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      backgroundColor: const Color(0xFF1E293B),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0), side: const BorderSide(color: Color(0xFF334155))),
+                                      title: const Text('Edit Sampling Location', style: TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
+                                      content: TextField(
+                                        controller: _ruleEditSampleLocationCtrl,
+                                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                                        decoration: InputDecoration(
+                                          labelText: 'Location Name',
+                                          labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                                          filled: true,
+                                          fillColor: const Color(0xFF0F172A),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0)),
+                                        ),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            final updated = _ruleEditSampleLocationCtrl.text.trim();
+                                            if (updated.isNotEmpty) {
+                                              locs[idx] = updated;
+                                              _adminRules['sample_locations'] = locs;
+                                              await _storageService.saveRules(_adminRules);
+                                              setState(() {
+                                                _adminRules = Map<String, dynamic>.from(_adminRules);
+                                              });
+                                              Navigator.pop(ctx);
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+                                          child: const Text('Save'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 12),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                                tooltip: 'Delete Location',
+                                onPressed: () async {
+                                  locs.removeAt(idx);
+                                  _adminRules['sample_locations'] = locs;
+                                  await _storageService.saveRules(_adminRules);
+                                  setState(() {
+                                    _adminRules = Map<String, dynamic>.from(_adminRules);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
           ],
           
           const SizedBox(height: 16.0),

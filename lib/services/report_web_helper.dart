@@ -114,6 +114,33 @@ class ReportHelperImpl implements ReportHelper {
   }
 
   @override
+  Future<void> openReport({required String htmlContent, String? title}) async {
+    final base64Html = base64Encode(utf8.encode(htmlContent));
+    final safeTitle = (title ?? 'Inspection Report').replaceAll("'", "\\'").replaceAll('"', '\\"');
+    js.context.callMethod('eval', [
+      '''
+      (function() {
+        var bin = atob('$base64Html');
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) {
+          bytes[i] = bin.charCodeAt(i);
+        }
+        var html = new TextDecoder('utf-8').decode(bytes);
+        var blob = new Blob([html], {type: 'text/html;charset=utf-8;'});
+        var url = URL.createObjectURL(blob);
+        var w = window.open(url, '_blank');
+        if (w) {
+          w.document.title = '$safeTitle';
+          w.focus();
+        } else {
+          window.location.href = url;
+        }
+      })()
+      '''
+    ]);
+  }
+
+  @override
   Future<void> openUrl({required String url}) async {
     js.context.callMethod('open', [url, '_blank']);
   }

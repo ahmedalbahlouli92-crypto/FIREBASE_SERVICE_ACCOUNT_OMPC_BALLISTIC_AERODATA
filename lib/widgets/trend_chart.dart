@@ -22,9 +22,9 @@ class TrendLineChart extends StatefulWidget {
 
 class _TrendLineChartState extends State<TrendLineChart> {
   String _selectedCaliber = 'All';
-  String _selectedTestType = 'All';
+  String _selectedTestType = 'Select Test Type';
   String _selectedGroupBy = 'By Lot Number'; // 'By Lot Number' | 'By Hopper No.' | 'By Individual Test'
-  String _selectedParam = 'Mean Velocity (m/s)';
+  String _selectedParam = '';
   String _selectedTimeRange = 'All Time';
 
   bool _showMean = true;
@@ -36,78 +36,28 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   List<String> _selectedMultiParams = [];
 
+  bool get _isTestChosen =>
+      _selectedTestType.isNotEmpty &&
+      _selectedTestType != 'Select Test Type' &&
+      _selectedTestType != 'All';
+
   void _initMultiParamsForTest(String testType) {
-    if (testType == 'Waterproof Test') {
-      _showFourCharts = false;
-      _selectedParam = 'Total Leaks';
-      _showMean = true;
-      _showMax = false;
-      _showMin = false;
-      _showSD = false;
-      _selectedMultiParams = ['Total Leaks'];
-      return;
-    }
-    if (testType == 'Extraction Force Test') {
-      _showFourCharts = false;
-      _selectedParam = 'Extraction Force (N)';
-      _showMean = true;
-      _showMax = true;
-      _showMin = true;
-      _showSD = true;
-      _selectedMultiParams = ['Extraction Force (N)'];
-      return;
-    }
-    if (testType == 'Function Test') {
-      _showFourCharts = false;
-      _selectedParam = 'Total Defects';
-      _showMean = true;
-      _showMax = false;
-      _showMin = false;
-      _showSD = false;
-      _selectedMultiParams = ['Total Defects'];
-      return;
-    }
-    if (testType == 'Residual Stress Test') {
-      _showFourCharts = false;
-      _selectedParam = 'Total Splits';
-      _showMean = true;
-      _showMax = false;
-      _showMin = false;
-      _showSD = false;
-      _selectedMultiParams = ['Total Splits'];
-      return;
-    }
-    if (testType == 'Firing Rate Cycle Test') {
-      _showFourCharts = false;
-      _selectedParam = 'Cyclic Rate (RPM)';
-      _showMean = true;
-      _showMax = false;
-      _showMin = false;
-      _showSD = false;
-      _selectedMultiParams = ['Cyclic Rate (RPM)'];
-      return;
-    }
-    if (testType == 'Primer Sensitivity Test') {
-      _showFourCharts = false;
-      _selectedParam = 'Mean Height H̄ (mm)';
-      _showMean = true;
-      _showMax = true;
-      _showMin = true;
-      _showSD = true;
-      _selectedMultiParams = ['Mean Height H̄ (mm)'];
+    if (testType.isEmpty || testType == 'Select Test Type' || testType == 'All') {
+      _selectedMultiParams = [];
+      _selectedParam = '';
       return;
     }
 
     final available = _getParamsForTestType(testType);
     final default4 = _get4ParamsForTestType(testType);
-    _selectedMultiParams = default4.where((p) => available.contains(p)).toList();
+    _selectedMultiParams = default4.where((p) => available.contains(p)).take(4).toList();
     if (_selectedMultiParams.isEmpty && available.isNotEmpty) {
-      _selectedMultiParams = available.take(4).toList();
+      _selectedMultiParams = available.take(math.min(4, available.length)).toList();
     }
     if (!available.contains(_selectedParam)) {
-      _selectedParam = available.isNotEmpty ? available.first : 'Mean Velocity (m/s)';
+      _selectedParam = available.isNotEmpty ? available.first : '';
     }
-    _showFourCharts = true;
+    _showFourCharts = _selectedMultiParams.length > 1;
     _showMean = true;
     _showMax = true;
     _showMin = true;
@@ -130,130 +80,146 @@ class _TrendLineChartState extends State<TrendLineChart> {
   ];
 
   List<String> _get4ParamsForTestType(String testType) {
-    switch (testType) {
-      case 'Accuracy Test':
-        return [
-          'Mean Velocity (m/s)',
-          'Mean Radius (mm)',
-          'Extreme Spread X (mm)',
-          'Extreme Spread Y (mm)',
-        ];
-      case 'EPVAT test':
-        return [
-          'P1 Chamber Pressure (bar)',
-          'Mean Velocity (m/s)',
-          'P2 Port Pressure (bar)',
-          'Action Time (ms)',
-        ];
-      case 'Extraction Force Test':
-        return [
-          'Extraction Force (N)',
-          'Mean Velocity (m/s)',
-          'Extreme Spread X (mm)',
-          'SD Velocity (m/s)',
-        ];
-      case 'Function Test':
-        return [
-          'Defect Rate (%)',
-          'Total Defects',
-          'Level 1 Critical Defects',
-          'Level 2 Major Defects',
-        ];
-      case 'Waterproof Test':
-        return [
-          'Total Leaks',
-          'Mouth Leaks',
-          'Primer Leaks',
-          'Defect Rate (%)',
-        ];
-      case 'Residual Stress Test':
-        return [
-          'Total Splits',
-          'Neck Splits',
-          'Shoulder Splits',
-          'Body Splits',
-        ];
-      case 'Primer Sensitivity Test':
-        return [
-          'Mean Height H̄ (mm)',
-          'Std Deviation S (mm)',
-          'All Fire H̄+5S (mm)',
-          'No Fire H̄-2S (mm)',
-        ];
-      default:
-        return [
-          'Mean Velocity (m/s)',
-          'P1 Chamber Pressure (bar)',
-          'Mean Radius (mm)',
-          'Defect Rate (%)',
-        ];
+    final lower = testType.toLowerCase();
+    if (lower.contains('waterproof')) {
+      return [
+        'Total Fast Leaks',
+        'Total Slow Leaks',
+        'Total Leaks',
+      ];
+    } else if (lower.contains('accuracy')) {
+      return [
+        'Average SD (X & Y)',
+        'Mean Radius (mm)',
+        'SD X (mm)',
+        'SD Y (mm)',
+      ];
+    } else if (lower.contains('epvat')) {
+      return [
+        'Mean Velocity (m/s)',
+        'P1 Chamber Pressure (bar)',
+        'P2 Port Pressure (bar)',
+        'Action Time (ms)',
+      ];
+    } else if (lower.contains('stress')) {
+      return [
+        'Number of Cracks (Total Splits)',
+        'Neck Splits',
+        'Shoulder Splits',
+        'Body Splits',
+      ];
+    } else if (lower.contains('primer')) {
+      return [
+        'HM + 5SD (All Fire, mm)',
+        'HM - 2SD (No Fire, mm)',
+        'Mean Height H̄ (mm)',
+        'Std Deviation S (mm)',
+      ];
+    } else if (lower.contains('function')) {
+      return [
+        'Total Defects',
+        'Level 1 Critical Defects',
+        'Level 2 Major Defects',
+        'Level 3 Minor Defects',
+      ];
+    } else if (lower.contains('extraction')) {
+      return [
+        'Extraction Force (N)',
+        'Min Force (N)',
+        'Max Force (N)',
+      ];
+    } else if (lower.contains('firing rate') || lower.contains('cyclic')) {
+      return [
+        'Cyclic Rate (RPM)',
+      ];
+    } else if (lower.contains('terminal')) {
+      return [
+        'Terminal Velocity (m/s)',
+      ];
     }
+    return [];
   }
 
   List<String> _getParamsForTestType(String testType) {
-    switch (testType) {
-      case 'Accuracy Test':
-        return [
-          'Mean Velocity (m/s)',
-          'Mean Radius (mm)',
-          'Extreme Spread X (mm)',
-          'Extreme Spread Y (mm)',
-          'SD Velocity (m/s)',
-        ];
-      case 'EPVAT test':
-        return [
-          'Mean Velocity (m/s)',
-          'P1 Chamber Pressure (bar)',
-          'P2 Port Pressure (bar)',
-          'Action Time (ms)',
-        ];
-      case 'Extraction Force Test':
-        return [
-          'Extraction Force (N)',
-        ];
-      case 'Function Test':
-        return [
-          'Total Defects',
-        ];
-      case 'Waterproof Test':
-        return [
-          'Total Leaks',
-        ];
-      case 'Residual Stress Test':
-        return [
-          'Total Splits',
-        ];
-      case 'Primer Sensitivity Test':
-        return [
-          'Mean Height H̄ (mm)',
-        ];
-      case 'Firing Rate Cycle Test':
-        return [
-          'Cyclic Rate (RPM)',
-        ];
-      case 'All':
-      default:
-        return [
-          'Mean Velocity (m/s)',
-          'P1 Chamber Pressure (bar)',
-          'P2 Port Pressure (bar)',
-          'Action Time (ms)',
-          'Extraction Force (N)',
-          'Mean Radius (mm)',
-          'Defect Rate (%)',
-          'Total Leaks',
-          'Total Splits',
-          'Mean Height H̄ (mm)',
-          'Cyclic Rate (RPM)',
-        ];
+    final lower = testType.toLowerCase();
+    if (lower.contains('waterproof')) {
+      return [
+        'Total Fast Leaks',
+        'Total Slow Leaks',
+        'Total Leaks',
+      ];
+    } else if (lower.contains('accuracy')) {
+      return [
+        'Average SD (X & Y)',
+        'Mean Radius (mm)',
+        'SD X (mm)',
+        'SD Y (mm)',
+        'Mean Velocity (m/s)',
+      ];
+    } else if (lower.contains('epvat')) {
+      return [
+        'Mean Velocity (m/s)',
+        'P1 Chamber Pressure (bar)',
+        'P1 Max Pressure (bar)',
+        'P1 SD Pressure (bar)',
+        'P2 Port Pressure (bar)',
+        'P2 Max Pressure (bar)',
+        'P2 SD Pressure (bar)',
+        'Action Time (ms)',
+        'Velocity SD (m/s)',
+      ];
+    } else if (lower.contains('stress')) {
+      return [
+        'Number of Cracks (Total Splits)',
+        'Neck Splits',
+        'Shoulder Splits',
+        'Body Splits',
+        'Head Splits',
+      ];
+    } else if (lower.contains('primer')) {
+      return [
+        'HM + 5SD (All Fire, mm)',
+        'HM - 2SD (No Fire, mm)',
+        'Mean Height H̄ (mm)',
+        'Std Deviation S (mm)',
+      ];
+    } else if (lower.contains('function')) {
+      return [
+        'Total Defects',
+        'Level 1 Critical Defects',
+        'Level 2 Major Defects',
+        'Level 3 Minor Defects',
+        'Level 4 Defects',
+        'Defect Rate (%)',
+      ];
+    } else if (lower.contains('extraction')) {
+      return [
+        'Extraction Force (N)',
+        'Min Force (N)',
+        'Max Force (N)',
+      ];
+    } else if (lower.contains('firing rate') || lower.contains('cyclic')) {
+      return [
+        'Cyclic Rate (RPM)',
+      ];
+    } else if (lower.contains('terminal')) {
+      return [
+        'Terminal Velocity (m/s)',
+      ];
     }
+    return [];
   }
 
   @override
   void initState() {
     super.initState();
-    if (widget.selectedTestType != null && widget.selectedTestType!.isNotEmpty) {
+    if (widget.selectedTestType != null &&
+        widget.selectedTestType!.isNotEmpty &&
+        widget.selectedTestType != 'All' &&
+        widget.selectedTestType != 'Select Test Type') {
       _selectedTestType = widget.selectedTestType!;
+    } else {
+      _selectedTestType = 'Select Test Type';
     }
     _initMultiParamsForTest(_selectedTestType);
   }
@@ -262,10 +228,15 @@ class _TrendLineChartState extends State<TrendLineChart> {
   void didUpdateWidget(TrendLineChart oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedTestType != null && widget.selectedTestType != _selectedTestType) {
-      setState(() {
-        _selectedTestType = widget.selectedTestType!;
-        _initMultiParamsForTest(_selectedTestType);
-      });
+      final newType = (widget.selectedTestType!.isNotEmpty && widget.selectedTestType != 'All')
+          ? widget.selectedTestType!
+          : 'Select Test Type';
+      if (newType != _selectedTestType) {
+        setState(() {
+          _selectedTestType = newType;
+          _initMultiParamsForTest(_selectedTestType);
+        });
+      }
     }
   }
 
@@ -372,18 +343,62 @@ class _TrendLineChartState extends State<TrendLineChart> {
         final d = (r.functionLevel1 + r.functionLevel2 + r.functionLevel3 + r.functionLevel4).toDouble();
         return _RecordMetric(mean: d, min: d, max: d, sd: 0.0);
 
+      case 'Total Fast Leaks':
+        final fast = (r.mouthFast + r.primerFast).toDouble();
+        return _RecordMetric(mean: fast, min: fast, max: fast, sd: 0.0);
+
+      case 'Total Slow Leaks':
+        final slow = (r.mouthSlow + r.primerSlow).toDouble();
+        return _RecordMetric(mean: slow, min: slow, max: slow, sd: 0.0);
+
       case 'Total Leaks':
         final leaks = (r.mouthSlow + r.mouthFast + r.primerSlow + r.primerFast).toDouble();
         return _RecordMetric(mean: leaks, min: leaks, max: leaks, sd: 0.0);
 
-      case 'Mouth Leaks':
-        final leaks = (r.mouthSlow + r.mouthFast).toDouble();
-        return _RecordMetric(mean: leaks, min: leaks, max: leaks, sd: 0.0);
+      case 'Average SD (X & Y)':
+        final sx = double.tryParse(r.accSDX);
+        final sy = double.tryParse(r.accSDY);
+        if (sx == null && sy == null) return null;
+        final avg = (sx != null && sy != null) ? ((sx + sy) / 2.0) : (sx ?? sy!);
+        return _RecordMetric(mean: avg, min: avg, max: avg, sd: 0.0);
 
-      case 'Primer Leaks':
-        final leaks = (r.primerSlow + r.primerFast).toDouble();
-        return _RecordMetric(mean: leaks, min: leaks, max: leaks, sd: 0.0);
+      case 'SD X (mm)':
+        final sx = double.tryParse(r.accSDX);
+        if (sx == null) return null;
+        return _RecordMetric(mean: sx, min: sx, max: sx, sd: 0.0);
 
+      case 'SD Y (mm)':
+        final sy = double.tryParse(r.accSDY);
+        if (sy == null) return null;
+        return _RecordMetric(mean: sy, min: sy, max: sy, sd: 0.0);
+
+      case 'P1 Max Pressure (bar)':
+        final p1Max = double.tryParse(r.epvatMaxPressure);
+        if (p1Max == null) return null;
+        return _RecordMetric(mean: p1Max, min: p1Max, max: p1Max, sd: 0.0);
+
+      case 'P1 SD Pressure (bar)':
+        final p1Sd = double.tryParse(r.epvatSDPressure);
+        if (p1Sd == null) return null;
+        return _RecordMetric(mean: p1Sd, min: p1Sd, max: p1Sd, sd: 0.0);
+
+      case 'P2 Max Pressure (bar)':
+        final p2Max = double.tryParse(r.epvatP2MaxPressure);
+        if (p2Max == null) return null;
+        return _RecordMetric(mean: p2Max, min: p2Max, max: p2Max, sd: 0.0);
+
+      case 'P2 SD Pressure (bar)':
+        final p2Sd = double.tryParse(r.epvatP2SDPressure);
+        if (p2Sd == null) return null;
+        return _RecordMetric(mean: p2Sd, min: p2Sd, max: p2Sd, sd: 0.0);
+
+      case 'Velocity SD (m/s)':
+      case 'SD Velocity (m/s)':
+        final sd = double.tryParse(r.velSD);
+        if (sd == null) return null;
+        return _RecordMetric(mean: sd, min: sd, max: sd, sd: 0.0);
+
+      case 'Number of Cracks (Total Splits)':
       case 'Total Splits':
         final splits = (r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast).toDouble();
         return _RecordMetric(mean: splits, min: splits, max: splits, sd: 0.0);
@@ -404,31 +419,42 @@ class _TrendLineChartState extends State<TrendLineChart> {
         final splits = (r.headSlow + r.headFast).toDouble();
         return _RecordMetric(mean: splits, min: splits, max: splits, sd: 0.0);
 
-      case 'Mean Height H̄ (mm)':
-        final hm = double.tryParse(r.primerHbar);
-        if (hm == null) return null;
-        final sd = double.tryParse(r.primerSD) ?? 0.0;
-        return _RecordMetric(mean: hm, min: hm, max: hm, sd: sd);
-
-      case 'Std Deviation S (mm)':
-        final sd = double.tryParse(r.primerSD);
-        if (sd == null) return null;
-        return _RecordMetric(mean: sd, min: sd, max: sd, sd: 0.0);
-
+      case 'HM + 5SD (All Fire, mm)':
       case 'All Fire H̄+5S (mm)':
-        final af = double.tryParse(r.primerAllFireH);
+        double? af = double.tryParse(r.primerAllFireH);
+        if (af == null) {
+          final hm = double.tryParse(r.primerHbar);
+          final sd = double.tryParse(r.primerSD);
+          if (hm != null && sd != null) af = hm + (5 * sd);
+        }
         if (af == null) return null;
         return _RecordMetric(mean: af, min: af, max: af, sd: 0.0);
 
+      case 'HM - 2SD (No Fire, mm)':
       case 'No Fire H̄-2S (mm)':
-        final nf = double.tryParse(r.primerNoFireH);
+        double? nf = double.tryParse(r.primerNoFireH);
+        if (nf == null) {
+          final hm = double.tryParse(r.primerHbar);
+          final sd = double.tryParse(r.primerSD);
+          if (hm != null && sd != null) nf = hm - (2 * sd);
+        }
         if (nf == null) return null;
         return _RecordMetric(mean: nf, min: nf, max: nf, sd: 0.0);
 
-      case 'Cyclic Rate (RPM)':
-        final rpm = double.tryParse(r.cyclicRateValue);
-        if (rpm == null) return null;
-        return _RecordMetric(mean: rpm, min: rpm, max: rpm, sd: 0.0);
+      case 'Min Force (N)':
+        final minF = double.tryParse(r.accMinX);
+        if (minF == null) return null;
+        return _RecordMetric(mean: minF, min: minF, max: minF, sd: 0.0);
+
+      case 'Max Force (N)':
+        final maxF = double.tryParse(r.accMaxX);
+        if (maxF == null) return null;
+        return _RecordMetric(mean: maxF, min: maxF, max: maxF, sd: 0.0);
+
+      case 'Terminal Velocity (m/s)':
+        final tv = double.tryParse(r.terminalVelocity);
+        if (tv == null) return null;
+        return _RecordMetric(mean: tv, min: tv, max: tv, sd: 0.0);
 
       default:
         return null;
@@ -516,83 +542,102 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
     // Test Type filter list
     final testTypes = [
-      'All',
+      'Select Test Type',
+      'Waterproof Test',
       'Accuracy Test',
       'EPVAT test',
-      'Extraction Force Test',
-      'Function Test',
-      'Waterproof Test',
       'Residual Stress Test',
       'Primer Sensitivity Test',
+      'Function Test',
+      'Extraction Force Test',
       'Firing Rate Cycle Test',
+      'Terminal Effect Test',
     ];
-    if (!testTypes.contains(_selectedTestType)) _selectedTestType = 'All';
+    if (!testTypes.contains(_selectedTestType)) {
+      _selectedTestType = 'Select Test Type';
+    }
+
+    final bool isTestChosen = _selectedTestType.isNotEmpty &&
+        _selectedTestType != 'Select Test Type' &&
+        _selectedTestType != 'All';
 
     // Dynamic parameter options based on chosen test type
-    final paramOptions = _getParamsForTestType(_selectedTestType);
-    if (!paramOptions.contains(_selectedParam)) {
-      _selectedParam = paramOptions.first;
-    }
-    if (_selectedMultiParams.isEmpty) {
-      _initMultiParamsForTest(_selectedTestType);
-    } else {
-      final valid = _selectedMultiParams.where((p) => paramOptions.contains(p)).toList();
-      if (valid.isEmpty) {
-        _initMultiParamsForTest(_selectedTestType);
-      } else if (valid.length != _selectedMultiParams.length) {
-        _selectedMultiParams = valid;
+    final paramOptions = isTestChosen ? _getParamsForTestType(_selectedTestType) : <String>[];
+    if (isTestChosen) {
+      if (!paramOptions.contains(_selectedParam) && paramOptions.isNotEmpty) {
+        _selectedParam = paramOptions.first;
       }
+      if (_selectedMultiParams.isEmpty) {
+        _initMultiParamsForTest(_selectedTestType);
+      } else {
+        final valid = _selectedMultiParams.where((p) => paramOptions.contains(p)).toList();
+        if (valid.isEmpty && paramOptions.isNotEmpty) {
+          _initMultiParamsForTest(_selectedTestType);
+        } else if (valid.length != _selectedMultiParams.length) {
+          _selectedMultiParams = valid;
+        }
+      }
+    } else {
+      _selectedParam = '';
+      _selectedMultiParams = [];
     }
 
     // Filter by caliber, test type, and time range
-    final filtered = widget.records.where((r) {
-      final matchesCal = _selectedCaliber == 'All' || r.caliber == _selectedCaliber;
-      final matchesTest = _selectedTestType == 'All' || r.testName == _selectedTestType;
+    final filtered = isTestChosen
+        ? widget.records.where((r) {
+            final matchesCal = _selectedCaliber == 'All' || r.caliber == _selectedCaliber;
+            final rTestLower = r.testName.trim().toLowerCase();
+            final sTestLower = _selectedTestType.trim().toLowerCase();
+            final matchesTest = rTestLower == sTestLower ||
+                (rTestLower.contains('epvat') && sTestLower.contains('epvat')) ||
+                (rTestLower.contains('waterproof') && sTestLower.contains('waterproof')) ||
+                (rTestLower.contains('accuracy') && sTestLower.contains('accuracy')) ||
+                (rTestLower.contains('stress') && sTestLower.contains('stress')) ||
+                (rTestLower.contains('primer') && sTestLower.contains('primer')) ||
+                (rTestLower.contains('function') && sTestLower.contains('function')) ||
+                (rTestLower.contains('extraction') && sTestLower.contains('extraction')) ||
+                (rTestLower.contains('terminal') && sTestLower.contains('terminal')) ||
+                ((rTestLower.contains('firing rate') || rTestLower.contains('cyclic')) && (sTestLower.contains('firing rate') || sTestLower.contains('cyclic')));
 
-      bool matchesTime = true;
-      if (_selectedTimeRange != 'All Time') {
-        final now = DateTime.now();
-        DateTime? recordDate;
-        try {
-          final raw = r.timestamp.trim();
-          if (raw.isNotEmpty) {
-            recordDate = DateTime.tryParse(raw.split(' ')[0]);
-          }
-        } catch (_) {}
+            bool matchesTime = true;
+            if (_selectedTimeRange != 'All Time') {
+              final now = DateTime.now();
+              DateTime? recordDate;
+              try {
+                final raw = r.timestamp.trim();
+                if (raw.isNotEmpty) {
+                  recordDate = DateTime.tryParse(raw.split(' ')[0]);
+                }
+              } catch (_) {}
 
-        if (recordDate != null) {
-          switch (_selectedTimeRange) {
-            case 'Today':
-              matchesTime = recordDate.year == now.year && recordDate.month == now.month && recordDate.day == now.day;
-              break;
-            case 'Last 7 Days':
-              final diff = now.difference(recordDate).inDays;
-              matchesTime = diff >= 0 && diff <= 7;
-              break;
-            case 'Last 30 Days':
-              final diff = now.difference(recordDate).inDays;
-              matchesTime = diff >= 0 && diff <= 30;
-              break;
-            case 'This Month':
-              matchesTime = recordDate.year == now.year && recordDate.month == now.month;
-              break;
-            case 'This Year':
-              matchesTime = recordDate.year == now.year;
-              break;
-          }
-        }
-      }
-      return matchesCal && matchesTest && matchesTime;
-    }).toList();
+              if (recordDate != null) {
+                switch (_selectedTimeRange) {
+                  case 'Today':
+                    matchesTime = recordDate.year == now.year && recordDate.month == now.month && recordDate.day == now.day;
+                    break;
+                  case 'Last 7 Days':
+                    final diff = now.difference(recordDate).inDays;
+                    matchesTime = diff >= 0 && diff <= 7;
+                    break;
+                  case 'Last 30 Days':
+                    final diff = now.difference(recordDate).inDays;
+                    matchesTime = diff >= 0 && diff <= 30;
+                    break;
+                  case 'This Month':
+                    matchesTime = recordDate.year == now.year && recordDate.month == now.month;
+                    break;
+                  case 'This Year':
+                    matchesTime = recordDate.year == now.year;
+                    break;
+                }
+              }
+            }
+            return matchesCal && matchesTest && matchesTime;
+          }).toList()
+        : <BallisticRecord>[];
 
-    final points = _buildGroupPoints(filtered);
-
-    final bool isSingleParamTest = _selectedTestType == 'Waterproof Test' ||
-        _selectedTestType == 'Extraction Force Test' ||
-        _selectedTestType == 'Function Test' ||
-        _selectedTestType == 'Residual Stress Test' ||
-        _selectedTestType == 'Firing Rate Cycle Test' ||
-        _selectedTestType == 'Primer Sensitivity Test';
+    final points = isTestChosen ? _buildGroupPoints(filtered) : <_TrendGroupPoint>[];
+    final selectedCaliberLabel = _selectedCaliber == 'All' ? 'All Calibers' : _selectedCaliber;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -615,8 +660,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
               ),
             ),
             const SizedBox(width: 8.0),
-            // Mode toggle pills: Single SPC vs 4 SPC Charts Grid (Simultaneous)
-            if (!isSingleParamTest)
+            // Mode toggle pills: Single SPC vs Multi-SPC Charts Grid (Up to 4)
+            if (isTestChosen)
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E293B),
@@ -653,28 +698,11 @@ class _TrendLineChartState extends State<TrendLineChart> {
                           children: [
                             Icon(Icons.grid_view_rounded, size: 14.0, color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8)),
                             const SizedBox(width: 4.0),
-                            Text('4 SPC Charts (Simultaneous)', style: TextStyle(color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                            Text('Multi-SPC (Up to 4)', style: TextStyle(color: _showFourCharts ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.show_chart_rounded, size: 14.0, color: Color(0xFF38BDF8)),
-                    const SizedBox(width: 4.0),
-                    Text('$_selectedTestType SPC', style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -743,7 +771,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
               items: _groupByOptions,
               onChanged: (v) => setState(() => _selectedGroupBy = v!),
             ),
-            if (!_showFourCharts && !isSingleParamTest)
+            if (isTestChosen && !_showFourCharts)
               _buildDropdown(
                 label: 'BALLISTIC PARAMETER',
                 value: _selectedParam,
@@ -757,21 +785,19 @@ class _TrendLineChartState extends State<TrendLineChart> {
               onChanged: (v) => setState(() => _selectedTimeRange = v!),
             ),
             // Metric toggle pills
-            if (!_showFourCharts)
+            if (isTestChosen && !_showFourCharts)
               Padding(
                 padding: const EdgeInsets.only(top: 14.0),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildMetricChip('Mean', _showMean, const Color(0xFF06B6D4), () => setState(() => _showMean = !_showMean)),
-                    if (_selectedTestType == 'Extraction Force Test' || !isSingleParamTest) ...[
-                      const SizedBox(width: 6.0),
-                      _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
-                      const SizedBox(width: 6.0),
-                      _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
-                      const SizedBox(width: 6.0),
-                      _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
-                    ],
+                    const SizedBox(width: 6.0),
+                    _buildMetricChip('Max', _showMax, const Color(0xFFF59E0B), () => setState(() => _showMax = !_showMax)),
+                    const SizedBox(width: 6.0),
+                    _buildMetricChip('Min', _showMin, const Color(0xFF10B981), () => setState(() => _showMin = !_showMin)),
+                    const SizedBox(width: 6.0),
+                    _buildMetricChip('SD', _showSD, const Color(0xFFA855F7), () => setState(() => _showSD = !_showSD)),
                   ],
                 ),
               ),
@@ -780,46 +806,86 @@ class _TrendLineChartState extends State<TrendLineChart> {
         const SizedBox(height: 8.0),
 
         // ─── Parameter Selection Chips (Filtered by Test Type) ─────────
-        if (!isSingleParamTest) ...[
+        if (isTestChosen) ...[
           _buildParameterSelectorChips(paramOptions),
           const SizedBox(height: 10.0),
         ],
 
         // ─── Chart area ───────────────────────────────────────────────
         Expanded(
-          child: _showFourCharts
-              ? _buildFourChartsGrid(filtered)
-              : (points.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.query_stats_outlined,
-                              color: Colors.white.withOpacity(0.15), size: 48.0),
-                          const SizedBox(height: 12.0),
-                          Text(
-                            'No readings available for "$_selectedParam"\nunder $_selectedGroupBy ($selectedCaliberLabel)',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5),
+          child: !isTestChosen
+              ? Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(28.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(16.0),
+                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4), width: 1.5),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x33000000), blurRadius: 16.0, offset: Offset(0, 4)),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0284C7).withOpacity(0.15),
+                            shape: BoxShape.circle,
                           ),
-                        ],
-                      ),
-                    )
-                  : LayoutBuilder(
-                      builder: (ctx, constraints) {
-                        return CustomPaint(
-                          size: Size(constraints.maxWidth, constraints.maxHeight),
-                          painter: _MultiMetricTrendPainter(
-                            points: points,
-                            paramLabel: _selectedParam,
-                            showMean: _showMean,
-                            showMax: _showMax,
-                            showMin: _showMin,
-                            showSD: _showSD,
+                          child: const Icon(Icons.touch_app_rounded, color: Color(0xFF38BDF8), size: 36.0),
+                        ),
+                        const SizedBox(height: 16.0),
+                        const Text(
+                          'Select a Test Type to Begin SPC Matrix Analysis',
+                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.white),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8.0),
+                        const Text(
+                          'Choose a test type from the "TEST TYPE" dropdown above.\nParameters tailored to that specific test will appear, allowing you to select up to 4 parameters for simultaneous SPC statistical control tracking.',
+                          style: TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8), height: 1.4),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : (_showFourCharts
+                  ? _buildFourChartsGrid(filtered)
+                  : (points.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.query_stats_outlined,
+                                  color: Colors.white.withOpacity(0.15), size: 48.0),
+                              const SizedBox(height: 12.0),
+                              Text(
+                                'No readings available for "$_selectedParam"\nunder $_selectedGroupBy ($selectedCaliberLabel)',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 12.5),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    )),
+                        )
+                      : LayoutBuilder(
+                          builder: (ctx, constraints) {
+                            return CustomPaint(
+                              size: Size(constraints.maxWidth, constraints.maxHeight),
+                              painter: _MultiMetricTrendPainter(
+                                points: points,
+                                paramLabel: _selectedParam,
+                                showMean: _showMean,
+                                showMax: _showMax,
+                                showMin: _showMin,
+                                showSD: _showSD,
+                              ),
+                            );
+                          },
+                        ))),
         ),
 
         // ─── Bottom Legend ────────────────────────────────────────────

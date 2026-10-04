@@ -1120,8 +1120,8 @@ class _DashboardTabState extends State<DashboardTab> {
                 const SizedBox(height: 12.0),
                 Expanded(
                   child: TrendLineChart(
-                    records: filtered,
-                    selectedTestType: _selectedTestName,
+                    records: widget.records,
+                    selectedTestType: _selectedTestName == 'All' ? 'Select Test Type' : _selectedTestName,
                   ),
                 ),
               ],

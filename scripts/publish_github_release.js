@@ -19,33 +19,48 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.8.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.8.1 (14 Key Ballistic Quality & Reporting Enhancements)';
-const BODY = `## OMPC Ballistic AeroData v1.8.1
+const TAG_NAME = 'v1.9.0';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.0 (13 Ballistic System Enhancements: Admin Sampling Locations, SPC Matrix, Edit Authority & Edge Suppression)';
+const BODY = `## OMPC Ballistic AeroData v1.9.0
 
-Comprehensive release delivering all 14 requested enhancements across ballistic testing, quality reporting, and statistical process control.
+Major release implementing 13 core ballistic quality, statistical process control, and system enhancements:
 
-### Summary of Completed Enhancements:
-1. **EPVAT Report Auto-Calculation Restoration**: Restored full arithmetic substitution string formatting (e.g., \`3500 + 5 * 100 = 4000 bar\`) with auto-calculation in exported HTML and Word reports.
-2. **Waterproof Retest Sampling Location**: Enabled inspectors to select standard locations or enter custom sampling locations during waterproof retest execution.
-3. **Print Header & Footer Suppression**: Suppressed browser print headers and footers (document title, timestamp, and local URL) during Final Lot Acceptance Certificate printing.
-4. **Unified Reference Numbering**: Standardized test and certificate reference counters across all modules starting at \`REF:01\`.
-5. **Adaptive SPC Parameters**: SPC visualization on the Dashboard automatically defaults to appropriate metrics based on the chosen test:
-   - Waterproof Test: Single chart for Total Leaks.
-   - Extraction Force Test: Single chart displaying Mean, Min, Max, and SD simultaneously.
-   - Function Test: Single chart for Total Defects.
-   - Residual Stress Test: Single chart for Total Splits.
-   - Firing Rate: Single chart for Cyclic Rate (RPM).
-   - Primer Sensitivity: Single chart for Mean Height H̄ (mm).
-6. **Default Startup Module**: Set default startup module to "Daily Test".
-7. **Certificate Module Isolation**: Restricted Final Lot Acceptance Certificate and Lot Dossier exports strictly to the Lot Acceptance module.
-8. **Dedicated Component Report Templates**: Implemented specialized report layouts and headers for Component Acceptance testing (Primer and Propellant).
-9. **Multi-Formula EPVAT Rules in Control**: Admin can configure and evaluate multiple custom formulas per temperature (+21 °C, +52 °C, -54 °C).
-10. **Removed Hardcoded EPVAT Tolerances from Log Entry**: Removed hardcoded velocity tolerance and max pressure overrides, suppressing advisory spec cards for EPVAT and Propellant tests.
-11. **Inspection Log Vertical Clearance**: Shifted recommendations, remarks, and signatures up by 1.5 inches to provide ample physical signature space.
-12. **Open Report Without Saving**: Added "Open Report Without Saving" button in Log Entry allowing preview/opening in a new window without database submission.
-13. **Executive Test-Level SPC & Box-Whisker Analytics**: Redesigned Executive Reports to filter by Test rather than individual parameters, generating SPC and Box & Whisker distribution plots for each test.
-14. **Organized Lot Acceptance Certificate Layout**: Formatted table alignment, typography, and status cards to achieve complete parity with reference Word documentation on single A4 portrait.
+### Key Enhancements & Features:
+1. **Admin Sampling Locations Management**:
+   - Quality Administrators can dynamically Add, Edit/Rename, or Delete sampling locations directly in the Admin Control tab.
+   - Preserves both standard industrial presets (Lines 1-6, QA Lab, Hopper Machine, Assembly Line, etc.) and custom locations.
+2. **Retest Sampling Location Dropdown**:
+   - Converted Retest dialog sampling location into a dynamic dropdown populated with all system sampling locations (including custom added locations).
+   - Retest location is now persisted for all test types upon retest submission.
+3. **EPVAT Rules & Status Decoupling**:
+   - Decoupled attached advisory spec rules / admin recommendations from the final status in Lot Entry and Inspection Log.
+   - Manual status overrides are strictly respected and preserved when calculations pass.
+4. **Admin Full Record Edit Authority**:
+   - Quality Administrators have unrestricted authority to edit any field of submitted records (Test Protocol, Caliber, Timestamp, Test Time, Sampling Location, all Test Metrics, Retest Metrics, Status, and Notes).
+5. **Dashboard Test-First SPC Matrix**:
+   - Dashboard Statistical Process Control chart now enforces selecting a Test Type first.
+   - Shows an intuitive guidance message until a test is selected; no parameters appear beforehand.
+6. **Test-Specific SPC Metrics**:
+   - **Waterproof Test**: Total Fast Leaks, Total Slow Leaks, Total Leaks.
+   - **Accuracy Test**: Average SD (X & Y), Mean Radius, SD X, SD Y.
+   - **EPVAT Test**: All EPVAT parameters selectable.
+   - **Residual Stress Test**: Number of cracks / total splits.
+   - **Primer Sensitivity Test**: HM+5SD and HM-2SD.
+   - **Function Test**: Level 1, 2, 3, 4 Defects, and Total Defects.
+7. **Multi-Parameter Selection Filter**:
+   - Strict test-level filtering with support for selecting up to 4 parameters/charts simultaneously.
+8. **Admin Control "Approved with Condition" Field**:
+   - Dedicated configuration field under Admin Rules allowing quality managers to set specific criteria for conditional approvals across all ballistic tests.
+9. **Waterproof 0 to 3 Leaks Sentenced as "Approved"**:
+   - Waterproof tests with 0 to 3 leaks are automatically sentenced as "Approved" (instead of "Approved with condition").
+10. **Instant Report Opening Without Saving**:
+    - Added instant "Open Report (No Save)" and "Open Dossier (No Save)" actions in report dialogs. Opens inspection documents in-memory via temporary blob/file without requiring download or local disk save.
+11. **Edge Deprecation Warning Permanent Suppression**:
+    - Automated suppression of the Windows notification banner (*"Microsoft edge is no longer supported on this version of windows..."*) across client PCs via registry policies and browser startup arguments.
+12. **Firebase Cloud Web Deployment**:
+    - Compiled and deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
+13. **Supabase Cloud Sync & GitHub Publication**:
+    - Complete cross-platform sync and GitHub distribution with 1-Click Setup Installer and Portable Zip.
 `;
 
 function request(options, postData) {

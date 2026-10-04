@@ -338,6 +338,7 @@ class _EntryTabState extends State<EntryTab> {
   late String _caliber;
   late String _testName;
   String _status = 'Approved';
+  bool _isManualStatusSelected = false;
   bool _isSubmitting = false;
 
   // Extraction Force Test state
@@ -2797,7 +2798,7 @@ class _EntryTabState extends State<EntryTab> {
       }
     }
 
-    final String finalStatus = _getCalculatedStatus();
+    final String finalStatus = _isManualStatusSelected && _status.isNotEmpty ? _status : _getCalculatedStatus();
     final producedStr = _producedController.text.trim();
     final defectsStr = _defectsController.text.trim();
     final int produced = int.tryParse(producedStr) ?? 0;
@@ -8336,7 +8337,6 @@ class _EntryTabState extends State<EntryTab> {
           
       if (totalLeaks >= rejectLimit) return 'Rejected';
       if (totalLeaks >= retestLimit) return 'Retest';
-      if (totalLeaks > 0) return 'Approved with condition';
       return 'Approved';
     }
     
@@ -9007,9 +9007,9 @@ class _EntryTabState extends State<EntryTab> {
           autoStatus = _getCalculatedStatus();
         }
 
-        if (autoStatus != null && _status != autoStatus) {
+        if (!_isManualStatusSelected && autoStatus != null && _status != autoStatus) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
+            if (mounted && !_isManualStatusSelected) {
               setState(() {
                 _status = autoStatus!;
               });
@@ -9130,7 +9130,10 @@ class _EntryTabState extends State<EntryTab> {
             }).toList(),
             onChanged: (v) {
               if (v != null) {
-                setState(() => _status = v);
+                setState(() {
+                  _status = v;
+                  _isManualStatusSelected = true;
+                });
               }
             },
           ),
@@ -10308,7 +10311,7 @@ class _EntryTabState extends State<EntryTab> {
       final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
       specText = 'Caliber: $_caliber | Velocity: ${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s | Max Radius: ${maxMeanRadius.toStringAsFixed(1)} mm | Max SD: ${maxSD.toStringAsFixed(1)} mm';
       instructionsText = accRules['instructions'] ?? 'Assess group sizing at target distance.';
-    } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+    } else if (_testName.toLowerCase().contains('epvat') || _testName.toLowerCase().contains('propellant')) {
       return const SizedBox.shrink();
     } else if (_testName == 'Primer Sensitivity Test') {
       final prRules = _getPrimerRulesForCaliber();

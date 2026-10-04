@@ -339,44 +339,78 @@ class _HistoryTabState extends State<HistoryTab> {
                                 children: [
                                   buildParamField('Retest Sample Qty', retestProducedCtrl),
                                   buildParamField('Total Leaks / Defects', retestDefectsCtrl),
-                                  buildParamField(
-                                    'Sampling Location',
-                                    retestLocationCtrl,
-                                    isNumber: false,
-                                    suffixIcon: PopupMenuButton<String>(
-                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8), size: 20),
-                                      tooltip: 'Select Sampling Location',
-                                      color: const Color(0xFF1E293B),
-                                      onSelected: (val) {
-                                        setDialogState(() {
-                                          retestLocationCtrl.text = val;
-                                        });
-                                      },
-                                      itemBuilder: (context) {
-                                        final locList = <String>{
-                                          'After Packing machine',
-                                          'Priming machine',
-                                          'PC530',
-                                          'PB31/14',
-                                          'PD26',
-                                          'After visual inspection',
-                                          'After link machine',
-                                          if (r.samplingLocation.isNotEmpty) r.samplingLocation,
-                                        };
-                                        final adminLocs = widget.adminRules['sample_locations'];
-                                        if (adminLocs is List) {
-                                          for (final l in adminLocs) {
-                                            if (l != null && l.toString().trim().isNotEmpty) {
-                                              locList.add(l.toString().trim());
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Sampling Location',
+                                            style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                          ),
+                                          const SizedBox(height: 4.0),
+                                          Builder(builder: (context) {
+                                            final locList = <String>{
+                                              'After Packing machine',
+                                              'Priming machine',
+                                              'PC530',
+                                              'PB31/14',
+                                              'PD26',
+                                              'After visual inspection',
+                                              'After link machine',
+                                              'Warehouse A',
+                                              'Warehouse B',
+                                              'Production Line 1',
+                                              'Production Line 2',
+                                              'Ballistic Range 1',
+                                              'Storage Room',
+                                              if (r.samplingLocation.isNotEmpty) r.samplingLocation,
+                                            };
+                                            final adminLocs = widget.adminRules['sample_locations'];
+                                            if (adminLocs is List) {
+                                              for (final l in adminLocs) {
+                                                if (l != null && l.toString().trim().isNotEmpty) {
+                                                  locList.add(l.toString().trim());
+                                                }
+                                              }
                                             }
-                                          }
-                                        }
-                                        return locList.map((loc) => PopupMenuItem<String>(
-                                          value: loc,
-                                          height: 32,
-                                          child: Text(loc, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                                        )).toList();
-                                      },
+                                            final currentVal = retestLocationCtrl.text.trim();
+                                            final effectiveVal = currentVal.isNotEmpty && locList.contains(currentVal)
+                                                ? currentVal
+                                                : (locList.isNotEmpty ? locList.first : '');
+                                            if (currentVal.isEmpty && effectiveVal.isNotEmpty) {
+                                              retestLocationCtrl.text = effectiveVal;
+                                            }
+                                            return DropdownButtonFormField<String>(
+                                              value: effectiveVal.isNotEmpty ? effectiveVal : null,
+                                              dropdownColor: const Color(0xFF1E293B),
+                                              isExpanded: true,
+                                              style: const TextStyle(color: Colors.white, fontSize: 12.0),
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                filled: true,
+                                                fillColor: Colors.black.withOpacity(0.2),
+                                                contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+                                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+                                              ),
+                                              items: locList.map((loc) => DropdownMenuItem<String>(
+                                                value: loc,
+                                                child: Text(loc, overflow: TextOverflow.ellipsis),
+                                              )).toList(),
+                                              onChanged: (val) {
+                                                if (val != null) {
+                                                  setDialogState(() {
+                                                    retestLocationCtrl.text = val;
+                                                  });
+                                                }
+                                              },
+                                            );
+                                          }),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -777,7 +811,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       originalStatus: r.originalStatus.isNotEmpty ? r.originalStatus : r.status,
                       status: finalStatus,
                       notes: updatedNotes,
-                      samplingLocation: (r.testName == 'Waterproof Test' && retestLocationCtrl.text.trim().isNotEmpty)
+                      samplingLocation: retestLocationCtrl.text.trim().isNotEmpty
                           ? retestLocationCtrl.text.trim()
                           : r.samplingLocation,
                       retestProduced: parsedRetestProduced,
@@ -1129,9 +1163,60 @@ class _HistoryTabState extends State<HistoryTab> {
     final retestDefectsController = TextEditingController(text: '${r.retestDefects}');
     String editRetestStatus = r.retestStatus.isNotEmpty ? r.retestStatus : 'Approved';
 
+    final timestampController = TextEditingController(text: r.timestamp);
+    final testTimeController = TextEditingController(text: r.testTime);
+    String editTestName = r.testName;
     String editShift = r.shift;
     String editStatus = r.status;
     String editCaliber = r.caliber;
+    String editLocation = locationController.text.trim();
+
+    final List<String> allDialogTestTypes = [
+      'Waterproof Test',
+      'Residual Stress Test',
+      'Accuracy Test',
+      'EPVAT test',
+      'Function Test',
+      'Extraction Force Test',
+      'Primer Sensitivity Test',
+      'Propellant Test',
+      'Firing Rate Cycle Test',
+      'Terminal Effect Test',
+    ];
+    if (!allDialogTestTypes.contains(editTestName)) {
+      allDialogTestTypes.insert(0, editTestName);
+    }
+
+    final List<String> dialogSampleLocations = [
+      'Line 1',
+      'Line 2',
+      'Line 3',
+      'Line 4',
+      'Line 5',
+      'Line 6',
+      'Assembly Line',
+      'Hopper Machine',
+      'Packing Line',
+      'QA Laboratory',
+      'Storage Warehouse',
+      'Case Shop',
+      'Bullet Shop',
+      'Loading Shop',
+    ];
+    if (widget.adminRules['sample_locations'] is List) {
+      for (var l in widget.adminRules['sample_locations']) {
+        final locStr = l.toString().trim();
+        if (locStr.isNotEmpty && !dialogSampleLocations.contains(locStr)) {
+          dialogSampleLocations.add(locStr);
+        }
+      }
+    }
+    if (locationController.text.trim().isNotEmpty && !dialogSampleLocations.contains(locationController.text.trim())) {
+      dialogSampleLocations.add(locationController.text.trim());
+    }
+    if (!dialogSampleLocations.contains('Other (Custom)')) {
+      dialogSampleLocations.add('Other (Custom)');
+    }
 
     showDialog(
       context: context,
@@ -1166,7 +1251,7 @@ class _HistoryTabState extends State<HistoryTab> {
                           style: TextStyle(fontSize: 17.0, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         Text(
-                          '${r.testName} • ${r.timestamp} • Admin Authority',
+                          '$editTestName • ${timestampController.text} • Admin Full Authority',
                           style: const TextStyle(fontSize: 12.0, color: Color(0xFF38BDF8), fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -1175,13 +1260,74 @@ class _HistoryTabState extends State<HistoryTab> {
                 ],
               ),
               content: Container(
-                width: math.min(700.0, MediaQuery.of(context).size.width * 0.95),
+                width: math.min(720.0, MediaQuery.of(context).size.width * 0.95),
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Section 0: Test Type, Timestamp & Test Time (Admin Full Control)
+                      if (isMobile) ...[
+                        _buildDialogField(
+                          label: 'Test Type / Protocol',
+                          child: DropdownButtonFormField<String>(
+                            value: allDialogTestTypes.contains(editTestName) ? editTestName : allDialogTestTypes.first,
+                            dropdownColor: const Color(0xFF1A2035),
+                            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13.0, fontWeight: FontWeight.bold),
+                            decoration: _dialogInputDecoration(),
+                            items: allDialogTestTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
+                            onChanged: (v) => setDialogState(() => editTestName = v!),
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        _buildDialogField(
+                          label: 'Inspection Timestamp (Date & Time)',
+                          child: _buildDialogTextField(controller: timestampController),
+                        ),
+                        const SizedBox(height: 12.0),
+                        _buildDialogField(
+                          label: 'Test Duration / Time',
+                          child: _buildDialogTextField(controller: testTimeController),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: _buildDialogField(
+                                label: 'Test Type / Protocol',
+                                child: DropdownButtonFormField<String>(
+                                  value: allDialogTestTypes.contains(editTestName) ? editTestName : allDialogTestTypes.first,
+                                  dropdownColor: const Color(0xFF1A2035),
+                                  style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13.0, fontWeight: FontWeight.bold),
+                                  decoration: _dialogInputDecoration(),
+                                  items: allDialogTestTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
+                                  onChanged: (v) => setDialogState(() => editTestName = v!),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(
+                                label: 'Inspection Timestamp',
+                                child: _buildDialogTextField(controller: timestampController),
+                              ),
+                            ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogField(
+                                label: 'Test Time',
+                                child: _buildDialogTextField(controller: testTimeController),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 12.0),
+
                       // Section 1: Inspector & Shift
                       if (isMobile) ...[
                         _buildDialogField(
@@ -1276,6 +1422,44 @@ class _HistoryTabState extends State<HistoryTab> {
                           ],
                         ),
                       ],
+                      const SizedBox(height: 12.0),
+
+                      // Section 2B: Sampling Location (Dropdown + Custom for All Tests)
+                      _buildDialogField(
+                        label: 'Sampling Location / Station',
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: DropdownButtonFormField<String>(
+                                value: dialogSampleLocations.contains(editLocation) ? editLocation : (dialogSampleLocations.isNotEmpty ? dialogSampleLocations.first : null),
+                                dropdownColor: const Color(0xFF1A2035),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                decoration: _dialogInputDecoration(),
+                                items: dialogSampleLocations.map((l) => DropdownMenuItem(value: l, child: Text(l, overflow: TextOverflow.ellipsis))).toList(),
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    setDialogState(() {
+                                      editLocation = v;
+                                      if (v != 'Other (Custom)') {
+                                        locationController.text = v;
+                                      }
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 10.0),
+                            Expanded(
+                              flex: 2,
+                              child: _buildDialogTextField(
+                                controller: locationController,
+                                hint: 'Custom location...',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 12.0),
 
                       // Section 3: Quantity Tested, Defects, Status
@@ -1386,7 +1570,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             const SizedBox(width: 8.0),
                             Expanded(
                               child: Text(
-                                '${r.testName.toUpperCase()} — MEASUREMENT PARAMETERS',
+                                '${editTestName.toUpperCase()} — MEASUREMENT PARAMETERS',
                                 style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -1395,7 +1579,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       ),
                       const SizedBox(height: 12.0),
 
-                      if (r.testName == 'Waterproof Test') ...[
+                      if (editTestName == 'Waterproof Test' || editTestName.toLowerCase().contains('waterproof')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Pressure (Bar)', child: _buildDialogTextField(controller: pressureController))),
@@ -1417,7 +1601,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Primer Fast', child: _buildDialogTextField(controller: primerFastController, keyboardType: TextInputType.number))),
                           ],
                         ),
-                      ] else if (r.testName == 'Residual Stress Test') ...[
+                      ] else if (editTestName == 'Residual Stress Test' || editTestName.toLowerCase().contains('stress')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Room Temperature (°C)', child: _buildDialogTextField(controller: roomTempController))),
@@ -1449,7 +1633,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Head Fast', child: _buildDialogTextField(controller: headFastController, keyboardType: TextInputType.number))),
                           ],
                         ),
-                      ] else if (r.testName == 'Accuracy Test') ...[
+                      ] else if (editTestName == 'Accuracy Test' || editTestName.toLowerCase().contains('accuracy')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
@@ -1483,7 +1667,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Vel SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
                           ],
                         ),
-                      ] else if (r.testName == 'EPVAT test') ...[
+                      ] else if (editTestName == 'EPVAT test' || editTestName.toLowerCase().contains('epvat')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
@@ -1539,7 +1723,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Sensor 2 S.N.', child: _buildDialogTextField(controller: epvSensor2Controller))),
                           ],
                         ),
-                      ] else if (r.testName == 'Function Test') ...[
+                      ] else if (editTestName == 'Function Test' || editTestName.toLowerCase().contains('function')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Weapons / Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
@@ -1561,7 +1745,7 @@ class _HistoryTabState extends State<HistoryTab> {
                         ),
                         const SizedBox(height: 10.0),
                         _buildDialogField(label: 'Specific Defect Details', child: _buildDialogTextField(controller: funcDetailsController)),
-                      ] else if (r.testName == 'Extraction Force Test') ...[
+                      ] else if (editTestName == 'Extraction Force Test' || editTestName.toLowerCase().contains('extraction')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Force Mode / Type', child: _buildDialogTextField(controller: extTypeController))),
@@ -1579,7 +1763,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Force SD (N)', child: _buildDialogTextField(controller: extSDForceController))),
                           ],
                         ),
-                      ] else if (r.testName == 'Primer Sensitivity Test') ...[
+                      ] else if (editTestName == 'Primer Sensitivity Test' || editTestName.toLowerCase().contains('primer')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Primer Lot', child: _buildDialogTextField(controller: primerLotController))),
@@ -1601,7 +1785,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'No-Fire H̄-2SD (cm)', child: _buildDialogTextField(controller: primerNoFireController))),
                           ],
                         ),
-                      ] else if (r.testName == 'Propellant Test') ...[
+                      ] else if (editTestName == 'Propellant Test' || editTestName.toLowerCase().contains('propellant')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Propellant Lot', child: _buildDialogTextField(controller: propellantLotController))),
@@ -1625,7 +1809,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Velocity SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
                           ],
                         ),
-                      ] else if (r.testName == 'Firing Rate Cycle Test') ...[
+                      ] else if (editTestName == 'Firing Rate Cycle Test' || editTestName.toLowerCase().contains('firing rate') || editTestName.toLowerCase().contains('cyclic')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Weapon Model', child: _buildDialogTextField(controller: cyclicWeaponController))),
@@ -1643,7 +1827,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Expanded(child: _buildDialogField(label: 'Max Allowed (RPM)', child: _buildDialogTextField(controller: cyclicMaxController))),
                           ],
                         ),
-                      ] else if (r.testName == 'Terminal Effect Test') ...[
+                      ] else if (editTestName == 'Terminal Effect Test' || editTestName.toLowerCase().contains('terminal')) ...[
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Target Distance (m)', child: _buildDialogTextField(controller: velocityDistanceController))),
@@ -1757,8 +1941,12 @@ class _HistoryTabState extends State<HistoryTab> {
                     final int funcL4 = int.tryParse(funcL4Controller.text.trim()) ?? r.functionLevel4;
 
                     final String savedNotes = notesController.text.trim();
+                    final isExtraction = editTestName == 'Extraction Force Test' || editTestName.toLowerCase().contains('extraction');
 
                     final updated = r.copyWith(
+                      testName: editTestName,
+                      timestamp: timestampController.text.trim(),
+                      testTime: testTimeController.text.trim(),
                       operators: operatorsController.text.trim(),
                       shift: editShift,
                       caliber: editCaliber,
@@ -1791,12 +1979,12 @@ class _HistoryTabState extends State<HistoryTab> {
                       velocityDistance: velocityDistanceController.text.trim(),
                       accMeanRadius: accRadiusController.text.trim(),
                       accLargestDistance: accMaxDistController.text.trim(),
-                      accSDX: r.testName == 'Extraction Force Test' ? extSDForceController.text.trim() : accSDXController.text.trim(),
+                      accSDX: isExtraction ? extSDForceController.text.trim() : accSDXController.text.trim(),
                       accSDY: accSDYController.text.trim(),
-                      accMeanX: r.testName == 'Extraction Force Test' ? extMeanForceController.text.trim() : accMeanXController.text.trim(),
+                      accMeanX: isExtraction ? extMeanForceController.text.trim() : accMeanXController.text.trim(),
                       accMeanY: accMeanYController.text.trim(),
-                      accMinX: r.testName == 'Extraction Force Test' ? extMinForceController.text.trim() : r.accMinX,
-                      accMaxX: r.testName == 'Extraction Force Test' ? extMaxForceController.text.trim() : r.accMaxX,
+                      accMinX: isExtraction ? extMinForceController.text.trim() : r.accMinX,
+                      accMaxX: isExtraction ? extMaxForceController.text.trim() : r.accMaxX,
                       velMean: velMeanController.text.trim(),
                       velMin: velMinController.text.trim(),
                       velMax: velMaxController.text.trim(),
@@ -1893,13 +2081,17 @@ class _HistoryTabState extends State<HistoryTab> {
     required TextEditingController controller,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    String? hint,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
       style: const TextStyle(color: Colors.white, fontSize: 13.0),
-      decoration: _dialogInputDecoration(),
+      decoration: _dialogInputDecoration().copyWith(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.0),
+      ),
     );
   }
 
@@ -3648,6 +3840,33 @@ class _HistoryTabState extends State<HistoryTab> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
                         ),
+                        ElevatedButton.icon(
+                          onPressed: reportRecords.isEmpty ? null : () async {
+                            final htmlContent = ReportGenerator.generateHtml(
+                              reportRecords, 
+                              selectedReportTest,
+                              widget.currentModule,
+                              base64Logo: widget.base64Logo,
+                              adminRules: widget.adminRules,
+                              loggedInUser: widget.loggedInUser,
+                            );
+                            final repTestName = selectedReportTest == 'All' 
+                                ? (widget.currentModule == 'Lot Acceptance Test' ? 'Lot_Acceptance_Certificate' : 'Comprehensive_Summary') 
+                                : (singleRecord?.testName ?? selectedReportTest);
+                            await ReportHelper.instance.openReport(
+                              htmlContent: htmlContent,
+                              title: repTestName,
+                            );
+                          },
+                          icon: const Icon(Icons.open_in_new_rounded, size: 16.0),
+                          label: const Text('Open Report (No Save)'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                          ),
+                        ),
                         if (selectedReportTest == 'All' && widget.currentModule == 'Lot Acceptance Test' && reportRecords.length > 1) ...[
                           ElevatedButton.icon(
                             onPressed: () async {
@@ -3702,6 +3921,29 @@ class _HistoryTabState extends State<HistoryTab> {
                             label: const Text('Complete Dossier (PDF)'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF9333EA),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final htmlContent = ReportGenerator.generateLotDossierHtml(
+                                reportRecords, 
+                                widget.currentModule,
+                                base64Logo: widget.base64Logo,
+                                adminRules: widget.adminRules,
+                                loggedInUser: widget.loggedInUser,
+                              );
+                              await ReportHelper.instance.openReport(
+                                htmlContent: htmlContent,
+                                title: 'Complete_Lot_Dossier',
+                              );
+                            },
+                            icon: const Icon(Icons.open_in_new_rounded, size: 16.0),
+                            label: const Text('Open Dossier (No Save)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF059669),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),

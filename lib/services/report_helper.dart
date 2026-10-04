@@ -8,5 +8,6 @@ abstract class ReportHelper {
   Future<void> downloadCsv({required String content, required String filename});
   Future<void> downloadDoc({required String content, required String filename});
   Future<void> printHtml({required String htmlContent, String? filename});
+  Future<void> openReport({required String htmlContent, String? title});
   Future<void> openUrl({required String url});
 }

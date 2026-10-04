@@ -50,6 +50,27 @@ namespace OmpcBallisticAeroData
                 }
             }
 
+            // Suppress Edge unsupported OS banner and deprecation notices
+            try
+            {
+                using (var k = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Policies\Microsoft\Edge"))
+                {
+                    if (k != null)
+                    {
+                        k.SetValue("SuppressUnsupportedOSWarning", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                        k.SetValue("HideFirstRunExperience", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                    }
+                }
+                using (var k = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Policies\Google\Chrome"))
+                {
+                    if (k != null)
+                    {
+                        k.SetValue("SuppressUnsupportedOSWarning", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                    }
+                }
+            }
+            catch { }
+
             // Launch in dedicated standalone app window
             string browserExe = FindChromiumBrowser();
             if (browserExe != null)
@@ -57,7 +78,7 @@ namespace OmpcBallisticAeroData
                 ProcessStartInfo appInfo = new ProcessStartInfo
                 {
                     FileName = browserExe,
-                    Arguments = string.Format("--app=\"{0}\" --start-maximized --disable-features=msEdgeSyncNotice,msEdgeSyncNoticeDialog,msEdgeProfilePicker,msEdgeShowSyncNotice,msFirstRunExperience --disable-sync --disable-fre --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"", url),
+                    Arguments = string.Format("--app=\"{0}\" --start-maximized --disable-features=msEdgeSyncNotice,msEdgeSyncNoticeDialog,msEdgeProfilePicker,msEdgeShowSyncNotice,msFirstRunExperience,msEdgeDeprecationBanner,msEdgeDeprecationNotice --disable-component-update --suppress-unsupported-os-warning --disable-sync --disable-fre --disable-infobars --suppress-message-center-popups --simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"", url),
                     UseShellExecute = true
                 };
                 Process.Start(appInfo);

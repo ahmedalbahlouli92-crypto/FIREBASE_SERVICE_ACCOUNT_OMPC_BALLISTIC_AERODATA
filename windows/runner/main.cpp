@@ -17,6 +17,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
+  // Suppress Edge unsupported OS banner & deprecation notice across Windows
+  HKEY hKey;
+  if (RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Policies\\Microsoft\\Edge", 0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS) {
+    DWORD val = 1;
+    RegSetValueExW(hKey, L"SuppressUnsupportedOSWarning", 0, REG_DWORD, (const BYTE*)&val, sizeof(val));
+    RegSetValueExW(hKey, L"HideFirstRunExperience", 0, REG_DWORD, (const BYTE*)&val, sizeof(val));
+    RegCloseKey(hKey);
+  }
+  SetEnvironmentVariableW(L"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", L"--disable-features=msEdgeDeprecationBanner,msEdgeDeprecationNotice --suppress-unsupported-os-warning --disable-component-update");
+
   flutter::DartProject project(L"data");
 
   std::vector<std::string> command_line_arguments =

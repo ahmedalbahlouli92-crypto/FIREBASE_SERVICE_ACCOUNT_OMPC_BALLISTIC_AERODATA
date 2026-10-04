@@ -42,6 +42,22 @@ class ReportHelperImpl implements ReportHelper {
   }
 
   @override
+  Future<void> openReport({required String htmlContent, String? title}) async {
+    final tempDir = Directory.systemTemp;
+    final cleanTitle = (title != null && title.isNotEmpty ? title : 'Inspection_Report')
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final tempFile = File('${tempDir.path}/view_${DateTime.now().millisecondsSinceEpoch}_$cleanTitle.html');
+    await tempFile.writeAsString(htmlContent, flush: true);
+    if (Platform.isWindows) {
+      await Process.run('cmd', ['/c', 'start', '', tempFile.path]);
+    } else if (Platform.isMacOS) {
+      await Process.run('open', [tempFile.path]);
+    } else if (Platform.isLinux) {
+      await Process.run('xdg-open', [tempFile.path]);
+    }
+  }
+
+  @override
   Future<void> openUrl({required String url}) async {
     if (Platform.isWindows) {
       await Process.run('cmd', ['/c', 'start', '', url]);
