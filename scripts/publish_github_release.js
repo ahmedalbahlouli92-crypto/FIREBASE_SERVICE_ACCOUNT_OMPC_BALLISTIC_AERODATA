@@ -19,37 +19,43 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.1 (Multi-Test SPC Matrix, Inspection Log Open Report, Certificate Formatting & Auto-Status)';
-const BODY = `## OMPC Ballistic AeroData v1.9.1
+const TAG_NAME = 'v1.9.2';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.2 (EPVAT Auto-Calc Lock, Admin Controls & Editing, SPC Multi-Param Charts, Scoped Certificates & Supabase Sync)';
+const BODY = `## OMPC Ballistic AeroData v1.9.2
 
-Production release implementing dedicated SPC matrix charts, enhanced certificate formatting, instant inspection report viewer, and quality status integrity:
+Comprehensive release implementing EPVAT automated formula locking, Admin sampling location management & test editing, SPC multi-parameter overlay charts, caliber-scoped Lot Acceptance Certificates, and database schema updates:
 
 ### Key Enhancements & Features:
-1. **Inspection Log Direct Report Viewer (No Save)**:
-   - Added a dedicated "Open" action icon (\`Icons.open_in_browser_rounded\`, tooltip 'Open') positioned beside the AI Analysis button.
-   - Instantly opens the test report in an in-memory browser tab/window without triggering file download or prompting for save locations.
-2. **Admin Rename Sampling Location**:
-   - Quality Administrators can explicitly rename any configured sampling location directly from the Admin Rules panel with immediate persistent synchronization across Supabase and local storage.
-3. **EPVAT 5.56x45 SS109 Lot 001 OMPC/26 Fix & Automated Quality Approval**:
-   - Repaired historical EPVAT record in Supabase to "Approved" quality status.
-   - Enforced automated status sync: whenever all automated EPVAT formulas pass criteria, the quality status is guaranteed to be "Approved".
-4. **Primer Sensitivity Test Removed from Daily Test**:
-   - Completely filtered out Primer Sensitivity Test from Daily Test module entry forms, test type selectors, and inspection log filters.
-5. **Dashboard SPC Chart Matrix (Up to 4 Tests & 1 Chart per Test)**:
-   - Enabled selecting up to 4 tests simultaneously via intuitive selection chips.
-   - Each selected test receives its own dedicated chart card (strictly one chart for one test only) with individual metric dropdowns and custom statistical process control lines (Mean, UCL, LCL, SD).
-6. **Dashboard SPC Filter Cleanup & Test Selection Bug Fix**:
-   - Removed redundant Test Type and Time Range dropdowns from the top filter bar, keeping Caliber Specification and Grouping Mode.
-   - Resolved the widget update bug that caused selecting tests to reset the UI as if nothing was selected.
-7. **Final Lot Acceptance Certificate Format**:
-   - Upgraded Final Lot Acceptance Certificate layout to match EPVAT exported reports: corporate header with logo and Ref No, title section with cyan (#06b6d4) line, Details table, Acceptance Test Results table, Sentencing callout box, and 3-column signature block.
-8. **Word Export Formatting**:
-   - Ensured exported Word (.doc) files match PDF report styling with @page Section1 margins (36.0pt), corporate header, table borders, and colors.
-9. **Firebase Cloud Web Deployment**:
-   - Compiled and deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
-10. **Distribution Deliverables**:
-    - Synchronized standalone executable, 1-Click Setup Installer, and portable zip on Desktop.
+1. **EPVAT Test Auto-Calculation & Status Lock**:
+   - EPVAT overall status is strictly and automatically determined by formula evaluation across all temperatures (+21 °C, +52 °C, -54 °C).
+   - "Approved" if all formulas pass; "Rejected" if any formula fails. Manual status overriding is locked.
+2. **Admin Sampling Locations Control**:
+   - Administrators can add, rename, and delete sampling locations with real-time bidirectional synchronization between Supabase and local storage.
+3. **Admin Test Data Editing**:
+   - Comprehensive editor for all ballistic tests: EPVAT multi-temperature parameters (Chamber P1, Port P2, Velocity, Action Time), Primer sensitivity with live HM+5SD and HM-2SD calculations, Accuracy X & Y variables, and defect quantities.
+4. **SPC Multi-Parameter Same-Chart Overlay**:
+   - Users can select multiple parameters from the same test simultaneously (e.g. Primer Sensitivity HM+5SD and HM-2SD).
+   - Dynamically graphs multi-curve series on a unified Y-axis scale with distinct series colors, value chips, and an in-chart legend.
+5. **Lot Acceptance Inspection Log Clean Up**:
+   - Completely removed Hopper No. from search placeholders, filter chips, and table columns in the Lot Acceptance module, retaining only Lot Number.
+6. **Certificate Sample Size Accuracy**:
+   - Sample size on the Lot Acceptance Certificate accurately reflects the actual sample sizes tested for each test record.
+7. **Strict Certificate Table Ordering**:
+   - Test tables in both the Certificate and Lot Dossier strictly follow the required sequence:
+     1. Waterproof Test
+     2. Bullet Extraction (Extraction Force Test)
+     3. Accuracy Test
+     4. EPVAT test (+21 °C, +52 °C, -54 °C)
+     5. Function Test
+     6. Residual Stress Test
+     7. Terminal Effect Test
+     8. Primer Sensitivity Test
+8. **Certificate Filtering by Lot & Caliber**:
+   - Users select Caliber Specification and Lot Number; certificate results and calculations are scoped strictly to the selected lot and caliber.
+9. **Supabase Database Schema Setup**:
+   - Updated \`supabase_tables_setup.sql\` with all 20 test tables, 8 consumable category tables, witness storage tables, equipment issues, admin control tables, and dedicated EPVAT multi-temperature columns.
+10. **Firebase Cloud Web Deployment**:
+    - Compiled and deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
 `;
 
 function request(options, postData) {
