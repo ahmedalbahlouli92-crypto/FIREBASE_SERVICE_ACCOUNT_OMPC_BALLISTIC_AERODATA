@@ -10387,7 +10387,7 @@ class _MainShellState extends State<MainShell> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'v1.5.1',
+                              'v1.9.3',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
                               overflow: TextOverflow.ellipsis,
                             ),
