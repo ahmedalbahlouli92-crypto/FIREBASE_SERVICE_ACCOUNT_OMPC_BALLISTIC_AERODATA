@@ -32,7 +32,26 @@ class _TrendLineChartState extends State<TrendLineChart> {
   String _selectedCaliber = 'All';
   String _selectedGroupBy = 'By Lot Number'; // 'By Lot Number' | 'By Hopper No.' | 'By Individual Test'
   List<String> _selectedTests = [];
-  final Map<String, String> _testActiveParam = {};
+  final Map<String, Set<String>> _testActiveParams = {};
+
+  static const List<Color> _seriesColors = [
+    Color(0xFF06B6D4), // Cyan
+    Color(0xFFF59E0B), // Amber
+    Color(0xFF10B981), // Emerald
+    Color(0xFFA855F7), // Purple
+    Color(0xFFEC4899), // Pink
+    Color(0xFF3B82F6), // Blue
+    Color(0xFFF97316), // Orange
+    Color(0xFF14B8A6), // Teal
+  ];
+
+  Set<String> _getActiveParamsForTest(String testName) {
+    if (_testActiveParams.containsKey(testName) && _testActiveParams[testName]!.isNotEmpty) {
+      return _testActiveParams[testName]!;
+    }
+    final pList = _getParamsForTestType(testName);
+    return pList.isNotEmpty ? {pList.first} : {};
+  }
 
   bool _showMean = true;
   bool _showMax = true;
@@ -118,11 +137,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   String get _selectedParam {
     final t = _selectedTestType;
-    if (_testActiveParam.containsKey(t) && _testActiveParam[t]!.isNotEmpty) {
-      return _testActiveParam[t]!;
-    }
-    final pList = _getParamsForTestType(t);
-    return pList.isNotEmpty ? pList.first : '';
+    final active = _getActiveParamsForTest(t);
+    return active.isNotEmpty ? active.first : '';
   }
 
   List<String> _get4ParamsForTestType(String testType) {
@@ -276,7 +292,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
     for (final t in available) {
       final pList = _getParamsForTestType(t);
       if (pList.isNotEmpty) {
-        _testActiveParam[t] = pList.first;
+        _testActiveParams[t] = {pList.first};
       }
     }
 
@@ -492,7 +508,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
         return _RecordMetric(mean: p2Sd, min: p2Sd, max: p2Sd, sd: 0.0);
 
       case 'Velocity SD (m/s)':
-      case 'SD Velocity (m/s)':
         final sd = double.tryParse(r.velSD);
         if (sd == null) return null;
         return _RecordMetric(mean: sd, min: sd, max: sd, sd: 0.0);
@@ -652,8 +667,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
     // Total groups across selected tests
     int totalEvaluatedGroups = 0;
     for (final t in _selectedTests) {
-      final pList = _getParamsForTestType(t);
-      final activeP = _testActiveParam[t] ?? (pList.isNotEmpty ? pList.first : '');
+      final activeParams = _getActiveParamsForTest(t);
+      final activeP = activeParams.isNotEmpty ? activeParams.first : '';
       totalEvaluatedGroups += _buildGroupPointsForTest(t, activeP).length;
     }
 
@@ -869,8 +884,23 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   Widget _buildSingleTestSpcCard(String testName) {
     final availableParams = _getParamsForTestType(testName);
-    final activeParam = _testActiveParam[testName] ?? (availableParams.isNotEmpty ? availableParams.first : '');
-    final pts = _buildGroupPointsForTest(testName, activeParam);
+    final activeParams = _getActiveParamsForTest(testName);
+    final primaryParam = activeParams.isNotEmpty ? activeParams.first : (availableParams.isNotEmpty ? availableParams.first : '');
+
+    final List<_MultiParamSeries> multiSeries = [];
+    int sIdx = 0;
+    for (final p in activeParams) {
+      final sPts = _buildGroupPointsForTest(testName, p);
+      final sColor = _seriesColors[sIdx % _seriesColors.length];
+      multiSeries.add(_MultiParamSeries(
+        paramName: p,
+        color: sColor,
+        points: sPts,
+      ));
+      sIdx++;
+    }
+
+    final pts = multiSeries.isNotEmpty ? multiSeries.first.points : <_TrendGroupPoint>[];
 
     double grandMean = 0;
     double grandSD = 0;
@@ -885,6 +915,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
       lcl = math.max(0.0, grandMean - (3 * grandSD));
       isOOC = pts.any((p) => p.mean > ucl || p.mean < lcl);
     }
+
+    final isMulti = activeParams.length > 1;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
@@ -902,7 +934,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Test Name & Icon + Parameter Selector Dropdown + Status Badge
+          // Row 1: Test Name & Icon + Parameter Count Badge + Status Badge
           Row(
             children: [
               Container(
@@ -928,33 +960,15 @@ class _TrendLineChartState extends State<TrendLineChart> {
               if (availableParams.isNotEmpty) ...[
                 const SizedBox(width: 6.0),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 1.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                   decoration: BoxDecoration(
                     color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(5.0),
+                    borderRadius: BorderRadius.circular(4.0),
                     border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4)),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: availableParams.contains(activeParam) ? activeParam : availableParams.first,
-                      isDense: true,
-                      dropdownColor: const Color(0xFF1E293B),
-                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8), size: 15.0),
-                      style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 10.5, fontWeight: FontWeight.bold),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _testActiveParam[testName] = val;
-                          });
-                        }
-                      },
-                      items: availableParams.map((p) {
-                        return DropdownMenuItem<String>(
-                          value: p,
-                          child: Text(p, style: const TextStyle(fontSize: 10.5, color: Colors.white)),
-                        );
-                      }).toList(),
-                    ),
+                  child: Text(
+                    '${activeParams.length} of ${availableParams.length} Selected',
+                    style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 9.5, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -976,29 +990,106 @@ class _TrendLineChartState extends State<TrendLineChart> {
               ),
             ],
           ),
-          const SizedBox(height: 3.0),
-          // Row 2: Stats (Mean, UCL, LCL, SD, Groups Count)
+          const SizedBox(height: 5.0),
+
+          // Parameter selection chips: User can choose MORE than one parameter from this test
+          if (availableParams.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Wrap(
+                spacing: 5.0,
+                runSpacing: 4.0,
+                children: availableParams.map((p) {
+                  final isSelected = activeParams.contains(p);
+                  final idx = activeParams.toList().indexOf(p);
+                  final seriesColor = isSelected ? _seriesColors[idx % _seriesColors.length] : const Color(0xFF64748B);
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        final currentSet = Set<String>.from(_getActiveParamsForTest(testName));
+                        if (isSelected) {
+                          if (currentSet.length > 1) {
+                            currentSet.remove(p);
+                          }
+                        } else {
+                          currentSet.add(p);
+                        }
+                        _testActiveParams[testName] = currentSet;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(4.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: isSelected ? seriesColor.withOpacity(0.2) : const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(4.0),
+                        border: Border.all(
+                          color: isSelected ? seriesColor : const Color(0xFF334155),
+                          width: isSelected ? 1.2 : 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6.0,
+                            height: 6.0,
+                            decoration: BoxDecoration(
+                              color: isSelected ? seriesColor : Colors.transparent,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: seriesColor, width: 1.0),
+                            ),
+                          ),
+                          const SizedBox(width: 4.0),
+                          Text(
+                            p,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                              fontSize: 9.5,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                          if (isSelected && activeParams.length > 1) ...[
+                            const SizedBox(width: 3.0),
+                            Icon(Icons.close, size: 9.0, color: seriesColor),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+          // Stats Row
           Row(
             children: [
-              Text(
-                'x̄ = ${grandMean.toStringAsFixed(2)}',
-                style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 10.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
-              ),
-              const SizedBox(width: 8.0),
-              Text(
-                'UCL: ${ucl.toStringAsFixed(1)}',
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
-              ),
-              const SizedBox(width: 6.0),
-              Text(
-                'LCL: ${lcl.toStringAsFixed(1)}',
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
-              ),
-              const SizedBox(width: 6.0),
-              Text(
-                'SD: ${grandSD.toStringAsFixed(2)}',
-                style: const TextStyle(color: Color(0xFFA855F7), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
-              ),
+              if (!isMulti) ...[
+                Text(
+                  'x̄ = ${grandMean.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 10.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                ),
+                const SizedBox(width: 8.0),
+                Text(
+                  'UCL: ${ucl.toStringAsFixed(1)}',
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
+                ),
+                const SizedBox(width: 6.0),
+                Text(
+                  'LCL: ${lcl.toStringAsFixed(1)}',
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
+                ),
+                const SizedBox(width: 6.0),
+                Text(
+                  'SD: ${grandSD.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Color(0xFFA855F7), fontSize: 9.0, fontFamily: 'JetBrainsMono'),
+                ),
+              ] else ...[
+                Text(
+                  'Multi-Parameter: ${activeParams.length} curves on same chart',
+                  style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 9.5, fontWeight: FontWeight.bold),
+                ),
+              ],
               const Spacer(),
               Text(
                 '${pts.length} groups',
@@ -1012,7 +1103,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
             child: pts.isEmpty
                 ? Center(
                     child: Text(
-                      'No readings for "$activeParam"\nunder $_selectedGroupBy (${_selectedCaliber == 'All' ? 'All Calibers' : _selectedCaliber})',
+                      'No readings for "$primaryParam"\nunder $_selectedGroupBy (${_selectedCaliber == 'All' ? 'All Calibers' : _selectedCaliber})',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.5),
                     ),
@@ -1021,11 +1112,12 @@ class _TrendLineChartState extends State<TrendLineChart> {
                     size: Size.infinite,
                     painter: _MultiMetricTrendPainter(
                       points: pts,
-                      paramLabel: activeParam,
+                      paramLabel: primaryParam,
                       showMean: _showMean,
                       showMax: _showMax,
                       showMin: _showMin,
                       showSD: _showSD,
+                      multiSeries: multiSeries,
                     ),
                   ),
           ),
@@ -1105,8 +1197,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
     final points = customPoints ?? () {
       final List<_TrendGroupPoint> all = [];
       for (final t in _selectedTests) {
-        final pList = _getParamsForTestType(t);
-        final activeP = _testActiveParam[t] ?? (pList.isNotEmpty ? pList.first : '');
+        final activeParams = _getActiveParamsForTest(t);
+        final activeP = activeParams.isNotEmpty ? activeParams.first : '';
         all.addAll(_buildGroupPointsForTest(t, activeP));
       }
       return all;
@@ -1400,6 +1492,18 @@ class _TrendGroupPoint {
   });
 }
 
+class _MultiParamSeries {
+  final String paramName;
+  final Color color;
+  final List<_TrendGroupPoint> points;
+
+  _MultiParamSeries({
+    required this.paramName,
+    required this.color,
+    required this.points,
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Multi-Metric CustomPainter (Min, Max, Mean, SD)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1410,6 +1514,7 @@ class _MultiMetricTrendPainter extends CustomPainter {
   final bool showMax;
   final bool showMin;
   final bool showSD;
+  final List<_MultiParamSeries>? multiSeries;
 
   _MultiMetricTrendPainter({
     required this.points,
@@ -1418,6 +1523,7 @@ class _MultiMetricTrendPainter extends CustomPainter {
     required this.showMax,
     required this.showMin,
     required this.showSD,
+    this.multiSeries,
   });
 
   static const _padding = EdgeInsets.fromLTRB(48.0, 24.0, 24.0, 42.0);
@@ -1431,6 +1537,11 @@ class _MultiMetricTrendPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (multiSeries != null && multiSeries!.length > 1) {
+      _paintMultiSeries(canvas, size);
+      return;
+    }
+
     if (points.isEmpty) return;
 
     final chartRect = Rect.fromLTRB(
@@ -1644,6 +1755,182 @@ class _MultiMetricTrendPainter extends CustomPainter {
     }
   }
 
+  void _paintMultiSeries(Canvas canvas, Size size) {
+    final chartRect = Rect.fromLTRB(
+      _padding.left,
+      _padding.top + 16.0,
+      size.width - _padding.right,
+      size.height - _padding.bottom,
+    );
+    if (chartRect.width <= 0 || chartRect.height <= 0) return;
+
+    final List<double> allActiveValues = [];
+    for (var s in multiSeries!) {
+      for (var p in s.points) {
+        allActiveValues.add(p.mean);
+      }
+    }
+    if (allActiveValues.isEmpty) return;
+
+    double minVal = allActiveValues.reduce(math.min);
+    double maxVal = allActiveValues.reduce(math.max);
+    if ((maxVal - minVal).abs() < 1e-6) {
+      minVal -= 1.0;
+      maxVal += 1.0;
+    }
+    final valRange = maxVal - minVal;
+    final paddedMin = minVal - valRange * 0.15;
+    final paddedMax = maxVal + valRange * 0.20;
+    final paddedRange = paddedMax - paddedMin;
+
+    double toY(double v) =>
+        chartRect.bottom - ((v - paddedMin) / paddedRange) * chartRect.height;
+
+    final refSeries = multiSeries!.firstWhere((s) => s.points.isNotEmpty, orElse: () => multiSeries!.first);
+    final refPoints = refSeries.points;
+    if (refPoints.isEmpty) return;
+
+    double toX(int i) => refPoints.length == 1
+        ? chartRect.center.dx
+        : chartRect.left + (i / (refPoints.length - 1)) * chartRect.width;
+
+    // Grid lines & Y-axis labels
+    final gridPaint = Paint()
+      ..color = _gridColor
+      ..strokeWidth = 1.0;
+    const gridLines = 5;
+    final textStyle = const TextStyle(
+        color: _labelColor, fontSize: 9.0, fontFamily: 'JetBrainsMono');
+    final tp = TextPainter(textDirection: TextDirection.ltr);
+
+    for (int g = 0; g <= gridLines; g++) {
+      final frac = g / gridLines;
+      final y = chartRect.top + frac * chartRect.height;
+      canvas.drawLine(
+          Offset(chartRect.left, y), Offset(chartRect.right, y), gridPaint);
+      final labelVal = paddedMax - frac * paddedRange;
+      tp.text = TextSpan(text: _formatVal(labelVal), style: textStyle);
+      tp.layout();
+      tp.paint(canvas, Offset(chartRect.left - tp.width - 6.0, y - tp.height / 2));
+    }
+
+    // Top Legend for Multi-Parameters
+    double legendX = chartRect.left;
+    final legendY = chartRect.top - 18.0;
+    for (final s in multiSeries!) {
+      final dotPaint = Paint()..color = s.color;
+      canvas.drawCircle(Offset(legendX + 4.0, legendY + 5.0), 3.5, dotPaint);
+      tp.text = TextSpan(
+        text: s.paramName,
+        style: TextStyle(
+          color: s.color,
+          fontSize: 9.5,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+      tp.layout();
+      tp.paint(canvas, Offset(legendX + 11.0, legendY));
+      legendX += tp.width + 16.0;
+    }
+
+    // Lines & Points
+    for (final s in multiSeries!) {
+      final sPoints = s.points;
+      if (sPoints.isEmpty) continue;
+
+      final pts = [for (int i = 0; i < sPoints.length; i++) Offset(toX(i), toY(sPoints[i].mean))];
+
+      final linePaint = Paint()
+        ..color = s.color
+        ..strokeWidth = 2.2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+
+      final linePath = Path();
+      for (int i = 0; i < pts.length; i++) {
+        if (i == 0) {
+          linePath.moveTo(pts[0].dx, pts[0].dy);
+        } else {
+          final prev = pts[i - 1];
+          final curr = pts[i];
+          final cp1 = Offset(prev.dx + (curr.dx - prev.dx) / 3, prev.dy);
+          final cp2 = Offset(curr.dx - (curr.dx - prev.dx) / 3, curr.dy);
+          linePath.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, curr.dx, curr.dy);
+        }
+      }
+      canvas.drawPath(linePath, linePaint);
+
+      // Dots & Badges
+      final dotBgPaint = Paint()..color = const Color(0xFF1E293B);
+      final dotPaint = Paint()..color = s.color;
+
+      for (int i = 0; i < pts.length; i++) {
+        final pt = pts[i];
+        canvas.drawCircle(pt, 4.5, dotBgPaint);
+        canvas.drawCircle(pt, 3.0, dotPaint);
+
+        // Value badge
+        final valText = _formatVal(sPoints[i].mean);
+        final tpVal = TextPainter(
+          text: TextSpan(
+            text: valText,
+            style: TextStyle(
+              color: s.color,
+              fontSize: 8.0,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'JetBrainsMono',
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        final pillRect = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(pt.dx, pt.dy - 12.0),
+            width: tpVal.width + 6.0,
+            height: tpVal.height + 3.0,
+          ),
+          const Radius.circular(3.0),
+        );
+        canvas.drawRRect(pillRect, Paint()..color = const Color(0xFF0F172A));
+        canvas.drawRRect(
+          pillRect,
+          Paint()
+            ..color = s.color.withOpacity(0.6)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8,
+        );
+        tpVal.paint(canvas, Offset(pt.dx - tpVal.width / 2, pt.dy - 12.0 - tpVal.height / 2));
+      }
+    }
+
+    // X-axis Labels
+    final step = math.max(1, (refPoints.length / 10).ceil());
+    for (int i = 0; i < refPoints.length; i += step) {
+      final x = toX(i);
+      final pt = refPoints[i];
+
+      tp.text = TextSpan(
+        text: pt.label,
+        style: textStyle.copyWith(
+          fontSize: 9.0,
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFFE2E8F0),
+        ),
+      );
+      tp.layout();
+      tp.paint(canvas, Offset(x - tp.width / 2, chartRect.bottom + 4.0));
+
+      tp.text = TextSpan(
+        text: pt.subLabel,
+        style: textStyle.copyWith(fontSize: 8.0, color: const Color(0xFF64748B)),
+      );
+      tp.layout();
+      tp.paint(canvas, Offset(x - tp.width / 2, chartRect.bottom + 16.0));
+    }
+  }
+
   String _formatVal(double v) {
     if (v.abs() >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
     if (v.abs() >= 10) return v.toStringAsFixed(1);
@@ -1657,5 +1944,6 @@ class _MultiMetricTrendPainter extends CustomPainter {
       old.showMean != showMean ||
       old.showMax != showMax ||
       old.showMin != showMin ||
-      old.showSD != showSD;
+      old.showSD != showSD ||
+      old.multiSeries != multiSeries;
 }

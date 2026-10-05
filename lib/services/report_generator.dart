@@ -2653,15 +2653,15 @@ class ReportGenerator {
     final sections = <String>[];
     sections.add(_extractReportBody(certHtml));
 
-    // Sequence of individual test reports matching exact order
     const testSequence = [
-      'Primer Sensitivity Test',
+      'Waterproof Test',
+      'Extraction Force Test',
+      'Accuracy Test',
       'EPVAT test',
       'Function Test',
       'Residual Stress Test',
-      'Accuracy Test',
-      'Extraction Force Test',
-      'Waterproof Test',
+      'Terminal Effect Test',
+      'Primer Sensitivity Test',
     ];
 
     for (final test in testSequence) {
@@ -2765,13 +2765,14 @@ class ReportGenerator {
     sections.add(_extractReportBody(certWord));
 
     const testSequence = [
-      'Primer Sensitivity Test',
+      'Waterproof Test',
+      'Extraction Force Test',
+      'Accuracy Test',
       'EPVAT test',
       'Function Test',
       'Residual Stress Test',
-      'Accuracy Test',
-      'Extraction Force Test',
-      'Waterproof Test',
+      'Terminal Effect Test',
+      'Primer Sensitivity Test',
     ];
 
     for (final test in testSequence) {
@@ -2859,6 +2860,7 @@ class ReportGenerator {
     BallisticRecord? epvRec54;
     BallisticRecord? funcRec;
     BallisticRecord? rsRec;
+    BallisticRecord? termRec;
     BallisticRecord? primerRec;
 
     for (final r in records) {
@@ -2867,7 +2869,8 @@ class ReportGenerator {
       if (name.contains('extraction')) extRec ??= r;
       if (name.contains('accuracy')) accRec ??= r;
       if (name.contains('function')) funcRec ??= r;
-      if (name.contains('residual')) rsRec ??= r;
+      if (name.contains('residual') || name.contains('stress')) rsRec ??= r;
+      if (name.contains('terminal')) termRec ??= r;
       if (name.contains('primer')) primerRec ??= r;
       if (name.contains('epvat')) {
         final temp = r.cartridgeTemp;
@@ -2881,20 +2884,68 @@ class ReportGenerator {
       }
     }
 
-    // 1. Primer Sensitivity Test
-    final primerSample = calConfig['primer_sample'] as String? ?? (primerRec != null && primerRec.produced > 0 ? '${primerRec.produced} rounds' : '175 rounds');
-    final primerH5 = primerRec != null && primerRec.primerAllFireH.isNotEmpty ? primerRec.primerAllFireH : '360.50';
-    final primerH2 = primerRec != null && primerRec.primerNoFireH.isNotEmpty ? primerRec.primerNoFireH : '114.10';
-    final primerResult = '<div style="font-weight: bold; color: #1e293b;">H̄+5SD: <span style="font-weight: normal;">$primerH5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">H̄-2SD: <span style="font-weight: normal;">$primerH2 mm</span></div>';
-    final primerReq = calConfig['primer_req'] as String? ?? 'H̄+5SD ≤ 450 mm<br/>H̄-2SD ≥ 75 mm';
-    final primerStatus = primerRec?.status ?? 'Approved';
-    final primerRemarks = cleanRemarks(primerRec?.notes);
+    // 1. Waterproof Test
+    final int wpInitial = wpRec != null ? wpRec.produced : 0;
+    final int wpRetest = (wpRec != null && (wpRec.isRetest || wpRec.retestProduced > 0)) ? (wpRec.retestProduced > 0 ? wpRec.retestProduced : wpRec.produced) : 0;
+    final int wpTotalProduced = wpInitial + wpRetest;
+    final String wpSample = wpTotalProduced > 0
+        ? '$wpTotalProduced rounds'
+        : (wpRec != null && wpRec.produced > 0
+            ? '${wpRec.produced} rounds'
+            : (calConfig['waterproof_sample'] as String? ?? '200 rounds'));
+    final String wpResult = wpRec != null ? _getRecordMetricsSummary(wpRec) : '0 leaks';
+    final wpReq = calConfig['waterproof_req'] as String? ?? 'No. of Leaks ≤ 6 Leaks';
+    final wpStatus = wpRec?.status ?? 'Approved';
+    final wpRemarks = cleanRemarks(wpRec?.notes);
 
-    // 2. EPVAT test (+21 °C, +52 °C, -54 °C)
+    // 2. Extraction Force Test (Bullet Extraction)
+    final int extInitial = extRec != null ? extRec.produced : 0;
+    final int extRetest = (extRec != null && (extRec.isRetest || extRec.retestProduced > 0)) ? (extRec.retestProduced > 0 ? extRec.retestProduced : extRec.produced) : 0;
+    final int extTotalProduced = extInitial + extRetest;
+    final String extSample = extTotalProduced > 0
+        ? '$extTotalProduced rounds'
+        : (extRec != null && extRec.produced > 0
+            ? '${extRec.produced} rounds'
+            : (calConfig['extraction_sample'] as String? ?? '20 rounds'));
+    final extMin = extRec != null && extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec != null && extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '474.2');
+    final extResult = '<div style="font-weight: bold; color: #1e293b;">Min Force: <span style="font-weight: normal;">$extMin N</span></div>';
+    final extReq = calConfig['extraction_req'] as String? ?? 'Min Force ≥ 200';
+    final extStatus = extRec?.status ?? 'Approved';
+    final extRemarks = cleanRemarks(extRec?.notes);
+
+    // 3. Accuracy Test
+    final int accInitial = accRec != null ? accRec.produced : 0;
+    final int accRetest = (accRec != null && (accRec.isRetest || accRec.retestProduced > 0)) ? (accRec.retestProduced > 0 ? accRec.retestProduced : accRec.produced) : 0;
+    final int accTotalProduced = accInitial + accRetest;
+    final String accSample = accTotalProduced > 0
+        ? '$accTotalProduced rounds'
+        : (accRec != null && accRec.produced > 0
+            ? '${accRec.produced} rounds'
+            : (calConfig['accuracy_sample'] as String? ?? '30 rounds'));
+    String accResult = '';
+    if (accRec != null && accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
+      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">${accRec.accSDX} mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">${accRec.accSDY} mm</span></div>';
+    } else if (accRec != null && accRec.accMeanRadius.isNotEmpty) {
+      accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Radius: <span style="font-weight: normal;">${accRec.accMeanRadius} mm</span></div>';
+    } else {
+      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">105.5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">119.3 mm</span></div>';
+    }
+    final accReq = calConfig['accuracy_req'] as String? ?? 'SD ≤ 200 mm';
+    final accStatus = accRec?.status ?? 'Approved';
+    final accRemarks = cleanRemarks(accRec?.notes);
+
+    // 4. EPVAT test (+21 °C, +52 °C, -54 °C)
     final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(records);
     final activePressureUnit = (adminRules['active_pressure_unit'] ?? 'bar').toString();
 
-    final epvSample21 = calConfig['epvat_sample_21'] as String? ?? (epvRec21 != null && epvRec21.produced > 0 ? '${epvRec21.produced} rounds' : '90 rounds');
+    final int epvInitial = epvRec21 != null ? epvRec21.produced : (epvRec52?.produced ?? (epvRec54?.produced ?? 0));
+    final int epvRetest = (epvRec21 != null && (epvRec21.isRetest || epvRec21.retestProduced > 0)) ? (epvRec21.retestProduced > 0 ? epvRec21.retestProduced : epvRec21.produced) : 0;
+    final int epvTotalProduced = epvInitial + epvRetest;
+    final String epvSample21 = epvTotalProduced > 0
+        ? '$epvTotalProduced rounds'
+        : (epvRec21 != null && epvRec21.produced > 0
+            ? '${epvRec21.produced} rounds'
+            : (calConfig['epvat_sample_21'] as String? ?? '90 rounds'));
 
     String buildEpvatTempResult(String rawConfig, String temp, BallisticRecord? rec) {
       final configuredLines = rawConfig.split(RegExp(r'\r?\n|;')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
@@ -2981,11 +3032,15 @@ class ReportGenerator {
     final epvStatus52 = epvatFormulasPassed ? 'Approved' : (epvRec52?.status ?? (epvRec21 != null ? 'Approved' : 'Approved'));
     final epvStatus54 = epvatFormulasPassed ? 'Approved' : (epvRec54?.status ?? (epvRec21 != null ? 'Approved' : 'Approved'));
 
-    // 3. Function Test
+    // 5. Function Test
     final int funcInitial = funcRec != null ? funcRec.produced : 0;
     final int funcRetest = (funcRec != null && (funcRec.isRetest || funcRec.retestProduced > 0)) ? (funcRec.retestProduced > 0 ? funcRec.retestProduced : funcRec.produced) : 0;
     final int funcTotalProduced = funcInitial + funcRetest;
-    final funcSample = calConfig['function_sample'] as String? ?? (funcTotalProduced > 0 ? '$funcTotalProduced rounds' : '500 rounds');
+    final String funcSample = funcTotalProduced > 0
+        ? '$funcTotalProduced rounds'
+        : (funcRec != null && funcRec.produced > 0
+            ? '${funcRec.produced} rounds'
+            : (calConfig['function_sample'] as String? ?? '500 rounds'));
     final funcDefects = funcRec != null ? funcRec.defects : 0;
     final String funcResult = (funcRec != null && (funcRec.isRetest || funcRec.retestProduced > 0))
         ? 'Test: $funcDefects defect${funcDefects == 1 ? '' : 's'}<br/>Retest: ${funcRec.retestDefects} defect${funcRec.retestDefects == 1 ? '' : 's'}'
@@ -2994,65 +3049,74 @@ class ReportGenerator {
     final funcStatus = funcRec?.status ?? 'Approved';
     final funcRemarks = cleanRemarks(funcRec?.notes);
 
-    // 4. Residual Stress Test
+    // 6. Residual Stress Test
     final int rsInitial = rsRec != null ? rsRec.produced : 0;
     final int rsRetest = (rsRec != null && (rsRec.isRetest || rsRec.retestProduced > 0)) ? (rsRec.retestProduced > 0 ? rsRec.retestProduced : rsRec.produced) : 0;
     final int rsTotalProduced = rsInitial + rsRetest;
-    final rsSample = calConfig['residual_sample'] as String? ?? (rsTotalProduced > 0 ? '$rsTotalProduced rounds' : '50 rounds');
+    final String rsSample = rsTotalProduced > 0
+        ? '$rsTotalProduced rounds'
+        : (rsRec != null && rsRec.produced > 0
+            ? '${rsRec.produced} rounds'
+            : (calConfig['residual_sample'] as String? ?? '50 rounds'));
     final String rsResult = rsRec != null ? _getRecordMetricsSummary(rsRec) : '0 crack';
     final rsReq = calConfig['residual_req'] as String? ?? 'No. of cracks I zone ≤ 3 Cracks<br/>No. of cracks M, L, K, J & S zone = 0 Crack';
     final rsStatus = rsRec?.status ?? 'Approved';
     final rsRemarks = cleanRemarks(rsRec?.notes);
 
-    // 5. Accuracy Test
-    final int accInitial = accRec != null ? accRec.produced : 0;
-    final int accRetest = (accRec != null && (accRec.isRetest || accRec.retestProduced > 0)) ? (accRec.retestProduced > 0 ? accRec.retestProduced : accRec.produced) : 0;
-    final int accTotalProduced = accInitial + accRetest;
-    final accSample = calConfig['accuracy_sample'] as String? ?? (accTotalProduced > 0 ? '$accTotalProduced rounds' : '30 rounds');
-    String accResult = '';
-    if (accRec != null && accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
-      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">${accRec.accSDX} mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">${accRec.accSDY} mm</span></div>';
-    } else if (accRec != null && accRec.accMeanRadius.isNotEmpty) {
-      accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Radius: <span style="font-weight: normal;">${accRec.accMeanRadius} mm</span></div>';
+    // 7. Terminal Effect Test
+    final int termInitial = termRec != null ? termRec.produced : 0;
+    final int termRetest = (termRec != null && (termRec.isRetest || termRec.retestProduced > 0)) ? (termRec.retestProduced > 0 ? termRec.retestProduced : termRec.produced) : 0;
+    final int termTotalProduced = termInitial + termRetest;
+    final String termSample = termTotalProduced > 0
+        ? '$termTotalProduced rounds'
+        : (termRec != null && termRec.produced > 0
+            ? '${termRec.produced} rounds'
+            : (calConfig['terminal_sample'] as String? ?? '10 rounds'));
+    final String termResult;
+    if (termRec != null) {
+      final parts = <String>[];
+      if (termRec.terminalHoleDiameter.isNotEmpty) parts.add('Hole: ${termRec.terminalHoleDiameter} mm');
+      if (termRec.terminalSteelPenetration.isNotEmpty) parts.add('Steel Pen: ${termRec.terminalSteelPenetration} mm');
+      if (termRec.terminalAluminumPenetration.isNotEmpty) parts.add('Alum Pen: ${termRec.terminalAluminumPenetration} mm');
+      if (termRec.terminalVelocity.isNotEmpty) parts.add('Vel: ${termRec.terminalVelocity} m/s');
+      termResult = parts.isNotEmpty
+          ? parts.map((p) => '<div style="font-weight: bold; color: #1e293b;">$p</div>').join('')
+          : 'Complete penetration';
     } else {
-      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">105.5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">119.3 mm</span></div>';
+      termResult = 'Complete penetration';
     }
-    final accReq = calConfig['accuracy_req'] as String? ?? 'SD ≤ 200 mm';
-    final accStatus = accRec?.status ?? 'Approved';
-    final accRemarks = cleanRemarks(accRec?.notes);
+    final String termReq = calConfig['terminal_req'] as String? ?? 'Complete Penetration of Witness Plate';
+    final String termStatus = termRec?.status ?? 'Approved';
+    final String termRemarks = cleanRemarks(termRec?.notes);
 
-    // 6. Extraction Force Test
-    final int extInitial = extRec != null ? extRec.produced : 0;
-    final int extRetest = (extRec != null && (extRec.isRetest || extRec.retestProduced > 0)) ? (extRec.retestProduced > 0 ? extRec.retestProduced : extRec.produced) : 0;
-    final int extTotalProduced = extInitial + extRetest;
-    final extSample = calConfig['extraction_sample'] as String? ?? (extTotalProduced > 0 ? '$extTotalProduced rounds' : '20 rounds');
-    final extMin = extRec != null && extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec != null && extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '474.2');
-    final extResult = '<div style="font-weight: bold; color: #1e293b;">Min Force: <span style="font-weight: normal;">$extMin N</span></div>';
-    final extReq = calConfig['extraction_req'] as String? ?? 'Min Force ≥ 200';
-    final extStatus = extRec?.status ?? 'Approved';
-    final extRemarks = cleanRemarks(extRec?.notes);
-
-    // 7. Waterproof Test
-    final int wpInitial = wpRec != null ? wpRec.produced : 0;
-    final int wpRetest = (wpRec != null && (wpRec.isRetest || wpRec.retestProduced > 0)) ? (wpRec.retestProduced > 0 ? wpRec.retestProduced : wpRec.produced) : 0;
-    final int wpTotalProduced = wpInitial + wpRetest;
-    final wpSample = calConfig['waterproof_sample'] as String? ?? (wpTotalProduced > 0 ? '$wpTotalProduced rounds' : '200 rounds');
-    final String wpResult = wpRec != null ? _getRecordMetricsSummary(wpRec) : '0 leaks';
-    final wpReq = calConfig['waterproof_req'] as String? ?? 'No. of Leaks ≤ 6 Leaks';
-    final wpStatus = wpRec?.status ?? 'Approved';
-    final wpRemarks = cleanRemarks(wpRec?.notes);
+    // 8. Primer Sensitivity Test
+    final int primerInitial = primerRec != null ? primerRec.produced : 0;
+    final int primerRetest = (primerRec != null && (primerRec.isRetest || primerRec.retestProduced > 0)) ? (primerRec.retestProduced > 0 ? primerRec.retestProduced : primerRec.produced) : 0;
+    final int primerTotalProduced = primerInitial + primerRetest;
+    final String primerSample = primerTotalProduced > 0
+        ? '$primerTotalProduced rounds'
+        : (primerRec != null && primerRec.produced > 0
+            ? '${primerRec.produced} rounds'
+            : (calConfig['primer_sample'] as String? ?? '175 rounds'));
+    final primerH5 = primerRec != null && primerRec.primerAllFireH.isNotEmpty ? primerRec.primerAllFireH : '360.50';
+    final primerH2 = primerRec != null && primerRec.primerNoFireH.isNotEmpty ? primerRec.primerNoFireH : '114.10';
+    final primerResult = '<div style="font-weight: bold; color: #1e293b;">H̄+5SD: <span style="font-weight: normal;">$primerH5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">H̄-2SD: <span style="font-weight: normal;">$primerH2 mm</span></div>';
+    final primerReq = calConfig['primer_req'] as String? ?? 'H̄+5SD ≤ 450 mm<br/>H̄-2SD ≥ 75 mm';
+    final primerStatus = primerRec?.status ?? 'Approved';
+    final primerRemarks = cleanRemarks(primerRec?.notes);
 
     // Check if any test evaluated to rejected (avoiding false rejection from legacy raw records if auto calculation passed)
     final bool hasRejection = [
-      primerStatus,
+      wpStatus,
+      extStatus,
+      accStatus,
       epvStatus21,
       epvStatus52,
       epvStatus54,
       funcStatus,
       rsStatus,
-      accStatus,
-      extStatus,
-      wpStatus,
+      termStatus,
+      primerStatus,
     ].any((s) => s.toLowerCase().contains('reject') || s.toLowerCase() == 'failed');
     final String overallStatusText = hasRejection ? 'Rejected' : 'Approved';
     final String overallStatusColor = hasRejection ? '#dc2626' : '#15803d';
@@ -3334,17 +3398,37 @@ class ReportGenerator {
           </tr>
         </thead>
         <tbody>
-          <!-- 1. Primer Sensitivity Test -->
+          <!-- 1. Waterproof Test -->
           <tr>
-            <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
-            <td style="text-align: center;">$primerSample</td>
-            <td style="text-align: center;">$primerResult</td>
-            <td style="text-align: center;">$primerReq</td>
-            <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
-            <td style="text-align: center;">$primerRemarks</td>
+            <td colspan="2" class="test-name-cell">Waterproof Test</td>
+            <td style="text-align: center;">$wpSample</td>
+            <td style="text-align: center;">$wpResult</td>
+            <td style="text-align: center;">$wpReq</td>
+            <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
+            <td style="text-align: center;">$wpRemarks</td>
           </tr>
 
-          <!-- 2. EPVAT test (+21 °C, +52 °C, -54 °C) -->
+          <!-- 2. Bullet Extraction (Extraction Force Test) -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Bullet Extraction</td>
+            <td style="text-align: center;">$extSample</td>
+            <td style="text-align: center;">$extResult</td>
+            <td style="text-align: center;">$extReq</td>
+            <td class="status-cell">${formatStatusBadge(extStatus)}</td>
+            <td style="text-align: center;">$extRemarks</td>
+          </tr>
+
+          <!-- 3. Accuracy Test -->
+          <tr>
+            <td colspan="2" class="test-name-cell">Accuracy Test</td>
+            <td style="text-align: center;">$accSample</td>
+            <td style="text-align: center;">$accResult</td>
+            <td style="text-align: center;">$accReq</td>
+            <td class="status-cell">${formatStatusBadge(accStatus)}</td>
+            <td style="text-align: center;">$accRemarks</td>
+          </tr>
+
+          <!-- 4. EPVAT test (+21 °C, +52 °C, -54 °C) -->
           <tr>
             <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
             <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
@@ -3369,7 +3453,7 @@ class ReportGenerator {
             <td style="text-align: center;">$epvRemarks54</td>
           </tr>
 
-          <!-- 3. Function Test -->
+          <!-- 5. Function Test -->
           <tr>
             <td colspan="2" class="test-name-cell">Function Test</td>
             <td style="text-align: center;">$funcSample</td>
@@ -3379,7 +3463,7 @@ class ReportGenerator {
             <td style="text-align: center;">$funcRemarks</td>
           </tr>
 
-          <!-- 4. Residual Stress Test -->
+          <!-- 6. Residual Stress Test -->
           <tr>
             <td colspan="2" class="test-name-cell">Residual Stress Test</td>
             <td style="text-align: center;">$rsSample</td>
@@ -3389,34 +3473,24 @@ class ReportGenerator {
             <td style="text-align: center;">$rsRemarks</td>
           </tr>
 
-          <!-- 5. Accuracy Test -->
+          <!-- 7. Terminal Effect Test -->
           <tr>
-            <td colspan="2" class="test-name-cell">Accuracy Test</td>
-            <td style="text-align: center;">$accSample</td>
-            <td style="text-align: center;">$accResult</td>
-            <td style="text-align: center;">$accReq</td>
-            <td class="status-cell">${formatStatusBadge(accStatus)}</td>
-            <td style="text-align: center;">$accRemarks</td>
+            <td colspan="2" class="test-name-cell">Terminal Effect Test</td>
+            <td style="text-align: center;">$termSample</td>
+            <td style="text-align: center;">$termResult</td>
+            <td style="text-align: center;">$termReq</td>
+            <td class="status-cell">${formatStatusBadge(termStatus)}</td>
+            <td style="text-align: center;">$termRemarks</td>
           </tr>
 
-          <!-- 6. Extraction Force Test -->
+          <!-- 8. Primer Sensitivity Test -->
           <tr>
-            <td colspan="2" class="test-name-cell">Extraction Force Test</td>
-            <td style="text-align: center;">$extSample</td>
-            <td style="text-align: center;">$extResult</td>
-            <td style="text-align: center;">$extReq</td>
-            <td class="status-cell">${formatStatusBadge(extStatus)}</td>
-            <td style="text-align: center;">$extRemarks</td>
-          </tr>
-
-          <!-- 7. Waterproof Test -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Waterproof Test</td>
-            <td style="text-align: center;">$wpSample</td>
-            <td style="text-align: center;">$wpResult</td>
-            <td style="text-align: center;">$wpReq</td>
-            <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
-            <td style="text-align: center;">$wpRemarks</td>
+            <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
+            <td style="text-align: center;">$primerSample</td>
+            <td style="text-align: center;">$primerResult</td>
+            <td style="text-align: center;">$primerReq</td>
+            <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
+            <td style="text-align: center;">$primerRemarks</td>
           </tr>
         </tbody>
       </table>

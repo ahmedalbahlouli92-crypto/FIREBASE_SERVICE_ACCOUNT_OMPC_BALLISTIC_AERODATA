@@ -1000,17 +1000,99 @@ class SupabaseService {
     // 7. Sampling Locations
     final locations = rules['sample_locations'];
     if (locations is List) {
-      for (final loc in locations) {
-        final name = loc.toString().trim();
-        if (name.isNotEmpty) {
-          try {
-            await client.from('admin_sampling_locations').upsert({
-              'location_name': name,
-              'is_active': true,
-            }, onConflict: 'location_name');
-          } catch (_) {}
-        }
+      final currentNames = locations.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toSet();
+      for (final name in currentNames) {
+        try {
+          await client.from('admin_sampling_locations').upsert({
+            'location_name': name,
+            'is_active': true,
+          }, onConflict: 'location_name');
+        } catch (_) {}
       }
+      try {
+        final existing = await client.from('admin_sampling_locations').select('location_name');
+        for (final row in existing) {
+          final loc = (row['location_name'] ?? '').toString();
+          if (loc.isNotEmpty && !currentNames.contains(loc)) {
+            await client.from('admin_sampling_locations').delete().eq('location_name', loc);
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  /// Add a sampling location to Supabase
+  static Future<bool> addSamplingLocation(String name) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return false;
+    try {
+      await client.from('admin_sampling_locations').upsert({
+        'location_name': trimmed,
+        'is_active': true,
+      }, onConflict: 'location_name');
+      return true;
+    } catch (e) {
+      debugPrint('Note adding sampling location to cloud: $e');
+      return false;
+    }
+  }
+
+  /// Rename a sampling location in Supabase (updates table and historical records)
+  static Future<bool> renameSamplingLocation(String oldName, String newName) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    final oldTrimmed = oldName.trim();
+    final newTrimmed = newName.trim();
+    if (oldTrimmed.isEmpty || newTrimmed.isEmpty) return false;
+    try {
+      try {
+        await client.from('admin_sampling_locations').update({
+          'location_name': newTrimmed,
+          'is_active': true,
+        }).eq('location_name', oldTrimmed);
+      } catch (e) {
+        debugPrint('admin_sampling_locations rename note: $e');
+      }
+
+      try {
+        await client.from(tableName).update({
+          'sampling_location': newTrimmed,
+        }).eq('sampling_location', oldTrimmed);
+      } catch (e) {
+        debugPrint('ballistic_records location rename note: $e');
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error renaming sampling location in Supabase: $e');
+      return false;
+    }
+  }
+
+  /// Delete a sampling location from Supabase
+  static Future<bool> deleteSamplingLocation(String name) async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return false;
+    }
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return false;
+    try {
+      try {
+        await client.from('admin_sampling_locations').delete().eq('location_name', trimmed);
+      } catch (e) {
+        debugPrint('admin_sampling_locations delete note: $e');
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting sampling location from Supabase: $e');
+      return false;
     }
   }
 

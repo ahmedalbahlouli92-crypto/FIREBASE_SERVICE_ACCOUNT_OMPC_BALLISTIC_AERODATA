@@ -194,6 +194,49 @@ ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS original_status TE
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_produced INTEGER DEFAULT 0;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_defects INTEGER DEFAULT 0;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS retest_metrics TEXT DEFAULT '{}';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_mean_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_max_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_min_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_sd_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_mean_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_max_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_min_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_sd_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_mean_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_max_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_min_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p1_sd_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_mean_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_max_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_min_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_sd_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_mean_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_max_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_min_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_sd_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_mean_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_max_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_min_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS p2_sd_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_mean_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_max_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_min_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_sd_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_mean_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_max_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_min_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_sd_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_mean_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_max_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_min_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS vel_sd_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_mean_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_sd_21 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_mean_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_sd_52 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_mean_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_sd_54 NUMERIC DEFAULT NULL;
 
 -- 2. Create the 20 Dedicated Tables across Daily Report, Lot Acceptance, and Component Test
 DO $$
@@ -362,6 +405,10 @@ BEGIN
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_notes TEXT;
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_status TEXT;
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS original_status TEXT;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_produced INTEGER DEFAULT 0;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_defects INTEGER DEFAULT 0;
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_metrics TEXT DEFAULT '{}';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
 
             -- Enable Row Level Security (RLS)
             ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;
@@ -885,6 +932,202 @@ CREATE POLICY "Public access policy" ON public.equipment_issues FOR ALL USING (t
 GRANT ALL ON TABLE public.equipment_issues TO anon, authenticated, service_role;
 CREATE INDEX IF NOT EXISTS idx_equipment_issues_equipment ON public.equipment_issues (equipment);
 CREATE INDEX IF NOT EXISTS idx_equipment_issues_status ON public.equipment_issues (status);
+
+-- 16. EPVAT Dedicated Multi-Temperature & Parameter Columns Migration
+DO $$
+DECLARE
+    epv_tbl TEXT;
+    epv_tables TEXT[] := ARRAY[
+        'daily_epvat_test',
+        'lot_acceptance_epvat_test'
+    ];
+BEGIN
+    FOREACH epv_tbl IN ARRAY epv_tables
+    LOOP
+        -- Chamber P1 (+21 °C, +52 °C, -54 °C)
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_mean_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_max_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_min_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_sd_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_mean_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_max_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_min_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_sd_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_mean_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_max_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_min_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p1_sd_54 NUMERIC DEFAULT NULL;', epv_tbl);
+
+        -- Port P2 (+21 °C, +52 °C, -54 °C)
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_mean_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_max_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_min_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_sd_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_mean_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_max_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_min_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_sd_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_mean_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_max_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_min_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS p2_sd_54 NUMERIC DEFAULT NULL;', epv_tbl);
+
+        -- Velocity (+21 °C, +52 °C, -54 °C)
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_mean_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_max_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_min_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_sd_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_mean_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_max_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_min_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_sd_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_mean_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_max_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_min_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS vel_sd_54 NUMERIC DEFAULT NULL;', epv_tbl);
+
+        -- Action Time (+21 °C, +52 °C, -54 °C)
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS action_time_mean_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS action_time_sd_21 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS action_time_mean_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS action_time_sd_52 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS action_time_mean_54 NUMERIC DEFAULT NULL;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS action_time_sd_54 NUMERIC DEFAULT NULL;', epv_tbl);
+
+        -- Retest, reference number & audit columns
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '''';', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS is_retest BOOLEAN DEFAULT false;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS retest_timestamp TEXT DEFAULT '''';', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS retest_operator TEXT DEFAULT '''';', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS retest_notes TEXT DEFAULT '''';', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS retest_status TEXT DEFAULT '''';', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS original_status TEXT DEFAULT '''';', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS retest_produced INTEGER DEFAULT 0;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS retest_defects INTEGER DEFAULT 0;', epv_tbl);
+        EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS retest_metrics TEXT DEFAULT ''{}'';', epv_tbl);
+    END LOOP;
+END $$;
+
+-- 17. Consumables Category Tables (8 specific category tables)
+DO $$
+DECLARE
+    tbl_name TEXT;
+    inv_tables TEXT[] := ARRAY[
+        'inventory_primers',
+        'inventory_propellants',
+        'inventory_cases',
+        'inventory_bullets',
+        'inventory_packaging',
+        'inventory_chemical',
+        'inventory_tooling',
+        'inventory_calibration'
+    ];
+BEGIN
+    FOREACH tbl_name IN ARRAY inv_tables
+    LOOP
+        EXECUTE format('
+            CREATE TABLE IF NOT EXISTS public.%I (
+                id TEXT PRIMARY KEY,
+                created_at TIMESTAMPTZ DEFAULT now(),
+                updated_at TIMESTAMPTZ DEFAULT now(),
+                name TEXT NOT NULL DEFAULT '''',
+                lot_number TEXT DEFAULT '''',
+                serial TEXT DEFAULT '''',
+                category TEXT DEFAULT '''',
+                quantity NUMERIC DEFAULT 0,
+                unit TEXT DEFAULT ''pcs'',
+                min_safe_threshold NUMERIC DEFAULT 0,
+                supplier TEXT DEFAULT '''',
+                location TEXT DEFAULT '''',
+                image_base64 TEXT DEFAULT '''',
+                notes TEXT DEFAULT ''''
+            );
+            ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;
+            DROP POLICY IF EXISTS "Public access policy" ON public.%I;
+            CREATE POLICY "Public access policy" ON public.%I FOR ALL USING (true) WITH CHECK (true);
+            GRANT ALL ON TABLE public.%I TO anon, authenticated, service_role;
+            CREATE INDEX IF NOT EXISTS %I ON public.%I (serial);
+            CREATE INDEX IF NOT EXISTS %I ON public.%I (lot_number);
+        ',
+        tbl_name, tbl_name, tbl_name, tbl_name, tbl_name,
+        'idx_' || tbl_name || '_serial', tbl_name,
+        'idx_' || tbl_name || '_lot', tbl_name
+        );
+    END LOOP;
+END $$;
+
+-- 18. Witness Storage System Tables
+CREATE TABLE IF NOT EXISTS public.witness_samples (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    sample_id TEXT DEFAULT '',
+    lot_no TEXT NOT NULL,
+    caliber TEXT NOT NULL,
+    quantity INTEGER DEFAULT 0,
+    storage_location TEXT DEFAULT '',
+    status TEXT DEFAULT 'Stored',
+    notes TEXT DEFAULT '',
+    registered_by TEXT DEFAULT '',
+    registered_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.witness_samples ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.witness_samples;
+CREATE POLICY "Public access policy" ON public.witness_samples FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.witness_samples TO anon, authenticated, service_role;
+CREATE INDEX IF NOT EXISTS idx_witness_samples_lot ON public.witness_samples (lot_no);
+
+CREATE TABLE IF NOT EXISTS public.witness_dispositions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    sample_id TEXT DEFAULT '',
+    lot_no TEXT NOT NULL,
+    disposition_type TEXT DEFAULT '',
+    quantity INTEGER DEFAULT 0,
+    reason TEXT DEFAULT '',
+    authorized_by TEXT DEFAULT '',
+    disposed_at TIMESTAMPTZ DEFAULT now(),
+    notes TEXT DEFAULT ''
+);
+ALTER TABLE public.witness_dispositions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.witness_dispositions;
+CREATE POLICY "Public access policy" ON public.witness_dispositions FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.witness_dispositions TO anon, authenticated, service_role;
+CREATE INDEX IF NOT EXISTS idx_witness_dispositions_lot ON public.witness_dispositions (lot_no);
+
+-- 19. Admin Control Master Tables
+CREATE TABLE IF NOT EXISTS public.admin_calibers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    name TEXT UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_calibers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_calibers;
+CREATE POLICY "Public access policy" ON public.admin_calibers FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_calibers TO anon, authenticated, service_role;
+
+CREATE TABLE IF NOT EXISTS public.admin_shifts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    name TEXT UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_shifts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_shifts;
+CREATE POLICY "Public access policy" ON public.admin_shifts FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_shifts TO anon, authenticated, service_role;
+
+CREATE TABLE IF NOT EXISTS public.admin_operators (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    name TEXT UNIQUE NOT NULL,
+    role TEXT DEFAULT 'Operator',
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_operators ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_operators;
+CREATE POLICY "Public access policy" ON public.admin_operators FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_operators TO anon, authenticated, service_role;
 
 -- Confirmation output
 SELECT 'Successfully created all 20 test tables, 8 consumable category tables, component inventory, witness storage tables, equipment issues, and admin control tables.' as result;

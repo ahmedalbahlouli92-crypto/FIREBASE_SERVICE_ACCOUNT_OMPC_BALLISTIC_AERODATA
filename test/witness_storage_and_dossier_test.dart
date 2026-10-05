@@ -235,13 +235,13 @@ void main() {
       final waterPos = dossierHtml.indexOf('Waterproof Test');
 
       expect(certPos, isNonNegative);
-      expect(primerPos, greaterThan(certPos));
-      expect(epvatPos, greaterThan(primerPos));
+      expect(waterPos, greaterThan(certPos));
+      expect(extractPos, greaterThan(waterPos));
+      expect(accPos, greaterThan(extractPos));
+      expect(epvatPos, greaterThan(accPos));
       expect(funcPos, greaterThan(epvatPos));
       expect(resPos, greaterThan(funcPos));
-      expect(accPos, greaterThan(resPos));
-      expect(extractPos, greaterThan(accPos));
-      expect(waterPos, greaterThan(extractPos));
+      expect(primerPos, greaterThan(resPos));
 
       // Word format test
       final dossierWord = ReportGenerator.generateLotDossierWord(records, 'Lot Acceptance Test', base64Logo: '');

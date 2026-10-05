@@ -9,6 +9,7 @@ import '../models/ballistic_record.dart';
 import '../services/report_helper.dart';
 import '../services/report_generator.dart';
 import '../services/ai_analysis_service.dart';
+import '../services/epvat_formula_helper.dart';
 
 class HistoryTab extends StatefulWidget {
   final String currentModule;
@@ -1088,29 +1089,82 @@ class _HistoryTabState extends State<HistoryTab> {
     final velocityDistanceController = TextEditingController(text: r.velocityDistance);
     final accRadiusController = TextEditingController(text: r.accMeanRadius);
     final accMaxDistController = TextEditingController(text: r.accLargestDistance);
-    final accSDXController = TextEditingController(text: r.accSDX);
-    final accSDYController = TextEditingController(text: r.accSDY);
     final accMeanXController = TextEditingController(text: r.accMeanX);
+    final accMaxXController = TextEditingController(text: r.accMaxX);
+    final accMinXController = TextEditingController(text: r.accMinX);
+    final accRangeXController = TextEditingController(text: r.accRangeX);
+    final accSDXController = TextEditingController(text: r.accSDX);
     final accMeanYController = TextEditingController(text: r.accMeanY);
+    final accMaxYController = TextEditingController(text: r.accMaxY);
+    final accMinYController = TextEditingController(text: r.accMinY);
+    final accRangeYController = TextEditingController(text: r.accRangeY);
+    final accSDYController = TextEditingController(text: r.accSDY);
     final velMeanController = TextEditingController(text: r.velMean);
     final velMinController = TextEditingController(text: r.velMin);
     final velMaxController = TextEditingController(text: r.velMax);
+    final velRangeController = TextEditingController(text: r.velRange);
     final velSDController = TextEditingController(text: r.velSD);
 
-    // 5. EPVAT Test
-    final epvCartridgeTempController = TextEditingController(text: r.cartridgeTemp);
+    // 5. EPVAT Test Multi-Temperature Setup
+    final epvVars = EpvatFormulaHelper.extractVariablesFromRecords([r]);
+    String epvFmt(double? val) {
+      if (val == null || val == 0.0) return '';
+      return (val % 1 == 0) ? val.toInt().toString() : val.toStringAsFixed(1);
+    }
+
+    String epvActiveTempTab = '+21';
+
+    // +21 °C (Ambient)
+    final epv21MeanP1 = TextEditingController(text: r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : epvFmt(epvVars['p1_mean_21']));
+    final epv21MaxP1 = TextEditingController(text: r.epvatMaxPressure.isNotEmpty ? r.epvatMaxPressure : epvFmt(epvVars['p1_max_21']));
+    final epv21MinP1 = TextEditingController(text: r.epvatMinPressure.isNotEmpty ? r.epvatMinPressure : epvFmt(epvVars['p1_min_21']));
+    final epv21SDP1 = TextEditingController(text: r.epvatSDPressure.isNotEmpty ? r.epvatSDPressure : epvFmt(epvVars['p1_sd_21']));
+    final epv21MeanP2 = TextEditingController(text: r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : epvFmt(epvVars['p2_mean_21']));
+    final epv21MaxP2 = TextEditingController(text: r.epvatP2MaxPressure.isNotEmpty ? r.epvatP2MaxPressure : epvFmt(epvVars['p2_max_21']));
+    final epv21MinP2 = TextEditingController(text: r.epvatP2MinPressure.isNotEmpty ? r.epvatP2MinPressure : epvFmt(epvVars['p2_min_21']));
+    final epv21SDP2 = TextEditingController(text: r.epvatP2SDPressure.isNotEmpty ? r.epvatP2SDPressure : epvFmt(epvVars['p2_sd_21']));
+    final epv21VelMean = TextEditingController(text: r.velMean.isNotEmpty ? r.velMean : epvFmt(epvVars['vel_mean_21']));
+    final epv21VelMax = TextEditingController(text: r.velMax.isNotEmpty ? r.velMax : epvFmt(epvVars['vel_max_21']));
+    final epv21VelMin = TextEditingController(text: r.velMin.isNotEmpty ? r.velMin : epvFmt(epvVars['vel_min_21']));
+    final epv21VelSD = TextEditingController(text: r.velSD.isNotEmpty ? r.velSD : epvFmt(epvVars['vel_sd_21']));
+    final epv21ActMean = TextEditingController(text: r.actionTimeMean.isNotEmpty ? r.actionTimeMean : epvFmt(epvVars['action_time_mean_21']));
+    final epv21ActSD = TextEditingController(text: r.actionTimeSD.isNotEmpty ? r.actionTimeSD : epvFmt(epvVars['action_time_sd_21']));
+
+    // +52 °C (Hot)
+    final epv52MeanP1 = TextEditingController(text: epvFmt(epvVars['p1_mean_52']));
+    final epv52MaxP1 = TextEditingController(text: epvFmt(epvVars['p1_max_52']));
+    final epv52MinP1 = TextEditingController(text: epvFmt(epvVars['p1_min_52']));
+    final epv52SDP1 = TextEditingController(text: epvFmt(epvVars['p1_sd_52']));
+    final epv52MeanP2 = TextEditingController(text: epvFmt(epvVars['p2_mean_52']));
+    final epv52MaxP2 = TextEditingController(text: epvFmt(epvVars['p2_max_52']));
+    final epv52MinP2 = TextEditingController(text: epvFmt(epvVars['p2_min_52']));
+    final epv52SDP2 = TextEditingController(text: epvFmt(epvVars['p2_sd_52']));
+    final epv52VelMean = TextEditingController(text: epvFmt(epvVars['vel_mean_52']));
+    final epv52VelMax = TextEditingController(text: epvFmt(epvVars['vel_max_52']));
+    final epv52VelMin = TextEditingController(text: epvFmt(epvVars['vel_min_52']));
+    final epv52VelSD = TextEditingController(text: epvFmt(epvVars['vel_sd_52']));
+    final epv52ActMean = TextEditingController(text: epvFmt(epvVars['action_time_mean_52']));
+    final epv52ActSD = TextEditingController(text: epvFmt(epvVars['action_time_sd_52']));
+
+    // -54 °C (Cold)
+    final epv54MeanP1 = TextEditingController(text: epvFmt(epvVars['p1_mean_54'] ?? epvVars['p1_mean_32']));
+    final epv54MaxP1 = TextEditingController(text: epvFmt(epvVars['p1_max_54'] ?? epvVars['p1_max_32']));
+    final epv54MinP1 = TextEditingController(text: epvFmt(epvVars['p1_min_54'] ?? epvVars['p1_min_32']));
+    final epv54SDP1 = TextEditingController(text: epvFmt(epvVars['p1_sd_54'] ?? epvVars['p1_sd_32']));
+    final epv54MeanP2 = TextEditingController(text: epvFmt(epvVars['p2_mean_54'] ?? epvVars['p2_mean_32']));
+    final epv54MaxP2 = TextEditingController(text: epvFmt(epvVars['p2_max_54'] ?? epvVars['p2_max_32']));
+    final epv54MinP2 = TextEditingController(text: epvFmt(epvVars['p2_min_54'] ?? epvVars['p2_min_32']));
+    final epv54SDP2 = TextEditingController(text: epvFmt(epvVars['p2_sd_54'] ?? epvVars['p2_sd_32']));
+    final epv54VelMean = TextEditingController(text: epvFmt(epvVars['vel_mean_54'] ?? epvVars['vel_mean_32']));
+    final epv54VelMax = TextEditingController(text: epvFmt(epvVars['vel_max_54'] ?? epvVars['vel_max_32']));
+    final epv54VelMin = TextEditingController(text: epvFmt(epvVars['vel_min_54'] ?? epvVars['vel_min_32']));
+    final epv54VelSD = TextEditingController(text: epvFmt(epvVars['vel_sd_54'] ?? epvVars['vel_sd_32']));
+    final epv54ActMean = TextEditingController(text: epvFmt(epvVars['action_time_mean_54'] ?? epvVars['action_time_mean_32']));
+    final epv54ActSD = TextEditingController(text: epvFmt(epvVars['action_time_sd_54'] ?? epvVars['action_time_sd_32']));
+
+    final epvCartridgeTempController = TextEditingController(text: r.cartridgeTemp.isNotEmpty ? r.cartridgeTemp : '+21');
     final epvPressureUnitController = TextEditingController(text: r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar');
     final epvPressureTypeController = TextEditingController(text: r.epvatPressureType);
-    final epvMeanP1Controller = TextEditingController(text: r.epvatMeanPressure);
-    final epvMaxP1Controller = TextEditingController(text: r.epvatMaxPressure);
-    final epvMinP1Controller = TextEditingController(text: r.epvatMinPressure);
-    final epvSDP1Controller = TextEditingController(text: r.epvatSDPressure);
-    final epvMeanP2Controller = TextEditingController(text: r.epvatP2MeanPressure);
-    final epvMaxP2Controller = TextEditingController(text: r.epvatP2MaxPressure);
-    final epvMinP2Controller = TextEditingController(text: r.epvatP2MinPressure);
-    final epvSDP2Controller = TextEditingController(text: r.epvatP2SDPressure);
-    final epvActionTimeMeanController = TextEditingController(text: r.actionTimeMean);
-    final epvActionTimeSDController = TextEditingController(text: r.actionTimeSD);
     final epvSensor1Controller = TextEditingController(text: r.epvatSensor1);
     final epvSensor2Controller = TextEditingController(text: r.epvatSensor2);
 
@@ -1136,6 +1190,17 @@ class _HistoryTabState extends State<HistoryTab> {
     final primerSDController = TextEditingController(text: r.primerSD);
     final primerAllFireController = TextEditingController(text: r.primerAllFireH);
     final primerNoFireController = TextEditingController(text: r.primerNoFireH);
+
+    void updatePrimerFormulas() {
+      final hm = double.tryParse(primerHbarController.text.trim());
+      final sd = double.tryParse(primerSDController.text.trim());
+      if (hm != null && sd != null) {
+        final af = hm + (5 * sd);
+        final nf = hm - (2 * sd);
+        primerAllFireController.text = (af % 1 == 0) ? af.toInt().toString() : af.toStringAsFixed(2);
+        primerNoFireController.text = (nf % 1 == 0) ? nf.toInt().toString() : nf.toStringAsFixed(2);
+      }
+    }
 
     // 9. Propellant Test
     final propellantLotController = TextEditingController(text: r.propellantLot);
@@ -1224,6 +1289,111 @@ class _HistoryTabState extends State<HistoryTab> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final isMobile = MediaQuery.of(context).size.width < 600;
+
+            String calcEpvatStatus() {
+              final epv = widget.adminRules['epvat'] ?? {};
+              final formulasMap = Map<String, dynamic>.from(epv['custom_formulas'] ?? {});
+              final list = EpvatFormulaHelper.getFormulasForCaliber(
+                formulasMap,
+                editCaliber,
+                isThreeTemp: true,
+              );
+              if (list.isEmpty) return 'Approved';
+
+              final vars = <String, double>{};
+              void addTempVars(
+                String sfx,
+                TextEditingController meanP1,
+                TextEditingController maxP1,
+                TextEditingController minP1,
+                TextEditingController sdP1,
+                TextEditingController meanP2,
+                TextEditingController maxP2,
+                TextEditingController minP2,
+                TextEditingController sdP2,
+                TextEditingController meanV,
+                TextEditingController maxV,
+                TextEditingController minV,
+                TextEditingController sdV,
+                TextEditingController meanAt,
+                TextEditingController sdAt,
+              ) {
+                final p1m = double.tryParse(meanP1.text.trim()) ?? 0.0;
+                final p1mx = double.tryParse(maxP1.text.trim()) ?? 0.0;
+                final p1mn = double.tryParse(minP1.text.trim()) ?? 0.0;
+                final p1s = double.tryParse(sdP1.text.trim()) ?? 0.0;
+                vars['p1_mean_$sfx'] = p1m;
+                vars['p1_max_$sfx'] = p1mx;
+                vars['p1_max_individual_$sfx'] = p1mx;
+                vars['p1_min_$sfx'] = p1mn;
+                vars['p1_range_$sfx'] = (p1mx > p1mn && p1mn > 0) ? (p1mx - p1mn) : 0.0;
+                vars['p1_sd_$sfx'] = p1s;
+
+                final p2m = double.tryParse(meanP2.text.trim()) ?? 0.0;
+                final p2mx = double.tryParse(maxP2.text.trim()) ?? 0.0;
+                final p2mn = double.tryParse(minP2.text.trim()) ?? 0.0;
+                final p2s = double.tryParse(sdP2.text.trim()) ?? 0.0;
+                vars['p2_mean_$sfx'] = p2m;
+                vars['p2_max_$sfx'] = p2mx;
+                vars['p2_min_$sfx'] = p2mn;
+                vars['p2_range_$sfx'] = (p2mx > p2mn && p2mn > 0) ? (p2mx - p2mn) : 0.0;
+                vars['p2_sd_$sfx'] = p2s;
+
+                final vm = double.tryParse(meanV.text.trim()) ?? 0.0;
+                final vmx = double.tryParse(maxV.text.trim()) ?? 0.0;
+                final vmn = double.tryParse(minV.text.trim()) ?? 0.0;
+                final vs = double.tryParse(sdV.text.trim()) ?? 0.0;
+                vars['vel_mean_$sfx'] = vm;
+                vars['vel_max_$sfx'] = vmx;
+                vars['vel_min_$sfx'] = vmn;
+                vars['vel_range_$sfx'] = (vmx > vmn && vmn > 0) ? (vmx - vmn) : 0.0;
+                vars['vel_sd_$sfx'] = vs;
+
+                final atm = double.tryParse(meanAt.text.trim()) ?? 0.0;
+                final ats = double.tryParse(sdAt.text.trim()) ?? 0.0;
+                vars['action_time_mean_$sfx'] = atm;
+                vars['action_time_sd_$sfx'] = ats;
+
+                if (sfx == '21') {
+                  vars['p1_mean'] = p1m;
+                  vars['p1_max'] = p1mx;
+                  vars['p1_max_individual'] = p1mx;
+                  vars['p1_min'] = p1mn;
+                  vars['p1_range'] = vars['p1_range_21'] ?? 0.0;
+                  vars['p1_sd'] = p1s;
+                  vars['p2_mean'] = p2m;
+                  vars['p2_max'] = p2mx;
+                  vars['p2_min'] = p2mn;
+                  vars['p2_range'] = vars['p2_range_21'] ?? 0.0;
+                  vars['p2_sd'] = p2s;
+                  vars['vel_mean'] = vm;
+                  vars['vel_max'] = vmx;
+                  vars['vel_min'] = vmn;
+                  vars['vel_range'] = vars['vel_range_21'] ?? 0.0;
+                  vars['vel_sd'] = vs;
+                  vars['action_time_mean'] = atm;
+                  vars['action_time_sd'] = ats;
+                }
+              }
+
+              addTempVars('21', epv21MeanP1, epv21MaxP1, epv21MinP1, epv21SDP1, epv21MeanP2, epv21MaxP2, epv21MinP2, epv21SDP2, epv21VelMean, epv21VelMax, epv21VelMin, epv21VelSD, epv21ActMean, epv21ActSD);
+              addTempVars('52', epv52MeanP1, epv52MaxP1, epv52MinP1, epv52SDP1, epv52MeanP2, epv52MaxP2, epv52MinP2, epv52SDP2, epv52VelMean, epv52VelMax, epv52VelMin, epv52VelSD, epv52ActMean, epv52ActSD);
+              addTempVars('54', epv54MeanP1, epv54MaxP1, epv54MinP1, epv54SDP1, epv54MeanP2, epv54MaxP2, epv54MinP2, epv54SDP2, epv54VelMean, epv54VelMax, epv54VelMin, epv54VelSD, epv54ActMean, epv54ActSD);
+
+              for (var f in list) {
+                final item = Map<String, dynamic>.from(f as Map);
+                final res = EpvatFormulaHelper.evaluateFormulaItem(
+                  item,
+                  vars,
+                  defaultTemp: '21',
+                  activePressureUnit: epvPressureUnitController.text.trim().isNotEmpty ? epvPressureUnitController.text.trim() : 'bar',
+                );
+                if (res.isApplicable && !res.isPassed) {
+                  return 'Rejected';
+                }
+              }
+              return 'Approved';
+            }
 
             return AlertDialog(
               backgroundColor: const Color(0xFF344D6E),
@@ -1482,25 +1652,70 @@ class _HistoryTabState extends State<HistoryTab> {
                           ],
                         ),
                         const SizedBox(height: 12.0),
-                        _buildDialogField(
-                          label: 'Quality Sentencing Status',
-                          child: DropdownButtonFormField<String>(
-                            value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
-                            dropdownColor: const Color(0xFF1A2035),
-                            style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
-                            decoration: _dialogInputDecoration(),
-                            items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
-                              final col = s == 'Approved'
-                                  ? const Color(0xFF10B981)
-                                  : s == 'Rejected'
-                                      ? const Color(0xFFEF4444)
-                                      : s == 'Retest'
-                                          ? const Color(0xFFF59E0B)
-                                          : const Color(0xFF06B6D4);
-                              return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
-                            }).toList(),
-                            onChanged: (v) => setDialogState(() => editStatus = v!),
-                          ),
+                        Builder(
+                          builder: (context) {
+                            final isEpvAuto = editTestName == 'EPVAT test' || editTestName.toLowerCase().contains('epvat');
+                            final epvAutoStatus = isEpvAuto ? calcEpvatStatus() : editStatus;
+
+                            if (isEpvAuto) {
+                              final isAppr = epvAutoStatus == 'Approved';
+                              return _buildDialogField(
+                                label: 'Quality Sentencing Status (Strict Auto Calculation)',
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 11.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E293B),
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    border: Border.all(
+                                      color: isAppr ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isAppr ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                                        color: isAppr ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                        size: 18.0,
+                                      ),
+                                      const SizedBox(width: 8.0),
+                                      Expanded(
+                                        child: Text(
+                                          '$epvAutoStatus (Decided 100% by EPVAT Formulas)',
+                                          style: TextStyle(
+                                            color: isAppr ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return _buildDialogField(
+                              label: 'Quality Sentencing Status',
+                              child: DropdownButtonFormField<String>(
+                                value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
+                                dropdownColor: const Color(0xFF1A2035),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                decoration: _dialogInputDecoration(),
+                                items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
+                                  final col = s == 'Approved'
+                                      ? const Color(0xFF10B981)
+                                      : s == 'Rejected'
+                                          ? const Color(0xFFEF4444)
+                                          : s == 'Retest'
+                                              ? const Color(0xFFF59E0B)
+                                              : const Color(0xFF06B6D4);
+                                  return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
+                                }).toList(),
+                                onChanged: (v) => setDialogState(() => editStatus = v!),
+                              ),
+                            );
+                          },
                         ),
                       ] else ...[
                         Row(
@@ -1523,25 +1738,70 @@ class _HistoryTabState extends State<HistoryTab> {
                             const SizedBox(width: 12.0),
                             Expanded(
                               flex: 2,
-                              child: _buildDialogField(
-                                label: 'Quality Sentencing Status',
-                                child: DropdownButtonFormField<String>(
-                                  value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
-                                  dropdownColor: const Color(0xFF1A2035),
-                                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
-                                  decoration: _dialogInputDecoration(),
-                                  items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
-                                    final col = s == 'Approved'
-                                        ? const Color(0xFF10B981)
-                                        : s == 'Rejected'
-                                            ? const Color(0xFFEF4444)
-                                            : s == 'Retest'
-                                                ? const Color(0xFFF59E0B)
-                                                : const Color(0xFF06B6D4);
-                                    return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
-                                  }).toList(),
-                                  onChanged: (v) => setDialogState(() => editStatus = v!),
-                                ),
+                              child: Builder(
+                                builder: (context) {
+                                  final isEpvAuto = editTestName == 'EPVAT test' || editTestName.toLowerCase().contains('epvat');
+                                  final epvAutoStatus = isEpvAuto ? calcEpvatStatus() : editStatus;
+
+                                  if (isEpvAuto) {
+                                    final isAppr = epvAutoStatus == 'Approved';
+                                    return _buildDialogField(
+                                      label: 'Quality Sentencing Status (Auto Calculated)',
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 11.0),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1E293B),
+                                          borderRadius: BorderRadius.circular(8.0),
+                                          border: Border.all(
+                                            color: isAppr ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              isAppr ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                                              color: isAppr ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                              size: 18.0,
+                                            ),
+                                            const SizedBox(width: 8.0),
+                                            Expanded(
+                                              child: Text(
+                                                '$epvAutoStatus (EPVAT Auto Formula)',
+                                                style: TextStyle(
+                                                  color: isAppr ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  return _buildDialogField(
+                                    label: 'Quality Sentencing Status',
+                                    child: DropdownButtonFormField<String>(
+                                      value: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].contains(editStatus) ? editStatus : 'Approved',
+                                      dropdownColor: const Color(0xFF1A2035),
+                                      style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                      decoration: _dialogInputDecoration(),
+                                      items: ['Approved', 'Rejected', 'Retest', 'Approved with condition'].map((s) {
+                                        final col = s == 'Approved'
+                                            ? const Color(0xFF10B981)
+                                            : s == 'Rejected'
+                                                ? const Color(0xFFEF4444)
+                                                : s == 'Retest'
+                                                    ? const Color(0xFFF59E0B)
+                                                    : const Color(0xFF06B6D4);
+                                        return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: col)));
+                                      }).toList(),
+                                      onChanged: (v) => setDialogState(() => editStatus = v!),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -1644,26 +1904,54 @@ class _HistoryTabState extends State<HistoryTab> {
                           ],
                         ),
                         const SizedBox(height: 10.0),
+                        // X Coordinates
                         Row(
                           children: [
-                            Expanded(child: _buildDialogField(label: 'Mean Radius (MR mm)', child: _buildDialogTextField(controller: accRadiusController))),
-                            const SizedBox(width: 10.0),
-                            Expanded(child: _buildDialogField(label: 'Largest Dist (ES mm)', child: _buildDialogTextField(controller: accMaxDistController))),
-                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Mean X (mm)', child: _buildDialogTextField(controller: accMeanXController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Max X (mm)', child: _buildDialogTextField(controller: accMaxXController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Min X (mm)', child: _buildDialogTextField(controller: accMinXController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Range X (mm)', child: _buildDialogTextField(controller: accRangeXController))),
+                            const SizedBox(width: 8.0),
                             Expanded(child: _buildDialogField(label: 'SD X (mm)', child: _buildDialogTextField(controller: accSDXController))),
-                            const SizedBox(width: 10.0),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        // Y Coordinates
+                        Row(
+                          children: [
+                            Expanded(child: _buildDialogField(label: 'Mean Y (mm)', child: _buildDialogTextField(controller: accMeanYController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Max Y (mm)', child: _buildDialogTextField(controller: accMaxYController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Min Y (mm)', child: _buildDialogTextField(controller: accMinYController))),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Range Y (mm)', child: _buildDialogTextField(controller: accRangeYController))),
+                            const SizedBox(width: 8.0),
                             Expanded(child: _buildDialogField(label: 'SD Y (mm)', child: _buildDialogTextField(controller: accSDYController))),
                           ],
                         ),
                         const SizedBox(height: 10.0),
                         Row(
                           children: [
+                            Expanded(child: _buildDialogField(label: 'Mean Radius (MR mm)', child: _buildDialogTextField(controller: accRadiusController))),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: _buildDialogField(label: 'Largest Dist (ES mm)', child: _buildDialogTextField(controller: accMaxDistController))),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
                             Expanded(child: _buildDialogField(label: 'Mean Vel (m/s)', child: _buildDialogTextField(controller: velMeanController))),
-                            const SizedBox(width: 10.0),
+                            const SizedBox(width: 8.0),
                             Expanded(child: _buildDialogField(label: 'Min Vel (m/s)', child: _buildDialogTextField(controller: velMinController))),
-                            const SizedBox(width: 10.0),
+                            const SizedBox(width: 8.0),
                             Expanded(child: _buildDialogField(label: 'Max Vel (m/s)', child: _buildDialogTextField(controller: velMaxController))),
-                            const SizedBox(width: 10.0),
+                            const SizedBox(width: 8.0),
+                            Expanded(child: _buildDialogField(label: 'Vel Range (m/s)', child: _buildDialogTextField(controller: velRangeController))),
+                            const SizedBox(width: 8.0),
                             Expanded(child: _buildDialogField(label: 'Vel SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
                           ],
                         ),
@@ -1671,8 +1959,6 @@ class _HistoryTabState extends State<HistoryTab> {
                         Row(
                           children: [
                             Expanded(child: _buildDialogField(label: 'Barrel S.N.', child: _buildDialogTextField(controller: barrelSNController))),
-                            const SizedBox(width: 10.0),
-                            Expanded(child: _buildDialogField(label: 'Cartridge Temp (°C)', child: _buildDialogTextField(controller: epvCartridgeTempController))),
                             const SizedBox(width: 10.0),
                             Expanded(child: _buildDialogField(label: 'Pressure Unit', child: _buildDialogTextField(controller: epvPressureUnitController))),
                             const SizedBox(width: 10.0),
@@ -1682,46 +1968,121 @@ class _HistoryTabState extends State<HistoryTab> {
                         const SizedBox(height: 10.0),
                         Row(
                           children: [
-                            Expanded(child: _buildDialogField(label: 'Mean P1 Chamber', child: _buildDialogTextField(controller: epvMeanP1Controller))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Max P1', child: _buildDialogTextField(controller: epvMaxP1Controller))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Min P1', child: _buildDialogTextField(controller: epvMinP1Controller))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'SD P1', child: _buildDialogTextField(controller: epvSDP1Controller))),
-                          ],
-                        ),
-                        const SizedBox(height: 10.0),
-                        Row(
-                          children: [
-                            Expanded(child: _buildDialogField(label: 'Mean P2 Port', child: _buildDialogTextField(controller: epvMeanP2Controller))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Max P2 Port', child: _buildDialogTextField(controller: epvMaxP2Controller))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Min P2 Port', child: _buildDialogTextField(controller: epvMinP2Controller))),
-                            const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'SD P2 Port', child: _buildDialogTextField(controller: epvSDP2Controller))),
-                          ],
-                        ),
-                        const SizedBox(height: 10.0),
-                        Row(
-                          children: [
-                            Expanded(child: _buildDialogField(label: 'Action Time Mean (ms)', child: _buildDialogTextField(controller: epvActionTimeMeanController))),
-                            const SizedBox(width: 10.0),
-                            Expanded(child: _buildDialogField(label: 'Action Time SD (ms)', child: _buildDialogTextField(controller: epvActionTimeSDController))),
-                            const SizedBox(width: 10.0),
-                            Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
-                            const SizedBox(width: 10.0),
-                            Expanded(child: _buildDialogField(label: 'Velocity SD (m/s)', child: _buildDialogTextField(controller: velSDController))),
-                          ],
-                        ),
-                        const SizedBox(height: 10.0),
-                        Row(
-                          children: [
                             Expanded(child: _buildDialogField(label: 'Sensor 1 S.N.', child: _buildDialogTextField(controller: epvSensor1Controller))),
                             const SizedBox(width: 10.0),
                             Expanded(child: _buildDialogField(label: 'Sensor 2 S.N.', child: _buildDialogTextField(controller: epvSensor2Controller))),
                           ],
+                        ),
+                        const SizedBox(height: 12.0),
+                        // Temperature Selector Tabs (+21°C Ambient, +52°C Hot, -54°C Cold)
+                        Container(
+                          padding: const EdgeInsets.all(4.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFF334155)),
+                          ),
+                          child: Row(
+                            children: [
+                              for (final tempTab in [
+                                {'key': '+21', 'label': '+21 °C (Ambient)'},
+                                {'key': '+52', 'label': '+52 °C (Hot)'},
+                                {'key': '-54', 'label': '-54 °C (Cold)'},
+                              ])
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => setDialogState(() => epvActiveTempTab = tempTab['key']!),
+                                    borderRadius: BorderRadius.circular(6.0),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                      decoration: BoxDecoration(
+                                        color: epvActiveTempTab == tempTab['key'] ? const Color(0xFF06B6D4) : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6.0),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        tempTab['label']!,
+                                        style: TextStyle(
+                                          color: epvActiveTempTab == tempTab['key'] ? Colors.white : const Color(0xFF94A3B8),
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        Builder(
+                          builder: (context) {
+                            final curMeanP1 = epvActiveTempTab == '+21' ? epv21MeanP1 : (epvActiveTempTab == '+52' ? epv52MeanP1 : epv54MeanP1);
+                            final curMaxP1 = epvActiveTempTab == '+21' ? epv21MaxP1 : (epvActiveTempTab == '+52' ? epv52MaxP1 : epv54MaxP1);
+                            final curMinP1 = epvActiveTempTab == '+21' ? epv21MinP1 : (epvActiveTempTab == '+52' ? epv52MinP1 : epv54MinP1);
+                            final curSDP1 = epvActiveTempTab == '+21' ? epv21SDP1 : (epvActiveTempTab == '+52' ? epv52SDP1 : epv54SDP1);
+
+                            final curMeanP2 = epvActiveTempTab == '+21' ? epv21MeanP2 : (epvActiveTempTab == '+52' ? epv52MeanP2 : epv54MeanP2);
+                            final curMaxP2 = epvActiveTempTab == '+21' ? epv21MaxP2 : (epvActiveTempTab == '+52' ? epv52MaxP2 : epv54MaxP2);
+                            final curMinP2 = epvActiveTempTab == '+21' ? epv21MinP2 : (epvActiveTempTab == '+52' ? epv52MinP2 : epv54MinP2);
+                            final curSDP2 = epvActiveTempTab == '+21' ? epv21SDP2 : (epvActiveTempTab == '+52' ? epv52SDP2 : epv54SDP2);
+
+                            final curVelMean = epvActiveTempTab == '+21' ? epv21VelMean : (epvActiveTempTab == '+52' ? epv52VelMean : epv54VelMean);
+                            final curVelMax = epvActiveTempTab == '+21' ? epv21VelMax : (epvActiveTempTab == '+52' ? epv52VelMax : epv54VelMax);
+                            final curVelMin = epvActiveTempTab == '+21' ? epv21VelMin : (epvActiveTempTab == '+52' ? epv52VelMin : epv54VelMin);
+                            final curVelSD = epvActiveTempTab == '+21' ? epv21VelSD : (epvActiveTempTab == '+52' ? epv52VelSD : epv54VelSD);
+
+                            final curActMean = epvActiveTempTab == '+21' ? epv21ActMean : (epvActiveTempTab == '+52' ? epv52ActMean : epv54ActMean);
+                            final curActSD = epvActiveTempTab == '+21' ? epv21ActSD : (epvActiveTempTab == '+52' ? epv52ActSD : epv54ActSD);
+
+                            return Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildDialogField(label: 'Chamber P1 Mean (${epvPressureUnitController.text})', child: _buildDialogTextField(controller: curMeanP1))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Chamber P1 Max', child: _buildDialogTextField(controller: curMaxP1))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Chamber P1 Min', child: _buildDialogTextField(controller: curMinP1))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Chamber P1 SD', child: _buildDialogTextField(controller: curSDP1))),
+                                  ],
+                                ),
+                                const SizedBox(height: 10.0),
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildDialogField(label: 'Port P2 Mean (${epvPressureUnitController.text})', child: _buildDialogTextField(controller: curMeanP2))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Port P2 Max', child: _buildDialogTextField(controller: curMaxP2))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Port P2 Min', child: _buildDialogTextField(controller: curMinP2))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Port P2 SD', child: _buildDialogTextField(controller: curSDP2))),
+                                  ],
+                                ),
+                                const SizedBox(height: 10.0),
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: curVelMean))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Max Velocity (m/s)', child: _buildDialogTextField(controller: curVelMax))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Min Velocity (m/s)', child: _buildDialogTextField(controller: curVelMin))),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(child: _buildDialogField(label: 'Velocity SD (m/s)', child: _buildDialogTextField(controller: curVelSD))),
+                                  ],
+                                ),
+                                const SizedBox(height: 10.0),
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildDialogField(label: 'Action Time Mean (ms)', child: _buildDialogTextField(controller: curActMean))),
+                                    const SizedBox(width: 10.0),
+                                    Expanded(child: _buildDialogField(label: 'Action Time SD (ms)', child: _buildDialogTextField(controller: curActSD))),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ] else if (editTestName == 'Function Test' || editTestName.toLowerCase().contains('function')) ...[
                         Row(
@@ -1776,13 +2137,39 @@ class _HistoryTabState extends State<HistoryTab> {
                         const SizedBox(height: 10.0),
                         Row(
                           children: [
-                            Expanded(child: _buildDialogField(label: 'Mean Fire Height H̄ (cm)', child: _buildDialogTextField(controller: primerHbarController))),
+                            Expanded(
+                              child: _buildDialogField(
+                                label: 'Mean Fire Height H̄ (cm)',
+                                child: _buildDialogTextField(
+                                  controller: primerHbarController,
+                                  onChanged: (v) => setDialogState(() => updatePrimerFormulas()),
+                                ),
+                              ),
+                            ),
                             const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'Standard Dev SD (cm)', child: _buildDialogTextField(controller: primerSDController))),
+                            Expanded(
+                              child: _buildDialogField(
+                                label: 'Standard Dev SD (cm)',
+                                child: _buildDialogTextField(
+                                  controller: primerSDController,
+                                  onChanged: (v) => setDialogState(() => updatePrimerFormulas()),
+                                ),
+                              ),
+                            ),
                             const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'All-Fire H̄+5SD (cm)', child: _buildDialogTextField(controller: primerAllFireController))),
+                            Expanded(
+                              child: _buildDialogField(
+                                label: 'All-Fire H̄+5SD (cm)',
+                                child: _buildDialogTextField(controller: primerAllFireController),
+                              ),
+                            ),
                             const SizedBox(width: 8.0),
-                            Expanded(child: _buildDialogField(label: 'No-Fire H̄-2SD (cm)', child: _buildDialogTextField(controller: primerNoFireController))),
+                            Expanded(
+                              child: _buildDialogField(
+                                label: 'No-Fire H̄-2SD (cm)',
+                                child: _buildDialogTextField(controller: primerNoFireController),
+                              ),
+                            ),
                           ],
                         ),
                       ] else if (editTestName == 'Propellant Test' || editTestName.toLowerCase().contains('propellant')) ...[
@@ -1800,9 +2187,9 @@ class _HistoryTabState extends State<HistoryTab> {
                         const SizedBox(height: 10.0),
                         Row(
                           children: [
-                            Expanded(child: _buildDialogField(label: 'Chamber Press P1', child: _buildDialogTextField(controller: epvMeanP1Controller))),
+                            Expanded(child: _buildDialogField(label: 'Chamber Press P1', child: _buildDialogTextField(controller: epv21MeanP1))),
                             const SizedBox(width: 10.0),
-                            Expanded(child: _buildDialogField(label: 'Port Press P2', child: _buildDialogTextField(controller: epvMeanP2Controller))),
+                            Expanded(child: _buildDialogField(label: 'Port Press P2', child: _buildDialogTextField(controller: epv21MeanP2))),
                             const SizedBox(width: 10.0),
                             Expanded(child: _buildDialogField(label: 'Mean Velocity (m/s)', child: _buildDialogTextField(controller: velMeanController))),
                             const SizedBox(width: 10.0),
@@ -1943,6 +2330,38 @@ class _HistoryTabState extends State<HistoryTab> {
                     final String savedNotes = notesController.text.trim();
                     final isExtraction = editTestName == 'Extraction Force Test' || editTestName.toLowerCase().contains('extraction');
 
+                    final bool isEpv = editTestName == 'EPVAT test' || editTestName.toLowerCase().contains('epvat');
+                    final String finalStatus = isEpv ? calcEpvatStatus() : editStatus;
+
+                    String buildTempStat(TextEditingController mean, TextEditingController max, TextEditingController min, TextEditingController sd) {
+                      if (mean.text.trim().isEmpty && max.text.trim().isEmpty && min.text.trim().isEmpty && sd.text.trim().isEmpty) return '';
+                      return 'mean=${mean.text.trim()},max=${max.text.trim()},min=${min.text.trim()},sd=${sd.text.trim()}';
+                    }
+
+                    final p1Joined = [
+                      buildTempStat(epv21MeanP1, epv21MaxP1, epv21MinP1, epv21SDP1),
+                      buildTempStat(epv52MeanP1, epv52MaxP1, epv52MinP1, epv52SDP1),
+                      buildTempStat(epv54MeanP1, epv54MaxP1, epv54MinP1, epv54SDP1),
+                    ].join(';');
+
+                    final p2Joined = [
+                      buildTempStat(epv21MeanP2, epv21MaxP2, epv21MinP2, epv21SDP2),
+                      buildTempStat(epv52MeanP2, epv52MaxP2, epv52MinP2, epv52SDP2),
+                      buildTempStat(epv54MeanP2, epv54MaxP2, epv54MinP2, epv54SDP2),
+                    ].join(';');
+
+                    final velJoined = [
+                      buildTempStat(epv21VelMean, epv21VelMax, epv21VelMin, epv21VelSD),
+                      buildTempStat(epv52VelMean, epv52VelMax, epv52VelMin, epv52VelSD),
+                      buildTempStat(epv54VelMean, epv54VelMax, epv54VelMin, epv54VelSD),
+                    ].join(';');
+
+                    final actJoined = [
+                      buildTempStat(epv21ActMean, epv21ActMean, epv21ActMean, epv21ActSD),
+                      buildTempStat(epv52ActMean, epv52ActMean, epv52ActMean, epv52ActSD),
+                      buildTempStat(epv54ActMean, epv54ActMean, epv54ActMean, epv54ActSD),
+                    ].join(';');
+
                     final updated = r.copyWith(
                       testName: editTestName,
                       timestamp: timestampController.text.trim(),
@@ -1953,7 +2372,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       lotNo: lotNoController.text.trim(),
                       produced: produced,
                       defects: defects,
-                      status: editStatus,
+                      status: finalStatus,
                       notes: savedNotes,
                       // Waterproof
                       pressureBar: pressureController.text.trim(),
@@ -1979,30 +2398,41 @@ class _HistoryTabState extends State<HistoryTab> {
                       velocityDistance: velocityDistanceController.text.trim(),
                       accMeanRadius: accRadiusController.text.trim(),
                       accLargestDistance: accMaxDistController.text.trim(),
-                      accSDX: isExtraction ? extSDForceController.text.trim() : accSDXController.text.trim(),
-                      accSDY: accSDYController.text.trim(),
                       accMeanX: isExtraction ? extMeanForceController.text.trim() : accMeanXController.text.trim(),
+                      accMaxX: isExtraction ? extMaxForceController.text.trim() : accMaxXController.text.trim(),
+                      accMinX: isExtraction ? extMinForceController.text.trim() : accMinXController.text.trim(),
+                      accRangeX: accRangeXController.text.trim(),
+                      accSDX: isExtraction ? extSDForceController.text.trim() : accSDXController.text.trim(),
                       accMeanY: accMeanYController.text.trim(),
-                      accMinX: isExtraction ? extMinForceController.text.trim() : r.accMinX,
-                      accMaxX: isExtraction ? extMaxForceController.text.trim() : r.accMaxX,
-                      velMean: velMeanController.text.trim(),
-                      velMin: velMinController.text.trim(),
-                      velMax: velMaxController.text.trim(),
-                      velSD: velSDController.text.trim(),
+                      accMaxY: accMaxYController.text.trim(),
+                      accMinY: accMinYController.text.trim(),
+                      accRangeY: accRangeYController.text.trim(),
+                      accSDY: accSDYController.text.trim(),
+                      velMean: isEpv ? (epv21VelMean.text.trim().isNotEmpty ? epv21VelMean.text.trim() : velMeanController.text.trim()) : velMeanController.text.trim(),
+                      velMin: isEpv ? (epv21VelMin.text.trim().isNotEmpty ? epv21VelMin.text.trim() : velMinController.text.trim()) : velMinController.text.trim(),
+                      velMax: isEpv ? (epv21VelMax.text.trim().isNotEmpty ? epv21VelMax.text.trim() : velMaxController.text.trim()) : velMaxController.text.trim(),
+                      velRange: isEpv ? '' : velRangeController.text.trim(),
+                      velSD: isEpv ? (epv21VelSD.text.trim().isNotEmpty ? epv21VelSD.text.trim() : velSDController.text.trim()) : velSDController.text.trim(),
                       // EPVAT
-                      cartridgeTemp: epvCartridgeTempController.text.trim(),
+                      cartridgeTemp: isEpv
+                          ? ((epv52MeanP1.text.isNotEmpty || epv54MeanP1.text.isNotEmpty) ? '+21°C, +52°C, -54°C' : (epvCartridgeTempController.text.trim().isNotEmpty ? epvCartridgeTempController.text.trim() : '+21°C'))
+                          : epvCartridgeTempController.text.trim(),
                       epvatPressureUnit: epvPressureUnitController.text.trim(),
                       epvatPressureType: epvPressureTypeController.text.trim(),
-                      epvatMeanPressure: epvMeanP1Controller.text.trim(),
-                      epvatMaxPressure: epvMaxP1Controller.text.trim(),
-                      epvatMinPressure: epvMinP1Controller.text.trim(),
-                      epvatSDPressure: epvSDP1Controller.text.trim(),
-                      epvatP2MeanPressure: epvMeanP2Controller.text.trim(),
-                      epvatP2MaxPressure: epvMaxP2Controller.text.trim(),
-                      epvatP2MinPressure: epvMinP2Controller.text.trim(),
-                      epvatP2SDPressure: epvSDP2Controller.text.trim(),
-                      actionTimeMean: epvActionTimeMeanController.text.trim(),
-                      actionTimeSD: epvActionTimeSDController.text.trim(),
+                      epvatMeanPressure: epv21MeanP1.text.trim(),
+                      epvatMaxPressure: epv21MaxP1.text.trim(),
+                      epvatMinPressure: epv21MinP1.text.trim(),
+                      epvatSDPressure: epv21SDP1.text.trim(),
+                      epvatP2MeanPressure: epv21MeanP2.text.trim(),
+                      epvatP2MaxPressure: epv21MaxP2.text.trim(),
+                      epvatP2MinPressure: epv21MinP2.text.trim(),
+                      epvatP2SDPressure: epv21SDP2.text.trim(),
+                      actionTimeMean: epv21ActMean.text.trim(),
+                      actionTimeSD: epv21ActSD.text.trim(),
+                      epvatPressureRounds: p1Joined.replaceAll(';', '').trim().isNotEmpty ? p1Joined : r.epvatPressureRounds,
+                      epvatP2PressureRounds: p2Joined.replaceAll(';', '').trim().isNotEmpty ? p2Joined : r.epvatP2PressureRounds,
+                      epvatVelRounds: velJoined.replaceAll(';', '').trim().isNotEmpty ? velJoined : r.epvatVelRounds,
+                      actionTimeRounds: actJoined.replaceAll(';', '').trim().isNotEmpty ? actJoined : r.actionTimeRounds,
                       epvatSensor1: epvSensor1Controller.text.trim(),
                       epvatSensor2: epvSensor2Controller.text.trim(),
                       // Function
@@ -2082,11 +2512,13 @@ class _HistoryTabState extends State<HistoryTab> {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     String? hint,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      onChanged: onChanged,
       style: const TextStyle(color: Colors.white, fontSize: 13.0),
       decoration: _dialogInputDecoration().copyWith(
         hintText: hint,
@@ -2451,6 +2883,7 @@ class _HistoryTabState extends State<HistoryTab> {
     if (!testNames.contains(_testNameFilter) && _testNameFilter != 'All') {
       _testNameFilter = 'All';
     }
+    final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
     final availableLots = {'All', ...widget.records.map((r) => r.lotNo.trim()).where((s) => s.isNotEmpty)}.toList()..sort();
     final availableHoppers = {'All', ...widget.records.map((r) => r.hopperNo.trim()).where((s) => s.isNotEmpty)}.toList()..sort();
     if (!availableLots.contains(_lotFilter)) _lotFilter = 'All';
@@ -2461,14 +2894,14 @@ class _HistoryTabState extends State<HistoryTab> {
     final filtered = widget.records.where((r) {
       final matchesSearch = r.operators.toLowerCase().contains(query) ||
           r.lotNo.toLowerCase().contains(query) ||
-          r.hopperNo.toLowerCase().contains(query) ||
+          (!isLotAcceptance && r.hopperNo.toLowerCase().contains(query)) ||
           r.boxNo.toLowerCase().contains(query) ||
           r.notes.toLowerCase().contains(query);
 
       final matchesCaliber = _caliberFilter == 'All' || r.caliber == _caliberFilter;
       final matchesStatus = _statusFilter == 'All' || r.status.trim().toLowerCase() == _statusFilter.trim().toLowerCase();
       final matchesLot = _lotFilter == 'All' || r.lotNo.trim() == _lotFilter;
-      final matchesHopper = _hopperFilter == 'All' || r.hopperNo.trim() == _hopperFilter;
+      final matchesHopper = isLotAcceptance || _hopperFilter == 'All' || r.hopperNo.trim() == _hopperFilter;
       final matchesTestName = _testNameFilter == 'All' || r.testName == _testNameFilter;
 
       return matchesSearch && matchesCaliber && matchesStatus && matchesTestName && matchesLot && matchesHopper;
@@ -2586,13 +3019,16 @@ class _HistoryTabState extends State<HistoryTab> {
             final searchField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('SEARCH LOT / HOPPER / INSPECTOR', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                Text(
+                  isLotAcceptance ? 'SEARCH LOT / INSPECTOR' : 'SEARCH LOT / HOPPER / INSPECTOR',
+                  style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 6.0),
                 TextField(
                   controller: _searchController,
                   style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
                   decoration: InputDecoration(
-                    hintText: 'Type to filter logs...',
+                    hintText: isLotAcceptance ? 'Type to filter by lot, inspector, notes...' : 'Type to filter logs...',
                     hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.0),
                     prefixIcon: const Icon(Icons.search, size: 18.0, color: Color(0xFF0284C7)),
                     isDense: true,
@@ -2696,13 +3132,16 @@ class _HistoryTabState extends State<HistoryTab> {
                           ],
                         ),
                         const SizedBox(height: 10.0),
-                        Row(
-                          children: [
-                            Expanded(child: lotField),
-                            const SizedBox(width: 10.0),
-                            Expanded(child: hopperField),
-                          ],
-                        ),
+                        if (!isLotAcceptance)
+                          Row(
+                            children: [
+                              Expanded(child: lotField),
+                              const SizedBox(width: 10.0),
+                              Expanded(child: hopperField),
+                            ],
+                          )
+                        else
+                          lotField,
                         const SizedBox(height: 10.0),
                         statusField,
                       ],
@@ -2722,8 +3161,10 @@ class _HistoryTabState extends State<HistoryTab> {
                         Row(
                           children: [
                             Expanded(child: lotField),
-                            const SizedBox(width: 14.0),
-                            Expanded(child: hopperField),
+                            if (!isLotAcceptance) ...[
+                              const SizedBox(width: 14.0),
+                              Expanded(child: hopperField),
+                            ],
                             const SizedBox(width: 14.0),
                             Expanded(child: statusField),
                           ],
@@ -2923,6 +3364,9 @@ class _HistoryTabState extends State<HistoryTab> {
     } else if (widget.currentModule == 'Component Test') {
       lotPrimary = r.primerLot.isNotEmpty ? r.primerLot : (r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo);
       lotSecondary = '';
+    } else if (widget.currentModule == 'Lot Acceptance Test') {
+      lotPrimary = r.lotNo;
+      lotSecondary = r.boxNo.isNotEmpty ? 'Box: ${r.boxNo}' : '';
     } else {
       lotPrimary = r.lotNo;
       if (r.hopperNo.isNotEmpty || r.boxNo.isNotEmpty) {
@@ -3391,18 +3835,54 @@ class _HistoryTabState extends State<HistoryTab> {
   }
 
   void _showReportGenerationDialog(List<BallisticRecord> initialRecords, {BallisticRecord? singleRecord}) {
+    final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
+    String selectedReportCaliber = singleRecord != null
+        ? singleRecord.caliber
+        : (_caliberFilter != 'All'
+            ? _caliberFilter
+            : (initialRecords.isNotEmpty ? initialRecords.first.caliber : (calibers.isNotEmpty ? calibers.first : '7.62 x 39 mm')));
+    String selectedReportLot = singleRecord != null
+        ? singleRecord.lotNo
+        : (_lotFilter != 'All' ? _lotFilter : 'All');
     String selectedReportTest = singleRecord != null
         ? singleRecord.testName
         : (_lotFilter != 'All' ? 'All' : _testNameFilter);
+
+    if (isLotAcceptance && singleRecord == null && selectedReportLot == 'All') {
+      final initialLots = initialRecords
+          .where((r) => r.caliber == selectedReportCaliber)
+          .map((r) => r.lotNo.trim())
+          .where((s) => s.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+      if (initialLots.isNotEmpty) {
+        selectedReportLot = initialLots.first;
+      }
+    }
     
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
+            final availableLotsForCaliber = isLotAcceptance
+                ? (initialRecords
+                    .where((r) => r.caliber == selectedReportCaliber)
+                    .map((r) => r.lotNo.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toSet()
+                    .toList()
+                  ..sort())
+                : <String>[];
+
             final reportRecords = singleRecord != null
                 ? [singleRecord]
                 : initialRecords.where((r) {
+                    if (isLotAcceptance) {
+                      if (r.caliber != selectedReportCaliber) return false;
+                      if (selectedReportLot != 'All' && r.lotNo.trim() != selectedReportLot) return false;
+                    }
                     return selectedReportTest == 'All' || r.testName == selectedReportTest;
                   }).toList();
 
@@ -3435,7 +3915,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                singleRecord != null ? 'Individual Report Generator' : 'Quality Report Generator',
+                                singleRecord != null ? 'Individual Report Generator' : (isLotAcceptance ? 'Lot Acceptance Certificate & Report Generator' : 'Quality Report Generator'),
                                 style: const TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -3443,7 +3923,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               Text(
                                 singleRecord != null
                                     ? 'Generate and download quality log sheets for this specific test entry'
-                                    : 'Review and download quality log sheets for tests',
+                                    : (isLotAcceptance ? 'Generate Final Acceptance Certificate, Dossier, and test reports for selected caliber and lot' : 'Review and download quality log sheets for tests'),
                                 style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -3486,43 +3966,186 @@ class _HistoryTabState extends State<HistoryTab> {
                                   ),
                                 ],
                               )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'SELECT TEST TYPE',
-                                    style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 6.0),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF2C415E),
-                                      borderRadius: BorderRadius.circular(8.0),
-                                      border: Border.all(color: const Color(0xFF1E3A8A)),
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: selectedReportTest,
-                                        isExpanded: true,
-                                        dropdownColor: const Color(0xFF344D6E),
-                                        style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
-                                        items: ['All', ...testNames].map((String value) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(value),
-                                          );
-                                        }).toList(),
-                                        onChanged: (v) {
-                                          setStateDialog(() {
-                                            selectedReportTest = v!;
-                                          });
-                                        },
+                            : isLotAcceptance
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'CALIBER SPECIFICATION',
+                                                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                                ),
+                                                const SizedBox(height: 6.0),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF2C415E),
+                                                    borderRadius: BorderRadius.circular(8.0),
+                                                    border: Border.all(color: const Color(0xFF1E3A8A)),
+                                                  ),
+                                                  child: DropdownButtonHideUnderline(
+                                                    child: DropdownButton<String>(
+                                                      value: calibers.contains(selectedReportCaliber) ? selectedReportCaliber : (calibers.isNotEmpty ? calibers.first : null),
+                                                      isExpanded: true,
+                                                      dropdownColor: const Color(0xFF344D6E),
+                                                      style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w500),
+                                                      items: calibers.map((String value) {
+                                                        return DropdownMenuItem<String>(
+                                                          value: value,
+                                                          child: Text(value, overflow: TextOverflow.ellipsis),
+                                                        );
+                                                      }).toList(),
+                                                      onChanged: (v) {
+                                                        if (v != null) {
+                                                          setStateDialog(() {
+                                                            selectedReportCaliber = v;
+                                                            final newLots = initialRecords
+                                                                .where((r) => r.caliber == v)
+                                                                .map((r) => r.lotNo.trim())
+                                                                .where((s) => s.isNotEmpty)
+                                                                .toSet()
+                                                                .toList()
+                                                              ..sort();
+                                                            selectedReportLot = newLots.isNotEmpty ? newLots.first : 'All';
+                                                          });
+                                                        }
+                                                      },
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10.0),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'LOT NUMBER',
+                                                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                                ),
+                                                const SizedBox(height: 6.0),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF2C415E),
+                                                    borderRadius: BorderRadius.circular(8.0),
+                                                    border: Border.all(color: const Color(0xFF1E3A8A)),
+                                                  ),
+                                                  child: DropdownButtonHideUnderline(
+                                                    child: DropdownButton<String>(
+                                                      value: (availableLotsForCaliber.contains(selectedReportLot) || selectedReportLot == 'All')
+                                                          ? selectedReportLot
+                                                          : (availableLotsForCaliber.isNotEmpty ? availableLotsForCaliber.first : 'All'),
+                                                      isExpanded: true,
+                                                      dropdownColor: const Color(0xFF344D6E),
+                                                      style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w500),
+                                                      items: ['All', ...availableLotsForCaliber].map((String value) {
+                                                        return DropdownMenuItem<String>(
+                                                          value: value,
+                                                          child: Text(value, overflow: TextOverflow.ellipsis),
+                                                        );
+                                                      }).toList(),
+                                                      onChanged: (v) {
+                                                        if (v != null) {
+                                                          setStateDialog(() {
+                                                            selectedReportLot = v;
+                                                          });
+                                                        }
+                                                      },
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              );
+                                      const SizedBox(height: 8.0),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'TEST TYPE',
+                                            style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                          ),
+                                          const SizedBox(height: 6.0),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF2C415E),
+                                              borderRadius: BorderRadius.circular(8.0),
+                                              border: Border.all(color: const Color(0xFF1E3A8A)),
+                                            ),
+                                            child: DropdownButtonHideUnderline(
+                                              child: DropdownButton<String>(
+                                                value: selectedReportTest,
+                                                isExpanded: true,
+                                                dropdownColor: const Color(0xFF344D6E),
+                                                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w500),
+                                                items: ['All', ...testNames].map((String value) {
+                                                  return DropdownMenuItem<String>(
+                                                    value: value,
+                                                    child: Text(value == 'All' ? 'All (Complete Lot Certificate & Dossier)' : value, overflow: TextOverflow.ellipsis),
+                                                  );
+                                                }).toList(),
+                                                onChanged: (v) {
+                                                  if (v != null) {
+                                                    setStateDialog(() {
+                                                      selectedReportTest = v;
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'SELECT TEST TYPE',
+                                        style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10.0, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 6.0),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF2C415E),
+                                          borderRadius: BorderRadius.circular(8.0),
+                                          border: Border.all(color: const Color(0xFF1E3A8A)),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: selectedReportTest,
+                                            isExpanded: true,
+                                            dropdownColor: const Color(0xFF344D6E),
+                                            style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w500),
+                                            items: ['All', ...testNames].map((String value) {
+                                              return DropdownMenuItem<String>(
+                                                value: value,
+                                                child: Text(value),
+                                              );
+                                            }).toList(),
+                                            onChanged: (v) {
+                                              setStateDialog(() {
+                                                selectedReportTest = v!;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
 
                         final statsBoxWidget = Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -3554,9 +4177,9 @@ class _HistoryTabState extends State<HistoryTab> {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Expanded(flex: 2, child: testSelectorWidget),
-                              const SizedBox(width: 24.0),
-                              Expanded(flex: 3, child: statsBoxWidget),
+                              Expanded(flex: isLotAcceptance && singleRecord == null ? 3 : 2, child: testSelectorWidget),
+                              const SizedBox(width: 20.0),
+                              Expanded(flex: isLotAcceptance && singleRecord == null ? 2 : 3, child: statsBoxWidget),
                             ],
                           );
                         }
@@ -3793,9 +4416,9 @@ class _HistoryTabState extends State<HistoryTab> {
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
                             final csvContent = ReportGenerator.generateCsv(reportRecords, selectedReportTest, widget.currentModule);
-                            final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
+                            final repCaliber = (singleRecord?.caliber ?? (isLotAcceptance ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber'))).replaceAll(';', ' ').trim();
                             final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
-                            final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
+                            final repLotNo = singleRecord?.lotNo ?? (isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch'));
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadCsv(
                               content: csvContent, 
@@ -3828,9 +4451,9 @@ class _HistoryTabState extends State<HistoryTab> {
                               adminRules: widget.adminRules,
                               loggedInUser: widget.loggedInUser,
                             );
-                            final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
+                            final repCaliber = (singleRecord?.caliber ?? (isLotAcceptance ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber'))).replaceAll(';', ' ').trim();
                             final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
-                            final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
+                            final repLotNo = singleRecord?.lotNo ?? (isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch'));
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.downloadDoc(
                               content: docContent, 
@@ -3863,12 +4486,12 @@ class _HistoryTabState extends State<HistoryTab> {
                               adminRules: widget.adminRules,
                               loggedInUser: widget.loggedInUser,
                             );
-                            final repCaliber = (singleRecord?.caliber ?? (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber')).replaceAll(';', ' ').trim();
+                            final repCaliber = (singleRecord?.caliber ?? (isLotAcceptance ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber'))).replaceAll(';', ' ').trim();
                             final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
-                            final repLotNo = singleRecord?.lotNo ?? (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch');
+                            final repLotNo = singleRecord?.lotNo ?? (isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch'));
                             final exportFilename = '${repCaliber}_${repTestName}_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                             await ReportHelper.instance.printHtml(
-                              htmlContent: htmlContent,
+                              htmlContent: htmlContent, 
                               filename: exportFilename,
                             );
                           },
@@ -3918,8 +4541,8 @@ class _HistoryTabState extends State<HistoryTab> {
                                 adminRules: widget.adminRules,
                                 loggedInUser: widget.loggedInUser,
                               );
-                              final repCaliber = (reportRecords.first.caliber).replaceAll(';', ' ').trim();
-                              final repLotNo = reportRecords.first.lotNo;
+                              final repCaliber = (isLotAcceptance ? selectedReportCaliber : (reportRecords.first.caliber)).replaceAll(';', ' ').trim();
+                              final repLotNo = isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : reportRecords.first.lotNo;
                               final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                               await ReportHelper.instance.downloadDoc(
                                 content: docContent, 
@@ -3950,11 +4573,11 @@ class _HistoryTabState extends State<HistoryTab> {
                                 adminRules: widget.adminRules,
                                 loggedInUser: widget.loggedInUser,
                               );
-                              final repCaliber = (reportRecords.first.caliber).replaceAll(';', ' ').trim();
-                              final repLotNo = reportRecords.first.lotNo;
+                              final repCaliber = (isLotAcceptance ? selectedReportCaliber : (reportRecords.first.caliber)).replaceAll(';', ' ').trim();
+                              final repLotNo = isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : reportRecords.first.lotNo;
                               final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                               await ReportHelper.instance.printHtml(
-                                htmlContent: htmlContent,
+                                htmlContent: htmlContent, 
                                 filename: exportFilename,
                               );
                             },

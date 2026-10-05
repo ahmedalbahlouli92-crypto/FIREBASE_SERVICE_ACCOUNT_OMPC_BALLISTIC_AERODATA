@@ -1820,6 +1820,8 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _certRsReqCtrl = TextEditingController();
   final TextEditingController _certPrimerSampleCtrl = TextEditingController();
   final TextEditingController _certPrimerReqCtrl = TextEditingController();
+  final TextEditingController _certTerminalSampleCtrl = TextEditingController();
+  final TextEditingController _certTerminalReqCtrl = TextEditingController();
 
   void _loadFunctionCaliberRules(String caliber) {
     final func = _adminRules['function_test'] ?? {};
@@ -2022,6 +2024,8 @@ class _MainShellState extends State<MainShell> {
     _certRsReqCtrl.dispose();
     _certPrimerSampleCtrl.dispose();
     _certPrimerReqCtrl.dispose();
+    _certTerminalSampleCtrl.dispose();
+    _certTerminalReqCtrl.dispose();
     _ruleNewSampleLocationCtrl.dispose();
     _ruleEditSampleLocationCtrl.dispose();
     _ruleWaterproofCondCtrl.dispose();
@@ -2179,6 +2183,9 @@ class _MainShellState extends State<MainShell> {
 
     _certPrimerSampleCtrl.text = (calConfig['primer_sample'] ?? '175 rounds').toString();
     _certPrimerReqCtrl.text = (calConfig['primer_req'] ?? 'H̄+5SD ≤ 450 mm\nH̄-2SD ≥ 75 mm').toString().replaceAll('<br/>', '\n');
+
+    _certTerminalSampleCtrl.text = (calConfig['terminal_sample'] ?? '10 rounds').toString();
+    _certTerminalReqCtrl.text = (calConfig['terminal_req'] ?? 'Steel Penetration: Yes\nAlum Penetration: Yes').toString().replaceAll('<br/>', '\n');
   }
 
   Future<void> _handleSaveCertTemplate() async {
@@ -2213,6 +2220,8 @@ class _MainShellState extends State<MainShell> {
       'residual_req': _certRsReqCtrl.text.trim().replaceAll('\n', '<br/>'),
       'primer_sample': _certPrimerSampleCtrl.text.trim(),
       'primer_req': _certPrimerReqCtrl.text.trim().replaceAll('\n', '<br/>'),
+      'terminal_sample': _certTerminalSampleCtrl.text.trim(),
+      'terminal_req': _certTerminalReqCtrl.text.trim().replaceAll('\n', '<br/>'),
     };
     _adminRules['certificate_templates'] = certTemplates;
 
@@ -8571,13 +8580,17 @@ class _MainShellState extends State<MainShell> {
                         if (!locs.any((l) => l.toLowerCase() == newLoc.toLowerCase())) {
                           locs.add(newLoc);
                           _adminRules['sample_locations'] = locs;
+                          await SupabaseService.addSamplingLocation(newLoc);
                           await _storageService.saveRules(_adminRules);
                           setState(() {
                             _adminRules = Map<String, dynamic>.from(_adminRules);
                             _ruleNewSampleLocationCtrl.clear();
                           });
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Sampling location "$newLoc" added successfully.')),
+                            SnackBar(
+                              content: Text('Sampling location "$newLoc" added successfully.'),
+                              backgroundColor: const Color(0xFF10B981),
+                            ),
                           );
                         }
                       }
@@ -8689,6 +8702,7 @@ class _MainShellState extends State<MainShell> {
                                             if (updated.isNotEmpty) {
                                               locs[idx] = updated;
                                               _adminRules['sample_locations'] = locs;
+                                              await SupabaseService.renameSamplingLocation(locName, updated);
                                               await _storageService.saveRules(_adminRules);
                                               setState(() {
                                                 _adminRules = Map<String, dynamic>.from(_adminRules);
@@ -8717,13 +8731,52 @@ class _MainShellState extends State<MainShell> {
                                 constraints: const BoxConstraints(),
                                 padding: EdgeInsets.zero,
                                 tooltip: 'Delete Location',
-                                onPressed: () async {
-                                  locs.removeAt(idx);
-                                  _adminRules['sample_locations'] = locs;
-                                  await _storageService.saveRules(_adminRules);
-                                  setState(() {
-                                    _adminRules = Map<String, dynamic>.from(_adminRules);
-                                  });
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (delCtx) => AlertDialog(
+                                      backgroundColor: const Color(0xFF1E293B),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0), side: const BorderSide(color: Color(0xFF334155))),
+                                      title: Row(
+                                        children: const [
+                                          Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                                          SizedBox(width: 8),
+                                          Text('Delete Location', style: TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                      content: Text(
+                                        'Are you sure you want to delete sampling location "$locName"?',
+                                        style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.0),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(delCtx),
+                                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            locs.removeAt(idx);
+                                            _adminRules['sample_locations'] = locs;
+                                            await SupabaseService.deleteSamplingLocation(locName);
+                                            await _storageService.saveRules(_adminRules);
+                                            setState(() {
+                                              _adminRules = Map<String, dynamic>.from(_adminRules);
+                                            });
+                                            Navigator.pop(delCtx);
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Sampling location "$locName" deleted.'),
+                                                backgroundColor: const Color(0xFFDC2626),
+                                                behavior: SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          },
+                                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
                                 },
                               ),
                             ],
@@ -9548,6 +9601,35 @@ class _MainShellState extends State<MainShell> {
                       controller: _certPrimerReqCtrl,
                       isMultiline: true,
                       hintText: 'H̄+5SD ≤ 450 mm\nH̄-2SD ≥ 75 mm',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 8. Terminal Effect Test
+            _buildCertTestSection(
+              testNumber: '8',
+              testTitle: 'Terminal Effect Test',
+              icon: Icons.shield_outlined,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: _buildCertInputField(
+                      label: 'Sample Size',
+                      controller: _certTerminalSampleCtrl,
+                      hintText: '10 rounds',
+                    ),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: _buildCertInputField(
+                      label: 'Requirements (Penetration Criteria)',
+                      controller: _certTerminalReqCtrl,
+                      isMultiline: true,
+                      hintText: 'Steel Penetration: Yes\nAlum Penetration: Yes',
                     ),
                   ),
                 ],

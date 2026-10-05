@@ -2821,11 +2821,7 @@ class _EntryTabState extends State<EntryTab> {
     final String calculatedStatus = _getCalculatedStatus();
     final String finalStatus;
     if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
-      if (calculatedStatus == 'Approved') {
-        finalStatus = 'Approved';
-      } else {
-        finalStatus = _isManualStatusSelected && _status.isNotEmpty ? _status : calculatedStatus;
-      }
+      finalStatus = calculatedStatus; // strictly decided by auto calculation
     } else {
       finalStatus = _isManualStatusSelected && _status.isNotEmpty ? _status : calculatedStatus;
     }
@@ -9034,17 +9030,17 @@ class _EntryTabState extends State<EntryTab> {
             autoStatus = _calculateFunctionTestStatus(l1: l1, l2: l2, l3: l3, l4: l4);
           }
         } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
-          // Quality status is based strictly on EPVAT calculated results (custom formulas or standard limits). Admin instruction is an advisory recommendation only.
+          // Quality status is decided strictly by auto calculation of EPVAT formulas.
           autoStatus = _getCalculatedStatus();
-          if (autoStatus == 'Approved' && _status != 'Approved') {
-            _status = 'Approved';
+          if (_status != autoStatus) {
+            _status = autoStatus!;
             _isManualStatusSelected = false;
           }
         }
 
         if (!_isManualStatusSelected && autoStatus != null && _status != autoStatus) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_isManualStatusSelected) {
+            if (mounted && (!_isManualStatusSelected || _testName == 'EPVAT test' || _testName == 'Propellant Test')) {
               setState(() {
                 _status = autoStatus!;
               });
