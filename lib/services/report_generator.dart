@@ -403,22 +403,6 @@ class ReportGenerator {
       caliber,
       isThreeTemp: isThreeTemp,
     );
-    final String activePressureUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty
-        ? records[0].epvatPressureUnit
-        : 'bar';
-    final String defaultTemp = '21';
-
-    final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
-    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
-      Map<String, dynamic>.from(f as Map),
-      variables,
-      defaultTemp: defaultTemp,
-      activePressureUnit: activePressureUnit,
-    )).toList();
-    final testedResults = results.where((r) => r.isApplicable).toList();
-    final displayResults = testedResults.isNotEmpty ? testedResults : results;
-    final bool allPassed = testedResults.isEmpty || testedResults.every((r) => r.isPassed);
-
     // Kinetic Energy box if applicable
     String keBox = '';
     final r21 = records.firstWhere(
@@ -440,6 +424,25 @@ class ReportGenerator {
         </div>''';
       }
     }
+
+    if (list.isEmpty) {
+      return keBox;
+    }
+    final String activePressureUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty
+        ? records[0].epvatPressureUnit
+        : 'bar';
+    final String defaultTemp = '21';
+
+    final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
+    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
+      Map<String, dynamic>.from(f as Map),
+      variables,
+      defaultTemp: defaultTemp,
+      activePressureUnit: activePressureUnit,
+    )).toList();
+    final testedResults = results.where((r) => r.isApplicable).toList();
+    final displayResults = testedResults.isNotEmpty ? testedResults : results;
+    final bool allPassed = testedResults.isEmpty || testedResults.every((r) => r.isPassed);
 
     final rowsBuffer = StringBuffer();
     for (int i = 0; i < displayResults.length; i++) {
@@ -674,9 +677,39 @@ class ReportGenerator {
     final pressure = records.isNotEmpty ? (records[0].pressureBar.isEmpty ? '' : '${records[0].pressureBar} bar') : '';
     final viscosity = records.isNotEmpty ? formatViscosity(records[0].viscosity) : '';
     final samplingLocation = records.isNotEmpty ? records[0].samplingLocation : '';
-    final batchResult = records.isNotEmpty ? records[0].status : 'N/A';
+    final bool isEpvatTest = testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant');
+    bool epvatFormulasPassed = true;
+    if (isEpvatTest) {
+      final epvRules = adminRules['epvat'] ?? {};
+      final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
+      final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
+          records.map((r) => r.cartridgeTemp).toSet().length > 1;
+      final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
+        formulasMap,
+        cleanCaliber,
+        isThreeTemp: isThreeTemp,
+      );
+      if (epvFormulaList.isNotEmpty) {
+        final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(records);
+        final evaluatedResults = epvFormulaList.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
+          Map<String, dynamic>.from(f as Map),
+          epvVars,
+          defaultTemp: '21',
+        )).toList();
+        final applicableResults = evaluatedResults.where((r) => r.isApplicable).toList();
+        if (applicableResults.isNotEmpty) {
+          epvatFormulasPassed = applicableResults.every((r) => r.isPassed);
+        }
+      }
+    }
 
-    final hasRejected = records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
+    final batchResult = isEpvatTest
+        ? (epvatFormulasPassed ? 'Approved' : 'Rejected')
+        : (records.isNotEmpty ? records[0].status : 'N/A');
+
+    final hasRejected = isEpvatTest
+        ? !epvatFormulasPassed
+        : records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
     final hasRetest = records.any((r) => r.status.toLowerCase() == 'retest');
     final hasPending = records.any((r) => r.status.toLowerCase() == 'pending review');
     final hasCondition = records.any((r) => r.status.toLowerCase().contains('condition'));
@@ -1957,9 +1990,39 @@ class ReportGenerator {
     final pressure = records.isNotEmpty ? (records[0].pressureBar.isEmpty ? '' : '${records[0].pressureBar} bar') : '';
     final viscosity = records.isNotEmpty ? formatViscosity(records[0].viscosity) : '';
     final samplingLocation = records.isNotEmpty ? records[0].samplingLocation : '';
-    final batchResult = records.isNotEmpty ? records[0].status : 'N/A';
+    final bool isEpvatTest = testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant');
+    bool epvatFormulasPassed = true;
+    if (isEpvatTest) {
+      final epvRules = adminRules['epvat'] ?? {};
+      final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
+      final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
+          records.map((r) => r.cartridgeTemp).toSet().length > 1;
+      final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
+        formulasMap,
+        caliber,
+        isThreeTemp: isThreeTemp,
+      );
+      if (epvFormulaList.isNotEmpty) {
+        final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(records);
+        final evaluatedResults = epvFormulaList.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
+          Map<String, dynamic>.from(f as Map),
+          epvVars,
+          defaultTemp: '21',
+        )).toList();
+        final applicableResults = evaluatedResults.where((r) => r.isApplicable).toList();
+        if (applicableResults.isNotEmpty) {
+          epvatFormulasPassed = applicableResults.every((r) => r.isPassed);
+        }
+      }
+    }
 
-    final hasRejected = records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
+    final batchResult = isEpvatTest
+        ? (epvatFormulasPassed ? 'Approved' : 'Rejected')
+        : (records.isNotEmpty ? records[0].status : 'N/A');
+
+    final hasRejected = isEpvatTest
+        ? !epvatFormulasPassed
+        : records.any((r) => r.status.toLowerCase() == 'rejected' || r.status.toLowerCase() == 'failed');
     final hasRetest = records.any((r) => r.status.toLowerCase() == 'retest');
     final hasPending = records.any((r) => r.status.toLowerCase() == 'pending review');
     final hasCondition = records.any((r) => r.status.toLowerCase().contains('condition'));
@@ -2872,27 +2935,9 @@ class ReportGenerator {
     final String defWpReq = is762M80 ? 'No. of Leaks ≤ 3 Leaks' : (is9mm ? 'No. of Leaks ≤ 6 Leaks' : 'No. of Leaks ≤ 6 Leaks');
     final String defExtReq = is762M80 ? 'Min Force ≥ 265 N (NATO STANAG 2310)' : (is9mm ? 'Min Force ≥ 200 N' : 'Min Force ≥ 200 N');
     final String defAccReq = is762M80 ? 'Max Mean Radius ≤ 50 mm / SD ≤ 200 mm' : (is9mm ? 'Max Mean Radius ≤ 50 mm' : 'SD ≤ 200 mm');
-    final String defEpvReq21 = is762M80
-        ? 'Max Mean Chamber ≤ 3800 Bar<br/>Min Mean Port ≥ 200 Bar'
-        : (is9mm
-            ? 'Max Mean Chamber ≤ 2350 Bar<br/>Min Mean Port ≥ 100 Bar'
-            : (isBlank
-                ? 'Max Mean Chamber ≤ 2100 Bar'
-                : 'Max Mean Chamber +3SD ≤ 4450 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar'));
-    final String defEpvReq52 = is762M80
-        ? 'Max Mean Chamber ≤ 4150 Bar<br/>Min Mean Port ≥ 200 Bar'
-        : (is9mm
-            ? 'Max Mean Chamber ≤ 2600 Bar<br/>Min Mean Port ≥ 100 Bar'
-            : (isBlank
-                ? 'Max Mean Chamber ≤ 2300 Bar'
-                : 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar'));
-    final String defEpvReq54 = is762M80
-        ? 'Max Mean Chamber ≤ 3600 Bar<br/>Min Mean Port ≥ 180 Bar'
-        : (is9mm
-            ? 'Max Mean Chamber ≤ 2200 Bar<br/>Min Mean Port ≥ 90 Bar'
-            : (isBlank
-                ? 'Max Mean Chamber ≤ 1900 Bar'
-                : 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port ≥ 1030 Bar'));
+    final String defEpvReq21 = 'Admin Configured Formula Criteria';
+    final String defEpvReq52 = 'Admin Configured Formula Criteria';
+    final String defEpvReq54 = 'Admin Configured Formula Criteria';
     final String defFuncReq = is762M80
         ? 'Critical Defect 0<br/>Major Defects 3<br/>Level 3 Defects 6<br/>Level 4 Defects 18'
         : (is9mm
@@ -3010,6 +3055,31 @@ class ReportGenerator {
             ? '${epvRec21.produced} rounds'
             : (calConfig['epvat_sample_21'] as String? ?? (is762M80 ? '30 rounds' : '90 rounds')));
 
+    // Evaluate EPVAT custom formulas configured by admin
+    final epvRules = adminRules['epvat'] ?? {};
+    final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
+    final bool isThreeTemp = scopedRecords.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
+        scopedRecords.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
+    final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
+      formulasMap,
+      cleanCaliber,
+      isThreeTemp: isThreeTemp,
+    );
+
+    bool matchesTemp(Map<String, dynamic> f, String temp) {
+      final form = (f['formula'] ?? '').toString();
+      final name = (f['name'] ?? '').toString();
+      if (temp == '21') {
+        return form.contains('@21') || form.contains('@ 21') || name.contains('21') ||
+               (!form.contains('@52') && !form.contains('@54') && !form.contains('@-54') && !form.contains('@ 52') && !form.contains('@ 54') && !name.contains('52') && !name.contains('54'));
+      } else if (temp == '52') {
+        return form.contains('@52') || form.contains('@ 52') || name.contains('52');
+      } else if (temp == '54') {
+        return form.contains('@54') || form.contains('@ 54') || form.contains('@-54') || form.contains('@ -54') || name.contains('54');
+      }
+      return false;
+    }
+
     String buildEpvatTempResult(String rawConfig, String temp, BallisticRecord? rec) {
       if (rec == null && (epvVars['p1_mean_$temp'] == null || epvVars['p1_mean_$temp'] == 0.0)) {
         return '<span style="color: #94a3b8; font-style: italic;">-</span>';
@@ -3038,6 +3108,23 @@ class ReportGenerator {
         if (resList.isNotEmpty) return resList.join('');
       }
 
+      // Check if admin custom formulas exist for this temperature
+      final tempFormulas = epvFormulaList.where((f) => matchesTemp(f, temp)).toList();
+      if (tempFormulas.isNotEmpty) {
+        final resList = <String>[];
+        for (final f in tempFormulas) {
+          try {
+            final res = EpvatFormulaHelper.evaluateFormulaItem(f, epvVars, defaultTemp: temp, activePressureUnit: activePressureUnit);
+            if (res.isApplicable) {
+              final n = f['name'] ?? f['formula'] ?? '';
+              final u = f['unit'] ?? activePressureUnit;
+              resList.add('<div style="font-weight: bold; color: #1e293b;">$n: <span style="font-weight: normal;">${res.calculatedValue.toStringAsFixed(1)} $u</span></div>');
+            }
+          } catch (_) {}
+        }
+        if (resList.isNotEmpty) return resList.join('');
+      }
+
       if (rec != null) {
         final p1 = rec.epvatMeanPressure.isNotEmpty ? rec.epvatMeanPressure : '';
         final p2 = rec.epvatP2MeanPressure.isNotEmpty ? rec.epvatP2MeanPressure : '';
@@ -3059,28 +3146,35 @@ class ReportGenerator {
       return '<span style="color: #94a3b8; font-style: italic;">-</span>';
     }
 
+    String buildEpvatReqForTemp(String temp, String fallback) {
+      final custom = calConfig?['epvat_req_$temp'] as String?;
+      if (custom != null && custom.trim().isNotEmpty && !custom.contains('3800') && !custom.contains('4200')) {
+        return custom.trim();
+      }
+      final tempFormulas = epvFormulaList.where((f) => matchesTemp(f, temp)).toList();
+      if (tempFormulas.isNotEmpty) {
+        return tempFormulas.map((f) {
+          final n = f['name'] ?? f['formula'] ?? '';
+          final op = f['operator'] ?? '<=';
+          final lim = f['limit'] ?? '';
+          final u = f['unit'] ?? activePressureUnit;
+          return '<div><strong>$n</strong> $op $lim $u</div>';
+        }).join('');
+      }
+      return fallback;
+    }
+
     final epvResult21 = buildEpvatTempResult(calConfig['epvat_result_formula_21'] as String? ?? '', '21', epvRec21);
-    final epvReq21 = calConfig['epvat_req_21'] as String? ?? defEpvReq21;
+    final epvReq21 = buildEpvatReqForTemp('21', defEpvReq21);
     final epvRemarks21 = cleanRemarks(epvRec21?.notes);
 
     final epvResult52 = buildEpvatTempResult(calConfig['epvat_result_formula_52'] as String? ?? '', '52', epvRec52);
-    final epvReq52 = calConfig['epvat_req_52'] as String? ?? defEpvReq52;
+    final epvReq52 = buildEpvatReqForTemp('52', defEpvReq52);
     final epvRemarks52 = cleanRemarks(epvRec52?.notes);
 
     final epvResult54 = buildEpvatTempResult(calConfig['epvat_result_formula_54'] as String? ?? '', '54', epvRec54);
-    final epvReq54 = calConfig['epvat_req_54'] as String? ?? defEpvReq54;
+    final epvReq54 = buildEpvatReqForTemp('54', defEpvReq54);
     final epvRemarks54 = cleanRemarks(epvRec54?.notes);
-
-    // Evaluate EPVAT custom formulas if configured or available
-    final epvRules = adminRules['epvat'] ?? {};
-    final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-    final bool isThreeTemp = scopedRecords.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
-        scopedRecords.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
-    final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
-      formulasMap,
-      cleanCaliber,
-      isThreeTemp: isThreeTemp,
-    );
 
     bool epvatFormulasPassed = true;
     final epvatRecords = scopedRecords.where((r) => r.testName.toLowerCase().contains('epvat') || r.testName.toLowerCase().contains('propellant')).toList();
@@ -3097,9 +3191,17 @@ class ReportGenerator {
       }
     }
 
-    final epvStatus21 = epvRec21 != null ? (epvatFormulasPassed ? (epvRec21.status.isNotEmpty ? epvRec21.status : 'Approved') : 'Rejected') : (epvVars['p1_mean_21'] != null && epvVars['p1_mean_21']! > 0 ? (epvatFormulasPassed ? 'Approved' : 'Rejected') : '-');
-    final epvStatus52 = epvRec52 != null ? (epvatFormulasPassed ? (epvRec52.status.isNotEmpty ? epvRec52.status : 'Approved') : 'Rejected') : (epvVars['p1_mean_52'] != null && epvVars['p1_mean_52']! > 0 ? (epvatFormulasPassed ? 'Approved' : 'Rejected') : '-');
-    final epvStatus54 = epvRec54 != null ? (epvatFormulasPassed ? (epvRec54.status.isNotEmpty ? epvRec54.status : 'Approved') : 'Rejected') : (epvVars['p1_mean_54'] != null && epvVars['p1_mean_54']! > 0 ? (epvatFormulasPassed ? 'Approved' : 'Rejected') : '-');
+    final String calculatedEpvStatus = epvatFormulasPassed ? 'Approved' : 'Rejected';
+
+    final epvStatus21 = (epvRec21 != null || (epvVars['p1_mean_21'] != null && epvVars['p1_mean_21']! > 0))
+        ? calculatedEpvStatus
+        : '-';
+    final epvStatus52 = (epvRec52 != null || (epvVars['p1_mean_52'] != null && epvVars['p1_mean_52']! > 0))
+        ? calculatedEpvStatus
+        : '-';
+    final epvStatus54 = (epvRec54 != null || (epvVars['p1_mean_54'] != null && epvVars['p1_mean_54']! > 0))
+        ? calculatedEpvStatus
+        : '-';
 
     // 5. Function Test
     final int funcInitial = funcRec != null ? funcRec.produced : 0;

@@ -698,14 +698,14 @@ class EpvatFormulaHelper {
 
   /// Retrieves custom formulas for a given caliber with resilient matching.
   /// Supports exact match ('5.56x45 SS109'), short code ('SS109'), case-insensitive matches,
-  /// and falls back to 'default' or standard defaults.
+  /// and returns only formulas explicitly configured by the admin (no hardcoded fallback failures).
   static List<Map<String, dynamic>> getFormulasForCaliber(
     Map<String, dynamic> formulasMap,
     String caliber, {
     bool isThreeTemp = true,
   }) {
     if (formulasMap.isEmpty) {
-      return getDefaultFormulas(isThreeTemp: isThreeTemp);
+      return [];
     }
     // 1. Direct match (if list is non-empty)
     if (formulasMap.containsKey(caliber) && formulasMap[caliber] is List) {
@@ -735,13 +735,8 @@ class EpvatFormulaHelper {
         }
       }
     }
-    // 3. Fallback to 'default' key if specified and non-empty
-    if (formulasMap.containsKey('default') && formulasMap['default'] is List) {
-      final list = (formulasMap['default'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      if (list.isNotEmpty) return list;
-    }
-    // 4. Return default NATO EPVAT formulas if caliber was never configured
-    return getDefaultFormulas(isThreeTemp: isThreeTemp);
+    // Only return formulas explicitly configured by admin for this caliber - no default or hardcoded fallbacks
+    return [];
   }
 
   /// Returns standard default formulas if none are defined for the caliber
@@ -769,21 +764,21 @@ class EpvatFormulaHelper {
         'name': 'P1 3-Sigma (+21°C)',
         'formula': 'P1 Mean @ 21 + 3 * P1 SD @ 21',
         'operator': '<=',
-        'limit': '4200',
+        'limit': '4500',
         'unit': 'bar',
       },
       {
         'name': 'P1 3-Sigma (+52°C)',
         'formula': 'P1 Mean @ 52 + 3 * P1 SD @ 52',
         'operator': '<=',
-        'limit': '4400',
+        'limit': '4600',
         'unit': 'bar',
       },
       {
         'name': 'P1 3-Sigma (-54°C)',
         'formula': 'P1 Mean @ 54 + 3 * P1 SD @ 54',
         'operator': '<=',
-        'limit': '4200',
+        'limit': '4600',
         'unit': 'bar',
       },
       {

@@ -8261,10 +8261,10 @@ class _EntryTabState extends State<EntryTab> {
     final epvLimits = epv['limits'] ?? {};
     final activeEpv = epvLimits[cleanTemp] ?? epvLimits['+21'] ?? {};
     return {
-      'vel_min': (activeEpv['vel_min'] ?? 900.0).toDouble(),
-      'vel_max': (activeEpv['vel_max'] ?? 930.0).toDouble(),
-      'p1_max': (activeEpv['p1_max'] ?? 3800.0).toDouble(),
-      'p2_min': (activeEpv['p2_min'] ?? 200.0).toDouble(),
+      'vel_min': (activeEpv['vel_min'] ?? 0.0).toDouble(),
+      'vel_max': (activeEpv['vel_max'] ?? 9999.0).toDouble(),
+      'p1_max': (activeEpv['p1_max'] ?? 9999.0).toDouble(),
+      'p2_min': (activeEpv['p2_min'] ?? 0.0).toDouble(),
     };
   }
   

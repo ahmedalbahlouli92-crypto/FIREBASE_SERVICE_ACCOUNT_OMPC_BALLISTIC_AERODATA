@@ -198,12 +198,6 @@ class SvgChartGenerator {
       buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="9" fill="#64748b" font-family="sans-serif">$val</text>''');
     }
 
-    // Reference Limit Line (3800 Bar)
-    final limitY = padTop + chartH - (3800.0 / axisMax * chartH);
-    if (limitY >= padTop && limitY <= padTop + chartH) {
-      buffer.writeln('''  <line x1="$padLeft" y1="$limitY" x2="${width - padRight}" y2="$limitY" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3"/>''');
-      buffer.writeln('''  <text x="${width - padRight - 5}" y="${limitY - 3}" text-anchor="end" font-size="8" font-weight="bold" fill="#ef4444" font-family="sans-serif">3800 Bar Standard Limit</text>''');
-    }
 
     // Grouped Bars
     final groupW = chartW / display.length;

@@ -430,58 +430,58 @@ final Map<String, dynamic> _defaultRules = {
   'epvat': {
     'limits_by_caliber': {
       '5.56x45 SS109': {
-        '+21': {'vel_min': 915.0, 'vel_max': 945.0, 'p1_max': 3800.0, 'p2_min': 200.0},
-        '+52': {'vel_min': 925.0, 'vel_max': 965.0, 'p1_max': 4200.0, 'p2_min': 200.0},
-        '-54': {'vel_min': 895.0, 'vel_max': 925.0, 'p1_max': 3600.0, 'p2_min': 180.0},
-        'instructions': '5.56x45 SS109: Ensure P1 Chamber <= 3800 bar at +21°C, and P2 Port >= 200 bar.',
+        '+21': {'vel_min': 915.0, 'vel_max': 945.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 925.0, 'vel_max': 965.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 895.0, 'vel_max': 925.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '5.56x45 SS109: Evaluated strictly per admin custom formulas.',
       },
       '5.56x45 M193': {
-        '+21': {'vel_min': 953.0, 'vel_max': 980.0, 'p1_max': 3800.0, 'p2_min': 200.0},
-        '+52': {'vel_min': 960.0, 'vel_max': 995.0, 'p1_max': 4200.0, 'p2_min': 200.0},
-        '-54': {'vel_min': 935.0, 'vel_max': 965.0, 'p1_max': 3600.0, 'p2_min': 180.0},
-        'instructions': '5.56x45 M193: Target velocity 965 m/s at +21°C. P1 max 3800 bar.',
+        '+21': {'vel_min': 953.0, 'vel_max': 980.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 960.0, 'vel_max': 995.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 935.0, 'vel_max': 965.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '5.56x45 M193: Target velocity 965 m/s. Pressure evaluated strictly per admin custom formulas.',
       },
       '5.56x45 .223 69 grains': {
-        '+21': {'vel_min': 870.0, 'vel_max': 905.0, 'p1_max': 3800.0, 'p2_min': 190.0},
-        '+52': {'vel_min': 880.0, 'vel_max': 920.0, 'p1_max': 4200.0, 'p2_min': 190.0},
-        '-54': {'vel_min': 850.0, 'vel_max': 885.0, 'p1_max': 3600.0, 'p2_min': 170.0},
-        'instructions': '.223 69gr Match: P1 max 3800 bar, Velocity 870-905 m/s.',
+        '+21': {'vel_min': 870.0, 'vel_max': 905.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 880.0, 'vel_max': 920.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 850.0, 'vel_max': 885.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '.223 69gr Match: Velocity 870-905 m/s. Pressure evaluated per admin formulas.',
       },
       '5.56x45 .223 55 grains': {
-        '+21': {'vel_min': 950.0, 'vel_max': 980.0, 'p1_max': 3800.0, 'p2_min': 200.0},
-        '+52': {'vel_min': 960.0, 'vel_max': 995.0, 'p1_max': 4200.0, 'p2_min': 200.0},
-        '-54': {'vel_min': 930.0, 'vel_max': 960.0, 'p1_max': 3600.0, 'p2_min': 180.0},
-        'instructions': '.223 55gr: P1 max 3800 bar, Velocity 950-980 m/s.',
+        '+21': {'vel_min': 950.0, 'vel_max': 980.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 960.0, 'vel_max': 995.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 930.0, 'vel_max': 960.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '.223 55gr: Velocity 950-980 m/s. Pressure evaluated per admin formulas.',
       },
       '5.56x45 .223 77 grains': {
-        '+21': {'vel_min': 830.0, 'vel_max': 865.0, 'p1_max': 3800.0, 'p2_min': 180.0},
-        '+52': {'vel_min': 840.0, 'vel_max': 880.0, 'p1_max': 4200.0, 'p2_min': 180.0},
-        '-54': {'vel_min': 810.0, 'vel_max': 845.0, 'p1_max': 3600.0, 'p2_min': 160.0},
-        'instructions': '.223 77gr Long Range: P1 max 3800 bar, Velocity 830-865 m/s.',
+        '+21': {'vel_min': 830.0, 'vel_max': 865.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 840.0, 'vel_max': 880.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 810.0, 'vel_max': 845.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '.223 77gr Long Range: Velocity 830-865 m/s. Pressure evaluated per admin formulas.',
       },
       '5.56x45 M200 Blank': {
-        '+21': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 2100.0, 'p2_min': 100.0},
-        '+52': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 2300.0, 'p2_min': 100.0},
-        '-54': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 1900.0, 'p2_min': 80.0},
-        'instructions': '5.56 M200 Blank: Chamber pressure check only (no bullet velocity).',
+        '+21': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '5.56 M200 Blank: Chamber pressure check only (per admin custom formulas).',
       },
       '7.62x51 M80': {
-        '+21': {'vel_min': 823.0, 'vel_max': 853.0, 'p1_max': 3800.0, 'p2_min': 200.0},
-        '+52': {'vel_min': 835.0, 'vel_max': 870.0, 'p1_max': 4150.0, 'p2_min': 200.0},
-        '-54': {'vel_min': 805.0, 'vel_max': 835.0, 'p1_max': 3600.0, 'p2_min': 180.0},
-        'instructions': '7.62x51 M80: Velocity 823-853 m/s at +21°C. P1 max 3800 bar.',
+        '+21': {'vel_min': 823.0, 'vel_max': 853.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 835.0, 'vel_max': 870.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 805.0, 'vel_max': 835.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '7.62x51 M80: Velocity 823-853 m/s at +21°C. Pressure evaluated per admin custom formulas.',
       },
       '7.62x51 .308': {
-        '+21': {'vel_min': 820.0, 'vel_max': 855.0, 'p1_max': 3800.0, 'p2_min': 200.0},
-        '+52': {'vel_min': 830.0, 'vel_max': 870.0, 'p1_max': 4150.0, 'p2_min': 200.0},
-        '-54': {'vel_min': 800.0, 'vel_max': 835.0, 'p1_max': 3600.0, 'p2_min': 180.0},
-        'instructions': '.308 Win: Velocity 820-855 m/s at +21°C. P1 max 3800 bar.',
+        '+21': {'vel_min': 820.0, 'vel_max': 855.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 830.0, 'vel_max': 870.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 800.0, 'vel_max': 835.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '.308 Win: Velocity 820-855 m/s at +21°C. Pressure evaluated per admin custom formulas.',
       },
       '7.62x51 M82 Blank': {
-        '+21': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 2100.0, 'p2_min': 100.0},
-        '+52': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 2300.0, 'p2_min': 100.0},
-        '-54': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 1900.0, 'p2_min': 80.0},
-        'instructions': '7.62 M82 Blank: Pressure check only (no projectile velocity).',
+        '+21': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 0.0, 'vel_max': 0.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': '7.62 M82 Blank: Pressure check only (per admin custom formulas).',
       },
       '9x19mm Para': {
         '+21': {'vel_min': 370.0, 'vel_max': 400.0, 'p1_max': 2350.0, 'p2_min': 100.0},
@@ -508,33 +508,33 @@ final Map<String, dynamic> _defaultRules = {
         'instructions': '9x19mm 124gr CMJ: Velocity 360-390 m/s at +21°C, P1 max 2350 bar.',
       },
       'default': {
-        '+21': {'vel_min': 900.0, 'vel_max': 930.0, 'p1_max': 3800.0, 'p2_min': 200.0},
-        '+52': {'vel_min': 910.0, 'vel_max': 950.0, 'p1_max': 4200.0, 'p2_min': 200.0},
-        '-54': {'vel_min': 880.0, 'vel_max': 910.0, 'p1_max': 3500.0, 'p2_min': 180.0},
-        'instructions': 'General EPVAT limits. P1 Chamber max 3800 bar, P2 Port min 200 bar.',
+        '+21': {'vel_min': 0.0, 'vel_max': 9999.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '+52': {'vel_min': 0.0, 'vel_max': 9999.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        '-54': {'vel_min': 0.0, 'vel_max': 9999.0, 'p1_max': 9999.0, 'p2_min': 0.0},
+        'instructions': 'EPVAT evaluation governed exclusively by admin-defined custom formulas.',
       },
     },
     'limits': {
       '+21': {
-        'vel_min': 900.0,
-        'vel_max': 930.0,
-        'p1_max': 3800.0,
-        'p2_min': 200.0,
+        'vel_min': 0.0,
+        'vel_max': 9999.0,
+        'p1_max': 9999.0,
+        'p2_min': 0.0,
       },
       '+52': {
-        'vel_min': 910.0,
-        'vel_max': 950.0,
-        'p1_max': 4200.0,
-        'p2_min': 200.0,
+        'vel_min': 0.0,
+        'vel_max': 9999.0,
+        'p1_max': 9999.0,
+        'p2_min': 0.0,
       },
       '-54': {
-        'vel_min': 880.0,
-        'vel_max': 910.0,
-        'p1_max': 3500.0,
-        'p2_min': 180.0,
+        'vel_min': 0.0,
+        'vel_max': 9999.0,
+        'p1_max': 9999.0,
+        'p2_min': 0.0,
       }
     },
-    'instructions': 'Ensure P1 (Chamber) does not exceed limits, and P2 (Port) remains above minimums.',
+    'instructions': 'EPVAT evaluation governed exclusively by admin-defined custom formulas.',
     // Bullet mass (grams) per caliber — used for kinetic energy: E = 0.5 * (m/1000) * v^2
     'bullet_mass_grams': {
       '5.56x45 SS109': 4.0,
@@ -557,54 +557,182 @@ final Map<String, dynamic> _defaultRules = {
     'custom_formulas': {
       '5.56x45 SS109': [
         {
-          'name': 'P1 Max Individual (+21°C)',
-          'formula': 'P1_MAX_INDIVIDUAL',
-          'operator': '<=',
-          'limit': '4200',
+          'name': 'Chmaber Pressure +21 °C',
           'unit': 'bar',
-          'description': 'NATO STANAG 4172: Max individual chamber pressure at +21°C'
+          'limit': '4450',
+          'formula': 'Mean P1 @21 + 3*SD P1 @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
         },
         {
-          'name': 'P1 Mean + 3SD (+21°C)',
-          'formula': 'P1_MEAN + 3 * P1_SD',
-          'operator': '<=',
-          'limit': '4200',
+          'name': 'chamber Pressure +52 °',
           'unit': 'bar',
-          'description': '3-Sigma Chamber Pressure at +21°C'
+          'limit': '4550',
+          'formula': 'Mean P1 @52',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
         },
         {
-          'name': 'P2 Port Mean - 3SD (+21°C)',
-          'formula': 'P2_MEAN - 3 * P2_SD',
+          'name': 'Chmaber Pressure -54 °C',
+          'unit': 'bar',
+          'limit': '4550',
+          'formula': 'Mean P1 @54 °C',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure +21 °C',
+          'unit': 'bar',
+          'limit': '1030',
+          'formula': 'Mean P2 @21 - 3*SD P2 @21',
           'operator': '>=',
-          'limit': '180',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure +52 °C',
           'unit': 'bar',
-          'description': 'Port pressure minimum 3-sigma bound at +21°C'
+          'limit': '1030',
+          'formula': 'Mean P2 @52 - 3*SD P2 @52',
+          'operator': '>=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure -54 °C',
+          'unit': 'bar',
+          'limit': '1030',
+          'formula': 'Mean P2 @ 54',
+          'operator': '>=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure diff +52/+21 °C',
+          'unit': 'bar',
+          'limit': '150',
+          'formula': 'Mean P2 @52 - Mean P2 @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure diff -54/+21 °C',
+          'unit': 'bar',
+          'limit': '150',
+          'formula': 'Mean P2 @54 - Mean P2 @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Speed Diff +52/+21 °C',
+          'unit': 'm/s',
+          'limit': '50',
+          'formula': 'Mean Vel @52 - Mean Vel @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Speed diff -54/+21 °C',
+          'unit': 'm/s',
+          'limit': '-80',
+          'formula': 'Mean Vel @54 - Mean Vel @21',
+          'operator': '>=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Action time -54 °C',
+          'unit': 'ms',
+          'limit': '3',
+          'formula': 'Mean Action Time @-54 + 5* SD Action Time @-54',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
         }
       ],
       'SS109': [
         {
-          'name': 'P1 Max Individual (+21°C)',
-          'formula': 'P1_MAX_INDIVIDUAL',
-          'operator': '<=',
-          'limit': '4200',
+          'name': 'Chmaber Pressure +21 °C',
           'unit': 'bar',
-          'description': 'NATO STANAG 4172: Max individual chamber pressure at +21°C'
+          'limit': '4450',
+          'formula': 'Mean P1 @21 + 3*SD P1 @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
         },
         {
-          'name': 'P1 Mean + 3SD (+21°C)',
-          'formula': 'P1_MEAN + 3 * P1_SD',
-          'operator': '<=',
-          'limit': '4200',
+          'name': 'chamber Pressure +52 °',
           'unit': 'bar',
-          'description': '3-Sigma Chamber Pressure at +21°C'
+          'limit': '4550',
+          'formula': 'Mean P1 @52',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
         },
         {
-          'name': 'P2 Port Mean - 3SD (+21°C)',
-          'formula': 'P2_MEAN - 3 * P2_SD',
+          'name': 'Chmaber Pressure -54 °C',
+          'unit': 'bar',
+          'limit': '4550',
+          'formula': 'Mean P1 @54 °C',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure +21 °C',
+          'unit': 'bar',
+          'limit': '1030',
+          'formula': 'Mean P2 @21 - 3*SD P2 @21',
           'operator': '>=',
-          'limit': '180',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure +52 °C',
           'unit': 'bar',
-          'description': 'Port pressure minimum 3-sigma bound at +21°C'
+          'limit': '1030',
+          'formula': 'Mean P2 @52 - 3*SD P2 @52',
+          'operator': '>=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure -54 °C',
+          'unit': 'bar',
+          'limit': '1030',
+          'formula': 'Mean P2 @ 54',
+          'operator': '>=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure diff +52/+21 °C',
+          'unit': 'bar',
+          'limit': '150',
+          'formula': 'Mean P2 @52 - Mean P2 @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Port Pressure diff -54/+21 °C',
+          'unit': 'bar',
+          'limit': '150',
+          'formula': 'Mean P2 @54 - Mean P2 @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Speed Diff +52/+21 °C',
+          'unit': 'm/s',
+          'limit': '50',
+          'formula': 'Mean Vel @52 - Mean Vel @21',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Speed diff -54/+21 °C',
+          'unit': 'm/s',
+          'limit': '-80',
+          'formula': 'Mean Vel @54 - Mean Vel @21',
+          'operator': '>=',
+          'description': 'Custom rule for 5.56x45 SS109'
+        },
+        {
+          'name': 'Action time -54 °C',
+          'unit': 'ms',
+          'limit': '3',
+          'formula': 'Mean Action Time @-54 + 5* SD Action Time @-54',
+          'operator': '<=',
+          'description': 'Custom rule for 5.56x45 SS109'
         }
       ],
       '5.56x45 M193': [
@@ -713,16 +841,6 @@ final Map<String, dynamic> _defaultRules = {
           'description': '3-Sigma Blank Chamber Pressure at +21°C'
         }
       ],
-      'default': [
-        {
-          'name': 'P1 Mean + 3SD (+21°C)',
-          'formula': 'P1_MEAN + 3 * P1_SD',
-          'operator': '<=',
-          'limit': '4200',
-          'unit': 'bar',
-          'description': 'Statistical upper bound for chamber pressure at +21°C'
-        }
-      ]
     },
   },
   'cyclic_rate': {
@@ -2089,7 +2207,7 @@ class _MainShellState extends State<MainShell> {
     final activeEpv = Map<String, dynamic>.from(calEpv[_ruleSelectedEpvatTemp] ?? (epv['limits']?[_ruleSelectedEpvatTemp] ?? defaultEpv));
     _ruleEpvMinVelCtrl.text = (activeEpv['vel_min'] ?? defaultEpv['vel_min'] ?? 900.0).toString();
     _ruleEpvMaxVelCtrl.text = (activeEpv['vel_max'] ?? defaultEpv['vel_max'] ?? 930.0).toString();
-    _ruleEpvMaxP1Ctrl.text = (activeEpv['p1_max'] ?? defaultEpv['p1_max'] ?? 3800.0).toString();
+    _ruleEpvMaxP1Ctrl.text = (activeEpv['p1_max'] ?? defaultEpv['p1_max'] ?? 9999.0).toString();
     _ruleEpvMinP2Ctrl.text = (activeEpv['p2_min'] ?? defaultEpv['p2_min'] ?? 200.0).toString();
     final instructionsByCaliber = Map<String, dynamic>.from(epv['instructions_by_caliber'] ?? {});
     _ruleEpvInstructionsCtrl.text = (instructionsByCaliber[_ruleSelectedCaliber] ?? calEpv['instructions'] ?? epv['instructions'] ?? 'Ensure P1 Chamber does not exceed limits, and P2 Port remains above minimums.').toString();
@@ -2185,9 +2303,9 @@ class _MainShellState extends State<MainShell> {
     _certAccReqCtrl.text = (calConfig['accuracy_req'] ?? 'SD ≤ 200 mm').toString().replaceAll('<br/>', '\n');
 
     _certEpvSampleCtrl.text = (calConfig['epvat_sample_21'] ?? '90 rounds').toString();
-    _certEpvReq21Ctrl.text = (calConfig['epvat_req_21'] ?? 'Max Mean Chamber +3SD ≤ 4450 Bar\nMin Mean Port - 3SD ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
-    _certEpvReq52Ctrl.text = (calConfig['epvat_req_52'] ?? 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port - 3SD ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
-    _certEpvReq54Ctrl.text = (calConfig['epvat_req_54'] ?? 'Max Mean Chamber ≤ 4550 Bar\nMin Mean Port ≥ 1030 Bar').toString().replaceAll('<br/>', '\n');
+    _certEpvReq21Ctrl.text = (calConfig['epvat_req_21'] ?? 'Admin Configured Formula Criteria').toString().replaceAll('<br/>', '\n');
+    _certEpvReq52Ctrl.text = (calConfig['epvat_req_52'] ?? 'Admin Configured Formula Criteria').toString().replaceAll('<br/>', '\n');
+    _certEpvReq54Ctrl.text = (calConfig['epvat_req_54'] ?? 'Admin Configured Formula Criteria').toString().replaceAll('<br/>', '\n');
     if (calConfig['epvat_result_formulas_21'] is List) {
       _certEpvFormula21Ctrl.text = (calConfig['epvat_result_formulas_21'] as List).map((e) => e.toString().trim()).where((e) => e.isNotEmpty).join('\n');
     } else {
@@ -2331,7 +2449,7 @@ class _MainShellState extends State<MainShell> {
     final activeEpv = Map<String, dynamic>.from(calEpv[_ruleSelectedEpvatTemp] ?? {});
     activeEpv['vel_min'] = double.tryParse(_ruleEpvMinVelCtrl.text.trim()) ?? 900.0;
     activeEpv['vel_max'] = double.tryParse(_ruleEpvMaxVelCtrl.text.trim()) ?? 930.0;
-    activeEpv['p1_max'] = double.tryParse(_ruleEpvMaxP1Ctrl.text.trim()) ?? 3800.0;
+    activeEpv['p1_max'] = double.tryParse(_ruleEpvMaxP1Ctrl.text.trim()) ?? 9999.0;
     activeEpv['p2_min'] = double.tryParse(_ruleEpvMinP2Ctrl.text.trim()) ?? 200.0;
     activeEpv['action_time_max'] = double.tryParse(_ruleEpvMaxActionTimeCtrl.text.trim()) ?? 4.0;
     calEpv['action_time_max'] = double.tryParse(_ruleEpvMaxActionTimeCtrl.text.trim()) ?? 4.0;
