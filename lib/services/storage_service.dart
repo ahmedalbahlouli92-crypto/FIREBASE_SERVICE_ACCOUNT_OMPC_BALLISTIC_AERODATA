@@ -6,6 +6,7 @@ import '../models/ballistic_record.dart';
 import 'web_storage_stub.dart'
     if (dart.library.js) 'web_storage_web.dart';
 import 'supabase_service.dart';
+import 'epvat_formula_helper.dart';
 
 class StorageService {
   static const _channel = MethodChannel('com.ompc.ballistic/storage');
@@ -474,21 +475,30 @@ class StorageService {
 
           if (idx == -1) {
             // Local record is NOT in cloud records.
-            // Preserve all valid local records: add to combined and queue for cloud sync
-            combined.add(local);
-            unsynced.add(local);
+            // Only preserve and queue if it's a genuine offline-created record or in pendingSyncIds
+            final bool isPending = local.id == null || local.id!.isEmpty || pendingSyncIds.contains(local.id);
+            if (isPending) {
+              combined.add(local);
+              unsynced.add(local);
+            }
           } else {
-            // Local record has updates not yet reflected in cloud; keep local version
+            // Local record matches a cloud record.
+            // Cloud is authoritative unless this client has an explicit offline edit waiting to sync
             final c = combined[idx];
-            if ((local.isRetest && !c.isRetest) ||
-                local.defects != c.defects ||
-                local.status != c.status ||
-                local.notes != c.notes) {
+            final bool isPendingOffline = (local.id != null && pendingSyncIds.contains(local.id)) ||
+                (c.id != null && pendingSyncIds.contains(c.id));
+            if (isPendingOffline) {
               combined[idx] = local;
               unsynced.add(local);
+            } else {
+              // Cloud record is authoritative!
+              combined[idx] = c;
             }
           }
         }
+
+        // Auto-correct any EPVAT records whose status was previously 'Rejected' under obsolete rules but now pass all admin formulas
+        final finalizedCombined = await _autoCorrectEpvatStatus(combined, syncModule: cleanModule);
 
         // Background sync: Upload genuine unsynced offline records up to Supabase
         if (unsynced.isNotEmpty) {
@@ -516,15 +526,15 @@ class StorageService {
 
         // Clean local cache so deleted records never persist in localStorage or CSV
         if (kIsWeb) {
-          overwriteWebRecords(combined, cleanModule);
+          overwriteWebRecords(finalizedCombined, cleanModule);
         } else if (recordsToPurgeLocally.isNotEmpty) {
           for (final purged in recordsToPurgeLocally) {
             await _purgeRecordFromAllLocalCsvFiles(purged, cleanModule);
           }
         }
 
-        if (combined.isNotEmpty) {
-          return BallisticRecord.consolidateRecords(combined);
+        if (finalizedCombined.isNotEmpty) {
+          return BallisticRecord.consolidateRecords(finalizedCombined);
         }
       } catch (e) {
         print("Supabase load error: $e");
@@ -552,7 +562,8 @@ class StorageService {
         }
         return r;
       }).toList();
-      return BallisticRecord.consolidateRecords(filteredWeb);
+      final correctedWeb = await _autoCorrectEpvatStatus(filteredWeb);
+      return BallisticRecord.consolidateRecords(correctedWeb);
     }
     try {
       final file = await ensureDailyFileExists(module: cleanModule) as File;
@@ -589,10 +600,40 @@ class StorageService {
           }
         }
       }
-      return BallisticRecord.consolidateRecords(records);
+      final correctedLocal = await _autoCorrectEpvatStatus(records);
+      return BallisticRecord.consolidateRecords(correctedLocal);
     } catch (e) {
       print("Error loading local records: $e");
       return [];
+    }
+  }
+
+  Future<List<BallisticRecord>> _autoCorrectEpvatStatus(List<BallisticRecord> records, {String? syncModule}) async {
+    try {
+      final rules = await loadRules(localOnly: true);
+      final epvRules = rules['epvat'] ?? {};
+      final customFormulas = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
+      if (customFormulas.isEmpty) return records;
+
+      final updatedList = <BallisticRecord>[];
+      for (final r in records) {
+        if ((r.testName.toLowerCase().contains('epvat') || r.testName.toLowerCase().contains('propellant')) &&
+            r.status.toLowerCase().contains('reject')) {
+          final calculated = EpvatFormulaHelper.calculateEpvatRecordStatus(r, customFormulas);
+          if (calculated == 'Approved') {
+            final updatedRec = r.copyWith(status: 'Approved');
+            updatedList.add(updatedRec);
+            if (syncModule != null && updatedRec.id != null && updatedRec.id!.isNotEmpty) {
+              SupabaseService.updateRecord(updatedRec.id!, updatedRec, module: syncModule);
+            }
+            continue;
+          }
+        }
+        updatedList.add(r);
+      }
+      return updatedList;
+    } catch (_) {
+      return records;
     }
   }
 

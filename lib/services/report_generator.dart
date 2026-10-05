@@ -2972,13 +2972,21 @@ class ReportGenerator {
       if (name.contains('terminal')) termRec ??= r;
       if (name.contains('primer')) primerRec ??= r;
       if (name.contains('epvat') || name.contains('propellant')) {
-        final temp = r.cartridgeTemp;
-        if (temp.contains('+52') || temp.contains('52')) {
+        final isOverall = r.epvatPressureType == 'Overall' ||
+            (r.cartridgeTemp.contains('21') && (r.cartridgeTemp.contains('52') || r.cartridgeTemp.contains('54')));
+        if (isOverall) {
+          epvRec21 ??= r;
           epvRec52 ??= r;
-        } else if (temp.contains('-54') || temp.contains('54') || temp.contains('-32') || temp.contains('32')) {
           epvRec54 ??= r;
         } else {
-          epvRec21 ??= r;
+          final temp = r.cartridgeTemp;
+          if (temp.contains('+52') || temp.contains('52')) {
+            epvRec52 ??= r;
+          } else if (temp.contains('-54') || temp.contains('54') || temp.contains('-32') || temp.contains('32')) {
+            epvRec54 ??= r;
+          } else {
+            epvRec21 ??= r;
+          }
         }
       }
     }

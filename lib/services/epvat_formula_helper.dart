@@ -998,4 +998,49 @@ class EpvatFormulaHelper {
       return 0.0;
     }
   }
+
+  /// Evaluates an EPVAT record against the admin custom formulas for its caliber.
+  /// Returns 'Approved' if all applicable formulas pass (or if none configured).
+  /// Returns 'Rejected' if any applicable formula fails.
+  static String calculateEpvatRecordStatus(
+    BallisticRecord record,
+    Map<String, dynamic> customFormulasMap,
+  ) {
+    final bool isThreeTemp = record.epvatPressureType == 'Overall' ||
+        record.cartridgeTemp.contains(',') ||
+        record.cartridgeTemp.contains(';') ||
+        record.notes.contains('Temps:') ||
+        (record.cartridgeTemp.contains('21') && (record.cartridgeTemp.contains('52') || record.cartridgeTemp.contains('54')));
+
+    final formulas = getFormulasForCaliber(
+      customFormulasMap,
+      record.caliber,
+      isThreeTemp: isThreeTemp,
+    );
+
+    if (formulas.isEmpty) {
+      return 'Approved';
+    }
+
+    final vars = extractVariablesFromRecords([record]);
+    final defaultTemp = isThreeTemp
+        ? '21'
+        : (record.cartridgeTemp.replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim().isEmpty
+            ? '21'
+            : record.cartridgeTemp.replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
+
+    for (final f in formulas) {
+      final item = Map<String, dynamic>.from(f as Map);
+      final res = evaluateFormulaItem(
+        item,
+        vars,
+        defaultTemp: defaultTemp,
+        activePressureUnit: record.epvatPressureUnit.isNotEmpty ? record.epvatPressureUnit : 'bar',
+      );
+      if (res.isApplicable && !res.isPassed) {
+        return 'Rejected';
+      }
+    }
+    return 'Approved';
+  }
 }
