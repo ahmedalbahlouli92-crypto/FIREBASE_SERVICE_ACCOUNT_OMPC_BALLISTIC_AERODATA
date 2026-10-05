@@ -174,8 +174,11 @@ class EpvatFormulaHelper {
               .where((s) => s.isNotEmpty)
               .toSet()
               .toList();
-          if (extractedKeys.isNotEmpty) {
+          if (extractedKeys.length >= 3 || extractedKeys.length >= p1Secs.length) {
             tempKeys = extractedKeys;
+          } else if (extractedKeys.isNotEmpty) {
+            final Set<String> merged = {...extractedKeys, '21', '52', '54'};
+            tempKeys = merged.toList();
           }
         }
 

@@ -352,30 +352,26 @@ class _HistoryTabState extends State<HistoryTab> {
                                           ),
                                           const SizedBox(height: 4.0),
                                           Builder(builder: (context) {
-                                            final locList = <String>{
-                                              'After Packing machine',
-                                              'Priming machine',
-                                              'PC530',
-                                              'PB31/14',
-                                              'PD26',
-                                              'After visual inspection',
-                                              'After link machine',
-                                              'Warehouse A',
-                                              'Warehouse B',
-                                              'Production Line 1',
-                                              'Production Line 2',
-                                              'Ballistic Range 1',
-                                              'Storage Room',
-                                              if (r.samplingLocation.isNotEmpty) r.samplingLocation,
-                                            };
                                             final adminLocs = widget.adminRules['sample_locations'];
-                                            if (adminLocs is List) {
+                                            final locList = <String>{};
+                                            if (adminLocs is List && adminLocs.isNotEmpty) {
                                               for (final l in adminLocs) {
                                                 if (l != null && l.toString().trim().isNotEmpty) {
                                                   locList.add(l.toString().trim());
                                                 }
                                               }
+                                            } else {
+                                              locList.addAll([
+                                                'After Packing machine',
+                                                'Priming machine',
+                                                'PC530',
+                                                'PB31/14',
+                                                'PD26',
+                                                'After visual inspection',
+                                                'After link machine',
+                                              ]);
                                             }
+                                            if (r.samplingLocation.isNotEmpty) locList.add(r.samplingLocation);
                                             final currentVal = retestLocationCtrl.text.trim();
                                             final effectiveVal = currentVal.isNotEmpty && locList.contains(currentVal)
                                                 ? currentVal
@@ -1106,61 +1102,88 @@ class _HistoryTabState extends State<HistoryTab> {
     final velSDController = TextEditingController(text: r.velSD);
 
     // 5. EPVAT Test Multi-Temperature Setup
-    final epvVars = EpvatFormulaHelper.extractVariablesFromRecords([r]);
+    final relatedEpvRecords = widget.records.where((rec) =>
+      (rec.testName == 'EPVAT test' || rec.testName == 'Propellant Test' || rec.testName.toLowerCase().contains('epvat')) &&
+      rec.lotNo.trim() == r.lotNo.trim() &&
+      rec.caliber.trim() == r.caliber.trim()
+    ).toList();
+    final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(
+      relatedEpvRecords.isNotEmpty ? relatedEpvRecords : [r]
+    );
     String epvFmt(double? val) {
       if (val == null || val == 0.0) return '';
       return (val % 1 == 0) ? val.toInt().toString() : val.toStringAsFixed(1);
     }
 
     String epvActiveTempTab = '+21';
+    final rTemp = r.cartridgeTemp;
+    if (rTemp.contains('52') && !rTemp.contains('21')) {
+      epvActiveTempTab = '+52';
+    } else if ((rTemp.contains('54') || rTemp.contains('32')) && !rTemp.contains('21')) {
+      epvActiveTempTab = '-54';
+    }
+
+    // Helper to find recorded values from related records if current record r is for a specific temperature
+    BallisticRecord findTempRec(String t) {
+      return relatedEpvRecords.firstWhere(
+        (rec) => rec.cartridgeTemp.contains(t),
+        orElse: () => r,
+      );
+    }
+    final r21 = findTempRec('21');
+    final r52 = findTempRec('52');
+    final r54 = relatedEpvRecords.firstWhere(
+      (rec) => rec.cartridgeTemp.contains('54') || rec.cartridgeTemp.contains('32'),
+      orElse: () => r,
+    );
 
     // +21 °C (Ambient)
-    final epv21MeanP1 = TextEditingController(text: r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : epvFmt(epvVars['p1_mean_21']));
-    final epv21MaxP1 = TextEditingController(text: r.epvatMaxPressure.isNotEmpty ? r.epvatMaxPressure : epvFmt(epvVars['p1_max_21']));
-    final epv21MinP1 = TextEditingController(text: r.epvatMinPressure.isNotEmpty ? r.epvatMinPressure : epvFmt(epvVars['p1_min_21']));
-    final epv21SDP1 = TextEditingController(text: r.epvatSDPressure.isNotEmpty ? r.epvatSDPressure : epvFmt(epvVars['p1_sd_21']));
-    final epv21MeanP2 = TextEditingController(text: r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : epvFmt(epvVars['p2_mean_21']));
-    final epv21MaxP2 = TextEditingController(text: r.epvatP2MaxPressure.isNotEmpty ? r.epvatP2MaxPressure : epvFmt(epvVars['p2_max_21']));
-    final epv21MinP2 = TextEditingController(text: r.epvatP2MinPressure.isNotEmpty ? r.epvatP2MinPressure : epvFmt(epvVars['p2_min_21']));
-    final epv21SDP2 = TextEditingController(text: r.epvatP2SDPressure.isNotEmpty ? r.epvatP2SDPressure : epvFmt(epvVars['p2_sd_21']));
-    final epv21VelMean = TextEditingController(text: r.velMean.isNotEmpty ? r.velMean : epvFmt(epvVars['vel_mean_21']));
-    final epv21VelMax = TextEditingController(text: r.velMax.isNotEmpty ? r.velMax : epvFmt(epvVars['vel_max_21']));
-    final epv21VelMin = TextEditingController(text: r.velMin.isNotEmpty ? r.velMin : epvFmt(epvVars['vel_min_21']));
-    final epv21VelSD = TextEditingController(text: r.velSD.isNotEmpty ? r.velSD : epvFmt(epvVars['vel_sd_21']));
-    final epv21ActMean = TextEditingController(text: r.actionTimeMean.isNotEmpty ? r.actionTimeMean : epvFmt(epvVars['action_time_mean_21']));
-    final epv21ActSD = TextEditingController(text: r.actionTimeSD.isNotEmpty ? r.actionTimeSD : epvFmt(epvVars['action_time_sd_21']));
+    final epv21MeanP1 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatMeanPressure.isNotEmpty) ? r21.epvatMeanPressure : epvFmt(epvVars['p1_mean_21']));
+    final epv21MaxP1 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatMaxPressure.isNotEmpty) ? r21.epvatMaxPressure : epvFmt(epvVars['p1_max_21']));
+    final epv21MinP1 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatMinPressure.isNotEmpty) ? r21.epvatMinPressure : epvFmt(epvVars['p1_min_21']));
+    final epv21SDP1 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatSDPressure.isNotEmpty) ? r21.epvatSDPressure : epvFmt(epvVars['p1_sd_21']));
+    final epv21MeanP2 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatP2MeanPressure.isNotEmpty) ? r21.epvatP2MeanPressure : epvFmt(epvVars['p2_mean_21']));
+    final epv21MaxP2 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatP2MaxPressure.isNotEmpty) ? r21.epvatP2MaxPressure : epvFmt(epvVars['p2_max_21']));
+    final epv21MinP2 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatP2MinPressure.isNotEmpty) ? r21.epvatP2MinPressure : epvFmt(epvVars['p2_min_21']));
+    final epv21SDP2 = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.epvatP2SDPressure.isNotEmpty) ? r21.epvatP2SDPressure : epvFmt(epvVars['p2_sd_21']));
+    final epv21VelMean = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.velMean.isNotEmpty) ? r21.velMean : epvFmt(epvVars['vel_mean_21']));
+    final epv21VelMax = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.velMax.isNotEmpty) ? r21.velMax : epvFmt(epvVars['vel_max_21']));
+    final epv21VelMin = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.velMin.isNotEmpty) ? r21.velMin : epvFmt(epvVars['vel_min_21']));
+    final epv21VelSD = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.velSD.isNotEmpty) ? r21.velSD : epvFmt(epvVars['vel_sd_21']));
+    final epv21ActMean = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.actionTimeMean.isNotEmpty) ? r21.actionTimeMean : epvFmt(epvVars['action_time_mean_21']));
+    final epv21ActSD = TextEditingController(text: (r21.cartridgeTemp.contains('21') && r21.actionTimeSD.isNotEmpty) ? r21.actionTimeSD : epvFmt(epvVars['action_time_sd_21']));
 
     // +52 °C (Hot)
-    final epv52MeanP1 = TextEditingController(text: epvFmt(epvVars['p1_mean_52']));
-    final epv52MaxP1 = TextEditingController(text: epvFmt(epvVars['p1_max_52']));
-    final epv52MinP1 = TextEditingController(text: epvFmt(epvVars['p1_min_52']));
-    final epv52SDP1 = TextEditingController(text: epvFmt(epvVars['p1_sd_52']));
-    final epv52MeanP2 = TextEditingController(text: epvFmt(epvVars['p2_mean_52']));
-    final epv52MaxP2 = TextEditingController(text: epvFmt(epvVars['p2_max_52']));
-    final epv52MinP2 = TextEditingController(text: epvFmt(epvVars['p2_min_52']));
-    final epv52SDP2 = TextEditingController(text: epvFmt(epvVars['p2_sd_52']));
-    final epv52VelMean = TextEditingController(text: epvFmt(epvVars['vel_mean_52']));
-    final epv52VelMax = TextEditingController(text: epvFmt(epvVars['vel_max_52']));
-    final epv52VelMin = TextEditingController(text: epvFmt(epvVars['vel_min_52']));
-    final epv52VelSD = TextEditingController(text: epvFmt(epvVars['vel_sd_52']));
-    final epv52ActMean = TextEditingController(text: epvFmt(epvVars['action_time_mean_52']));
-    final epv52ActSD = TextEditingController(text: epvFmt(epvVars['action_time_sd_52']));
+    final epv52MeanP1 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatMeanPressure.isNotEmpty) ? r52.epvatMeanPressure : epvFmt(epvVars['p1_mean_52']));
+    final epv52MaxP1 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatMaxPressure.isNotEmpty) ? r52.epvatMaxPressure : epvFmt(epvVars['p1_max_52']));
+    final epv52MinP1 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatMinPressure.isNotEmpty) ? r52.epvatMinPressure : epvFmt(epvVars['p1_min_52']));
+    final epv52SDP1 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatSDPressure.isNotEmpty) ? r52.epvatSDPressure : epvFmt(epvVars['p1_sd_52']));
+    final epv52MeanP2 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatP2MeanPressure.isNotEmpty) ? r52.epvatP2MeanPressure : epvFmt(epvVars['p2_mean_52']));
+    final epv52MaxP2 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatP2MaxPressure.isNotEmpty) ? r52.epvatP2MaxPressure : epvFmt(epvVars['p2_max_52']));
+    final epv52MinP2 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatP2MinPressure.isNotEmpty) ? r52.epvatP2MinPressure : epvFmt(epvVars['p2_min_52']));
+    final epv52SDP2 = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.epvatP2SDPressure.isNotEmpty) ? r52.epvatP2SDPressure : epvFmt(epvVars['p2_sd_52']));
+    final epv52VelMean = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.velMean.isNotEmpty) ? r52.velMean : epvFmt(epvVars['vel_mean_52']));
+    final epv52VelMax = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.velMax.isNotEmpty) ? r52.velMax : epvFmt(epvVars['vel_max_52']));
+    final epv52VelMin = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.velMin.isNotEmpty) ? r52.velMin : epvFmt(epvVars['vel_min_52']));
+    final epv52VelSD = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.velSD.isNotEmpty) ? r52.velSD : epvFmt(epvVars['vel_sd_52']));
+    final epv52ActMean = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.actionTimeMean.isNotEmpty) ? r52.actionTimeMean : epvFmt(epvVars['action_time_mean_52']));
+    final epv52ActSD = TextEditingController(text: (r52.cartridgeTemp.contains('52') && r52.actionTimeSD.isNotEmpty) ? r52.actionTimeSD : epvFmt(epvVars['action_time_sd_52']));
 
     // -54 °C (Cold)
-    final epv54MeanP1 = TextEditingController(text: epvFmt(epvVars['p1_mean_54'] ?? epvVars['p1_mean_32']));
-    final epv54MaxP1 = TextEditingController(text: epvFmt(epvVars['p1_max_54'] ?? epvVars['p1_max_32']));
-    final epv54MinP1 = TextEditingController(text: epvFmt(epvVars['p1_min_54'] ?? epvVars['p1_min_32']));
-    final epv54SDP1 = TextEditingController(text: epvFmt(epvVars['p1_sd_54'] ?? epvVars['p1_sd_32']));
-    final epv54MeanP2 = TextEditingController(text: epvFmt(epvVars['p2_mean_54'] ?? epvVars['p2_mean_32']));
-    final epv54MaxP2 = TextEditingController(text: epvFmt(epvVars['p2_max_54'] ?? epvVars['p2_max_32']));
-    final epv54MinP2 = TextEditingController(text: epvFmt(epvVars['p2_min_54'] ?? epvVars['p2_min_32']));
-    final epv54SDP2 = TextEditingController(text: epvFmt(epvVars['p2_sd_54'] ?? epvVars['p2_sd_32']));
-    final epv54VelMean = TextEditingController(text: epvFmt(epvVars['vel_mean_54'] ?? epvVars['vel_mean_32']));
-    final epv54VelMax = TextEditingController(text: epvFmt(epvVars['vel_max_54'] ?? epvVars['vel_max_32']));
-    final epv54VelMin = TextEditingController(text: epvFmt(epvVars['vel_min_54'] ?? epvVars['vel_min_32']));
-    final epv54VelSD = TextEditingController(text: epvFmt(epvVars['vel_sd_54'] ?? epvVars['vel_sd_32']));
-    final epv54ActMean = TextEditingController(text: epvFmt(epvVars['action_time_mean_54'] ?? epvVars['action_time_mean_32']));
-    final epv54ActSD = TextEditingController(text: epvFmt(epvVars['action_time_sd_54'] ?? epvVars['action_time_sd_32']));
+    final epv54MeanP1 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatMeanPressure.isNotEmpty) ? r54.epvatMeanPressure : epvFmt(epvVars['p1_mean_54'] ?? epvVars['p1_mean_32']));
+    final epv54MaxP1 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatMaxPressure.isNotEmpty) ? r54.epvatMaxPressure : epvFmt(epvVars['p1_max_54'] ?? epvVars['p1_max_32']));
+    final epv54MinP1 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatMinPressure.isNotEmpty) ? r54.epvatMinPressure : epvFmt(epvVars['p1_min_54'] ?? epvVars['p1_min_32']));
+    final epv54SDP1 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatSDPressure.isNotEmpty) ? r54.epvatSDPressure : epvFmt(epvVars['p1_sd_54'] ?? epvVars['p1_sd_32']));
+    final epv54MeanP2 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatP2MeanPressure.isNotEmpty) ? r54.epvatP2MeanPressure : epvFmt(epvVars['p2_mean_54'] ?? epvVars['p2_mean_32']));
+    final epv54MaxP2 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatP2MaxPressure.isNotEmpty) ? r54.epvatP2MaxPressure : epvFmt(epvVars['p2_max_54'] ?? epvVars['p2_max_32']));
+    final epv54MinP2 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatP2MinPressure.isNotEmpty) ? r54.epvatP2MinPressure : epvFmt(epvVars['p2_min_54'] ?? epvVars['p2_min_32']));
+    final epv54SDP2 = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.epvatP2SDPressure.isNotEmpty) ? r54.epvatP2SDPressure : epvFmt(epvVars['p2_sd_54'] ?? epvVars['p2_sd_32']));
+    final epv54VelMean = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.velMean.isNotEmpty) ? r54.velMean : epvFmt(epvVars['vel_mean_54'] ?? epvVars['vel_mean_32']));
+    final epv54VelMax = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.velMax.isNotEmpty) ? r54.velMax : epvFmt(epvVars['vel_max_54'] ?? epvVars['vel_max_32']));
+    final epv54VelMin = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.velMin.isNotEmpty) ? r54.velMin : epvFmt(epvVars['vel_min_54'] ?? epvVars['vel_min_32']));
+    final epv54VelSD = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.velSD.isNotEmpty) ? r54.velSD : epvFmt(epvVars['vel_sd_54'] ?? epvVars['vel_sd_32']));
+    final epv54ActMean = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.actionTimeMean.isNotEmpty) ? r54.actionTimeMean : epvFmt(epvVars['action_time_mean_54'] ?? epvVars['action_time_mean_32']));
+    final epv54ActSD = TextEditingController(text: ((r54.cartridgeTemp.contains('54') || r54.cartridgeTemp.contains('32')) && r54.actionTimeSD.isNotEmpty) ? r54.actionTimeSD : epvFmt(epvVars['action_time_sd_54'] ?? epvVars['action_time_sd_32']));
 
     final epvCartridgeTempController = TextEditingController(text: r.cartridgeTemp.isNotEmpty ? r.cartridgeTemp : '+21');
     final epvPressureUnitController = TextEditingController(text: r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar');
@@ -1252,29 +1275,25 @@ class _HistoryTabState extends State<HistoryTab> {
       allDialogTestTypes.insert(0, editTestName);
     }
 
-    final List<String> dialogSampleLocations = [
-      'Line 1',
-      'Line 2',
-      'Line 3',
-      'Line 4',
-      'Line 5',
-      'Line 6',
-      'Assembly Line',
-      'Hopper Machine',
-      'Packing Line',
-      'QA Laboratory',
-      'Storage Warehouse',
-      'Case Shop',
-      'Bullet Shop',
-      'Loading Shop',
-    ];
-    if (widget.adminRules['sample_locations'] is List) {
-      for (var l in widget.adminRules['sample_locations']) {
+    final List<String> dialogSampleLocations = [];
+    final adminLocs = widget.adminRules['sample_locations'];
+    if (adminLocs is List && adminLocs.isNotEmpty) {
+      for (var l in adminLocs) {
         final locStr = l.toString().trim();
         if (locStr.isNotEmpty && !dialogSampleLocations.contains(locStr)) {
           dialogSampleLocations.add(locStr);
         }
       }
+    } else {
+      dialogSampleLocations.addAll([
+        'After Packing machine',
+        'Priming machine',
+        'PC530',
+        'PB31/14',
+        'PD26',
+        'After visual inspection',
+        'After link machine',
+      ]);
     }
     if (locationController.text.trim().isNotEmpty && !dialogSampleLocations.contains(locationController.text.trim())) {
       dialogSampleLocations.add(locationController.text.trim());
@@ -2338,6 +2357,11 @@ class _HistoryTabState extends State<HistoryTab> {
                       return 'mean=${mean.text.trim()},max=${max.text.trim()},min=${min.text.trim()},sd=${sd.text.trim()}';
                     }
 
+                    String buildActStat(TextEditingController mean, TextEditingController sd) {
+                      if (mean.text.trim().isEmpty && sd.text.trim().isEmpty) return '';
+                      return 'mean=${mean.text.trim()},sd=${sd.text.trim()}';
+                    }
+
                     final p1Joined = [
                       buildTempStat(epv21MeanP1, epv21MaxP1, epv21MinP1, epv21SDP1),
                       buildTempStat(epv52MeanP1, epv52MaxP1, epv52MinP1, epv52SDP1),
@@ -2357,10 +2381,71 @@ class _HistoryTabState extends State<HistoryTab> {
                     ].join(';');
 
                     final actJoined = [
-                      buildTempStat(epv21ActMean, epv21ActMean, epv21ActMean, epv21ActSD),
-                      buildTempStat(epv52ActMean, epv52ActMean, epv52ActMean, epv52ActSD),
-                      buildTempStat(epv54ActMean, epv54ActMean, epv54ActMean, epv54ActSD),
+                      buildActStat(epv21ActMean, epv21ActSD),
+                      buildActStat(epv52ActMean, epv52ActSD),
+                      buildActStat(epv54ActMean, epv54ActSD),
                     ].join(';');
+
+                    final bool has21 = epv21MeanP1.text.isNotEmpty || epv21VelMean.text.isNotEmpty || epv21MeanP2.text.isNotEmpty;
+                    final bool has52 = epv52MeanP1.text.isNotEmpty || epv52VelMean.text.isNotEmpty || epv52MeanP2.text.isNotEmpty;
+                    final bool has54 = epv54MeanP1.text.isNotEmpty || epv54VelMean.text.isNotEmpty || epv54MeanP2.text.isNotEmpty;
+
+                    final List<String> activeTemps = [];
+                    if (has21) activeTemps.add('+21°C');
+                    if (has52) activeTemps.add('+52°C');
+                    if (has54) activeTemps.add('-54°C');
+
+                    final String finalCartridgeTemp = isEpv
+                        ? (activeTemps.isNotEmpty
+                            ? activeTemps.join(', ')
+                            : (epvCartridgeTempController.text.trim().isNotEmpty ? epvCartridgeTempController.text.trim() : '+21°C'))
+                        : epvCartridgeTempController.text.trim();
+
+                    final primaryP1Mean = epv21MeanP1.text.trim().isNotEmpty
+                        ? epv21MeanP1.text.trim()
+                        : (epv52MeanP1.text.trim().isNotEmpty ? epv52MeanP1.text.trim() : (epv54MeanP1.text.trim().isNotEmpty ? epv54MeanP1.text.trim() : r.epvatMeanPressure));
+                    final primaryP1Max = epv21MaxP1.text.trim().isNotEmpty
+                        ? epv21MaxP1.text.trim()
+                        : (epv52MaxP1.text.trim().isNotEmpty ? epv52MaxP1.text.trim() : (epv54MaxP1.text.trim().isNotEmpty ? epv54MaxP1.text.trim() : r.epvatMaxPressure));
+                    final primaryP1Min = epv21MinP1.text.trim().isNotEmpty
+                        ? epv21MinP1.text.trim()
+                        : (epv52MinP1.text.trim().isNotEmpty ? epv52MinP1.text.trim() : (epv54MinP1.text.trim().isNotEmpty ? epv54MinP1.text.trim() : r.epvatMinPressure));
+                    final primaryP1SD = epv21SDP1.text.trim().isNotEmpty
+                        ? epv21SDP1.text.trim()
+                        : (epv52SDP1.text.trim().isNotEmpty ? epv52SDP1.text.trim() : (epv54SDP1.text.trim().isNotEmpty ? epv54SDP1.text.trim() : r.epvatSDPressure));
+
+                    final primaryP2Mean = epv21MeanP2.text.trim().isNotEmpty
+                        ? epv21MeanP2.text.trim()
+                        : (epv52MeanP2.text.trim().isNotEmpty ? epv52MeanP2.text.trim() : (epv54MeanP2.text.trim().isNotEmpty ? epv54MeanP2.text.trim() : r.epvatP2MeanPressure));
+                    final primaryP2Max = epv21MaxP2.text.trim().isNotEmpty
+                        ? epv21MaxP2.text.trim()
+                        : (epv52MaxP2.text.trim().isNotEmpty ? epv52MaxP2.text.trim() : (epv54MaxP2.text.trim().isNotEmpty ? epv54MaxP2.text.trim() : r.epvatP2MaxPressure));
+                    final primaryP2Min = epv21MinP2.text.trim().isNotEmpty
+                        ? epv21MinP2.text.trim()
+                        : (epv52MinP2.text.trim().isNotEmpty ? epv52MinP2.text.trim() : (epv54MinP2.text.trim().isNotEmpty ? epv54MinP2.text.trim() : r.epvatP2MinPressure));
+                    final primaryP2SD = epv21SDP2.text.trim().isNotEmpty
+                        ? epv21SDP2.text.trim()
+                        : (epv52SDP2.text.trim().isNotEmpty ? epv52SDP2.text.trim() : (epv54SDP2.text.trim().isNotEmpty ? epv54SDP2.text.trim() : r.epvatP2SDPressure));
+
+                    final primaryVelMean = epv21VelMean.text.trim().isNotEmpty
+                        ? epv21VelMean.text.trim()
+                        : (epv52VelMean.text.trim().isNotEmpty ? epv52VelMean.text.trim() : (epv54VelMean.text.trim().isNotEmpty ? epv54VelMean.text.trim() : velMeanController.text.trim()));
+                    final primaryVelMax = epv21VelMax.text.trim().isNotEmpty
+                        ? epv21VelMax.text.trim()
+                        : (epv52VelMax.text.trim().isNotEmpty ? epv52VelMax.text.trim() : (epv54VelMax.text.trim().isNotEmpty ? epv54VelMax.text.trim() : velMaxController.text.trim()));
+                    final primaryVelMin = epv21VelMin.text.trim().isNotEmpty
+                        ? epv21VelMin.text.trim()
+                        : (epv52VelMin.text.trim().isNotEmpty ? epv52VelMin.text.trim() : (epv54VelMin.text.trim().isNotEmpty ? epv54VelMin.text.trim() : velMinController.text.trim()));
+                    final primaryVelSD = epv21VelSD.text.trim().isNotEmpty
+                        ? epv21VelSD.text.trim()
+                        : (epv52VelSD.text.trim().isNotEmpty ? epv52VelSD.text.trim() : (epv54VelSD.text.trim().isNotEmpty ? epv54VelSD.text.trim() : velSDController.text.trim()));
+
+                    final primaryActMean = epv21ActMean.text.trim().isNotEmpty
+                        ? epv21ActMean.text.trim()
+                        : (epv52ActMean.text.trim().isNotEmpty ? epv52ActMean.text.trim() : (epv54ActMean.text.trim().isNotEmpty ? epv54ActMean.text.trim() : r.actionTimeMean));
+                    final primaryActSD = epv21ActSD.text.trim().isNotEmpty
+                        ? epv21ActSD.text.trim()
+                        : (epv52ActSD.text.trim().isNotEmpty ? epv52ActSD.text.trim() : (epv54ActSD.text.trim().isNotEmpty ? epv54ActSD.text.trim() : r.actionTimeSD));
 
                     final updated = r.copyWith(
                       testName: editTestName,
@@ -2408,27 +2493,25 @@ class _HistoryTabState extends State<HistoryTab> {
                       accMinY: accMinYController.text.trim(),
                       accRangeY: accRangeYController.text.trim(),
                       accSDY: accSDYController.text.trim(),
-                      velMean: isEpv ? (epv21VelMean.text.trim().isNotEmpty ? epv21VelMean.text.trim() : velMeanController.text.trim()) : velMeanController.text.trim(),
-                      velMin: isEpv ? (epv21VelMin.text.trim().isNotEmpty ? epv21VelMin.text.trim() : velMinController.text.trim()) : velMinController.text.trim(),
-                      velMax: isEpv ? (epv21VelMax.text.trim().isNotEmpty ? epv21VelMax.text.trim() : velMaxController.text.trim()) : velMaxController.text.trim(),
+                      velMean: isEpv ? primaryVelMean : velMeanController.text.trim(),
+                      velMin: isEpv ? primaryVelMin : velMinController.text.trim(),
+                      velMax: isEpv ? primaryVelMax : velMaxController.text.trim(),
                       velRange: isEpv ? '' : velRangeController.text.trim(),
-                      velSD: isEpv ? (epv21VelSD.text.trim().isNotEmpty ? epv21VelSD.text.trim() : velSDController.text.trim()) : velSDController.text.trim(),
+                      velSD: isEpv ? primaryVelSD : velSDController.text.trim(),
                       // EPVAT
-                      cartridgeTemp: isEpv
-                          ? ((epv52MeanP1.text.isNotEmpty || epv54MeanP1.text.isNotEmpty) ? '+21°C, +52°C, -54°C' : (epvCartridgeTempController.text.trim().isNotEmpty ? epvCartridgeTempController.text.trim() : '+21°C'))
-                          : epvCartridgeTempController.text.trim(),
+                      cartridgeTemp: finalCartridgeTemp,
                       epvatPressureUnit: epvPressureUnitController.text.trim(),
                       epvatPressureType: epvPressureTypeController.text.trim(),
-                      epvatMeanPressure: epv21MeanP1.text.trim(),
-                      epvatMaxPressure: epv21MaxP1.text.trim(),
-                      epvatMinPressure: epv21MinP1.text.trim(),
-                      epvatSDPressure: epv21SDP1.text.trim(),
-                      epvatP2MeanPressure: epv21MeanP2.text.trim(),
-                      epvatP2MaxPressure: epv21MaxP2.text.trim(),
-                      epvatP2MinPressure: epv21MinP2.text.trim(),
-                      epvatP2SDPressure: epv21SDP2.text.trim(),
-                      actionTimeMean: epv21ActMean.text.trim(),
-                      actionTimeSD: epv21ActSD.text.trim(),
+                      epvatMeanPressure: primaryP1Mean,
+                      epvatMaxPressure: primaryP1Max,
+                      epvatMinPressure: primaryP1Min,
+                      epvatSDPressure: primaryP1SD,
+                      epvatP2MeanPressure: primaryP2Mean,
+                      epvatP2MaxPressure: primaryP2Max,
+                      epvatP2MinPressure: primaryP2Min,
+                      epvatP2SDPressure: primaryP2SD,
+                      actionTimeMean: primaryActMean,
+                      actionTimeSD: primaryActSD,
                       epvatPressureRounds: p1Joined.replaceAll(';', '').trim().isNotEmpty ? p1Joined : r.epvatPressureRounds,
                       epvatP2PressureRounds: p2Joined.replaceAll(';', '').trim().isNotEmpty ? p2Joined : r.epvatP2PressureRounds,
                       epvatVelRounds: velJoined.replaceAll(';', '').trim().isNotEmpty ? velJoined : r.epvatVelRounds,
@@ -2508,6 +2591,7 @@ class _HistoryTabState extends State<HistoryTab> {
   }
 
   Widget _buildDialogTextField({
+    Key? key,
     required TextEditingController controller,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
@@ -2515,6 +2599,7 @@ class _HistoryTabState extends State<HistoryTab> {
     ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
+      key: key ?? ObjectKey(controller),
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
@@ -2975,7 +3060,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     ),
                   ),
                 ElevatedButton.icon(
-                  onPressed: () => _showReportGenerationDialog(filtered),
+                  onPressed: () => _showReportGenerationDialog(widget.records.where((r) => r.module == widget.currentModule).toList()),
                   icon: const Icon(Icons.picture_as_pdf, size: 16.0),
                   label: const Text('Generate Report'),
                   style: ElevatedButton.styleFrom(
@@ -3840,7 +3925,7 @@ class _HistoryTabState extends State<HistoryTab> {
         ? singleRecord.caliber
         : (_caliberFilter != 'All'
             ? _caliberFilter
-            : (initialRecords.isNotEmpty ? initialRecords.first.caliber : (calibers.isNotEmpty ? calibers.first : '7.62 x 39 mm')));
+            : (initialRecords.isNotEmpty ? initialRecords.first.caliber : (calibers.isNotEmpty ? calibers.first : '7.62x51 M80')));
     String selectedReportLot = singleRecord != null
         ? singleRecord.lotNo
         : (_lotFilter != 'All' ? _lotFilter : 'All');
@@ -3848,9 +3933,9 @@ class _HistoryTabState extends State<HistoryTab> {
         ? singleRecord.testName
         : (_lotFilter != 'All' ? 'All' : _testNameFilter);
 
-    if (isLotAcceptance && singleRecord == null && selectedReportLot == 'All') {
+    if (singleRecord == null && selectedReportLot == 'All') {
       final initialLots = initialRecords
-          .where((r) => r.caliber == selectedReportCaliber)
+          .where((r) => r.caliber.trim() == selectedReportCaliber.trim())
           .map((r) => r.lotNo.trim())
           .where((s) => s.isNotEmpty)
           .toSet()
@@ -3866,23 +3951,19 @@ class _HistoryTabState extends State<HistoryTab> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            final availableLotsForCaliber = isLotAcceptance
-                ? (initialRecords
-                    .where((r) => r.caliber == selectedReportCaliber)
-                    .map((r) => r.lotNo.trim())
-                    .where((s) => s.isNotEmpty)
-                    .toSet()
-                    .toList()
-                  ..sort())
-                : <String>[];
+            final availableLotsForCaliber = initialRecords
+                .where((r) => r.caliber.trim() == selectedReportCaliber.trim())
+                .map((r) => r.lotNo.trim())
+                .where((s) => s.isNotEmpty)
+                .toSet()
+                .toList()
+              ..sort();
 
             final reportRecords = singleRecord != null
                 ? [singleRecord]
                 : initialRecords.where((r) {
-                    if (isLotAcceptance) {
-                      if (r.caliber != selectedReportCaliber) return false;
-                      if (selectedReportLot != 'All' && r.lotNo.trim() != selectedReportLot) return false;
-                    }
+                    if (r.caliber.trim() != selectedReportCaliber.trim()) return false;
+                    if (selectedReportLot != 'All' && r.lotNo.trim() != selectedReportLot.trim()) return false;
                     return selectedReportTest == 'All' || r.testName == selectedReportTest;
                   }).toList();
 

@@ -263,17 +263,22 @@ class _EntryTabState extends State<EntryTab> {
   ];
   final List<String> _customSampleLocations = [];
   List<String> get _allSampleLocations {
-    final Set<String> locs = {
-      ..._defaultSampleLocations,
-    };
     final adminLocs = widget.adminRules['sample_locations'];
-    if (adminLocs is List) {
+    if (adminLocs is List && adminLocs.isNotEmpty) {
+      final Set<String> locs = {};
       for (final l in adminLocs) {
         if (l != null && l.toString().trim().isNotEmpty) {
           locs.add(l.toString().trim());
         }
       }
+      for (final cl in _customSampleLocations) {
+        if (cl.trim().isNotEmpty) locs.add(cl.trim());
+      }
+      return locs.toList();
     }
+    final Set<String> locs = {
+      ..._defaultSampleLocations,
+    };
     for (final cl in _customSampleLocations) {
       if (cl.trim().isNotEmpty) locs.add(cl.trim());
     }

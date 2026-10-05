@@ -2828,29 +2828,83 @@ class ReportGenerator {
     Map<String, dynamic> adminRules = const {},
     String loggedInUser = '',
   }) {
-    final caliber = records.isNotEmpty ? records.first.caliber : '5.56X45 SS109';
+    final caliber = records.isNotEmpty ? records.first.caliber : '7.62x51 M80';
     final cleanCaliber = caliber.replaceAll(';', ' ').trim();
-    final lotNo = records.isNotEmpty ? records.first.lotNo : '001 OMPC/26';
+    final lotNo = records.isNotEmpty ? records.first.lotNo : '';
     final cleanLotNo = lotNo.trim();
 
-    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
+    // Strictly scope records to target caliber and target lot
+    final scopedRecords = records.where((r) {
+      if (cleanCaliber.isNotEmpty && r.caliber.replaceAll(';', ' ').trim().toLowerCase() != cleanCaliber.toLowerCase()) {
+        return false;
+      }
+      if (cleanLotNo.isNotEmpty && r.lotNo.trim().toLowerCase() != cleanLotNo.toLowerCase()) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    final refList = scopedRecords.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
     final String reportRefNo = refList.isNotEmpty ? refList.first : 'REF:01';
 
     final inspectorName = loggedInUser.trim().isNotEmpty
         ? loggedInUser.trim()
-        : (records.isNotEmpty && records.first.operators.isNotEmpty ? records.first.operators : 'user name');
+        : (scopedRecords.isNotEmpty && scopedRecords.first.operators.isNotEmpty ? scopedRecords.first.operators : 'user name');
     final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
     final managerName = (adminRules['manager_name'] as String? ?? 'Acting QC & Engineering Manager').trim();
 
     final certTemplates = Map<String, dynamic>.from(adminRules['certificate_templates'] as Map? ?? {});
     Map<String, dynamic>? calConfig;
     for (final k in certTemplates.keys) {
-      if (k.toLowerCase() == cleanCaliber.toLowerCase() || cleanCaliber.toLowerCase().contains(k.toLowerCase())) {
+      if (k.toLowerCase() == cleanCaliber.toLowerCase() ||
+          cleanCaliber.toLowerCase().contains(k.toLowerCase()) ||
+          k.toLowerCase().contains(cleanCaliber.toLowerCase())) {
         calConfig = Map<String, dynamic>.from(certTemplates[k] as Map? ?? {});
         break;
       }
     }
     calConfig ??= {};
+
+    final bool is762M80 = cleanCaliber.toUpperCase().contains('M80') || cleanCaliber.contains('7.62');
+    final bool is9mm = cleanCaliber.contains('9x19') || cleanCaliber.contains('9mm');
+    final bool isBlank = cleanCaliber.contains('Blank') || cleanCaliber.contains('M200') || cleanCaliber.contains('M82');
+
+    final String defWpReq = is762M80 ? 'No. of Leaks ≤ 3 Leaks' : (is9mm ? 'No. of Leaks ≤ 6 Leaks' : 'No. of Leaks ≤ 6 Leaks');
+    final String defExtReq = is762M80 ? 'Min Force ≥ 265 N (NATO STANAG 2310)' : (is9mm ? 'Min Force ≥ 200 N' : 'Min Force ≥ 200 N');
+    final String defAccReq = is762M80 ? 'Max Mean Radius ≤ 50 mm / SD ≤ 200 mm' : (is9mm ? 'Max Mean Radius ≤ 50 mm' : 'SD ≤ 200 mm');
+    final String defEpvReq21 = is762M80
+        ? 'Max Mean Chamber ≤ 3800 Bar<br/>Min Mean Port ≥ 200 Bar'
+        : (is9mm
+            ? 'Max Mean Chamber ≤ 2350 Bar<br/>Min Mean Port ≥ 100 Bar'
+            : (isBlank
+                ? 'Max Mean Chamber ≤ 2100 Bar'
+                : 'Max Mean Chamber +3SD ≤ 4450 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar'));
+    final String defEpvReq52 = is762M80
+        ? 'Max Mean Chamber ≤ 4150 Bar<br/>Min Mean Port ≥ 200 Bar'
+        : (is9mm
+            ? 'Max Mean Chamber ≤ 2600 Bar<br/>Min Mean Port ≥ 100 Bar'
+            : (isBlank
+                ? 'Max Mean Chamber ≤ 2300 Bar'
+                : 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar'));
+    final String defEpvReq54 = is762M80
+        ? 'Max Mean Chamber ≤ 3600 Bar<br/>Min Mean Port ≥ 180 Bar'
+        : (is9mm
+            ? 'Max Mean Chamber ≤ 2200 Bar<br/>Min Mean Port ≥ 90 Bar'
+            : (isBlank
+                ? 'Max Mean Chamber ≤ 1900 Bar'
+                : 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port ≥ 1030 Bar'));
+    final String defFuncReq = is762M80
+        ? 'Critical Defect 0<br/>Major Defects 3<br/>Level 3 Defects 6<br/>Level 4 Defects 18'
+        : (is9mm
+            ? 'Critical Defect 0<br/>Major Defects 2<br/>Level 3 Defects 4'
+            : 'Critical Defect 0<br/>Major Defects 3<br/>Level 3 Defects 6<br/>Level 4 Defects 18');
+    final String defRsReq = is762M80
+        ? 'No. of cracks Neck/Body ≤ 2 Cracks<br/>No. of cracks Head = 0 Crack'
+        : 'No. of cracks I zone ≤ 3 Cracks<br/>No. of cracks M, L, K, J & S zone = 0 Crack';
+    final String defTermReq = 'Complete Penetration of Witness Plate';
+    final String defPrimerReq = is762M80
+        ? 'H̄+5SD ≤ 500 mm<br/>H̄-2SD ≥ 75 mm'
+        : 'H̄+5SD ≤ 450 mm<br/>H̄-2SD ≥ 75 mm';
 
     BallisticRecord? wpRec;
     BallisticRecord? extRec;
@@ -2863,7 +2917,7 @@ class ReportGenerator {
     BallisticRecord? termRec;
     BallisticRecord? primerRec;
 
-    for (final r in records) {
+    for (final r in scopedRecords) {
       final name = r.testName.toLowerCase();
       if (name.contains('waterproof')) wpRec ??= r;
       if (name.contains('extraction')) extRec ??= r;
@@ -2872,11 +2926,11 @@ class ReportGenerator {
       if (name.contains('residual') || name.contains('stress')) rsRec ??= r;
       if (name.contains('terminal')) termRec ??= r;
       if (name.contains('primer')) primerRec ??= r;
-      if (name.contains('epvat')) {
+      if (name.contains('epvat') || name.contains('propellant')) {
         final temp = r.cartridgeTemp;
         if (temp.contains('+52') || temp.contains('52')) {
           epvRec52 ??= r;
-        } else if (temp.contains('-54') || temp.contains('54')) {
+        } else if (temp.contains('-54') || temp.contains('54') || temp.contains('-32') || temp.contains('32')) {
           epvRec54 ??= r;
         } else {
           epvRec21 ??= r;
@@ -2892,10 +2946,10 @@ class ReportGenerator {
         ? '$wpTotalProduced rounds'
         : (wpRec != null && wpRec.produced > 0
             ? '${wpRec.produced} rounds'
-            : (calConfig['waterproof_sample'] as String? ?? '200 rounds'));
-    final String wpResult = wpRec != null ? _getRecordMetricsSummary(wpRec) : '0 leaks';
-    final wpReq = calConfig['waterproof_req'] as String? ?? 'No. of Leaks ≤ 6 Leaks';
-    final wpStatus = wpRec?.status ?? 'Approved';
+            : (calConfig['waterproof_sample'] as String? ?? (is762M80 ? '20 rounds' : '200 rounds')));
+    final String wpResult = wpRec != null ? _getRecordMetricsSummary(wpRec) : '-';
+    final wpReq = calConfig['waterproof_req'] as String? ?? defWpReq;
+    final wpStatus = wpRec != null ? (wpRec.status.isNotEmpty ? wpRec.status : 'Approved') : '-';
     final wpRemarks = cleanRemarks(wpRec?.notes);
 
     // 2. Extraction Force Test (Bullet Extraction)
@@ -2907,10 +2961,17 @@ class ReportGenerator {
         : (extRec != null && extRec.produced > 0
             ? '${extRec.produced} rounds'
             : (calConfig['extraction_sample'] as String? ?? '20 rounds'));
-    final extMin = extRec != null && extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec != null && extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '474.2');
-    final extResult = '<div style="font-weight: bold; color: #1e293b;">Min Force: <span style="font-weight: normal;">$extMin N</span></div>';
-    final extReq = calConfig['extraction_req'] as String? ?? 'Min Force ≥ 200';
-    final extStatus = extRec?.status ?? 'Approved';
+    final String extResult;
+    if (extRec != null) {
+      final extMin = extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '');
+      extResult = extMin.isNotEmpty
+          ? '<div style="font-weight: bold; color: #1e293b;">Min Force: <span style="font-weight: normal;">$extMin N</span></div>'
+          : '-';
+    } else {
+      extResult = '-';
+    }
+    final extReq = calConfig['extraction_req'] as String? ?? defExtReq;
+    final extStatus = extRec != null ? (extRec.status.isNotEmpty ? extRec.status : 'Approved') : '-';
     final extRemarks = cleanRemarks(extRec?.notes);
 
     // 3. Accuracy Test
@@ -2922,20 +2983,22 @@ class ReportGenerator {
         : (accRec != null && accRec.produced > 0
             ? '${accRec.produced} rounds'
             : (calConfig['accuracy_sample'] as String? ?? '30 rounds'));
-    String accResult = '';
-    if (accRec != null && accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
-      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">${accRec.accSDX} mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">${accRec.accSDY} mm</span></div>';
-    } else if (accRec != null && accRec.accMeanRadius.isNotEmpty) {
-      accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Radius: <span style="font-weight: normal;">${accRec.accMeanRadius} mm</span></div>';
-    } else {
-      accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">105.5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">119.3 mm</span></div>';
+    String accResult = '-';
+    if (accRec != null) {
+      if (accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
+        accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">${accRec.accSDX} mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">${accRec.accSDY} mm</span></div>';
+      } else if (accRec.accMeanRadius.isNotEmpty) {
+        accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Radius: <span style="font-weight: normal;">${accRec.accMeanRadius} mm</span></div>';
+      } else if (accRec.velMean.isNotEmpty) {
+        accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Velocity: <span style="font-weight: normal;">${accRec.velMean} m/s</span></div>';
+      }
     }
-    final accReq = calConfig['accuracy_req'] as String? ?? 'SD ≤ 200 mm';
-    final accStatus = accRec?.status ?? 'Approved';
+    final accReq = calConfig['accuracy_req'] as String? ?? defAccReq;
+    final accStatus = accRec != null ? (accRec.status.isNotEmpty ? accRec.status : 'Approved') : '-';
     final accRemarks = cleanRemarks(accRec?.notes);
 
     // 4. EPVAT test (+21 °C, +52 °C, -54 °C)
-    final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(records);
+    final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(scopedRecords);
     final activePressureUnit = (adminRules['active_pressure_unit'] ?? 'bar').toString();
 
     final int epvInitial = epvRec21 != null ? epvRec21.produced : (epvRec52?.produced ?? (epvRec54?.produced ?? 0));
@@ -2945,9 +3008,12 @@ class ReportGenerator {
         ? '$epvTotalProduced rounds'
         : (epvRec21 != null && epvRec21.produced > 0
             ? '${epvRec21.produced} rounds'
-            : (calConfig['epvat_sample_21'] as String? ?? '90 rounds'));
+            : (calConfig['epvat_sample_21'] as String? ?? (is762M80 ? '30 rounds' : '90 rounds')));
 
     String buildEpvatTempResult(String rawConfig, String temp, BallisticRecord? rec) {
+      if (rec == null && (epvVars['p1_mean_$temp'] == null || epvVars['p1_mean_$temp'] == 0.0)) {
+        return '<span style="color: #94a3b8; font-style: italic;">-</span>';
+      }
       final configuredLines = rawConfig.split(RegExp(r'\r?\n|;')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
       if (configuredLines.isNotEmpty) {
         final resList = <String>[];
@@ -2978,35 +3044,38 @@ class ReportGenerator {
         final parts = <String>[];
         if (p1.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>');
         if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
+        if (rec.velMean.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Velocity: <span style="font-weight: normal;">${rec.velMean} m/s</span></div>');
         if (parts.isNotEmpty) return parts.join('');
+      } else if (epvVars['p1_mean_$temp'] != null && epvVars['p1_mean_$temp']! > 0) {
+        final p1 = epvVars['p1_mean_$temp']!.toStringAsFixed(1);
+        final p2 = (epvVars['p2_mean_$temp'] ?? 0.0) > 0 ? epvVars['p2_mean_$temp']!.toStringAsFixed(1) : '';
+        final parts = <String>[
+          '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>'
+        ];
+        if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
+        return parts.join('');
       }
 
-      if (temp == '21') {
-        return '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">3424.0 $activePressureUnit</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">1201.5 $activePressureUnit</span></div>';
-      } else if (temp == '52') {
-        return rec != null ? '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">3450.0 $activePressureUnit</span></div>' : '<span style="color: #94a3b8; font-style: italic;">-</span>';
-      } else {
-        return rec != null ? '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">3380.0 $activePressureUnit</span></div>' : '<span style="color: #94a3b8; font-style: italic;">-</span>';
-      }
+      return '<span style="color: #94a3b8; font-style: italic;">-</span>';
     }
 
     final epvResult21 = buildEpvatTempResult(calConfig['epvat_result_formula_21'] as String? ?? '', '21', epvRec21);
-    final epvReq21 = calConfig['epvat_req_21'] as String? ?? 'Max Mean Chamber +3SD ≤ 4450 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
+    final epvReq21 = calConfig['epvat_req_21'] as String? ?? defEpvReq21;
     final epvRemarks21 = cleanRemarks(epvRec21?.notes);
 
     final epvResult52 = buildEpvatTempResult(calConfig['epvat_result_formula_52'] as String? ?? '', '52', epvRec52);
-    final epvReq52 = calConfig['epvat_req_52'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port - 3SD ≥ 1030 Bar';
+    final epvReq52 = calConfig['epvat_req_52'] as String? ?? defEpvReq52;
     final epvRemarks52 = cleanRemarks(epvRec52?.notes);
 
     final epvResult54 = buildEpvatTempResult(calConfig['epvat_result_formula_54'] as String? ?? '', '54', epvRec54);
-    final epvReq54 = calConfig['epvat_req_54'] as String? ?? 'Max Mean Chamber ≤ 4550 Bar<br/>Min Mean Port ≥ 1030 Bar';
+    final epvReq54 = calConfig['epvat_req_54'] as String? ?? defEpvReq54;
     final epvRemarks54 = cleanRemarks(epvRec54?.notes);
 
     // Evaluate EPVAT custom formulas if configured or available
     final epvRules = adminRules['epvat'] ?? {};
     final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-    final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
-        records.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
+    final bool isThreeTemp = scopedRecords.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
+        scopedRecords.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
     final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
       formulasMap,
       cleanCaliber,
@@ -3014,7 +3083,7 @@ class ReportGenerator {
     );
 
     bool epvatFormulasPassed = true;
-    final epvatRecords = records.where((r) => r.testName.toLowerCase().contains('epvat') || r.testName.toLowerCase().contains('propellant')).toList();
+    final epvatRecords = scopedRecords.where((r) => r.testName.toLowerCase().contains('epvat') || r.testName.toLowerCase().contains('propellant')).toList();
     if (epvatRecords.isNotEmpty && epvFormulaList.isNotEmpty) {
       final evaluatedResults = epvFormulaList.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
         Map<String, dynamic>.from(f as Map),
@@ -3028,9 +3097,9 @@ class ReportGenerator {
       }
     }
 
-    final epvStatus21 = epvatFormulasPassed ? 'Approved' : (epvRec21?.status ?? 'Approved');
-    final epvStatus52 = epvatFormulasPassed ? 'Approved' : (epvRec52?.status ?? (epvRec21 != null ? 'Approved' : 'Approved'));
-    final epvStatus54 = epvatFormulasPassed ? 'Approved' : (epvRec54?.status ?? (epvRec21 != null ? 'Approved' : 'Approved'));
+    final epvStatus21 = epvRec21 != null ? (epvatFormulasPassed ? (epvRec21.status.isNotEmpty ? epvRec21.status : 'Approved') : 'Rejected') : (epvVars['p1_mean_21'] != null && epvVars['p1_mean_21']! > 0 ? (epvatFormulasPassed ? 'Approved' : 'Rejected') : '-');
+    final epvStatus52 = epvRec52 != null ? (epvatFormulasPassed ? (epvRec52.status.isNotEmpty ? epvRec52.status : 'Approved') : 'Rejected') : (epvVars['p1_mean_52'] != null && epvVars['p1_mean_52']! > 0 ? (epvatFormulasPassed ? 'Approved' : 'Rejected') : '-');
+    final epvStatus54 = epvRec54 != null ? (epvatFormulasPassed ? (epvRec54.status.isNotEmpty ? epvRec54.status : 'Approved') : 'Rejected') : (epvVars['p1_mean_54'] != null && epvVars['p1_mean_54']! > 0 ? (epvatFormulasPassed ? 'Approved' : 'Rejected') : '-');
 
     // 5. Function Test
     final int funcInitial = funcRec != null ? funcRec.produced : 0;
@@ -3041,12 +3110,17 @@ class ReportGenerator {
         : (funcRec != null && funcRec.produced > 0
             ? '${funcRec.produced} rounds'
             : (calConfig['function_sample'] as String? ?? '500 rounds'));
-    final funcDefects = funcRec != null ? funcRec.defects : 0;
-    final String funcResult = (funcRec != null && (funcRec.isRetest || funcRec.retestProduced > 0))
-        ? 'Test: $funcDefects defect${funcDefects == 1 ? '' : 's'}<br/>Retest: ${funcRec.retestDefects} defect${funcRec.retestDefects == 1 ? '' : 's'}'
-        : (funcRec != null ? '$funcDefects defect${funcDefects == 1 ? '' : 's'}' : '0 defect');
-    final funcReq = calConfig['function_req'] as String? ?? 'Critical Defect 0<br/>Major Defects 3<br/>Level 3 Defects 6<br/>Level 4 Defects 18';
-    final funcStatus = funcRec?.status ?? 'Approved';
+    final String funcResult;
+    if (funcRec != null) {
+      final funcDefects = funcRec.defects;
+      funcResult = (funcRec.isRetest || funcRec.retestProduced > 0)
+          ? 'Test: $funcDefects defect${funcDefects == 1 ? '' : 's'}<br/>Retest: ${funcRec.retestDefects} defect${funcRec.retestDefects == 1 ? '' : 's'}'
+          : '$funcDefects defect${funcDefects == 1 ? '' : 's'}';
+    } else {
+      funcResult = '-';
+    }
+    final funcReq = calConfig['function_req'] as String? ?? defFuncReq;
+    final funcStatus = funcRec != null ? (funcRec.status.isNotEmpty ? funcRec.status : 'Approved') : '-';
     final funcRemarks = cleanRemarks(funcRec?.notes);
 
     // 6. Residual Stress Test
@@ -3058,9 +3132,9 @@ class ReportGenerator {
         : (rsRec != null && rsRec.produced > 0
             ? '${rsRec.produced} rounds'
             : (calConfig['residual_sample'] as String? ?? '50 rounds'));
-    final String rsResult = rsRec != null ? _getRecordMetricsSummary(rsRec) : '0 crack';
-    final rsReq = calConfig['residual_req'] as String? ?? 'No. of cracks I zone ≤ 3 Cracks<br/>No. of cracks M, L, K, J & S zone = 0 Crack';
-    final rsStatus = rsRec?.status ?? 'Approved';
+    final String rsResult = rsRec != null ? _getRecordMetricsSummary(rsRec) : '-';
+    final rsReq = calConfig['residual_req'] as String? ?? defRsReq;
+    final rsStatus = rsRec != null ? (rsRec.status.isNotEmpty ? rsRec.status : 'Approved') : '-';
     final rsRemarks = cleanRemarks(rsRec?.notes);
 
     // 7. Terminal Effect Test
@@ -3083,10 +3157,10 @@ class ReportGenerator {
           ? parts.map((p) => '<div style="font-weight: bold; color: #1e293b;">$p</div>').join('')
           : 'Complete penetration';
     } else {
-      termResult = 'Complete penetration';
+      termResult = '-';
     }
-    final String termReq = calConfig['terminal_req'] as String? ?? 'Complete Penetration of Witness Plate';
-    final String termStatus = termRec?.status ?? 'Approved';
+    final String termReq = calConfig['terminal_req'] as String? ?? defTermReq;
+    final String termStatus = termRec != null ? (termRec.status.isNotEmpty ? termRec.status : 'Approved') : '-';
     final String termRemarks = cleanRemarks(termRec?.notes);
 
     // 8. Primer Sensitivity Test
@@ -3098,15 +3172,20 @@ class ReportGenerator {
         : (primerRec != null && primerRec.produced > 0
             ? '${primerRec.produced} rounds'
             : (calConfig['primer_sample'] as String? ?? '175 rounds'));
-    final primerH5 = primerRec != null && primerRec.primerAllFireH.isNotEmpty ? primerRec.primerAllFireH : '360.50';
-    final primerH2 = primerRec != null && primerRec.primerNoFireH.isNotEmpty ? primerRec.primerNoFireH : '114.10';
-    final primerResult = '<div style="font-weight: bold; color: #1e293b;">H̄+5SD: <span style="font-weight: normal;">$primerH5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">H̄-2SD: <span style="font-weight: normal;">$primerH2 mm</span></div>';
-    final primerReq = calConfig['primer_req'] as String? ?? 'H̄+5SD ≤ 450 mm<br/>H̄-2SD ≥ 75 mm';
-    final primerStatus = primerRec?.status ?? 'Approved';
+    final String primerResult;
+    if (primerRec != null && (primerRec.primerAllFireH.isNotEmpty || primerRec.primerNoFireH.isNotEmpty)) {
+      final primerH5 = primerRec.primerAllFireH.isNotEmpty ? primerRec.primerAllFireH : '-';
+      final primerH2 = primerRec.primerNoFireH.isNotEmpty ? primerRec.primerNoFireH : '-';
+      primerResult = '<div style="font-weight: bold; color: #1e293b;">H̄+5SD: <span style="font-weight: normal;">$primerH5 mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">H̄-2SD: <span style="font-weight: normal;">$primerH2 mm</span></div>';
+    } else {
+      primerResult = '-';
+    }
+    final primerReq = calConfig['primer_req'] as String? ?? defPrimerReq;
+    final primerStatus = primerRec != null ? (primerRec.status.isNotEmpty ? primerRec.status : 'Approved') : '-';
     final primerRemarks = cleanRemarks(primerRec?.notes);
 
-    // Check if any test evaluated to rejected (avoiding false rejection from legacy raw records if auto calculation passed)
-    final bool hasRejection = [
+    // Determine overall lot status based only on active/evaluated tests
+    final activeStatuses = [
       wpStatus,
       extStatus,
       accStatus,
@@ -3117,16 +3196,21 @@ class ReportGenerator {
       rsStatus,
       termStatus,
       primerStatus,
-    ].any((s) => s.toLowerCase().contains('reject') || s.toLowerCase() == 'failed');
-    final String overallStatusText = hasRejection ? 'Rejected' : 'Approved';
-    final String overallStatusColor = hasRejection ? '#dc2626' : '#15803d';
+    ].where((s) => s != '-').toList();
 
-    final String sentenceRequirement = hasRejection
-        ? 'The inspected lot fails to satisfy quality and ballistic specification criteria. The lot is officially REJECTED and quarantined.'
-        : 'The lot meets all quality and ballistic specifications and is approved for final packaging and shipment.';
+    final bool hasRejection = activeStatuses.any((s) => s.toLowerCase().contains('reject') || s.toLowerCase() == 'failed' || s.toLowerCase() == 'fail');
+    final bool allPending = activeStatuses.isEmpty;
+    final String overallStatusText = allPending ? 'Pending' : (hasRejection ? 'Rejected' : 'Approved');
+    final String overallStatusColor = allPending ? '#64748b' : (hasRejection ? '#dc2626' : '#15803d');
+
+    final String sentenceRequirement = allPending
+        ? 'No inspection test records have been logged for this lot yet.'
+        : (hasRejection
+            ? 'The inspected lot fails to satisfy quality and ballistic specification criteria. The lot is officially REJECTED and quarantined.'
+            : 'The lot meets all quality and ballistic specifications and is approved for final packaging and shipment.');
 
     final String now = DateFormat('dd/MM/yyyy').format(DateTime.now());
-    final totalQty = records.fold<int>(0, (sum, r) => sum + r.produced + (r.isRetest ? r.retestProduced : 0));
+    final totalQty = scopedRecords.fold<int>(0, (sum, r) => sum + r.produced + (r.isRetest ? r.retestProduced : 0));
     final logoHtml = base64Logo.isNotEmpty
         ? '<img src="data:image/png;base64,$base64Logo" width="140" height="85" style="object-fit: contain;" />'
         : '';
@@ -3146,7 +3230,10 @@ class ReportGenerator {
         : '<div style="height: 34px;"></div>';
 
     String formatStatusBadge(String status) {
-      final s = status.trim().isEmpty ? 'Approved' : status.trim();
+      final s = status.trim().isEmpty ? '-' : status.trim();
+      if (s == '-' || s == 'N/A' || s == 'Not Performed') {
+        return '<span style="color: #94a3b8; font-style: italic;">-</span>';
+      }
       final isApproved = s.toLowerCase().contains('approved') || s.toLowerCase() == 'pass';
       final isRejected = s.toLowerCase().contains('reject') || s.toLowerCase() == 'fail';
       final bg = isApproved ? '#dcfce7' : (isRejected ? '#fee2e2' : '#fef3c7');

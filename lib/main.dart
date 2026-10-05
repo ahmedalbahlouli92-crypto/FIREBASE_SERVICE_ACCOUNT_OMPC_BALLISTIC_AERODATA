@@ -2084,11 +2084,13 @@ class _MainShellState extends State<MainShell> {
     final epv = _adminRules['epvat'] ?? {};
     final epvLimitsByCal = Map<String, dynamic>.from(epv['limits_by_caliber'] ?? {});
     final calEpv = Map<String, dynamic>.from(epvLimitsByCal[_ruleSelectedCaliber] ?? {});
-    final activeEpv = Map<String, dynamic>.from(calEpv[_ruleSelectedEpvatTemp] ?? (epv['limits']?[_ruleSelectedEpvatTemp] ?? {}));
-    _ruleEpvMinVelCtrl.text = (activeEpv['vel_min'] ?? 900.0).toString();
-    _ruleEpvMaxVelCtrl.text = (activeEpv['vel_max'] ?? 930.0).toString();
-    _ruleEpvMaxP1Ctrl.text = (activeEpv['p1_max'] ?? 3800.0).toString();
-    _ruleEpvMinP2Ctrl.text = (activeEpv['p2_min'] ?? 200.0).toString();
+    final defaultEpv = (_defaultRules['epvat']?['limits_by_caliber']?[_ruleSelectedCaliber]?[_ruleSelectedEpvatTemp] ??
+        _defaultRules['epvat']?['limits_by_caliber']?['default']?[_ruleSelectedEpvatTemp] ?? {}) as Map;
+    final activeEpv = Map<String, dynamic>.from(calEpv[_ruleSelectedEpvatTemp] ?? (epv['limits']?[_ruleSelectedEpvatTemp] ?? defaultEpv));
+    _ruleEpvMinVelCtrl.text = (activeEpv['vel_min'] ?? defaultEpv['vel_min'] ?? 900.0).toString();
+    _ruleEpvMaxVelCtrl.text = (activeEpv['vel_max'] ?? defaultEpv['vel_max'] ?? 930.0).toString();
+    _ruleEpvMaxP1Ctrl.text = (activeEpv['p1_max'] ?? defaultEpv['p1_max'] ?? 3800.0).toString();
+    _ruleEpvMinP2Ctrl.text = (activeEpv['p2_min'] ?? defaultEpv['p2_min'] ?? 200.0).toString();
     final instructionsByCaliber = Map<String, dynamic>.from(epv['instructions_by_caliber'] ?? {});
     _ruleEpvInstructionsCtrl.text = (instructionsByCaliber[_ruleSelectedCaliber] ?? calEpv['instructions'] ?? epv['instructions'] ?? 'Ensure P1 Chamber does not exceed limits, and P2 Port remains above minimums.').toString();
 
@@ -2130,6 +2132,33 @@ class _MainShellState extends State<MainShell> {
 
     // Final Lot Acceptance Certificate template for selected caliber
     _loadCertTemplateForCaliber(_certSelectedCaliber);
+  }
+
+  void _saveCurrentEpvatTempToMemory() {
+    final epv = Map<String, dynamic>.from(_adminRules['epvat'] ?? {});
+    final epvLimitsByCal = Map<String, dynamic>.from(epv['limits_by_caliber'] ?? {});
+    final calEpv = Map<String, dynamic>.from(epvLimitsByCal[_ruleSelectedCaliber] ?? {});
+    final activeEpv = Map<String, dynamic>.from(calEpv[_ruleSelectedEpvatTemp] ?? (epv['limits']?[_ruleSelectedEpvatTemp] ?? {}));
+
+    if (_ruleEpvMinVelCtrl.text.trim().isNotEmpty) {
+      activeEpv['vel_min'] = double.tryParse(_ruleEpvMinVelCtrl.text.trim()) ?? activeEpv['vel_min'];
+    }
+    if (_ruleEpvMaxVelCtrl.text.trim().isNotEmpty) {
+      activeEpv['vel_max'] = double.tryParse(_ruleEpvMaxVelCtrl.text.trim()) ?? activeEpv['vel_max'];
+    }
+    if (_ruleEpvMaxP1Ctrl.text.trim().isNotEmpty) {
+      activeEpv['p1_max'] = double.tryParse(_ruleEpvMaxP1Ctrl.text.trim()) ?? activeEpv['p1_max'];
+    }
+    if (_ruleEpvMinP2Ctrl.text.trim().isNotEmpty) {
+      activeEpv['p2_min'] = double.tryParse(_ruleEpvMinP2Ctrl.text.trim()) ?? activeEpv['p2_min'];
+    }
+    if (_ruleEpvMaxActionTimeCtrl.text.trim().isNotEmpty) {
+      activeEpv['action_time_max'] = double.tryParse(_ruleEpvMaxActionTimeCtrl.text.trim()) ?? activeEpv['action_time_max'];
+    }
+    calEpv[_ruleSelectedEpvatTemp] = activeEpv;
+    epvLimitsByCal[_ruleSelectedCaliber] = calEpv;
+    epv['limits_by_caliber'] = epvLimitsByCal;
+    _adminRules['epvat'] = epv;
   }
 
   void _loadCertTemplateForCaliber(String caliber) {
@@ -2901,11 +2930,11 @@ class _MainShellState extends State<MainShell> {
       } else {
         activeRules['propellant_supplier_codes'] = Map<String, dynamic>.from(activeRules['propellant_supplier_codes'] as Map);
       }
-      if (activeRules['sample_locations'] == null || (activeRules['sample_locations'] is List && (activeRules['sample_locations'] as List).isEmpty)) {
+      if (activeRules['sample_locations'] == null) {
         activeRules['sample_locations'] = List<String>.from(_defaultRules['sample_locations']);
         schemaMigrated = true;
       } else {
-        activeRules['sample_locations'] = List<String>.from(activeRules['sample_locations'] as List);
+        activeRules['sample_locations'] = List<String>.from((activeRules['sample_locations'] as List).map((e) => e.toString()));
       }
 
       // Cross-populate and synchronize equipment fleets across all keys:
@@ -6762,6 +6791,7 @@ class _MainShellState extends State<MainShell> {
                         style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
                         onChanged: (val) {
                           if (val != null) {
+                            _saveCurrentEpvatTempToMemory();
                             setState(() {
                               _ruleSelectedCaliber = val;
                               _ruleSelectedFuncCaliber = val;
@@ -6830,6 +6860,151 @@ class _MainShellState extends State<MainShell> {
             _buildRuleTextField('Max Target Velocity for $_ruleSelectedCaliber (m/s)', _ruleAccMaxVelCtrl),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _ruleAccInstructionsCtrl, isMultiline: true),
           ] else if (_selectedRuleTest == 'EPVAT Test') ...[
+            // Temperature Selection Header & Tabs (+21°C Ambient, +52°C Hot, -54°C Cold)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.5)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.thermostat_rounded, color: Color(0xFF06B6D4), size: 16.0),
+                  SizedBox(width: 8.0),
+                  Text(
+                    'EPVAT TEMPERATURE REGIMEN THRESHOLDS & SPECIFICATIONS',
+                    style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8.0),
+            Text(
+              'Configure chamber pressure (P1), port pressure (P2), velocity, and action time limits for $_ruleSelectedCaliber at each temperature condition (+21 °C Ambient, +52 °C Hot, -54 °C Cold).',
+              style: const TextStyle(fontSize: 11.0, color: Color(0xFF8E96A3), height: 1.4),
+            ),
+            const SizedBox(height: 10.0),
+            Container(
+              padding: const EdgeInsets.all(4.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Row(
+                children: [
+                  for (final t in [
+                    {'key': '+21', 'label': '+21 °C (Ambient)'},
+                    {'key': '+52', 'label': '+52 °C (Hot)'},
+                    {'key': '-54', 'label': '-54 °C (Cold)'},
+                  ])
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          if (_ruleSelectedEpvatTemp != t['key']) {
+                            _saveCurrentEpvatTempToMemory();
+                            setState(() {
+                              _ruleSelectedEpvatTemp = t['key']!;
+                              _syncRulesControllers();
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(6.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          decoration: BoxDecoration(
+                            color: _ruleSelectedEpvatTemp == t['key'] ? const Color(0xFF06B6D4) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6.0),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            t['label']!,
+                            style: TextStyle(
+                              color: _ruleSelectedEpvatTemp == t['key'] ? Colors.white : const Color(0xFF94A3B8),
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14.0),
+
+            // Fields for the selected temperature
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF151D2A),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: const Color(0xFF1E3A8A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _ruleSelectedEpvatTemp == '+21' ? Icons.thermostat_outlined : (_ruleSelectedEpvatTemp == '+52' ? Icons.local_fire_department : Icons.ac_unit),
+                        color: _ruleSelectedEpvatTemp == '+21' ? const Color(0xFF10B981) : (_ruleSelectedEpvatTemp == '+52' ? const Color(0xFFF97316) : const Color(0xFF38BDF8)),
+                        size: 16.0,
+                      ),
+                      const SizedBox(width: 8.0),
+                      Text(
+                        'EPVAT Limits for $_ruleSelectedCaliber at $_ruleSelectedEpvatTemp °C',
+                        style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildRuleTextField(
+                          'Max Chamber Pressure P1 (Bar) [$_ruleSelectedEpvatTemp °C]',
+                          _ruleEpvMaxP1Ctrl,
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        child: _buildRuleTextField(
+                          'Min Port Pressure P2 (Bar) [$_ruleSelectedEpvatTemp °C]',
+                          _ruleEpvMinP2Ctrl,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildRuleTextField(
+                          'Min Velocity (m/s) [$_ruleSelectedEpvatTemp °C]',
+                          _ruleEpvMinVelCtrl,
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        child: _buildRuleTextField(
+                          'Max Velocity (m/s) [$_ruleSelectedEpvatTemp °C]',
+                          _ruleEpvMaxVelCtrl,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10.0),
+                  _buildRuleTextField(
+                    'Max Action Time (ms) [$_ruleSelectedEpvatTemp °C]',
+                    _ruleEpvMaxActionTimeCtrl,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16.0),
+
             // --- Bullet Mass for Kinetic Energy ---
             const Text(
               'PROJECTILE MASS & KINETIC ENERGY',
