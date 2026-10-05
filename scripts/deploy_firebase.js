@@ -69,7 +69,7 @@ async function getAccessToken() {
     const token = await getAccessToken();
     console.log('Deploying to Firebase Hosting with token...');
     process.env.FIREBASE_TOKEN = token;
-    const output = execSync(`npx -y firebase-tools deploy --only hosting --token "${token}" --project ompc-ballistic-aerodata`, {
+    const output = execSync(`npx.cmd -y firebase-tools deploy --only hosting --token "${token}" --project ompc-ballistic-aerodata`, {
       encoding: 'utf8',
       stdio: 'inherit',
       env: { ...process.env, FIREBASE_TOKEN: token }

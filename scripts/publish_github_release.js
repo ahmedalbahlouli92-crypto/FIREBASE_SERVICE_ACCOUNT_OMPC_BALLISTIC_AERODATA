@@ -19,43 +19,26 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.2';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.2 (EPVAT Auto-Calc Lock, Admin Controls & Editing, SPC Multi-Param Charts, Scoped Certificates & Supabase Sync)';
-const BODY = `## OMPC Ballistic AeroData v1.9.2
+const TAG_NAME = 'v1.9.3';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.3 (Sampling Location Rename & Sync, Scoped Certificates & EPVAT Multi-Temp Editor)';
+const BODY = `## OMPC Ballistic AeroData v1.9.3
 
-Comprehensive release implementing EPVAT automated formula locking, Admin sampling location management & test editing, SPC multi-parameter overlay charts, caliber-scoped Lot Acceptance Certificates, and database schema updates:
+Production release implementing sampling location rename & bidirectional sync, scoped lot acceptance certificates without caliber leakage, and EPVAT multi-temperature admin editor:
 
 ### Key Enhancements & Features:
-1. **EPVAT Test Auto-Calculation & Status Lock**:
-   - EPVAT overall status is strictly and automatically determined by formula evaluation across all temperatures (+21 °C, +52 °C, -54 °C).
-   - "Approved" if all formulas pass; "Rejected" if any formula fails. Manual status overriding is locked.
-2. **Admin Sampling Locations Control**:
-   - Administrators can add, rename, and delete sampling locations with real-time bidirectional synchronization between Supabase and local storage.
-3. **Admin Test Data Editing**:
-   - Comprehensive editor for all ballistic tests: EPVAT multi-temperature parameters (Chamber P1, Port P2, Velocity, Action Time), Primer sensitivity with live HM+5SD and HM-2SD calculations, Accuracy X & Y variables, and defect quantities.
-4. **SPC Multi-Parameter Same-Chart Overlay**:
-   - Users can select multiple parameters from the same test simultaneously (e.g. Primer Sensitivity HM+5SD and HM-2SD).
-   - Dynamically graphs multi-curve series on a unified Y-axis scale with distinct series colors, value chips, and an in-chart legend.
-5. **Lot Acceptance Inspection Log Clean Up**:
-   - Completely removed Hopper No. from search placeholders, filter chips, and table columns in the Lot Acceptance module, retaining only Lot Number.
-6. **Certificate Sample Size Accuracy**:
-   - Sample size on the Lot Acceptance Certificate accurately reflects the actual sample sizes tested for each test record.
-7. **Strict Certificate Table Ordering**:
-   - Test tables in both the Certificate and Lot Dossier strictly follow the required sequence:
-     1. Waterproof Test
-     2. Bullet Extraction (Extraction Force Test)
-     3. Accuracy Test
-     4. EPVAT test (+21 °C, +52 °C, -54 °C)
-     5. Function Test
-     6. Residual Stress Test
-     7. Terminal Effect Test
-     8. Primer Sensitivity Test
-8. **Certificate Filtering by Lot & Caliber**:
-   - Users select Caliber Specification and Lot Number; certificate results and calculations are scoped strictly to the selected lot and caliber.
-9. **Supabase Database Schema Setup**:
-   - Updated \`supabase_tables_setup.sql\` with all 20 test tables, 8 consumable category tables, witness storage tables, equipment issues, admin control tables, and dedicated EPVAT multi-temperature columns.
-10. **Firebase Cloud Web Deployment**:
-    - Compiled and deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
+1. **Sampling Location Rename & Delete Management**:
+   - Rename existing sampling locations with automatic cascade to all test records and bidirectional synchronization between Supabase and local storage.
+   - Deletion of custom sampling locations removes them cleanly across all tests and retest dropdowns.
+2. **Lot Acceptance Certificate Caliber Scoping**:
+   - Certificate generation is strictly scoped to the selected Caliber Specification and Lot Number.
+   - Fixed issue where default SS109 configuration leaked into certificates of other calibers (e.g. 7.62x51mm or 9mm).
+3. **EPVAT 3-Temperature Admin Test Editor**:
+   - Comprehensive multi-temperature test editor allowing editing of Chamber P1, Port P2, Velocity, and Action Time across ambient (+21 °C), hot (+52 °C), and cold (-54 °C) conditions.
+   - Automatic re-evaluation of ballistic formulas upon editing.
+4. **Desktop, Web & Android Sync**:
+   - Full support across Windows Desktop, Android APK, and Firebase Cloud Web app.
+5. **Firebase Cloud Web Deployment**:
+   - Deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
 `;
 
 function request(options, postData) {
@@ -165,6 +148,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
+    { name: 'OMPC_Ballistic_AeroData_v1.9.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.3.apk' },
     { name: 'OMPC_Ballistic_AeroData_v1.7.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.7.2.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
