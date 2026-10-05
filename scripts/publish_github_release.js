@@ -19,26 +19,25 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.3';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.3 (Sampling Location Rename & Sync, Scoped Certificates & EPVAT Multi-Temp Editor)';
-const BODY = `## OMPC Ballistic AeroData v1.9.3
+const TAG_NAME = 'v1.9.4';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.4 (Dynamic Admin EPVAT Formulas, Auto-Sentencing & Cloud Cache Sync)';
+const BODY = `## OMPC Ballistic AeroData v1.9.4
 
-Production release implementing sampling location rename & bidirectional sync, scoped lot acceptance certificates without caliber leakage, and EPVAT multi-temperature admin editor:
+Production release featuring dynamic admin EPVAT formulas, automated lot sentencing remediation, authoritative cloud synchronization, and multi-temperature overall mapping:
 
 ### Key Enhancements & Features:
-1. **Sampling Location Rename & Delete Management**:
-   - Rename existing sampling locations with automatic cascade to all test records and bidirectional synchronization between Supabase and local storage.
-   - Deletion of custom sampling locations removes them cleanly across all tests and retest dropdowns.
-2. **Lot Acceptance Certificate Caliber Scoping**:
-   - Certificate generation is strictly scoped to the selected Caliber Specification and Lot Number.
-   - Fixed issue where default SS109 configuration leaked into certificates of other calibers (e.g. 7.62x51mm or 9mm).
-3. **EPVAT 3-Temperature Admin Test Editor**:
-   - Comprehensive multi-temperature test editor allowing editing of Chamber P1, Port P2, Velocity, and Action Time across ambient (+21 °C), hot (+52 °C), and cold (-54 °C) conditions.
-   - Automatic re-evaluation of ballistic formulas upon editing.
+1. **Dynamic Admin EPVAT Formulas & Auto-Sentencing Remediation**:
+   - Replaced static/hardcoded pressure & velocity validation logic with the active admin-configured formulas per caliber.
+   - Added automatic status re-evaluation (\`calculateEpvatRecordStatus\`) that checks all passing formulas on record load and seamlessly updates stale 'Rejected' records to 'Approved' across memory, local cache, and Supabase.
+2. **Cloud-Authoritative Cache & Synchronization**:
+   - Fixed cache regression where browser \`localStorage\` could overwrite authoritative cloud records with stale local statuses.
+   - Cloud records are now strictly authoritative on load; local changes are only pushed if actively queued in \`pendingSyncIds\`.
+3. **EPVAT 3-Temperature Overall Report Mapping**:
+   - Corrected overall 3-temperature record mapping in PDF and Lot Acceptance dossiers across ambient (+21 °C), hot (+52 °C), and cold (-54 °C).
 4. **Desktop, Web & Android Sync**:
-   - Full support across Windows Desktop, Android APK, and Firebase Cloud Web app.
+   - Full cross-platform support across Windows Desktop, Android APK, and Firebase Cloud Web app.
 5. **Firebase Cloud Web Deployment**:
-   - Deployed live to Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
+   - Live on Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
 `;
 
 function request(options, postData) {
@@ -148,6 +147,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
+    { name: 'OMPC_Ballistic_AeroData_v1.9.4.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.4.apk' },
     { name: 'OMPC_Ballistic_AeroData_v1.9.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.3.apk' },
     { name: 'OMPC_Ballistic_AeroData_v1.7.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.7.2.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
