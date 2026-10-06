@@ -148,6 +148,7 @@ class _EntryTabState extends State<EntryTab> {
   final FocusNode _roomTempFocusNode = FocusNode();
   
   final _operatorsController = TextEditingController();
+  final _technicianController = TextEditingController();
   final _lotController = TextEditingController();
   final _lotThreeDigitsController = TextEditingController();
   late final TextEditingController _lotYearController = TextEditingController(text: (DateTime.now().year % 100).toString().padLeft(2, '0'));
@@ -2590,6 +2591,7 @@ class _EntryTabState extends State<EntryTab> {
   void dispose() {
     _liveClockTimer?.cancel();
     _operatorsController.dispose();
+    _technicianController.dispose();
     _lotController.dispose();
     _primerInsertionDepthController.dispose();
     _primerLotController.dispose();
@@ -2980,6 +2982,7 @@ class _EntryTabState extends State<EntryTab> {
           referenceNo: assignedRefNo,
           timestamp: formattedDate,
           operators: _operatorsController.text.trim(),
+          technicianName: _technicianController.text.trim(),
           shift: _shift,
           caliber: _caliber,
           lotNo: finalLotNo,
@@ -3099,6 +3102,7 @@ class _EntryTabState extends State<EntryTab> {
           referenceNo: assignedRefNo,
           timestamp: formattedDate,
           operators: _operatorsController.text.trim(),
+          technicianName: _technicianController.text.trim(),
           shift: _shift,
           caliber: _caliber,
           lotNo: finalLotNo,
@@ -3139,12 +3143,27 @@ class _EntryTabState extends State<EntryTab> {
         );
         return record;
       } else {
+        String customRecordNotes = _notesController.text.trim();
+        if (_testName == 'Waterproof Test') {
+          final hasLeaksOrRetest = (int.tryParse(_mouthSlowController.text.trim()) ?? 0) > 0 ||
+              (int.tryParse(_mouthFastController.text.trim()) ?? 0) > 0 ||
+              (int.tryParse(_primerSlowController.text.trim()) ?? 0) > 0 ||
+              (int.tryParse(_primerFastController.text.trim()) ?? 0) > 0 ||
+              defects > 0 ||
+              finalStatus.toLowerCase().contains('reject') ||
+              finalStatus.toLowerCase().contains('retest');
+          if (hasLeaksOrRetest && !customRecordNotes.toLowerCase().contains('need for sealant')) {
+            customRecordNotes = customRecordNotes.isEmpty ? 'need for sealant' : '$customRecordNotes; need for sealant';
+          }
+        }
+
         // Individual or other test name
         final record = BallisticRecord(
           module: widget.currentModule,
           referenceNo: assignedRefNo,
           timestamp: formattedDate,
           operators: _operatorsController.text.trim(),
+          technicianName: _technicianController.text.trim(),
           shift: _shift,
           caliber: _caliber,
           lotNo: finalLotNo,
@@ -3155,7 +3174,7 @@ class _EntryTabState extends State<EntryTab> {
                   (int.tryParse(_functionLevel3Controller.text.trim()) ?? 0) +
                   (int.tryParse(_functionLevel4Controller.text.trim()) ?? 0))
               : defects,
-          notes: _notesController.text.trim(),
+          notes: customRecordNotes,
           status: finalStatus,
           testName: _testName,
           pressureBar: _testName == 'Waterproof Test' ? _pressureController.text.trim() : '',
@@ -3663,6 +3682,16 @@ class _EntryTabState extends State<EntryTab> {
                         validator: (v) => v == null || v.trim().isEmpty ? 'Inspectors required' : null,
                       ),
                     ),
+                    if (widget.currentModule == 'Component Test')
+                      _buildFlexibleField(
+                        flex: 3,
+                        label: 'Component Technician',
+                        isRequired: false,
+                        child: _buildTextField(
+                          controller: _technicianController,
+                          hint: 'Optional (leave blank if inspector is tech)',
+                        ),
+                      ),
                     _buildFlexibleField(
                       key: _shiftFieldKey,
                       flex: 1,

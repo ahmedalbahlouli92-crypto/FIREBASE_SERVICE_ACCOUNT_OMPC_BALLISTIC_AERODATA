@@ -9,6 +9,20 @@ import 'supabase_service.dart';
 import 'epvat_formula_helper.dart';
 
 class StorageService {
+  /// Resequences non-deleted records cleanly starting from REF:01 in chronological order
+  static List<BallisticRecord> resequenceReferenceNumbers(List<BallisticRecord> records) {
+    if (records.isEmpty) return records;
+    final sorted = List<BallisticRecord>.from(records)..sort((a, b) {
+      return a.timestamp.compareTo(b.timestamp);
+    });
+    final List<BallisticRecord> resequenced = [];
+    for (int i = 0; i < sorted.length; i++) {
+      final refStr = 'REF:${(i + 1).toString().padLeft(2, '0')}';
+      resequenced.add(sorted[i].copyWith(referenceNo: refStr));
+    }
+    return resequenced;
+  }
+
   static const _channel = MethodChannel('com.ompc.ballistic/storage');
 
   // Resolve platform-appropriate documents directory path
@@ -418,7 +432,7 @@ class StorageService {
         }
         return r;
       }).toList();
-      return BallisticRecord.consolidateRecords(filtered);
+      return resequenceReferenceNumbers(BallisticRecord.consolidateRecords(filtered));
     }
 
     // Ensure Supabase is initialized
@@ -534,7 +548,7 @@ class StorageService {
         }
 
         if (finalizedCombined.isNotEmpty) {
-          return BallisticRecord.consolidateRecords(finalizedCombined);
+          return resequenceReferenceNumbers(BallisticRecord.consolidateRecords(finalizedCombined));
         }
       } catch (e) {
         print("Supabase load error: $e");
@@ -563,7 +577,7 @@ class StorageService {
         return r;
       }).toList();
       final correctedWeb = await _autoCorrectEpvatStatus(filteredWeb);
-      return BallisticRecord.consolidateRecords(correctedWeb);
+      return resequenceReferenceNumbers(BallisticRecord.consolidateRecords(correctedWeb));
     }
     try {
       final file = await ensureDailyFileExists(module: cleanModule) as File;
@@ -601,7 +615,7 @@ class StorageService {
         }
       }
       final correctedLocal = await _autoCorrectEpvatStatus(records);
-      return BallisticRecord.consolidateRecords(correctedLocal);
+      return resequenceReferenceNumbers(BallisticRecord.consolidateRecords(correctedLocal));
     } catch (e) {
       print("Error loading local records: $e");
       return [];

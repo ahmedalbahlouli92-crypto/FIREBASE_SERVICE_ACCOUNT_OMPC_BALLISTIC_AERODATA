@@ -341,6 +341,23 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                       ),
                     ),
                     ElevatedButton.icon(
+                      onPressed: () => _exportExecutiveTabularHtml(
+                        inspections,
+                        equipmentIssues,
+                        consumables,
+                        witnessConsumptions,
+                        witnessAdditions,
+                      ),
+                      icon: const Icon(Icons.view_list_rounded, size: 16.0),
+                      label: const Text('Export Tabular Report', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                      ),
+                    ),
+                    ElevatedButton.icon(
                       onPressed: () => _exportExecutiveHtml(
                         inspections,
                         equipmentIssues,
@@ -1629,4 +1646,279 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 
     await ReportHelper.instance.printHtml(htmlContent: html);
   }
+
+  Future<void> _exportExecutiveTabularHtml(
+    List<Map<String, dynamic>> inspections,
+    List<Map<String, dynamic>> equipmentIssues,
+    List<Map<String, dynamic>> consumables,
+    List<Map<String, dynamic>> witnessConsumptions,
+    List<Map<String, dynamic>> witnessAdditions,
+  ) async {
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+
+    int totalTests = inspections.length;
+    int approved = 0;
+    int rejected = 0;
+    int retest = 0;
+
+    for (var entry in inspections) {
+      final r = entry['record'] as BallisticRecord;
+      final s = r.status.toLowerCase();
+      if (s.contains('approved') || s.contains('pass')) {
+        approved++;
+      } else if (s.contains('reject') || s.contains('fail')) {
+        rejected++;
+      } else if (s.contains('retest')) {
+        retest++;
+      }
+    }
+
+    final passRate = totalTests > 0 ? ((approved / totalTests) * 100).toStringAsFixed(1) : '0.0';
+
+    final lotAcceptanceList = inspections.where((e) => e['module'] == 'Lot Acceptance').toList();
+    final dailyTestList = inspections.where((e) => e['module'] == 'Daily Test').toList();
+    final componentTestList = inspections.where((e) => e['module'] == 'Component Test').toList();
+
+    String renderInspectionTable(List<Map<String, dynamic>> list, String lotLabel) {
+      if (list.isEmpty) {
+        return '<p style="color: #64748b; font-style: italic; font-size: 11px;">No records registered for this section in the selected period.</p>';
+      }
+      return '''
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>$lotLabel</th>
+            <th>Caliber</th>
+            <th>Test Name</th>
+            <th>Sample</th>
+            <th>Status</th>
+            <th>Inspector</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.map((e) {
+            final r = e['record'] as BallisticRecord;
+            final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
+            final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
+            final badgeColor = isApp ? '#10b981' : (isRej ? '#ef4444' : '#f59e0b');
+            final recDate = r.timestamp.split(' ').first;
+            final recNotes = r.notes.isNotEmpty ? r.notes : '-';
+            return '<tr>'
+                '<td>$recDate</td>'
+                '<td><strong>${r.lotNumber}</strong></td>'
+                '<td>${r.caliber}</td>'
+                '<td>${r.testName}</td>'
+                '<td>${r.produced}</td>'
+                '<td><span style="color: $badgeColor; font-weight: bold;">${r.status}</span></td>'
+                '<td>${r.operators.isNotEmpty ? r.operators : (r.technicianName.isNotEmpty ? r.technicianName : "QA Inspector")}</td>'
+                '<td>$recNotes</td>'
+                '</tr>';
+          }).join('')}
+        </tbody>
+      </table>
+      ''';
+    }
+
+    final html = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Executive Tabular Report - $_periodLabel</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 10px; color: #0f172a; font-size: 11px; line-height: 1.4; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 10px; margin-bottom: 14px; }
+    .header-left h1 { margin: 0; font-size: 16px; color: #0284c7; text-transform: uppercase; font-weight: 800; }
+    .header-left .sub { font-size: 11px; color: #64748b; margin-top: 3px; }
+    .header-right { text-align: right; font-size: 10px; color: #64748b; }
+    .header-right strong { color: #0f172a; }
+    .section-title { font-size: 12px; font-weight: 700; color: #0f172a; margin-top: 14px; margin-bottom: 6px; padding-bottom: 3px; border-bottom: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
+    .badge { font-size: 9.5px; padding: 2px 6px; border-radius: 4px; font-weight: bold; background: #e0f2fe; color: #0369a1; text-transform: uppercase; }
+    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+    .summary-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; text-align: center; }
+    .summary-box .num { font-size: 16px; font-weight: bold; margin-top: 2px; }
+    .summary-box .lbl { font-size: 9.5px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+    table.report-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+    table.report-table th, table.report-table td { border: 1px solid #cbd5e1; padding: 5px 7px; text-align: left; }
+    table.report-table th { background: #f1f5f9; color: #334155; font-weight: bold; text-transform: uppercase; font-size: 9px; }
+    table.report-table tr:nth-child(even) { background: #f8fafc; }
+    .footer { margin-top: 20px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>OMPC Ballistic AeroData &bull; Executive Tabular Report</h1>
+      <div class="sub">Comprehensive QC & Ballistic Data Summary &bull; Pure Tabular Presentation</div>
+    </div>
+    <div class="header-right">
+      <div>Period: <strong>$_periodLabel</strong></div>
+      <div>Generated: <strong>$now</strong></div>
+      <div>Operator: <strong>${widget.loggedInUser}</strong></div>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-box" style="border-top: 3px solid #0284c7;">
+      <div class="lbl">Total Tests</div>
+      <div class="num" style="color: #0284c7;">$totalTests</div>
+    </div>
+    <div class="summary-box" style="border-top: 3px solid #10b981;">
+      <div class="lbl">Pass Rate</div>
+      <div class="num" style="color: #10b981;">$passRate%</div>
+    </div>
+    <div class="summary-box" style="border-top: 3px solid #ef4444;">
+      <div class="lbl">Rejections</div>
+      <div class="num" style="color: #ef4444;">$rejected</div>
+    </div>
+    <div class="summary-box" style="border-top: 3px solid #f59e0b;">
+      <div class="lbl">Retests Pending</div>
+      <div class="num" style="color: #f59e0b;">$retest</div>
+    </div>
+    <div class="summary-box" style="border-top: 3px solid #8b5cf6;">
+      <div class="lbl">Equipment Issues</div>
+      <div class="num" style="color: #8b5cf6;">${equipmentIssues.length}</div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <span>1. Lot Acceptance Inspection Results</span>
+    <span class="badge">Lot Acceptance (${lotAcceptanceList.length})</span>
+  </div>
+  ${renderInspectionTable(lotAcceptanceList, 'Lot Number')}
+
+  <div class="section-title">
+    <span>2. Daily Test Inspection Results</span>
+    <span class="badge">Daily Test (${dailyTestList.length})</span>
+  </div>
+  ${renderInspectionTable(dailyTestList, 'Hopper / Lot')}
+
+  <div class="section-title">
+    <span>3. Component Test Inspection Results</span>
+    <span class="badge">Component Test (${componentTestList.length})</span>
+  </div>
+  ${renderInspectionTable(componentTestList, 'Lot / Batch')}
+
+  <div class="section-title">
+    <span>4. Equipment Maintenance & Calibration Log</span>
+    <span class="badge">Equipment Issues (${equipmentIssues.length})</span>
+  </div>
+  ${equipmentIssues.isEmpty ? '<p style="color: #64748b; font-style: italic; font-size: 11px;">No equipment issues logged in this period.</p>' : '''
+  <table class="report-table">
+    <thead>
+      <tr>
+        <th>Date / Time</th>
+        <th>Equipment</th>
+        <th>Severity</th>
+        <th>Issue Summary</th>
+        <th>Status</th>
+        <th>Reported By</th>
+        <th>Action Taken</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${equipmentIssues.map((i) => '<tr>'
+        '<td>${i['timestamp'] ?? i['date'] ?? ''}</td>'
+        '<td><strong>${i['equipment']}</strong></td>'
+        '<td>${i['severity']}</td>'
+        '<td>${i['title']}</td>'
+        '<td><span style="font-weight: bold; color: ${(i['status'] ?? '').toString().contains('Resolved') || (i['status'] ?? '').toString().contains('Calibrated') || (i['status'] ?? '').toString().contains('Closed') ? '#10b981' : '#f59e0b'};">${i['status']}</span></td>'
+        '<td>${i['reporter'] ?? 'Technician'}</td>'
+        '<td>${i['actionTaken'] ?? '-'}</td>'
+        '</tr>'
+      ).join('')}
+    </tbody>
+  </table>
+  '''}
+
+  <div class="section-title">
+    <span>5. Consumables Usage & Stock Inventory</span>
+    <span class="badge">Consumables (${consumables.length})</span>
+  </div>
+  ${consumables.isEmpty ? '<p style="color: #64748b; font-style: italic; font-size: 11px;">No consumables records available.</p>' : '''
+  <table class="report-table">
+    <thead>
+      <tr>
+        <th>Item Name</th>
+        <th>Category</th>
+        <th>Current Stock</th>
+        <th>Unit</th>
+        <th>Min Threshold</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${consumables.map((c) {
+        final qty = (c['qty'] as num?)?.toDouble() ?? 0.0;
+        final minQty = (c['minQty'] as num?)?.toDouble() ?? 0.0;
+        final isLow = qty <= minQty;
+        return '<tr>'
+          '<td><strong>${c['name']}</strong></td>'
+          '<td>${c['category'] ?? 'General'}</td>'
+          '<td style="font-weight: bold; color: ${isLow ? '#ef4444' : '#0f172a'};">${qty}</td>'
+          '<td>${c['unit'] ?? 'pcs'}</td>'
+          '<td>${minQty}</td>'
+          '<td><span style="font-weight: bold; color: ${isLow ? '#ef4444' : '#10b981'};">${isLow ? 'LOW STOCK' : 'OK'}</span></td>'
+          '</tr>';
+      }).join('')}
+    </tbody>
+  </table>
+  '''}
+
+  <div class="section-title">
+    <span>6. Witness Storage Operations</span>
+    <span class="badge">Additions (${witnessAdditions.length}) | Consumptions (${witnessConsumptions.length})</span>
+  </div>
+  ${(witnessAdditions.isEmpty && witnessConsumptions.isEmpty) ? '<p style="color: #64748b; font-style: italic; font-size: 11px;">No witness storage movements in this period.</p>' : '''
+  <table class="report-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Lot Number</th>
+        <th>Caliber</th>
+        <th>Quantity</th>
+        <th>Operator</th>
+        <th>Location / Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${witnessAdditions.map((a) => '<tr>'
+        '<td>${a['registeredAt'] ?? a['date'] ?? a['timestamp'] ?? ''}</td>'
+        '<td style="color: #10b981; font-weight: bold;">ADDITION</td>'
+        '<td><strong>${a['lotNo']}</strong></td>'
+        '<td>${a['caliber']}</td>'
+        '<td style="color: #10b981; font-weight: bold;">+${a['initialQty']} rounds</td>'
+        '<td>${a['registeredBy'] ?? a['operator'] ?? 'Technician'}</td>'
+        '<td>${a['location'] ?? 'Pallet / Storage'}</td>'
+        '</tr>'
+      ).join('')}
+      ${witnessConsumptions.map((c) => '<tr>'
+        '<td>${c['date'] ?? c['consumedAt'] ?? ''}</td>'
+        '<td style="color: #ef4444; font-weight: bold;">CONSUMPTION</td>'
+        '<td><strong>${c['lotNo']}</strong></td>'
+        '<td>${c['caliber']}</td>'
+        '<td style="color: #ef4444; font-weight: bold;">-${c['qty']} rounds</td>'
+        '<td>${c['consumedBy'] ?? c['operator'] ?? 'Technician'}</td>'
+        '<td>${c['purpose'] ?? c['reason'] ?? 'Testing'}</td>'
+        '</tr>'
+      ).join('')}
+    </tbody>
+  </table>
+  '''}
+
+  <div class="footer">
+    <div>OMPC Ballistic AeroData System &copy; ${DateTime.now().year} &bull; Confidential Internal QA Document</div>
+    <div>Inspector / Operator: ${widget.loggedInUser}</div>
+  </div>
+</body>
+</html>
+''';
+
+    await ReportHelper.instance.printHtml(htmlContent: html);
+  }
+
 }

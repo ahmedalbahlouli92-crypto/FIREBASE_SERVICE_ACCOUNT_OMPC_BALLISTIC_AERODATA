@@ -4,6 +4,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ballistic_record.dart';
 
 class SupabaseService {
+
+  /// Fetch registered component tests from Supabase component_tests catalog
+  static Future<List<Map<String, dynamic>>> fetchComponentTests() async {
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return [];
+    }
+    try {
+      final response = await client
+          .from('component_tests')
+          .select()
+          .order('test_name', ascending: true);
+      if (response is List) {
+        return response.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Supabase fetchComponentTests error: $e');
+      return [];
+    }
+  }
+
   static const String supabaseUrl = 'https://dygzkvhvuxoukbgtjxfa.supabase.co';
   static const String supabaseAnonKey =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5Z3prdmh2dXhvdWtiZ3RqeGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NTAwNjksImV4cCI6MjEwNTEyNjA2OX0.mvd6E8nQ30l-43wXVMEp_ARg2lHgiP3YxzgH9WCJKcU';
@@ -168,6 +190,17 @@ class SupabaseService {
     }
     sanitized.remove('reference_no');
     sanitized.remove('referenceNo');
+
+    final String techName = (source['technician_name'] ?? source['technicianName'] ?? '').toString().trim();
+    if (techName.isNotEmpty) {
+      final origNotes = (sanitized['notes'] ?? '').toString();
+      final tag = '[TECH:$techName]';
+      if (!origNotes.contains('[TECH:')) {
+        sanitized['notes'] = origNotes.isEmpty ? tag : '$origNotes $tag';
+      }
+    }
+    sanitized.remove('technician_name');
+    sanitized.remove('technicianName');
 
     final bool isRetest = source['is_retest'] == true || source['is_retest']?.toString() == '1';
     if (isRetest) {

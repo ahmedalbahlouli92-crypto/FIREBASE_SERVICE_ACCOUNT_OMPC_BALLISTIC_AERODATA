@@ -37,6 +37,7 @@ class ReportGenerator {
     s = s.replaceAll(RegExp(r'\([^\)]*REF[:\-][^\)]*\)', caseSensitive: false), ' ').trim();
     s = s.replaceAll(RegExp(r'\bREF[:\-]\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
     s = s.replaceAll(RegExp(r'\bRef\s*No[:\-]?\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\[TECH:[^\]]*\]', caseSensitive: false), ' ').trim();
 
     if (s.contains('Temps:')) {
       final idx = s.indexOf('Temps:');
@@ -452,16 +453,11 @@ class ReportGenerator {
       final statusText = !res.isApplicable ? 'Not Tested' : (res.isPassed ? 'PASSED' : 'FAILED');
       final displayCalculation = !res.isApplicable
           ? 'Not Tested'
-          : (res.substitutedText.isNotEmpty && res.substitutedText != 'Not Tested' && res.substitutedText != 'N/A'
-              ? (res.substitutedText.contains('=')
-                  ? '${res.substitutedText} ${res.unit}'
-                  : '${res.substitutedText} = ${res.calculatedValue.toStringAsFixed(1)} ${res.unit}')
-              : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}');
+          : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}';
       final displayOp = res.op == '<=' ? '&le;' : (res.op == '>=' ? '&ge;' : (res.op == '<' ? '&lt;' : (res.op == '>' ? '&gt;' : res.op)));
       rowsBuffer.writeln('''
       <tr style="$bg">
         <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${res.name}</td>
-        <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #475569;">${res.formula}</td>
         <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: bold; color: ${!res.isApplicable ? '#64748b' : '#1e293b'};">$displayCalculation</td>
         <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">$displayOp ${res.limitValue.toStringAsFixed(1)} ${res.unit}</td>
         <td style="padding: 4px 6px; font-size: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: $color;">$statusText</td>
@@ -471,12 +467,11 @@ class ReportGenerator {
 
     return '''
     <div style="margin-top: 8px; margin-bottom: 8px;">
-      <h3 class="section-title" style="border-bottom: 2px solid #cbd5e1; padding-bottom: 3px; font-size: 11.5px; font-weight: bold; text-transform: uppercase;">Combined EPVAT Ballistic Analysis (Admin Adjustable Formulas)</h3>
+      <h3 class="section-title" style="border-bottom: 2px solid #cbd5e1; padding-bottom: 3px; font-size: 11.5px; font-weight: bold; text-transform: uppercase;">EPVAT BALLISTIC ANALYSIS</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
         <thead>
           <tr style="background-color: #f1f5f9; color: #475569; font-size: 10px; font-weight: bold; text-align: left; text-transform: uppercase;">
             <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Rule / Check Name</th>
-            <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Formula Expression</th>
             <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Evaluated Calculation</th>
             <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Configured Limit</th>
             <th style="padding: 4px 6px; border-bottom: 2px solid #cbd5e1;">Status</th>
@@ -522,11 +517,17 @@ class ReportGenerator {
         .where((n) => n.isNotEmpty && n.toLowerCase() != 'clear')
         .toSet()
         .toList();
+    if (testName == 'Waterproof Test') {
+      final hasLeaksOrRetest = records.any((r) => r.defects > 0 || r.mouthSlow > 0 || r.mouthFast > 0 || r.primerSlow > 0 || r.primerFast > 0 || r.status.toLowerCase().contains('retest') || r.status.toLowerCase().contains('reject'));
+      if (hasLeaksOrRetest && !remarksList.any((s) => s.toLowerCase().contains('need for sealant'))) {
+        remarksList.add('need for sealant');
+      }
+    }
     final remarksText = remarksList.isNotEmpty ? remarksList.join('<br/>') : '';
 
-    final inspectorName = loggedInUser.trim().isNotEmpty
-        ? loggedInUser.trim()
-        : (records.isNotEmpty ? records[0].operators : 'N/A');
+    final inspectorName = (records.isNotEmpty && records[0].operators.trim().isNotEmpty)
+        ? records[0].operators.trim()
+        : (loggedInUser.trim().isNotEmpty ? loggedInUser.trim() : 'N/A');
     final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
     final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
     final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
@@ -586,9 +587,9 @@ class ReportGenerator {
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
       classificationImageTag = '''
-        <div style="min-height: 210px; height: 210px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
-          <img src="$src" style="max-width: 100%; max-height: 175px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
-          <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
+        <div style="min-height: 140px; height: 140px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px;">
+          <img src="$src" style="max-width: 100%; max-height: 115px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
+          <div style="font-size: 9px; color: #64748b; margin-top: 3px; font-style: italic;">$title</div>
         </div>
       ''';
     } else if (testName == 'Function Test') {
@@ -597,9 +598,9 @@ class ReportGenerator {
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
       classificationImageTag = '''
-        <div style="min-height: 210px; height: 210px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
-          <img src="$src" style="max-width: 100%; max-height: 175px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Function Test Reference" />
-          <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
+        <div style="min-height: 140px; height: 140px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px;">
+          <img src="$src" style="max-width: 100%; max-height: 115px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Function Test Reference" />
+          <div style="font-size: 9px; color: #64748b; margin-top: 3px; font-style: italic;">$title</div>
         </div>
       ''';
     }
@@ -607,17 +608,17 @@ class ReportGenerator {
     String remarksAndDiagramSection = '';
     if (classificationImageTag.isNotEmpty) {
       remarksAndDiagramSection = '''
-      <div style="margin-top: 10px; margin-bottom: 10px;">
+      <div style="margin-top: 8px; margin-bottom: 8px;">
         <table style="width: 100%; border: none; border-collapse: collapse;">
           <tr>
             <td style="width: 50%; vertical-align: top; border: none; padding-right: 8px; padding-left: 0; padding-top: 0; padding-bottom: 0;">
-              <h3 class="section-title" style="margin-top: 0; margin-bottom: 6px;">Remarks</h3>
-              <div class="sentence-box" style="min-height: 210px; height: 210px; box-sizing: border-box; overflow-y: auto;">
+              <h3 class="section-title" style="margin-top: 0; margin-bottom: 4px;">Remarks</h3>
+              <div class="sentence-box" style="min-height: 140px; height: 140px; box-sizing: border-box; overflow-y: auto;">
                 $remarksText
               </div>
             </td>
             <td style="width: 50%; vertical-align: top; border: none; padding-left: 8px; padding-right: 0; padding-top: 0; padding-bottom: 0;">
-              <h3 class="section-title" style="margin-top: 0; margin-bottom: 6px;">Defect Classification Reference Guide</h3>
+              <h3 class="section-title" style="margin-top: 0; margin-bottom: 4px;">Defect Classification Reference Guide</h3>
               $classificationImageTag
             </td>
           </tr>
@@ -628,7 +629,7 @@ class ReportGenerator {
       remarksAndDiagramSection = '''
       <div>
         <h3 class="section-title">Remarks</h3>
-        <div class="sentence-box" style="min-height: 50px;">
+        <div class="sentence-box" style="min-height: 45px;">
           $remarksText
         </div>
       </div>
@@ -900,9 +901,9 @@ class ReportGenerator {
       flex: 1 0 auto;
     }
     .report-footer {
-      margin-top: 12px;
-      padding-top: 8px;
-      margin-bottom: 1.5in;
+      margin-top: 10px;
+      padding-top: 6px;
+      margin-bottom: 0;
     }
     .header-table {
       width: 100%;
@@ -1044,23 +1045,32 @@ class ReportGenerator {
       color: #475569;
     }
     @media print {
-      @page { margin: 6mm 8mm; size: A4 portrait; }
-      body { margin: 0; padding: 0; }
+      @page { margin: 5mm 8mm; size: A4 portrait; }
+      body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .no-print { display: none; }
       .report-wrapper {
-        min-height: calc(297mm - 14mm);
-        padding: 0;
+        min-height: auto !important;
+        max-height: 285mm !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid-page !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        overflow: hidden !important;
       }
       .report-content {
-        min-height: 3.5in;
+        min-height: auto !important;
         box-sizing: border-box;
       }
       .report-footer {
-        margin-top: 14px;
-        margin-bottom: 1.5in;
-        page-break-inside: avoid;
+        margin-top: 8px !important;
+        margin-bottom: 0 !important;
+        padding-top: 4px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
-      .summary-card, .data-table, .sentence-box, .signatures { page-break-inside: avoid; }
+      .summary-card, .data-table, .sentence-box, .signatures { page-break-inside: avoid !important; }
     }
     .report-content {
       min-height: 3.5in;
@@ -1508,6 +1518,85 @@ class ReportGenerator {
       }
     }
 
+    final String techName = records.isNotEmpty ? records[0].technicianName.trim() : '';
+    final bool isComponent = moduleName == 'Component Test';
+    final bool inspectorIsTech = isComponent && (
+      (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
+      techName.isEmpty ||
+      techName.toLowerCase() == inspectorName.toLowerCase()
+    );
+
+    String signaturesHtml;
+    if (isComponent && !inspectorIsTech && techName.isNotEmpty) {
+      final techSig = _findSignatureBase64(techName, adminRules);
+      final techSigImg = techSig.isNotEmpty
+          ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+          : '<div style="height: 55px;"></div>';
+      signaturesHtml = '''
+      <div class="signatures">
+        <div style="width: 30%; text-align: center;">
+          $inspectorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
+            <div>Component Inspector Signature</div>
+          </div>
+        </div>
+        <div style="width: 30%; text-align: center;">
+          $techSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$techName</div>
+            <div>Component Technician Signature</div>
+          </div>
+        </div>
+        <div style="width: 30%; text-align: center;">
+          $supervisorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
+            <div>Ballistic Supervisor Approval</div>
+          </div>
+        </div>
+      </div>
+      ''';
+    } else if (isComponent && inspectorIsTech) {
+      signaturesHtml = '''
+      <div class="signatures">
+        <div style="width: 42%; text-align: center;">
+          $inspectorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
+            <div>Ballistic Technician Signature</div>
+          </div>
+        </div>
+        <div style="width: 42%; text-align: center;">
+          $supervisorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
+            <div>Ballistic Supervisor Approval</div>
+          </div>
+        </div>
+      </div>
+      ''';
+    } else {
+      signaturesHtml = '''
+      <div class="signatures">
+        <div style="width: 42%; text-align: center;">
+          $inspectorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
+            <div>Ballistic Inspector Signature</div>
+          </div>
+        </div>
+        <div style="width: 42%; text-align: center;">
+          $supervisorSigImg
+          <div class="sig-box" style="width: 100%;">
+            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
+            <div>Ballistic Technician Approval</div>
+          </div>
+        </div>
+      </div>
+      ''';
+    }
+
     buffer.writeln('''
       </tbody>
     </table>
@@ -1530,22 +1619,7 @@ class ReportGenerator {
 
       $attachmentsSection
 
-      <div class="signatures">
-        <div style="width: 42%; text-align: center;">
-          $inspectorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
-            <div>Ballistic Inspector Signature</div>
-          </div>
-        </div>
-        <div style="width: 42%; text-align: center;">
-          $supervisorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
-            <div>Ballistic Technician Approval</div>
-          </div>
-        </div>
-      </div>
+      $signaturesHtml
     </div> <!-- end report-footer -->
   </div> <!-- end report-wrapper -->
 </body>
@@ -1582,15 +1656,29 @@ class ReportGenerator {
         final mf = m['mouthFast'] ?? 0;
         final ps = m['primerSlow'] ?? 0;
         final pf = m['primerFast'] ?? 0;
+        final loc = (m['samplingLocation']?.toString() ?? r.samplingLocation).toUpperCase();
+        final st = (r.retestStatus.isNotEmpty ? r.retestStatus : r.status).toLowerCase();
+        final isPassed = st.contains('pass') || st.contains('approved');
+        String wpRem = cleanRemarks(r.retestNotes).isNotEmpty ? cleanRemarks(r.retestNotes) : '';
+        if (loc.contains('PC110') && isPassed) {
+          if (!wpRem.toLowerCase().contains('sealant applied')) {
+            wpRem = wpRem.isEmpty ? 'sealant applied' : '$wpRem | sealant applied';
+          }
+        }
+        if (wpRem.isEmpty) wpRem = '-';
         buffer.writeln('''
           <th>Mouth Leaks (Slow/Fast)</th>
           <th>Primer Leaks (Slow/Fast)</th>
+          <th>Sampling Location</th>
+          <th>Remarks</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td>S: $ms | F: $mf</td>
           <td>S: $ps | F: $pf</td>
+          <td>${r.samplingLocation.isNotEmpty ? r.samplingLocation : (m['samplingLocation'] ?? '-')}</td>
+          <td>$wpRem</td>
         </tr>
         ''');
       } else if (testName == 'Residual Stress Test') {
@@ -1768,7 +1856,18 @@ class ReportGenerator {
           <td>$retestQty rounds</td>
           <td>${_getRecordMetricsSummary(r)}</td>
           <td><span class="badge badge-${(r.retestStatus.isNotEmpty ? r.retestStatus : r.status).toLowerCase().replaceAll(' ', '-')}">${r.retestStatus.isNotEmpty ? r.retestStatus : r.status}</span></td>
-          <td>${r.retestNotes.isNotEmpty ? r.retestNotes : r.notes}</td>
+          <td>${(() {
+            final loc = (m['samplingLocation']?.toString() ?? r.samplingLocation).toUpperCase();
+            final st = (r.retestStatus.isNotEmpty ? r.retestStatus : r.status).toLowerCase();
+            final isPassed = st.contains('pass') || st.contains('approved');
+            String notes = r.retestNotes.isNotEmpty ? r.retestNotes : r.notes;
+            if ((r.testName == 'Waterproof Test' || testName == 'Waterproof Test') && loc.contains('PC110') && isPassed) {
+              if (!notes.toLowerCase().contains('sealant applied')) {
+                notes = notes.isEmpty ? 'sealant applied' : '$notes | sealant applied';
+              }
+            }
+            return notes;
+          })()}</td>
         </tr>
         ''');
       }
@@ -1854,11 +1953,17 @@ class ReportGenerator {
         .where((n) => n.isNotEmpty && n.toLowerCase() != 'clear')
         .toSet()
         .toList();
+    if (testName == 'Waterproof Test') {
+      final hasLeaksOrRetest = records.any((r) => r.defects > 0 || r.mouthSlow > 0 || r.mouthFast > 0 || r.primerSlow > 0 || r.primerFast > 0 || r.status.toLowerCase().contains('retest') || r.status.toLowerCase().contains('reject'));
+      if (hasLeaksOrRetest && !remarksList.any((s) => s.toLowerCase().contains('need for sealant'))) {
+        remarksList.add('need for sealant');
+      }
+    }
     final remarksText = remarksList.isNotEmpty ? remarksList.join('<br/>') : '';
 
-    final inspectorName = loggedInUser.trim().isNotEmpty
-        ? loggedInUser.trim()
-        : (records.isNotEmpty ? records[0].operators : 'N/A');
+    final inspectorName = (records.isNotEmpty && records[0].operators.trim().isNotEmpty)
+        ? records[0].operators.trim()
+        : (loggedInUser.trim().isNotEmpty ? loggedInUser.trim() : 'N/A');
     final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
     final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
     final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
@@ -2628,6 +2733,79 @@ class ReportGenerator {
       }
     }
 
+    final String techName = records.isNotEmpty ? records[0].technicianName.trim() : '';
+    final bool isComponent = moduleName == 'Component Test';
+    final bool inspectorIsTech = isComponent && (
+      (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
+      techName.isEmpty ||
+      techName.toLowerCase() == inspectorName.toLowerCase()
+    );
+
+    String wordSignaturesHtml;
+    if (isComponent && !inspectorIsTech && techName.isNotEmpty) {
+      final techSig = _findSignatureBase64(techName, adminRules);
+      final techSigImg = techSig.isNotEmpty
+          ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+          : '<div style="height: 55px;"></div>';
+      wordSignaturesHtml = '''
+    <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $inspectorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
+          <div style="font-size: 9pt; color: #475569;">Component Inspector Signature</div>
+        </td>
+        <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $techSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$techName</div>
+          <div style="font-size: 9pt; color: #475569;">Component Technician Signature</div>
+        </td>
+        <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $supervisorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Supervisor Approval</div>
+        </td>
+      </tr>
+    </table>
+      ''';
+    } else if (isComponent && inspectorIsTech) {
+      wordSignaturesHtml = '''
+    <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $inspectorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Technician Signature</div>
+        </td>
+        <td style="width: 10%; border: none;"></td>
+        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $supervisorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Supervisor Approval</div>
+        </td>
+      </tr>
+    </table>
+      ''';
+    } else {
+      wordSignaturesHtml = '''
+    <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $inspectorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Inspector Signature</div>
+        </td>
+        <td style="width: 10%; border: none;"></td>
+        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+          $supervisorSigImg
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Technician Approval</div>
+        </td>
+      </tr>
+    </table>
+      ''';
+    }
+
     buffer.writeln('''
     </tbody>
   </table>
@@ -2646,21 +2824,7 @@ class ReportGenerator {
 
     $attachmentsSection
 
-    <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
-      <tr>
-        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $inspectorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Inspector Signature</div>
-        </td>
-        <td style="width: 10%; border: none;"></td>
-        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $supervisorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Technician Approval</div>
-        </td>
-      </tr>
-    </table>
+    $wordSignaturesHtml
     </div>
   </div>
 </body>
@@ -3352,6 +3516,186 @@ class ReportGenerator {
       return '<span style="display: inline-block; padding: 2px 7px; border-radius: 4px; background-color: $bg; color: $fg; font-weight: bold; font-size: 7.5pt; border: 1px solid $border; white-space: nowrap;">$s</span>';
     }
 
+    final certRowsBuffer = StringBuffer();
+
+    // 1. Waterproof Test
+    if (wpRec != null) {
+      certRowsBuffer.writeln('''
+          <tr>
+            <td colspan="2" class="test-name-cell">Waterproof Test</td>
+            <td style="text-align: center;">$wpSample</td>
+            <td style="text-align: center;">$wpResult</td>
+            <td style="text-align: center;">$wpReq</td>
+            <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
+            <td style="text-align: center;">$wpRemarks</td>
+          </tr>
+      ''');
+    }
+
+    // 2. Bullet Extraction (Extraction Force Test)
+    if (extRec != null) {
+      certRowsBuffer.writeln('''
+          <tr>
+            <td colspan="2" class="test-name-cell">Bullet Extraction</td>
+            <td style="text-align: center;">$extSample</td>
+            <td style="text-align: center;">$extResult</td>
+            <td style="text-align: center;">$extReq</td>
+            <td class="status-cell">${formatStatusBadge(extStatus)}</td>
+            <td style="text-align: center;">$extRemarks</td>
+          </tr>
+      ''');
+    }
+
+    // 3. Accuracy Test
+    if (accRec != null) {
+      certRowsBuffer.writeln('''
+          <tr>
+            <td colspan="2" class="test-name-cell">Accuracy Test</td>
+            <td style="text-align: center;">$accSample</td>
+            <td style="text-align: center;">$accResult</td>
+            <td style="text-align: center;">$accReq</td>
+            <td class="status-cell">${formatStatusBadge(accStatus)}</td>
+            <td style="text-align: center;">$accRemarks</td>
+          </tr>
+      ''');
+    }
+
+    // 4. EPVAT test (+21 °C, +52 °C, -54 °C)
+    if (epvRec21 != null || epvRec52 != null || epvRec54 != null) {
+      final epvCount = (epvRec21 != null ? 1 : 0) + (epvRec52 != null ? 1 : 0) + (epvRec54 != null ? 1 : 0);
+      final spanAttr = epvCount > 1 ? 'rowspan="$epvCount"' : '';
+      bool firstRendered = false;
+
+      if (epvRec21 != null) {
+        firstRendered = true;
+        certRowsBuffer.writeln('''
+          <tr>
+            <td $spanAttr style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
+            <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
+            <td $spanAttr style="text-align: center; vertical-align: middle;">$epvSample21</td>
+            <td style="text-align: center;">$epvResult21</td>
+            <td style="text-align: center;">$epvReq21</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus21)}</td>
+            <td style="text-align: center;">$epvRemarks21</td>
+          </tr>
+        ''');
+      }
+
+      if (epvRec52 != null) {
+        if (!firstRendered) {
+          firstRendered = true;
+          certRowsBuffer.writeln('''
+          <tr>
+            <td $spanAttr style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
+            <td class="temp-cell" style="width: 7%;">+52 &deg;C</td>
+            <td $spanAttr style="text-align: center; vertical-align: middle;">$epvSample21</td>
+            <td style="text-align: center;">$epvResult52</td>
+            <td style="text-align: center;">$epvReq52</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
+            <td style="text-align: center;">$epvRemarks52</td>
+          </tr>
+          ''');
+        } else {
+          certRowsBuffer.writeln('''
+          <tr>
+            <td class="temp-cell">+52 &deg;C</td>
+            <td style="text-align: center;">$epvResult52</td>
+            <td style="text-align: center;">$epvReq52</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
+            <td style="text-align: center;">$epvRemarks52</td>
+          </tr>
+          ''');
+        }
+      }
+
+      if (epvRec54 != null) {
+        final coldLabel = epvRec54.cartridgeTemp.isNotEmpty ? epvRec54.cartridgeTemp : '-54 &deg;C';
+        if (!firstRendered) {
+          certRowsBuffer.writeln('''
+          <tr>
+            <td $spanAttr style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
+            <td class="temp-cell" style="width: 7%;">$coldLabel</td>
+            <td $spanAttr style="text-align: center; vertical-align: middle;">$epvSample21</td>
+            <td style="text-align: center;">$epvResult54</td>
+            <td style="text-align: center;">$epvReq54</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
+            <td style="text-align: center;">$epvRemarks54</td>
+          </tr>
+          ''');
+        } else {
+          certRowsBuffer.writeln('''
+          <tr>
+            <td class="temp-cell">$coldLabel</td>
+            <td style="text-align: center;">$epvResult54</td>
+            <td style="text-align: center;">$epvReq54</td>
+            <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
+            <td style="text-align: center;">$epvRemarks54</td>
+          </tr>
+          ''');
+        }
+      }
+    }
+
+    // 5. Function Test
+    if (funcRec != null) {
+      certRowsBuffer.writeln('''
+          <tr>
+            <td colspan="2" class="test-name-cell">Function Test</td>
+            <td style="text-align: center;">$funcSample</td>
+            <td style="text-align: center;">$funcResult</td>
+            <td style="text-align: center;">$funcReq</td>
+            <td class="status-cell">${formatStatusBadge(funcStatus)}</td>
+            <td style="text-align: center;">$funcRemarks</td>
+          </tr>
+      ''');
+    }
+
+    // 6. Residual Stress Test
+    if (rsRec != null) {
+      certRowsBuffer.writeln('''
+          <tr>
+            <td colspan="2" class="test-name-cell">Residual Stress Test</td>
+            <td style="text-align: center;">$rsSample</td>
+            <td style="text-align: center;">$rsResult</td>
+            <td style="text-align: center;">$rsReq</td>
+            <td class="status-cell">${formatStatusBadge(rsStatus)}</td>
+            <td style="text-align: center;">$rsRemarks</td>
+          </tr>
+      ''');
+    }
+
+    // 7. Terminal Effect Test
+    if (termRec != null) {
+      certRowsBuffer.writeln('''
+          <tr>
+            <td colspan="2" class="test-name-cell">Terminal Effect Test</td>
+            <td style="text-align: center;">$termSample</td>
+            <td style="text-align: center;">$termResult</td>
+            <td style="text-align: center;">$termReq</td>
+            <td class="status-cell">${formatStatusBadge(termStatus)}</td>
+            <td style="text-align: center;">$termRemarks</td>
+          </tr>
+      ''');
+    }
+
+    // 8. Primer Sensitivity Test
+    if (primerRec != null) {
+      certRowsBuffer.writeln('''
+          <tr>
+            <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
+            <td style="text-align: center;">$primerSample</td>
+            <td style="text-align: center;">$primerResult</td>
+            <td style="text-align: center;">$primerReq</td>
+            <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
+            <td style="text-align: center;">$primerRemarks</td>
+          </tr>
+      ''');
+    }
+
+    if (certRowsBuffer.isEmpty) {
+      certRowsBuffer.writeln('<tr><td colspan="7" style="text-align: center; padding: 12px; color: #64748b;">No completed test records found for this lot.</td></tr>');
+    }
+
     final buffer = StringBuffer();
     buffer.writeln('''
 <!DOCTYPE html>
@@ -3593,103 +3937,8 @@ class ReportGenerator {
             <th style="width: 8%; text-align: center;">Status</th>
             <th style="width: 6%; text-align: center;">Remarks</th>
           </tr>
-        </thead>
         <tbody>
-          <!-- 1. Waterproof Test -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Waterproof Test</td>
-            <td style="text-align: center;">$wpSample</td>
-            <td style="text-align: center;">$wpResult</td>
-            <td style="text-align: center;">$wpReq</td>
-            <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
-            <td style="text-align: center;">$wpRemarks</td>
-          </tr>
-
-          <!-- 2. Bullet Extraction (Extraction Force Test) -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Bullet Extraction</td>
-            <td style="text-align: center;">$extSample</td>
-            <td style="text-align: center;">$extResult</td>
-            <td style="text-align: center;">$extReq</td>
-            <td class="status-cell">${formatStatusBadge(extStatus)}</td>
-            <td style="text-align: center;">$extRemarks</td>
-          </tr>
-
-          <!-- 3. Accuracy Test -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Accuracy Test</td>
-            <td style="text-align: center;">$accSample</td>
-            <td style="text-align: center;">$accResult</td>
-            <td style="text-align: center;">$accReq</td>
-            <td class="status-cell">${formatStatusBadge(accStatus)}</td>
-            <td style="text-align: center;">$accRemarks</td>
-          </tr>
-
-          <!-- 4. EPVAT test (+21 °C, +52 °C, -54 °C) -->
-          <tr>
-            <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
-            <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
-            <td rowspan="3" style="text-align: center; vertical-align: middle;">$epvSample21</td>
-            <td style="text-align: center;">$epvResult21</td>
-            <td style="text-align: center;">$epvReq21</td>
-            <td class="status-cell">${formatStatusBadge(epvStatus21)}</td>
-            <td style="text-align: center;">$epvRemarks21</td>
-          </tr>
-          <tr>
-            <td class="temp-cell">+52 &deg;C</td>
-            <td style="text-align: center;">$epvResult52</td>
-            <td style="text-align: center;">$epvReq52</td>
-            <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
-            <td style="text-align: center;">$epvRemarks52</td>
-          </tr>
-          <tr>
-            <td class="temp-cell">-54 &deg;C</td>
-            <td style="text-align: center;">$epvResult54</td>
-            <td style="text-align: center;">$epvReq54</td>
-            <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
-            <td style="text-align: center;">$epvRemarks54</td>
-          </tr>
-
-          <!-- 5. Function Test -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Function Test</td>
-            <td style="text-align: center;">$funcSample</td>
-            <td style="text-align: center;">$funcResult</td>
-            <td style="text-align: center;">$funcReq</td>
-            <td class="status-cell">${formatStatusBadge(funcStatus)}</td>
-            <td style="text-align: center;">$funcRemarks</td>
-          </tr>
-
-          <!-- 6. Residual Stress Test -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Residual Stress Test</td>
-            <td style="text-align: center;">$rsSample</td>
-            <td style="text-align: center;">$rsResult</td>
-            <td style="text-align: center;">$rsReq</td>
-            <td class="status-cell">${formatStatusBadge(rsStatus)}</td>
-            <td style="text-align: center;">$rsRemarks</td>
-          </tr>
-
-          <!-- 7. Terminal Effect Test -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Terminal Effect Test</td>
-            <td style="text-align: center;">$termSample</td>
-            <td style="text-align: center;">$termResult</td>
-            <td style="text-align: center;">$termReq</td>
-            <td class="status-cell">${formatStatusBadge(termStatus)}</td>
-            <td style="text-align: center;">$termRemarks</td>
-          </tr>
-
-          <!-- 8. Primer Sensitivity Test -->
-          <tr>
-            <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
-            <td style="text-align: center;">$primerSample</td>
-            <td style="text-align: center;">$primerResult</td>
-            <td style="text-align: center;">$primerReq</td>
-            <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
-            <td style="text-align: center;">$primerRemarks</td>
-          </tr>
-        </tbody>
+${certRowsBuffer.toString()}        </tbody>
       </table>
     </div>
 

@@ -56,8 +56,9 @@ class _HistoryTabState extends State<HistoryTab> {
   String _statusFilter = 'All';
   String _lotFilter = 'All';
   String _hopperFilter = 'All';
+  String _sortByFilter = 'Date of Inspection';
 
-  static const List<String> calibers = [
+  static const List<String> defaultCalibers = [
     '5.56x45 SS109',
     '5.56x45 M193',
     '5.56x45 .223 69 grains',
@@ -72,6 +73,13 @@ class _HistoryTabState extends State<HistoryTab> {
     '9x19mm Match',
     '9x19mm 124 grains CMJ',
   ];
+
+  List<String> get calibers {
+    if (widget.currentModule == 'Component Test') {
+      return const ['5.56', '7.62', '9mm'];
+    }
+    return defaultCalibers;
+  }
 
   static const List<String> _baseTestNames = [
     'Waterproof Test',
@@ -119,6 +127,8 @@ class _HistoryTabState extends State<HistoryTab> {
     final retestDefectsCtrl = TextEditingController(text: '${r.defects}');
     final retestNotesCtrl = TextEditingController();
     final retestLocationCtrl = TextEditingController(text: r.samplingLocation);
+    String primerActionTaken = 'None / Retest Only';
+    final primerNewInsertionDepthCtrl = TextEditingController(text: r.primerInsertionDepth);
     String selectedOutcome = 'Approved';
 
     // Test-specific parameter controllers pre-filled from r:
@@ -694,7 +704,7 @@ class _HistoryTabState extends State<HistoryTab> {
                   onPressed: () async {
                     final op = retestOpCtrl.text.trim().isNotEmpty ? retestOpCtrl.text.trim() : r.operators;
                     final shift = retestShiftCtrl.text.trim().isNotEmpty ? retestShiftCtrl.text.trim() : r.shift;
-                    final newRemarks = retestNotesCtrl.text.trim();
+                    String newRemarks = retestNotesCtrl.text.trim();
                     final timestamp = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
                     String finalStatus;
@@ -707,6 +717,13 @@ class _HistoryTabState extends State<HistoryTab> {
                     }
 
                     final remarksHeader = '[RETEST by $op on $timestamp - Outcome: $finalStatus]';
+                    if (r.testName == 'Waterproof Test') {
+                      final isPC110 = retestLocationCtrl.text.trim().contains('PC110');
+                      final isPassed = selectedOutcome.toLowerCase().contains('approved') || selectedOutcome.toLowerCase().contains('pass');
+                      if (isPC110 && isPassed && !newRemarks.toLowerCase().contains('sealant applied')) {
+                        newRemarks = newRemarks.isEmpty ? 'sealant applied' : '$newRemarks (sealant applied)';
+                      }
+                    }
                     final updatedNotes = r.notes.isNotEmpty
                         ? (newRemarks.isNotEmpty ? '${r.notes}\n$remarksHeader: $newRemarks' : '${r.notes}\n$remarksHeader')
                         : (newRemarks.isNotEmpty ? '$remarksHeader: $newRemarks' : remarksHeader);
@@ -1024,9 +1041,9 @@ class _HistoryTabState extends State<HistoryTab> {
               Text('Confirm Deletion', style: TextStyle(color: Colors.white, fontSize: 18.0, fontWeight: FontWeight.bold)),
             ],
           ),
-          content: Text(
-            'Are you sure you want to permanently delete the inspection entry for lot "${record.lotNumber}"?',
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14.0),
+          content: const Text(
+            'are you sure want to delete the report',
+            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14.0),
           ),
           actions: [
             TextButton(
@@ -3970,6 +3987,70 @@ class _HistoryTabState extends State<HistoryTab> {
             final totalQty = reportRecords.fold<int>(0, (sum, r) => sum + r.produced);
             final totalDefects = reportRecords.fold<int>(0, (sum, r) => sum + r.defects);
             final yieldRate = totalQty > 0 ? (((totalQty - totalDefects) / totalQty) * 100.0) : 100.0;
+
+            Future<bool> checkUnperformedLotTests() async {
+              if (selectedReportTest != 'All' || !isLotAcceptance) return true;
+              final missing = <String>[];
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('waterproof'))) missing.add('Waterproof Test');
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('extraction'))) missing.add('Extraction Force Test');
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('accuracy'))) missing.add('Accuracy Test');
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('epvat') || r.testName.toLowerCase().contains('propellant'))) missing.add('EPVAT test');
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('function'))) missing.add('Function Test');
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('residual') || r.testName.toLowerCase().contains('stress'))) missing.add('Residual Stress Test');
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('terminal'))) missing.add('Terminal Effect Test');
+              if (!reportRecords.any((r) => r.testName.toLowerCase().contains('primer'))) missing.add('Primer Sensitivity Test');
+
+              if (missing.isEmpty) return true;
+
+              final res = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E293B),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFEAB308))),
+                  title: Row(
+                    children: const [
+                      Icon(Icons.warning_amber_rounded, color: Color(0xFFEAB308), size: 24),
+                      SizedBox(width: 8),
+                      Text('Unperformed Tests Notice', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('The following tests have not been performed for this lot:', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 13)),
+                      const SizedBox(height: 8),
+                      ...missing.map((t) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2.0),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.arrow_right, color: Color(0xFFEAB308), size: 18),
+                            Text(t, style: const TextStyle(color: Color(0xFFFDE047), fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      )),
+                      const SizedBox(height: 12),
+                      const Text('Would you like to proceed and generate the certificate without them?', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEAB308),
+                        foregroundColor: const Color(0xFF0F172A),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Proceed', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              );
+              return res ?? false;
+            }
 
             return Dialog(
               backgroundColor: const Color(0xFF344D6E),

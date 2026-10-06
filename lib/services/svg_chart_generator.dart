@@ -558,16 +558,40 @@ class SvgChartGenerator {
   }
 
   /// Generates an SVG Statistical Process Control (SPC) Chart with UCL, CL, and LCL limits
+  static int _compareNatural(String a, String b) {
+    final regA = RegExp(r'\d+').firstMatch(a);
+    final regB = RegExp(r'\d+').firstMatch(b);
+    if (regA != null && regB != null) {
+      final prefixA = a.substring(0, regA.start);
+      final prefixB = b.substring(0, regB.start);
+      if (prefixA != prefixB) return prefixA.compareTo(prefixB);
+      final numA = int.tryParse(regA.group(0)!);
+      final numB = int.tryParse(regB.group(0)!);
+      if (numA != null && numB != null && numA != numB) {
+        return numA.compareTo(numB);
+      }
+    }
+    return a.compareTo(b);
+  }
+
+  /// Generates an SVG Statistical Process Control (SPC) Chart with UCL, CL, and LCL limits
   static String generateSpcChartSvg(
     List<BallisticRecord> records, {
     String param = 'Mean Velocity (m/s)',
     double width = 800,
     double height = 230,
   }) {
+    // Sort records strictly by lot number in natural numerical sequence
+    final sortedRecords = List<BallisticRecord>.from(records)..sort((a, b) {
+      final lotA = a.lotNo.trim().isNotEmpty ? a.lotNo.trim() : a.hopperNo.trim();
+      final lotB = b.lotNo.trim().isNotEmpty ? b.lotNo.trim() : b.hopperNo.trim();
+      return _compareNatural(lotA, lotB);
+    });
+
     // 1. Extract values
     final List<Map<String, dynamic>> points = [];
-    for (int i = 0; i < records.length; i++) {
-      final r = records[i];
+    for (int i = 0; i < sortedRecords.length; i++) {
+      final r = sortedRecords[i];
       final double? val = extractParamValue(r, param);
 
       if (val != null && (val > 0 || param.toLowerCase().contains('leak') || param.toLowerCase().contains('defect') || param.toLowerCase().contains('split') || param.toLowerCase().contains('crack'))) {
@@ -740,7 +764,7 @@ class SvgChartGenerator {
       ''';
     }
 
-    final keys = groups.keys.toList();
+    final keys = groups.keys.toList()..sort(_compareNatural);
     final displayKeys = keys.length > 8 ? keys.sublist(keys.length - 8) : keys;
 
     // Compute stats for each group

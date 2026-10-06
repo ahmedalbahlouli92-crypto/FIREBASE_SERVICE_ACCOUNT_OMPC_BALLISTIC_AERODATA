@@ -130,6 +130,16 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
   }
 
   Future<void> _updateIssueStatus(Map<String, dynamic> issue, String newStatus) async {
+    final currentStatus = (issue['status'] ?? '').toString();
+    if (currentStatus == 'Resolved' || currentStatus == 'Calibrated' || currentStatus == 'Closed') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Issue is $currentStatus and locked. No further modifications allowed.'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
     final idx = _reportedIssues.indexWhere((i) => i['id'] == issue['id']);
     if (idx != -1) {
       final updated = Map<String, dynamic>.from(_reportedIssues[idx]);
@@ -141,7 +151,118 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
     }
   }
 
+  Future<void> _openIndividualIssueReport(Map<String, dynamic> issue) async {
+    final eq = issue['equipment'] ?? 'Equipment';
+    final title = issue['title'] ?? 'Maintenance Report';
+    final time = issue['timestamp'] ?? '';
+    final severity = issue['severity'] ?? 'Normal';
+    final reporter = issue['reporter'] ?? 'Technician';
+    final desc = issue['description'] ?? 'No description provided';
+    final action = issue['actionTaken'] ?? 'Pending resolution';
+    final status = issue['status'] ?? 'Open / Reported';
+
+    final html = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Equipment Report - $eq</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #0f172a; line-height: 1.5; }
+    .header { border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 24px; }
+    .header h1 { margin: 0; color: #0284c7; font-size: 20px; text-transform: uppercase; }
+    .header .subtitle { color: #64748b; font-size: 12px; margin-top: 4px; }
+    .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .label { font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+    .val { font-size: 13px; font-weight: 600; color: #0f172a; margin-top: 2px; }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #e0f2fe; color: #0369a1; }
+    .section-title { font-size: 13px; font-weight: bold; color: #1e293b; margin-top: 16px; margin-bottom: 6px; }
+    .content-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; font-size: 12.5px; }
+    .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Oman Munition Production Company - Equipment Inspection Report</h1>
+    <div class="subtitle">QC & Ballistic Lab Section &bull; Technical Issue & Maintenance Record</div>
+  </div>
+  <div class="card">
+    <div class="grid">
+      <div>
+        <div class="label">Equipment</div>
+        <div class="val" style="color: #0284c7; font-size: 15px;">$eq</div>
+      </div>
+      <div>
+        <div class="label">Reported Timestamp</div>
+        <div class="val">$time</div>
+      </div>
+      <div>
+        <div class="label">Severity Level</div>
+        <div class="val">$severity</div>
+      </div>
+      <div>
+        <div class="label">Current Status</div>
+        <div class="val"><span class="status-badge">$status</span></div>
+      </div>
+      <div>
+        <div class="label">Reported By</div>
+        <div class="val">$reporter</div>
+      </div>
+      <div>
+        <div class="label">Issue Title</div>
+        <div class="val">$title</div>
+      </div>
+    </div>
+    <div class="section-title">Fault Description & Observations:</div>
+    <div class="content-box">$desc</div>
+    <div class="section-title">Action Taken / Resolution Notes:</div>
+    <div class="content-box" style="color: #059669; font-weight: 500;">$action</div>
+  </div>
+  <div class="footer">
+    Generated via OMPC Ballistic AeroData &bull; Confidential Internal QA Document
+  </div>
+</body>
+</html>
+''';
+    await ReportHelper.instance.openReport(
+      htmlContent: html,
+      title: 'Equipment_Report_${eq}_${issue['id'] ?? ''}'.replaceAll(' ', '_'),
+    );
+  }
+
   Future<void> _deleteIssue(Map<String, dynamic> issue) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF334155))),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
+            SizedBox(width: 8),
+            Text('Confirm Deletion', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'are you sure want to delete the report',
+          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     _reportedIssues.removeWhere((i) => i['id'] == issue['id']);
     await _storageService.saveEquipmentIssues(_reportedIssues);
     SupabaseService.saveEquipmentIssues(_reportedIssues);
@@ -546,7 +667,8 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
                               itemBuilder: (context, idx) {
                                 final issue = filteredList[idx];
                                 final status = (issue['status'] ?? 'Open').toString();
-                                final isResolved = status.contains('Resolved') || status.contains('Calibrated');
+                                final isResolved = status.contains('Resolved') || status.contains('Calibrated') || status.contains('Closed');
+                                final isLocked = status == 'Resolved' || status == 'Calibrated' || status == 'Closed';
                                 final isRepair = status.contains('Repair');
 
                                 return Padding(
@@ -629,20 +751,49 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
                                                   style: const TextStyle(fontSize: 11.0, color: Color(0xFF64748B)),
                                                 ),
                                                 const Spacer(),
-                                                DropdownButton<String>(
-                                                  value: ['Open / Reported', 'Under Repair', 'Resolved', 'Calibrated'].contains(status) ? status : 'Open / Reported',
-                                                  underline: const SizedBox(),
-                                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
-                                                  items: const [
-                                                    DropdownMenuItem(value: 'Open / Reported', child: Text('Open / Reported')),
-                                                    DropdownMenuItem(value: 'Under Repair', child: Text('Under Repair')),
-                                                    DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
-                                                    DropdownMenuItem(value: 'Calibrated', child: Text('Calibrated')),
-                                                  ],
-                                                  onChanged: (newSt) {
-                                                    if (newSt != null) _updateIssueStatus(issue, newSt);
-                                                  },
+                                                IconButton(
+                                                  icon: const Icon(Icons.open_in_new_rounded, size: 18.0, color: Color(0xFF0284C7)),
+                                                  tooltip: 'Open Report',
+                                                  onPressed: () => _openIndividualIssueReport(issue),
                                                 ),
+                                                const SizedBox(width: 6.0),
+                                                if (isLocked) ...[
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFDCFCE7),
+                                                      borderRadius: BorderRadius.circular(6.0),
+                                                      border: Border.all(color: const Color(0xFF86EFAC)),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        const Icon(Icons.lock_rounded, size: 13.0, color: Color(0xFF15803D)),
+                                                        const SizedBox(width: 4.0),
+                                                        Text(
+                                                          status,
+                                                          style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ] else ...[
+                                                  DropdownButton<String>(
+                                                    value: ['Open / Reported', 'Under Repair', 'Resolved', 'Calibrated', 'Closed'].contains(status) ? status : 'Open / Reported',
+                                                    underline: const SizedBox(),
+                                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
+                                                    items: const [
+                                                      DropdownMenuItem(value: 'Open / Reported', child: Text('Open / Reported')),
+                                                      DropdownMenuItem(value: 'Under Repair', child: Text('Under Repair')),
+                                                      DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
+                                                      DropdownMenuItem(value: 'Calibrated', child: Text('Calibrated')),
+                                                      DropdownMenuItem(value: 'Closed', child: Text('Closed')),
+                                                    ],
+                                                    onChanged: (newSt) {
+                                                      if (newSt != null) _updateIssueStatus(issue, newSt);
+                                                    },
+                                                  ),
+                                                ],
                                                 if (widget.isAdmin) ...[
                                                   const SizedBox(width: 8.0),
                                                   IconButton(

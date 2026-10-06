@@ -1130,6 +1130,39 @@ CREATE POLICY "Public access policy" ON public.admin_operators FOR ALL USING (tr
 GRANT ALL ON TABLE public.admin_operators TO anon, authenticated, service_role;
 
 -- Confirmation output
-SELECT 'Successfully created all 20 test tables, 8 consumable category tables, component inventory, witness storage tables, equipment issues, and admin control tables.' as result;
+
+-- ==============================================================================
+-- 9. Component Module Test Catalog
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.component_tests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    test_name TEXT NOT NULL,
+    caliber TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    standard_reference TEXT DEFAULT 'NATO / MIL-STD',
+    sample_size INTEGER DEFAULT 50,
+    CONSTRAINT unique_component_test_caliber UNIQUE (test_name, caliber)
+);
+ALTER TABLE public.component_tests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.component_tests;
+CREATE POLICY "Public access policy" ON public.component_tests FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.component_tests TO anon, authenticated, service_role;
+
+-- Seed component tests table for calibers: 5.56, 7.62, 9mm
+INSERT INTO public.component_tests (test_name, caliber, description, standard_reference, sample_size)
+VALUES
+    ('Primer Sensitivity Test', '5.56', 'Run-down primer sensitivity H-bar test for 5.56mm ammunition', 'NATO AC/225 D/14', 50),
+    ('Primer Sensitivity Test', '7.62', 'Run-down primer sensitivity H-bar test for 7.62mm ammunition', 'NATO AC/225 D/14', 50),
+    ('Primer Sensitivity Test', '9mm',  'Run-down primer sensitivity H-bar test for 9mm Luger ammunition', 'NATO AC/225 D/14', 50),
+    ('Propellant Test', '5.56', 'Propellant charge lot qualification, visual & closed vessel analysis for 5.56mm', 'MIL-STD-286C', 20),
+    ('Propellant Test', '7.62', 'Propellant charge lot qualification, visual & closed vessel analysis for 7.62mm', 'MIL-STD-286C', 20),
+    ('Propellant Test', '9mm',  'Propellant charge lot qualification, visual & closed vessel analysis for 9mm', 'MIL-STD-286C', 20)
+ON CONFLICT (test_name, caliber) DO UPDATE
+SET description = EXCLUDED.description,
+    standard_reference = EXCLUDED.standard_reference,
+    sample_size = EXCLUDED.sample_size;
+
+SELECT 'Successfully created all 21 test tables, 8 consumable category tables, component inventory, component tests catalog, witness storage tables, equipment issues, and admin control tables.' as result;
 
 

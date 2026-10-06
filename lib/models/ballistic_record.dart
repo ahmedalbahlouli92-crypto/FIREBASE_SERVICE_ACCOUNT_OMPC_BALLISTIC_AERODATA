@@ -166,6 +166,7 @@ class BallisticRecord {
   final int retestDefects;
   final String retestMetrics;
   final String referenceNo;
+  final String technicianName;
  
   BallisticRecord({
     String? id,
@@ -287,6 +288,7 @@ class BallisticRecord {
     this.retestDefects = 0,
     this.retestMetrics = '',
     this.referenceNo = '',
+    this.technicianName = '',
   }) : id = (id != null && id.isNotEmpty) ? id : generateUuid();
 
   Map<String, dynamic> get parsedRetestMetrics {
@@ -435,8 +437,9 @@ class BallisticRecord {
     final cleanId = (id ?? '').replaceAll('"', '""').replaceAll(',', ' ');
     final cleanRetestMetrics = retestMetrics.replaceAll('"', '""').replaceAll('\n', ' ');
     final cleanRefNo = referenceNo.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanTechName = technicianName.replaceAll('"', '""').replaceAll(',', ' ');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge","$cleanIsRetest","$cleanRetestTs","$cleanRetestOp","$cleanRetestNotes","$cleanRetestStatus","$cleanOrigStatus","$cleanId",$retestProduced,$retestDefects,"$cleanRetestMetrics","$cleanRefNo"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge","$cleanIsRetest","$cleanRetestTs","$cleanRetestOp","$cleanRetestNotes","$cleanRetestStatus","$cleanOrigStatus","$cleanId",$retestProduced,$retestDefects,"$cleanRetestMetrics","$cleanRefNo","$cleanTechName"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -611,6 +614,7 @@ class BallisticRecord {
     final int retestDefects = fields.length > 116 ? int.tryParse(fields[116].replaceAll('"', '').trim()) ?? 0 : 0;
     final String retestMetrics = fields.length > 117 ? fields[117].replaceAll('"', '').trim() : '';
     final String referenceNo = fields.length > 118 ? fields[118].replaceAll('"', '').trim() : '';
+    final String technicianName = fields.length > 119 ? fields[119].replaceAll('"', '').trim() : '';
  
     return BallisticRecord(
       id: rowId.isNotEmpty ? rowId : null,
@@ -732,6 +736,7 @@ class BallisticRecord {
       retestDefects: retestDefects,
       retestMetrics: retestMetrics,
       referenceNo: referenceNo,
+      technicianName: technicianName,
     );
   }
 
@@ -855,6 +860,7 @@ class BallisticRecord {
       'retest_defects': retestDefects,
       'retest_metrics': retestMetrics,
       'reference_no': referenceNo,
+      'technician_name': technicianName,
     };
     if (id != null && id!.isNotEmpty) {
       map['id'] = id;
@@ -894,6 +900,16 @@ class BallisticRecord {
         final tag = rawNotes.substring(startIndex + 5);
         final endTag = tag.indexOf(']');
         referenceNo = (endTag != -1 ? tag.substring(0, endTag) : tag).trim();
+      } catch (_) {}
+    }
+
+    String technicianName = toStr(map['technician_name'] ?? map['technicianName']);
+    if (technicianName.isEmpty && rawNotes.contains('[TECH:')) {
+      try {
+        final startIndex = rawNotes.indexOf('[TECH:');
+        final tag = rawNotes.substring(startIndex + 6);
+        final endTag = tag.indexOf(']');
+        technicianName = (endTag != -1 ? tag.substring(0, endTag) : tag).trim();
       } catch (_) {}
     }
 
@@ -1044,6 +1060,7 @@ class BallisticRecord {
       retestDefects: retestDefects,
       retestMetrics: retestMetrics,
       referenceNo: referenceNo,
+      technicianName: technicianName,
     );
   }
 
@@ -1168,6 +1185,7 @@ class BallisticRecord {
     int? retestDefects,
     String? retestMetrics,
     String? referenceNo,
+    String? technicianName,
   }) {
     return BallisticRecord(
       id: id ?? this.id,
@@ -1289,6 +1307,7 @@ class BallisticRecord {
       retestDefects: retestDefects ?? this.retestDefects,
       retestMetrics: retestMetrics ?? this.retestMetrics,
       referenceNo: referenceNo ?? this.referenceNo,
+      technicianName: technicianName ?? this.technicianName,
     );
   }
 

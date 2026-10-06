@@ -621,10 +621,29 @@ class _TrendLineChartState extends State<TrendLineChart> {
       }
     }
 
+    int compareNatural(String a, String b) {
+      final regA = RegExp(r'\d+').firstMatch(a);
+      final regB = RegExp(r'\d+').firstMatch(b);
+      if (regA != null && regB != null) {
+        final prefixA = a.substring(0, regA.start);
+        final prefixB = b.substring(0, regB.start);
+        if (prefixA != prefixB) return prefixA.compareTo(prefixB);
+        final numA = int.tryParse(regA.group(0)!);
+        final numB = int.tryParse(regB.group(0)!);
+        if (numA != null && numB != null && numA != numB) {
+          return numA.compareTo(numB);
+        }
+      }
+      return a.compareTo(b);
+    }
+
+    final sortedGroupKeys = groups.keys.toList()..sort(compareNatural);
+
     final List<_TrendGroupPoint> pts = [];
     int idx = 0;
-    groups.forEach((groupKey, metricsList) {
-      if (metricsList.isEmpty) return;
+    for (final groupKey in sortedGroupKeys) {
+      final metricsList = groups[groupKey]!;
+      if (metricsList.isEmpty) continue;
 
       final double overallMin = metricsList.map((m) => m.min).reduce(math.min);
       final double overallMax = metricsList.map((m) => m.max).reduce(math.max);
@@ -643,7 +662,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
         sd: overallSD,
         recordCount: metricsList.length,
       ));
-    });
+    }
 
     return pts;
   }
