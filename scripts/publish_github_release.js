@@ -19,25 +19,30 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.4';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.4 (Dynamic Admin EPVAT Formulas, Auto-Sentencing & Cloud Cache Sync)';
-const BODY = `## OMPC Ballistic AeroData v1.9.4
+const TAG_NAME = 'v1.9.5';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.5 (Comprehensive Quality & Inspection Suite Update)';
+const BODY = `## OMPC Ballistic AeroData v1.9.5
 
-Production release featuring dynamic admin EPVAT formulas, automated lot sentencing remediation, authoritative cloud synchronization, and multi-temperature overall mapping:
+Comprehensive quality inspection update featuring standardized reports, enhanced component testing, natural lot sequencing, and streamlined retesting workflows:
 
 ### Key Enhancements & Features:
-1. **Dynamic Admin EPVAT Formulas & Auto-Sentencing Remediation**:
-   - Replaced static/hardcoded pressure & velocity validation logic with the active admin-configured formulas per caliber.
-   - Added automatic status re-evaluation (\`calculateEpvatRecordStatus\`) that checks all passing formulas on record load and seamlessly updates stale 'Rejected' records to 'Approved' across memory, local cache, and Supabase.
-2. **Cloud-Authoritative Cache & Synchronization**:
-   - Fixed cache regression where browser \`localStorage\` could overwrite authoritative cloud records with stale local statuses.
-   - Cloud records are now strictly authoritative on load; local changes are only pushed if actively queued in \`pendingSyncIds\`.
-3. **EPVAT 3-Temperature Overall Report Mapping**:
-   - Corrected overall 3-temperature record mapping in PDF and Lot Acceptance dossiers across ambient (+21 °C), hot (+52 °C), and cold (-54 °C).
-4. **Desktop, Web & Android Sync**:
-   - Full cross-platform support across Windows Desktop, Android APK, and Firebase Cloud Web app.
-5. **Firebase Cloud Web Deployment**:
-   - Live on Firebase Hosting: \`https://ompc-ballistic-aerodata.web.app\`.
+1. **Inspector Name on Reports**: Prioritizes operators from inspection logs over generic logged-in usernames on all individual and batch test reports.
+2. **Lot Acceptance Certificate Cover**: Certificate cover correctly displays generator, while all individual sub-test sheets show their respective inspectors.
+3. **Single Page Fitting**: Individual test reports strictly fit within 1 A4 page with optimized print layout.
+4. **Unperformed Tests in Lot Certificate**: Omit unperformed test rows from certificate and alert user in UI before generating.
+5. **EPVAT Title & Formulas**: Renamed to EPVAT BALLISTIC ANALYSIS, removed Formula Expression column, and displayed evaluated calculation values with units.
+6. **Component Module Calibers**: Strictly restricted component calibers to 5.56, 7.62, and 9mm.
+7. **Supabase Component Table**: Created and seeded public.component_tests catalog table with RLS policies.
+8. **SPC Chart Lot Sequence**: Sorted SPC Matrix chart X-axis strictly by lot number in natural numerical sequence.
+9. **Equipment Report Opening & Status Lock**: Added individual issue report viewer and locked resolved/calibrated/closed issues.
+10. **Executive Report Table Export**: Added dedicated pure tabular HTML export for executive quality metrics.
+11. **Component Test Signatures**: Added selectable technician signature, displaying 3 signatures (or 2 if inspector is technician).
+12. **Inspection Log Sorting**: Added filter dropdown to sort logs by Date of Inspection, Lot / Hopper, Test Name, or Caliber.
+13. **Waterproof Sealant Notes**: Auto-note 'need for sealant' on failures/retests, and 'sealant applied' on PC110 retest pass.
+14. **Primer Retest Action Taken**: Added Action Taken dropdown and enforced New Insertion Depth entry when changing insertion depth.
+15. **Reference Number Resequencing**: Resequenced non-deleted records cleanly starting from REF:01.
+16. **Standardized Deletion Alerts**: Standardized deletion confirmation messages across history and equipment logs.
+17. **Cross-Platform Release**: Full deployment across Web (Firebase Hosting), Windows Desktop Setup & Portable, and Android APK.
 `;
 
 function request(options, postData) {
@@ -147,9 +152,8 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
+    { name: 'OMPC_Ballistic_AeroData_v1.9.5.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.5.apk' },
     { name: 'OMPC_Ballistic_AeroData_v1.9.4.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.4.apk' },
-    { name: 'OMPC_Ballistic_AeroData_v1.9.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.3.apk' },
-    { name: 'OMPC_Ballistic_AeroData_v1.7.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.7.2.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
