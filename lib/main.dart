@@ -317,46 +317,58 @@ final Map<String, dynamic> _defaultRules = {
         'max_mean_radius': 50.0,
         'max_sd': 180.0,
         'cond_sd': 150.0,
-        'vel_min': 915.0,
-        'vel_max': 945.0,
-        'instructions': '5.56x45 SS109: Target velocity 915 - 945 m/s, Max Mean Radius 50 mm.',
+        'vel_target_mean': 915.0,
+        'vel_tolerance': 13.0,
+        'vel_min': 902.0,
+        'vel_max': 928.0,
+        'instructions': '5.56x45 SS109: Target velocity 915 ± 13 m/s (902 - 928 m/s), Max Mean Radius 50 mm.',
       },
       '5.56x45 M193': {
         'max_mean_radius': 50.0,
         'max_sd': 200.0,
         'cond_sd': 170.0,
-        'vel_min': 953.0,
+        'vel_target_mean': 965.0,
+        'vel_tolerance': 15.0,
+        'vel_min': 950.0,
         'vel_max': 980.0,
-        'instructions': '5.56x45 M193: Target velocity 953 - 980 m/s, Max Mean Radius 50 mm.',
+        'instructions': '5.56x45 M193: Target velocity 965 ± 15 m/s (950 - 980 m/s), Max Mean Radius 50 mm.',
       },
       '5.56x45 .223 69 grains': {
         'max_mean_radius': 45.0,
         'max_sd': 160.0,
         'cond_sd': 140.0,
+        'vel_target_mean': 887.5,
+        'vel_tolerance': 17.5,
         'vel_min': 870.0,
         'vel_max': 905.0,
-        'instructions': '.223 69gr: Target velocity 870 - 905 m/s, Max Mean Radius 45 mm.',
+        'instructions': '.223 69gr: Target velocity 887.5 ± 17.5 m/s, Max Mean Radius 45 mm.',
       },
       '5.56x45 .223 55 grains': {
         'max_mean_radius': 50.0,
         'max_sd': 200.0,
         'cond_sd': 170.0,
+        'vel_target_mean': 965.0,
+        'vel_tolerance': 15.0,
         'vel_min': 950.0,
         'vel_max': 980.0,
-        'instructions': '.223 55gr: Target velocity 950 - 980 m/s, Max Mean Radius 50 mm.',
+        'instructions': '.223 55gr: Target velocity 965 ± 15 m/s, Max Mean Radius 50 mm.',
       },
       '5.56x45 .223 77 grains': {
         'max_mean_radius': 40.0,
         'max_sd': 150.0,
         'cond_sd': 130.0,
+        'vel_target_mean': 847.5,
+        'vel_tolerance': 17.5,
         'vel_min': 830.0,
         'vel_max': 865.0,
-        'instructions': '.223 77gr: Precision match. Target velocity 830 - 865 m/s, Max Mean Radius 40 mm.',
+        'instructions': '.223 77gr: Precision match. Target velocity 847.5 ± 17.5 m/s, Max Mean Radius 40 mm.',
       },
       '5.56x45 M200 Blank': {
         'max_mean_radius': 999.0,
         'max_sd': 999.0,
         'cond_sd': 999.0,
+        'vel_target_mean': 0.0,
+        'vel_tolerance': 0.0,
         'vel_min': 0.0,
         'vel_max': 0.0,
         'instructions': 'Blank ammunition: Accuracy test not applicable.',
@@ -365,22 +377,28 @@ final Map<String, dynamic> _defaultRules = {
         'max_mean_radius': 50.0,
         'max_sd': 200.0,
         'cond_sd': 170.0,
+        'vel_target_mean': 838.0,
+        'vel_tolerance': 15.0,
         'vel_min': 823.0,
         'vel_max': 853.0,
-        'instructions': '7.62x51 M80: Target velocity 823 - 853 m/s, Max Mean Radius 50 mm.',
+        'instructions': '7.62x51 M80: Target velocity 838 ± 15 m/s (823 - 853 m/s), Max Mean Radius 50 mm.',
       },
       '7.62x51 .308': {
         'max_mean_radius': 45.0,
         'max_sd': 180.0,
         'cond_sd': 150.0,
+        'vel_target_mean': 837.5,
+        'vel_tolerance': 17.5,
         'vel_min': 820.0,
         'vel_max': 855.0,
-        'instructions': '.308 Win: Target velocity 820 - 855 m/s, Max Mean Radius 45 mm.',
+        'instructions': '.308 Win: Target velocity 837.5 ± 17.5 m/s, Max Mean Radius 45 mm.',
       },
       '7.62x51 M82 Blank': {
         'max_mean_radius': 999.0,
         'max_sd': 999.0,
         'cond_sd': 999.0,
+        'vel_target_mean': 0.0,
+        'vel_tolerance': 0.0,
         'vel_min': 0.0,
         'vel_max': 0.0,
         'instructions': 'Blank ammunition: Accuracy test not applicable.',
@@ -389,41 +407,51 @@ final Map<String, dynamic> _defaultRules = {
         'max_mean_radius': 50.0,
         'max_sd': 50.0,
         'cond_sd': 42.5,
+        'vel_target_mean': 385.0,
+        'vel_tolerance': 15.0,
         'vel_min': 370.0,
         'vel_max': 400.0,
-        'instructions': '9x19mm Para: Target velocity 370 - 400 m/s at 25m, Max Mean Radius 50 mm.',
+        'instructions': '9x19mm Para: Target velocity 385 ± 15 m/s at 25m, Max Mean Radius 50 mm.',
       },
       '9x19mm Luger': {
         'max_mean_radius': 50.0,
         'max_sd': 50.0,
         'cond_sd': 42.5,
+        'vel_target_mean': 385.0,
+        'vel_tolerance': 15.0,
         'vel_min': 370.0,
         'vel_max': 400.0,
-        'instructions': '9x19mm Luger: Target velocity 370 - 400 m/s, Max Mean Radius 50 mm.',
+        'instructions': '9x19mm Luger: Target velocity 385 ± 15 m/s, Max Mean Radius 50 mm.',
       },
       '9x19mm Match': {
         'max_mean_radius': 35.0,
         'max_sd': 40.0,
         'cond_sd': 30.0,
+        'vel_target_mean': 380.0,
+        'vel_tolerance': 15.0,
         'vel_min': 365.0,
         'vel_max': 395.0,
-        'instructions': '9x19mm Match: Target velocity 365 - 395 m/s, Max Mean Radius 35 mm.',
+        'instructions': '9x19mm Match: Target velocity 380 ± 15 m/s, Max Mean Radius 35 mm.',
       },
       '9x19mm 124 grains CMJ': {
         'max_mean_radius': 45.0,
         'max_sd': 45.0,
         'cond_sd': 38.0,
+        'vel_target_mean': 375.0,
+        'vel_tolerance': 15.0,
         'vel_min': 360.0,
         'vel_max': 390.0,
-        'instructions': '9x19mm 124gr CMJ: Target velocity 360 - 390 m/s, Max Mean Radius 45 mm.',
+        'instructions': '9x19mm 124gr CMJ: Target velocity 375 ± 15 m/s, Max Mean Radius 45 mm.',
       },
       'default': {
         'max_mean_radius': 50.0,
         'max_sd': 200.0,
         'cond_sd': 170.0,
-        'vel_min': 700.0,
-        'vel_max': 900.0,
-        'instructions': 'Default Accuracy limits: Max Mean Radius 50 mm, Velocity 700 - 900 m/s.',
+        'vel_target_mean': 915.0,
+        'vel_tolerance': 13.0,
+        'vel_min': 902.0,
+        'vel_max': 928.0,
+        'instructions': 'Default Accuracy limits: Target velocity 915 ± 13 m/s, Max Mean Radius 50 mm.',
       }
     }
   },
@@ -1822,6 +1850,8 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _ruleAccMaxMeanRadiusCtrl = TextEditingController();
   final TextEditingController _ruleAccMaxSDCtrl = TextEditingController();
   final TextEditingController _ruleAccCondSDCtrl = TextEditingController();
+  final TextEditingController _ruleAccTargetMeanCtrl = TextEditingController();
+  final TextEditingController _ruleAccToleranceCtrl = TextEditingController();
   final TextEditingController _ruleAccMinVelCtrl = TextEditingController();
   final TextEditingController _ruleAccMaxVelCtrl = TextEditingController();
   final TextEditingController _ruleAccInstructionsCtrl = TextEditingController();
@@ -2071,6 +2101,8 @@ class _MainShellState extends State<MainShell> {
     _ruleAccMaxMeanRadiusCtrl.dispose();
     _ruleAccMaxSDCtrl.dispose();
     _ruleAccCondSDCtrl.dispose();
+    _ruleAccTargetMeanCtrl.dispose();
+    _ruleAccToleranceCtrl.dispose();
     _ruleAccMinVelCtrl.dispose();
     _ruleAccMaxVelCtrl.dispose();
     _ruleAccInstructionsCtrl.dispose();
@@ -2194,8 +2226,12 @@ class _MainShellState extends State<MainShell> {
     _ruleAccMaxMeanRadiusCtrl.text = (activeAcc['max_mean_radius'] ?? 50.0).toString();
     _ruleAccMaxSDCtrl.text = (activeAcc['max_sd'] ?? 200.0).toString();
     _ruleAccCondSDCtrl.text = (activeAcc['cond_sd'] ?? 170.0).toString();
-    _ruleAccMinVelCtrl.text = (activeAcc['vel_min'] ?? 700.0).toString();
-    _ruleAccMaxVelCtrl.text = (activeAcc['vel_max'] ?? 900.0).toString();
+    final double targetMean = (activeAcc['vel_target_mean'] ?? activeAcc['vel_mean_target'] ?? ((activeAcc['vel_min'] != null && activeAcc['vel_max'] != null) ? (((activeAcc['vel_min'] as num) + (activeAcc['vel_max'] as num)) / 2.0) : 915.0)).toDouble();
+    final double tolerance = (activeAcc['vel_tolerance'] ?? ((activeAcc['vel_min'] != null && activeAcc['vel_max'] != null) ? (((activeAcc['vel_max'] as num) - (activeAcc['vel_min'] as num)) / 2.0) : 13.0)).toDouble();
+    _ruleAccTargetMeanCtrl.text = targetMean.toStringAsFixed(1);
+    _ruleAccToleranceCtrl.text = tolerance.toStringAsFixed(1);
+    _ruleAccMinVelCtrl.text = (activeAcc['vel_min'] ?? (targetMean - tolerance)).toString();
+    _ruleAccMaxVelCtrl.text = (activeAcc['vel_max'] ?? (targetMean + tolerance)).toString();
     _ruleAccInstructionsCtrl.text = (activeAcc['instructions'] ?? acc['instructions'] ?? 'Assess group sizing at target distance and mean velocity bounds.').toString();
     
     // EPVAT for selected caliber and temp
@@ -2435,8 +2471,12 @@ class _MainShellState extends State<MainShell> {
     activeAcc['max_mean_radius'] = double.tryParse(_ruleAccMaxMeanRadiusCtrl.text.trim()) ?? 50.0;
     activeAcc['max_sd'] = double.tryParse(_ruleAccMaxSDCtrl.text.trim()) ?? 200.0;
     activeAcc['cond_sd'] = double.tryParse(_ruleAccCondSDCtrl.text.trim()) ?? 170.0;
-    activeAcc['vel_min'] = double.tryParse(_ruleAccMinVelCtrl.text.trim()) ?? 700.0;
-    activeAcc['vel_max'] = double.tryParse(_ruleAccMaxVelCtrl.text.trim()) ?? 900.0;
+    final targetMean = double.tryParse(_ruleAccTargetMeanCtrl.text.trim()) ?? (double.tryParse(_ruleAccMinVelCtrl.text.trim()) != null && double.tryParse(_ruleAccMaxVelCtrl.text.trim()) != null ? ((double.parse(_ruleAccMinVelCtrl.text.trim()) + double.parse(_ruleAccMaxVelCtrl.text.trim())) / 2.0) : 915.0);
+    final tol = double.tryParse(_ruleAccToleranceCtrl.text.trim()) ?? (double.tryParse(_ruleAccMinVelCtrl.text.trim()) != null && double.tryParse(_ruleAccMaxVelCtrl.text.trim()) != null ? ((double.parse(_ruleAccMaxVelCtrl.text.trim()) - double.parse(_ruleAccMinVelCtrl.text.trim())) / 2.0) : 13.0);
+    activeAcc['vel_target_mean'] = targetMean;
+    activeAcc['vel_tolerance'] = tol;
+    activeAcc['vel_min'] = targetMean - tol;
+    activeAcc['vel_max'] = targetMean + tol;
     activeAcc['instructions'] = _ruleAccInstructionsCtrl.text.trim();
     accLimits[_ruleSelectedCaliber] = activeAcc;
     acc['limits'] = accLimits;
@@ -6974,8 +7014,38 @@ class _MainShellState extends State<MainShell> {
             _buildRuleTextField('Max Mean Radius for $_ruleSelectedCaliber (mm)', _ruleAccMaxMeanRadiusCtrl),
             _buildRuleTextField('Max SD for $_ruleSelectedCaliber (mm)', _ruleAccMaxSDCtrl),
             _buildRuleTextField('Condition SD for $_ruleSelectedCaliber (mm)', _ruleAccCondSDCtrl),
-            _buildRuleTextField('Min Target Velocity for $_ruleSelectedCaliber (m/s)', _ruleAccMinVelCtrl),
-            _buildRuleTextField('Max Target Velocity for $_ruleSelectedCaliber (m/s)', _ruleAccMaxVelCtrl),
+            Row(
+              children: [
+                Expanded(child: _buildRuleTextField('Target Average Mean Velocity (m/s)', _ruleAccTargetMeanCtrl)),
+                const SizedBox(width: 8.0),
+                Expanded(child: _buildRuleTextField('Velocity Tolerance (± m/s)', _ruleAccToleranceCtrl)),
+              ],
+            ),
+            Builder(builder: (ctx) {
+              final tm = double.tryParse(_ruleAccTargetMeanCtrl.text.trim()) ?? 915.0;
+              final tl = double.tryParse(_ruleAccToleranceCtrl.text.trim()) ?? 13.0;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 14.0, color: Color(0xFF38BDF8)),
+                    const SizedBox(width: 6.0),
+                    Expanded(
+                      child: Text(
+                        'Accepted Mean Velocity Range: ${(tm - tl).toStringAsFixed(1)} - ${(tm + tl).toStringAsFixed(1)} m/s (Test passes if mean velocity is within tolerance).',
+                        style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _ruleAccInstructionsCtrl, isMultiline: true),
           ] else if (_selectedRuleTest == 'EPVAT Test') ...[
             // Temperature Selection Header & Tabs (+21°C Ambient, +52°C Hot, -54°C Cold)
@@ -10505,7 +10575,7 @@ class _MainShellState extends State<MainShell> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'v1.9.5',
+                              'v1.9.6',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
                               overflow: TextOverflow.ellipsis,
                             ),

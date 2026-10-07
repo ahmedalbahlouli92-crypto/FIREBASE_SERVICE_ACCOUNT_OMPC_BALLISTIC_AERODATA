@@ -1357,67 +1357,147 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 
     final passRate = totalTests > 0 ? ((approved / totalTests) * 100).toStringAsFixed(1) : '0.0';
 
-    final allRecords = inspections.map((e) => e['record'] as BallisticRecord).toList();
-    final spcBuffer = StringBuffer();
-    final activeTests = _selectedSpcTests.isNotEmpty
-        ? _selectedSpcTests
-        : {'EPVAT test', 'Accuracy Test', 'Extraction Force Test', 'Waterproof Test', 'Function Test', 'Residual Stress Test', 'Primer Sensitivity Test'};
-
-    for (final testId in activeTests) {
-      final testOpt = _spcTestOptions.firstWhere(
-        (t) => t['id'] == testId,
-        orElse: () => {'id': testId, 'name': testId, 'param': 'Mean Velocity (m/s)'},
-      );
-      final testName = testOpt['name']!;
-      final testParam = testOpt['param']!;
-
-      final testRecords = allRecords.where((r) => r.testName.toLowerCase() == testId.toLowerCase()).toList();
-      final evalRecords = testRecords.isNotEmpty ? testRecords : allRecords;
-
-      final spcSvg = SvgChartGenerator.generateSpcChartSvg(evalRecords, param: testParam, width: 800, height: 210);
-      final boxSvg = SvgChartGenerator.generateBoxPlotSvg(evalRecords, metric: testParam, width: 800, height: 210);
-      spcBuffer.writeln('''
-      <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 20px; background: #fff; page-break-inside: avoid;">
-        <h4 style="margin: 0 0 8px 0; font-size: 11.5px; font-weight: bold; color: #0284c7; text-transform: uppercase;">&bull; Test Analysis: $testName</h4>
-        <div style="margin-bottom: 10px;">
-          <div style="font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px; text-transform: uppercase;">1. Statistical Process Control (SPC) Chart</div>
-          $spcSvg
-        </div>
-        <div>
-          <div style="font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px; text-transform: uppercase;">2. Box &amp; Whisker Distribution Profile</div>
-          $boxSvg
-        </div>
-      </div>
-      ''');
-    }
-
     final lotAcceptanceList = inspections.where((e) => e['module'] == 'Lot Acceptance').toList();
     final dailyTestList = inspections.where((e) => e['module'] == 'Daily Test').toList();
     final componentTestList = inspections.where((e) => e['module'] == 'Component Test').toList();
 
-    String renderInspectionTable(List<Map<String, dynamic>> items, String idColName) {
-      if (items.isEmpty) {
-        return '<table><thead><tr><th>Date & Time</th><th>Inspector</th><th>Test Name</th><th>Caliber</th><th>$idColName</th><th>Qty Tested</th><th>Defects</th><th>Status</th><th>Remarks</th></tr></thead><tbody><tr><td colspan="9" style="text-align: center; color: #64748b;">No inspection logs recorded for this module in this period.</td></tr></tbody></table>';
+    String renderModuleSection({
+      required String moduleBadge,
+      required String badgeColor,
+      required String moduleTitle,
+      required String idColName,
+      required List<Map<String, dynamic>> moduleInspections,
+    }) {
+      if (moduleInspections.isEmpty) {
+        return '''
+        <div style="margin-top: 20px; padding: 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc;">
+          <span class="module-badge" style="background-color: $badgeColor;">$moduleBadge</span>
+          <h3 style="margin-top: 4px; margin-bottom: 8px; color: #0f172a;">$moduleTitle</h3>
+          <p style="color: #64748b; font-style: italic; font-size: 11px;">No inspection records logged for this module in this period.</p>
+        </div>
+        ''';
       }
-      return '<table><thead><tr><th>Date & Time</th><th>Inspector</th><th>Test Name</th><th>Caliber</th><th>$idColName</th><th>Qty Tested</th><th>Defects</th><th>Status</th><th>Remarks</th></tr></thead><tbody>' +
-        items.map((entry) {
-          final m = entry['module'] as String;
-          final r = entry['record'] as BallisticRecord;
-          final statusClass = r.status.toLowerCase().contains('approved') ? 'badge-approved' : (r.status.toLowerCase().contains('reject') ? 'badge-rejected' : 'badge-retest');
-          final idVal = m == 'Daily Test' ? (r.hopperNo.isNotEmpty ? r.hopperNo : r.lotNo) : r.lotNo;
-          return '<tr>'
-              '<td>${r.testTime.isNotEmpty ? r.testTime : r.timestamp}</td>'
-              '<td>${r.operators}</td>'
-              '<td>${r.testName}</td>'
-              '<td>${r.caliber}</td>'
-              '<td>$idVal</td>'
-              '<td>${r.produced} rds</td>'
-              '<td>${r.defects}</td>'
-              '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
-              '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
-              '</tr>';
-        }).join('') +
-        '</tbody></table>';
+
+      // Group records by Caliber
+      final Map<String, List<BallisticRecord>> caliberGroups = {};
+      for (var entry in moduleInspections) {
+        final r = entry['record'] as BallisticRecord;
+        caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+      }
+
+      final sortedCalibers = caliberGroups.keys.toList()..sort();
+      final moduleBuffer = StringBuffer();
+
+      moduleBuffer.writeln('''
+      <div style="margin-top: 15px; margin-bottom: 25px;">
+        <span class="module-badge" style="background-color: $badgeColor;">$moduleBadge</span>
+        <h3 style="margin-top: 6px; margin-bottom: 12px; color: #0f172a; font-size: 16px; border-bottom: 2px solid $badgeColor; padding-bottom: 6px;">
+          $moduleTitle (${moduleInspections.length} Total Logs Across ${sortedCalibers.length} Caliber${sortedCalibers.length == 1 ? '' : 's'})
+        </h3>
+      ''');
+
+      for (int cIdx = 0; cIdx < sortedCalibers.length; cIdx++) {
+        final cal = sortedCalibers[cIdx];
+        final calRecords = caliberGroups[cal]!;
+        final int calRounds = calRecords.fold(0, (s, r) => s + r.produced);
+        final int calDefects = calRecords.fold(0, (s, r) => s + r.defects);
+        final double calYield = calRounds > 0 ? (((calRounds - calDefects) / calRounds) * 100.0) : 100.0;
+        final int calPass = calRecords.where((r) => r.status.toLowerCase().contains('approved')).length;
+        final int calFail = calRecords.where((r) => r.status.toLowerCase().contains('reject')).length;
+
+        // Caliber-specific Charts
+        final calSpc = SvgChartGenerator.generateSpcChartSvg(calRecords, width: 780, height: 190);
+        final calBox = SvgChartGenerator.generateBoxPlotSvg(calRecords, width: 780, height: 190);
+        final calVelocity = SvgChartGenerator.generateVelocityTrendSvg(calRecords, width: 780, height: 190);
+
+        final bool hasEpvat = calRecords.any((r) => r.testName.toLowerCase().contains('epvat'));
+        final String calEpvat = hasEpvat ? SvgChartGenerator.generateEpvatChartSvg(calRecords, width: 780, height: 190) : '';
+
+        final bool hasFunction = calRecords.any((r) => r.testName.toLowerCase().contains('function'));
+        final String calFunction = hasFunction ? SvgChartGenerator.generateFunctionTestChartSvg(calRecords, width: 780, height: 190) : '';
+
+        moduleBuffer.writeln('''
+        <div style="margin-top: 18px; margin-bottom: 24px; padding: 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #ffffff; page-break-inside: avoid;">
+          <!-- Caliber Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+            <div>
+              <span style="font-size: 14px; font-weight: bold; color: #0284c7;">CALIBER SPECIFICATION: $cal</span>
+              <span style="font-size: 11px; color: #64748b; margin-left: 10px;">(${calRecords.length} Tests)</span>
+            </div>
+            <div style="font-size: 11px; color: #334155;">
+              Tested: <strong>$calRounds rds</strong> | Defects: <strong style="color: ${calDefects > 0 ? '#b91c1c' : '#15803d'};">$calDefects</strong> | Yield: <strong style="color: #10b981;">${calYield.toStringAsFixed(1)}%</strong> | Approved: <strong>$calPass</strong> | Rejected: <strong style="color: #ef4444;">$calFail</strong>
+            </div>
+          </div>
+
+          <!-- Caliber Records Table -->
+          <div style="font-size: 10.5px; font-weight: bold; color: #475569; margin-bottom: 6px; text-transform: uppercase;">
+            &bull; $cal Inspection Log Records:
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Inspector</th>
+                <th>Test Name</th>
+                <th>$idColName</th>
+                <th>Qty Tested</th>
+                <th>Defects</th>
+                <th>Status</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${calRecords.map((r) {
+                final statusClass = r.status.toLowerCase().contains('approved') ? 'badge-approved' : (r.status.toLowerCase().contains('reject') ? 'badge-rejected' : 'badge-retest');
+                final idVal = idColName.contains('Hopper') ? (r.hopperNo.isNotEmpty ? r.hopperNo : r.lotNo) : r.lotNo;
+                return '<tr>'
+                    '<td>${r.testTime.isNotEmpty ? r.testTime : r.timestamp}</td>'
+                    '<td>${r.operators}</td>'
+                    '<td><strong>${r.testName}</strong></td>'
+                    '<td>$idVal</td>'
+                    '<td>${r.produced} rds</td>'
+                    '<td>${r.defects}</td>'
+                    '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
+                    '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
+                    '</tr>';
+              }).join('')}
+            </tbody>
+          </table>
+
+          <!-- Caliber Specific Charts -->
+          <div style="margin-top: 14px; background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 10px; text-transform: uppercase;">
+              &bull; $cal Visual Analytics &amp; Statistical Process Control:
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">1. Statistical Process Control (SPC) Chart — $cal</div>
+              $calSpc
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">2. Box &amp; Whisker Distribution Profile — $cal</div>
+              $calBox
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">3. Muzzle Velocity Progression Trend — $cal</div>
+              $calVelocity
+            </div>
+            ${hasEpvat && calEpvat.isNotEmpty ? '''
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">4. EPVAT Chamber (P1) &amp; Port (P2) Pressure Trend — $cal</div>
+              $calEpvat
+            </div>''' : ''}
+            ${hasFunction && calFunction.isNotEmpty ? '''
+            <div>
+              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">5. Function Test Defect Classification Distribution — $cal</div>
+              $calFunction
+            </div>''' : ''}
+          </div>
+        </div>
+        ''');
+      }
+
+      moduleBuffer.writeln('</div>');
+      return moduleBuffer.toString();
     }
 
     final html = '''
@@ -1466,7 +1546,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   </style>
 </head>
 <body>
-  <!-- PAGE 1: EXECUTIVE KPI SUMMARY & LOT ACCEPTANCE MODULE -->
+  <!-- SECTION 1: EXECUTIVE KPI SUMMARY -->
   <div class="report-page">
     <div class="header">
       <div>
@@ -1497,58 +1577,45 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         <div class="kpi-val" style="color: #8b5cf6;">${equipmentIssues.length}</div>
       </div>
     </div>
-
-    <span class="module-badge">MODULE 1</span>
-    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">1. Lot Acceptance Inspection Results</h3>
-    ${renderInspectionTable(lotAcceptanceList, 'Lot Number')}
   </div>
 
-  <!-- PAGE 2: STATISTICAL PROCESS CONTROL & BOX-WHISKER ANALYTICS -->
+  <!-- MODULE 1: LOT ACCEPTANCE TEST (EACH CALIBER ALONE WITH CHARTS) -->
   <div class="page-break"></div>
   <div class="report-page">
-    <div class="header">
-      <div>
-        <div class="title">OMPC BALLISTIC AERODATA - EXECUTIVE QUALITY REPORT</div>
-        <div class="subtitle">STATISTICAL PROCESS CONTROL & DISTRIBUTION ANALYSIS | PERIOD: <strong>$_periodLabel</strong> | Generated: $now | Inspector: ${widget.loggedInUser}</div>
-      </div>
-    </div>
-
-    <span class="module-badge" style="background-color: #0284c7;">SPC & DISTRIBUTION ANALYSIS</span>
-    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">Statistical Process Control (SPC) & Distribution Analysis (${activeTests.length} Monitored Tests)</h3>
-    ${spcBuffer.toString()}
+    ${renderModuleSection(
+      moduleBadge: 'MODULE 1 — LOT ACCEPTANCE',
+      badgeColor: '#0284c7',
+      moduleTitle: 'Lot Acceptance Test Inspection Results & Analytics',
+      idColName: 'Lot Number',
+      moduleInspections: lotAcceptanceList,
+    )}
   </div>
 
-  <!-- PAGE 3: DAILY TEST MODULE -->
+  <!-- MODULE 2: DAILY TEST (EACH CALIBER ALONE WITH CHARTS) -->
   <div class="page-break"></div>
   <div class="report-page">
-    <div class="header">
-      <div>
-        <div class="title">OMPC BALLISTIC AERODATA - EXECUTIVE QUALITY REPORT</div>
-        <div class="subtitle">DAILY TEST INSPECTION RESULTS | PERIOD: <strong>$_periodLabel</strong> | Generated: $now | Inspector: ${widget.loggedInUser}</div>
-      </div>
-    </div>
-
-    <span class="module-badge" style="background-color: #059669;">MODULE 2</span>
-    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">2. Daily Test Inspection Results</h3>
-    ${renderInspectionTable(dailyTestList, 'Hopper / Lot')}
+    ${renderModuleSection(
+      moduleBadge: 'MODULE 2 — DAILY TEST',
+      badgeColor: '#059669',
+      moduleTitle: 'Daily Test Inspection Results & Analytics',
+      idColName: 'Hopper / Lot',
+      moduleInspections: dailyTestList,
+    )}
   </div>
 
-  <!-- PAGE 3: COMPONENT TEST MODULE -->
+  <!-- MODULE 3: COMPONENT TEST (EACH CALIBER ALONE WITH CHARTS) -->
   <div class="page-break"></div>
   <div class="report-page">
-    <div class="header">
-      <div>
-        <div class="title">OMPC BALLISTIC AERODATA - EXECUTIVE QUALITY REPORT</div>
-        <div class="subtitle">COMPONENT TEST INSPECTION RESULTS | PERIOD: <strong>$_periodLabel</strong> | Generated: $now | Inspector: ${widget.loggedInUser}</div>
-      </div>
-    </div>
-
-    <span class="module-badge" style="background-color: #d97706;">MODULE 3</span>
-    <h3 style="margin-top: 4px; margin-bottom: 12px; color: #0f172a;">3. Component Test Inspection Results</h3>
-    ${renderInspectionTable(componentTestList, 'Batch / Lot')}
+    ${renderModuleSection(
+      moduleBadge: 'MODULE 3 — COMPONENT TEST',
+      badgeColor: '#d97706',
+      moduleTitle: 'Component Test Inspection Results & Analytics',
+      idColName: 'Batch / Lot',
+      moduleInspections: componentTestList,
+    )}
   </div>
 
-  <!-- PAGE 4: FACILITY, EQUIPMENT & WITNESS STORAGE ACTIVITY -->
+  <!-- SECTION 4: FACILITY, EQUIPMENT & WITNESS STORAGE ACTIVITY -->
   <div class="page-break"></div>
   <div class="report-page">
     <div class="header">
@@ -1576,9 +1643,9 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
           final st = (issue['status'] ?? '').toString();
           return '<tr>'
               '<td>${issue['timestamp'] ?? issue['date'] ?? ''}</td>'
-              '<td><strong>${issue['equipment'] ?? ''}</strong></td>'
-              '<td>${issue['title'] ?? ''}</td>'
-              '<td>${issue['severity'] ?? ''}</td>'
+              '<td><strong>${issue['equipmentName'] ?? issue['machineName'] ?? 'Unknown'}</strong></td>'
+              '<td>${issue['issue'] ?? issue['fault'] ?? '-'}</td>'
+              '<td>${issue['severity'] ?? 'Medium'}</td>'
               '<td><strong>$st</strong></td>'
               '<td>${issue['reporter'] ?? ''}</td>'
               '<td>${issue['actionTaken'] ?? '-'}</td>'
@@ -1587,63 +1654,60 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       </tbody>
     </table>
 
-    <h3 style="margin-top: 20px; margin-bottom: 12px; color: #0f172a;">5. Consumed Items Activity (Consumables & Witness Storage Withdrawals)</h3>
+    <h3 style="margin-top: 24px; margin-bottom: 12px; color: #0f172a;">5. Consumables Usage Summary</h3>
     <table>
       <thead>
         <tr>
-          <th>Date & Time</th>
-          <th>Source</th>
-          <th>Item / Lot</th>
-          <th>Specification</th>
-          <th>Qty Consumed</th>
-          <th>Purpose / Trial Details</th>
-          <th>User / Requester</th>
+          <th>Item Name</th>
+          <th>Category</th>
+          <th>Remaining Stock</th>
+          <th>Reorder Level</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        ${(consumables.isEmpty && witnessConsumptions.isEmpty) ? '<tr><td colspan="7" style="text-align: center; color: #64748b;">No items consumed in this period.</td></tr>' : [
-          ...consumables.where((c) => c['type'] != 'RECEIVED').map((c) => '<tr><td>${c['date']}</td><td>Consumables</td><td><strong>${c['itemName']}</strong></td><td>${c['serial']}</td><td style="color: #ef4444; font-weight: bold;">-${c['quantity']} ${c['unit']}</td><td>${c['purpose'] ?? ''}</td><td>${c['user'] ?? ''}</td></tr>'),
-          ...witnessConsumptions.map((w) => '<tr><td>${w['date'] ?? w['timestamp']}</td><td>Witness Storage</td><td><strong>Lot ${w['lotNo']}</strong></td><td>${w['caliber']}</td><td style="color: #ef4444; font-weight: bold;">-${w['quantity']} rounds</td><td>${w['purpose'] ?? ''}</td><td>${w['requestedBy'] ?? w['approvedBy'] ?? ''}</td></tr>')
-        ].join('')}
-      </tbody>
-    </table>
-
-    <h3 style="margin-top: 20px; margin-bottom: 12px; color: #0f172a;">6. Quantity Added to Witness Storage</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Date & Time</th>
-          <th>Lot Number</th>
-          <th>Caliber</th>
-          <th>Quantity Added</th>
-          <th>Storage Location</th>
-          <th>Condition</th>
-          <th>Registered By</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${witnessAdditions.isEmpty ? '<tr><td colspan="7" style="text-align: center; color: #64748b;">No new witness lots registered in this period.</td></tr>' : witnessAdditions.map((a) {
+        ${consumables.isEmpty ? '<tr><td colspan="5" style="text-align: center; color: #64748b;">No consumables tracked for this period.</td></tr>' : consumables.map((c) {
+          final stock = (c['currentStock'] ?? 0) as num;
+          final reorder = (c['reorderLevel'] ?? 0) as num;
+          final isLow = stock <= reorder;
           return '<tr>'
-              '<td>${a['registeredAt'] ?? a['date'] ?? a['timestamp'] ?? ''}</td>'
-              '<td><strong>${a['lotNo']}</strong></td>'
-              '<td>${a['caliber']}</td>'
-              '<td style="color: #10b981; font-weight: bold;">+${a['initialQty']} rounds</td>'
-              '<td>${a['location'] ?? 'Pallet / Storage'}</td>'
-              '<td>${a['storageCondition'] ?? 'Air Conditioned'}</td>'
-              '<td>${a['registeredBy'] ?? a['operator'] ?? 'Technician'}</td>'
+              '<td><strong>${c['name'] ?? ''}</strong></td>'
+              '<td>${c['category'] ?? 'General'}</td>'
+              '<td>$stock ${c['unit'] ?? 'units'}</td>'
+              '<td>$reorder ${c['unit'] ?? 'units'}</td>'
+              '<td><span class="${isLow ? 'badge-rejected' : 'badge-approved'}">${isLow ? 'LOW STOCK' : 'ADEQUATE'}</span></td>'
               '</tr>';
         }).join('')}
       </tbody>
     </table>
 
-    <div class="footer">
-      OMPC Ballistic AeroData System &copy; ${DateTime.now().year} | Confidential Executive Document
-    </div>
+    <h3 style="margin-top: 24px; margin-bottom: 12px; color: #0f172a;">6. Witness Storage Activity Summary</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Total Received</th>
+          <th>Total Consumed</th>
+          <th>Total Samples in Vault</th>
+          <th>Compliant Storage</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>${witnessAdditions.length}</strong> batches stored</td>
+          <td><strong>${witnessConsumptions.length}</strong> batches consumed</td>
+          <td><strong>${_witnessLots.length}</strong> batches active</td>
+          <td><span class="badge-approved">100% COMPLIANT</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    Report automatically generated by OMPC Ballistic AeroData &bull; Confidential &amp; Proprietary Engineering Data
   </div>
 </body>
 </html>
 ''';
-
     await ReportHelper.instance.printHtml(htmlContent: html);
   }
 

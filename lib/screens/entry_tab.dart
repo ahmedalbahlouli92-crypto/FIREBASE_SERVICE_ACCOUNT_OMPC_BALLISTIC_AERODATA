@@ -10,6 +10,7 @@ import '../services/epvat_formula_helper.dart';
 import '../services/storage_service.dart';
 import '../services/report_generator.dart';
 import '../services/report_helper.dart';
+import '../services/test_result_extractor.dart';
 
 /// Formatter restricting Action Time inputs to at most 2 digits before decimal (supports 00.000, 1.5, 12.345)
 class ActionTimeInputFormatter extends TextInputFormatter {
@@ -340,7 +341,8 @@ class _EntryTabState extends State<EntryTab> {
   final _functionCustomModelController = TextEditingController();
   final _functionCustomSerialController = TextEditingController();
 
-  String _shift = 'Day';
+  String _shift = 'Morning';
+  final Map<int, List<String>> _customLevelDefects = {};
   late String _caliber;
   late String _testName;
   String _status = 'Approved';
@@ -500,14 +502,49 @@ class _EntryTabState extends State<EntryTab> {
   Map<String, dynamic> get _currentFunctionCaliberRules {
     final func = widget.adminRules['function_test'] ?? {};
     final calibersMap = Map<String, dynamic>.from(func['calibers'] ?? {});
-    final calRules = Map<String, dynamic>.from(calibersMap[_caliber] ?? calibersMap['default'] ?? func);
+
+    Map<String, dynamic>? match;
+    if (calibersMap.containsKey(_caliber)) {
+      match = Map<String, dynamic>.from(calibersMap[_caliber]);
+    } else {
+      final cLower = _caliber.toLowerCase();
+      for (final entry in calibersMap.entries) {
+        final k = entry.key.toString().toLowerCase();
+        if ((cLower.contains('5.56') || cLower.contains('223')) && (k.contains('5.56') || k.contains('223'))) {
+          match = Map<String, dynamic>.from(entry.value);
+          break;
+        } else if ((cLower.contains('7.62') || cLower.contains('308')) && (k.contains('7.62') || k.contains('308'))) {
+          match = Map<String, dynamic>.from(entry.value);
+          break;
+        } else if ((cLower.contains('9mm') || cLower.contains('9x19')) && (k.contains('9mm') || k.contains('9x19'))) {
+          match = Map<String, dynamic>.from(entry.value);
+          break;
+        }
+      }
+    }
+    final calRules = match ?? Map<String, dynamic>.from(calibersMap['default'] ?? func);
+
+    const defL1 = 'Split case at points K, L or M, Bullet in Bore, Blown primer, Primer puncture, Misfire, Hangfire, Complete case rupture, Primer through, Primer drop, Loose primer, Pierced primer, No fire, Primer protrusion';
+    const defL2 = 'Hard Extraction, Fail to eject, Fail to Extract, Fail to cock, Split case at points A, B, C, D, E, F, G, H, I or J, Perforated primer, Bolt over case';
+    const defL3 = 'Double Feed, Fail to fire, Fail to feed, Fail to chamber, Fail to unlock, Light strike';
+    const defL4 = 'Dented case, Scratched case, Damaged bullet, Damaged tip, Cosmetic blemish';
+
+    final l1 = Map<String, dynamic>.from(calRules['level1'] ?? func['level1'] ?? {});
+    if ((l1['description'] ?? '').toString().trim().isEmpty) l1['description'] = defL1;
+    final l2 = Map<String, dynamic>.from(calRules['level2'] ?? func['level2'] ?? {});
+    if ((l2['description'] ?? '').toString().trim().isEmpty) l2['description'] = defL2;
+    final l3 = Map<String, dynamic>.from(calRules['level3'] ?? func['level3'] ?? {});
+    if ((l3['description'] ?? '').toString().trim().isEmpty) l3['description'] = defL3;
+    final l4 = Map<String, dynamic>.from(calRules['level4'] ?? func['level4'] ?? {});
+    if ((l4['description'] ?? '').toString().trim().isEmpty) l4['description'] = defL4;
+
     return {
       'schema_type': calRules['schema_type'] ?? 'levels',
       'categories': calRules['categories'] ?? {},
-      'level1': calRules['level1'] ?? func['level1'] ?? {},
-      'level2': calRules['level2'] ?? func['level2'] ?? {},
-      'level3': calRules['level3'] ?? func['level3'] ?? {},
-      'level4': calRules['level4'] ?? func['level4'] ?? {},
+      'level1': l1,
+      'level2': l2,
+      'level3': l3,
+      'level4': l4,
     };
   }
 
@@ -515,8 +552,12 @@ class _EntryTabState extends State<EntryTab> {
     final rules = _currentFunctionCaliberRules;
     final lvlMap = rules['level$level'] ?? {};
     final desc = (lvlMap['description'] ?? '').toString();
-    if (desc.trim().isEmpty) return [];
-    return desc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final items = desc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final customList = _customLevelDefects[level] ?? [];
+    for (final c in customList) {
+      if (!items.contains(c)) items.add(c);
+    }
+    return items;
   }
 
   int _getDefectCount(String item, String tempKey) {
@@ -557,6 +598,120 @@ class _EntryTabState extends State<EntryTab> {
     }
     controller.text = '$sum';
     _updateFunctionTestTotalDefects();
+  }
+
+  void _promptAddCustomDefect(int level, TextEditingController controller, String tempKey) {
+    final textCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFF38BDF8)),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.add_circle_outline, color: Color(0xFF38BDF8), size: 20),
+            const SizedBox(width: 8),
+            Text('Add Custom Defect (Level $level)', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the specific defect type name to add to this level classification:',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: textCtrl,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'e.g. Broken extractor pin, Jammed casing',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = textCtrl.text.trim();
+              if (name.isNotEmpty) {
+                Navigator.of(ctx).pop();
+                setState(() {
+                  _customLevelDefects.putIfAbsent(level, () => []).add(name);
+                  _incrementDefect(name, tempKey, level, controller);
+                });
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF38BDF8), foregroundColor: Colors.black),
+            child: const Text('Add & Select', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showZoomDiagramDialog(String assetPath, String title) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Container(
+          width: 800,
+          height: 650,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.zoom_in, color: Color(0xFF0284C7)),
+                      const SizedBox(width: 8),
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A))),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const Divider(height: 16),
+              Expanded(
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 0.8,
+                  maxScale: 4.0,
+                  child: Center(
+                    child: Image.asset(
+                      assetPath,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Text('Image unavailable'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String get _functionDefectDetails {
@@ -2193,7 +2348,10 @@ class _EntryTabState extends State<EntryTab> {
       setState(() {
         if (draft['caliber'] != null) _caliber = draft['caliber'];
         if (draft['testName'] != null) _testName = draft['testName'];
-        if (draft['shift'] != null) _shift = draft['shift'];
+        if (draft['shift'] != null) {
+          final s = draft['shift'].toString();
+          _shift = (s == 'Afternoon' || s == 'Night') ? 'Afternoon' : 'Morning';
+        }
         if (draft['operators'] != null && _operatorsController.text.isEmpty) {
           _operatorsController.text = draft['operators'];
         }
@@ -3545,6 +3703,214 @@ class _EntryTabState extends State<EntryTab> {
     }
   }
 
+  void _showAutoExtractModal() {
+    final textController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF6366F1))),
+            title: Row(
+              children: [
+                const Icon(Icons.auto_awesome, color: Color(0xFF818CF8), size: 22),
+                const SizedBox(width: 8),
+                Text('Auto-Extract Test Results ($_testName)', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: SizedBox(
+              width: 550,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Upload a test data file (CSV, TSV, JSON, TXT) or paste raw test machine readings below to automatically populate the test form fields.',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      try {
+                        final res = await getAttachmentHelper().pickFileAsBase64();
+                        if (res != null && res['data'] != null) {
+                          final bytes = base64Decode(res['data']!);
+                          final text = utf8.decode(bytes, allowMalformed: true);
+                          textController.text = text;
+                          setDialogState(() {});
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error reading file: $e')));
+                      }
+                    },
+                    icon: const Icon(Icons.file_upload, size: 16),
+                    label: const Text('Choose File to Upload (CSV/TSV/JSON/TXT)'),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text('Or Paste File Content / Machine Raw Output:', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: textController,
+                    maxLines: 8,
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Mean Vel: 915.2, SD: 2.4, Max: 920, Min: 910...\nor paste CSV / TSV table',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF475569))),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final text = textController.text.trim();
+                  if (text.isEmpty) return;
+                  Navigator.of(ctx).pop();
+                  _applyExtractedResults(text);
+                },
+                icon: const Icon(Icons.check, size: 16),
+                label: const Text('Extract & Apply Values'),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _applyExtractedResults(String content) {
+    final parsed = TestResultExtractor.extract(content: content, preferredTestName: _testName).fields;
+    int count = 0;
+    setState(() {
+      if (parsed['produced'] != null) {
+        _producedController.text = parsed['produced'].toString();
+        count++;
+      }
+      if (parsed['defects'] != null) {
+        _defectsController.text = parsed['defects'].toString();
+        count++;
+      }
+      if (parsed['vel_mean'] != null) {
+        _meanVelController.text = parsed['vel_mean'].toString();
+        count++;
+      }
+      if (parsed['vel_min'] != null) {
+        _minVelController.text = parsed['vel_min'].toString();
+        count++;
+      }
+      if (parsed['vel_max'] != null) {
+        _maxVelController.text = parsed['vel_max'].toString();
+        count++;
+      }
+      if (parsed['vel_sd'] != null) {
+        _sdVelController.text = parsed['vel_sd'].toString();
+        count++;
+      }
+      if (parsed['vel_range'] != null) {
+        _rangeVelController.text = parsed['vel_range'].toString();
+        count++;
+      }
+      if (parsed['acc_mean_radius'] != null) {
+        _meanRadiusController.text = parsed['acc_mean_radius'].toString();
+        count++;
+      }
+      if (parsed['acc_sd_x'] != null) {
+        _sdXController.text = parsed['acc_sd_x'].toString();
+        count++;
+      }
+      if (parsed['acc_sd_y'] != null) {
+        _sdYController.text = parsed['acc_sd_y'].toString();
+        count++;
+      }
+      if (parsed['acc_range_x'] != null) {
+        _rangeXController.text = parsed['acc_range_x'].toString();
+        count++;
+      }
+      if (parsed['acc_range_y'] != null) {
+        _rangeYController.text = parsed['acc_range_y'].toString();
+        count++;
+      }
+      if (parsed['epvat_mean_pressure'] != null) {
+        _epvatMeanPressureController.text = parsed['epvat_mean_pressure'].toString();
+        count++;
+      }
+      if (parsed['epvat_max_pressure'] != null) {
+        _epvatMaxPressureController.text = parsed['epvat_max_pressure'].toString();
+        count++;
+      }
+      if (parsed['epvat_min_pressure'] != null) {
+        _epvatMinPressureController.text = parsed['epvat_min_pressure'].toString();
+        count++;
+      }
+      if (parsed['epvat_sd_pressure'] != null) {
+        _epvatSDPressureController.text = parsed['epvat_sd_pressure'].toString();
+        count++;
+      }
+      if (parsed['epvat_p2_mean'] != null) {
+        _epvatP2MeanPressureController.text = parsed['epvat_p2_mean'].toString();
+        count++;
+      }
+      if (parsed['acc_mean_x'] != null) {
+        _meanXController.text = parsed['acc_mean_x'].toString();
+        count++;
+      }
+      if (parsed['acc_min_x'] != null) {
+        _minXController.text = parsed['acc_min_x'].toString();
+        count++;
+      }
+      if (parsed['acc_max_x'] != null) {
+        _maxXController.text = parsed['acc_max_x'].toString();
+        count++;
+      }
+      if (parsed['cyclic_rpm'] != null) {
+        _cyclicRateController.text = parsed['cyclic_rpm'].toString();
+        count++;
+      }
+      if (parsed['primer_hbar'] != null) {
+        _primerHbarController.text = parsed['primer_hbar'].toString();
+        count++;
+      }
+      if (parsed['primer_sd'] != null) {
+        _primerSDController.text = parsed['primer_sd'].toString();
+        count++;
+      }
+      if (parsed['primer_all_fire'] != null) {
+        _primerHbarPlus5SController.text = parsed['primer_all_fire'].toString();
+        count++;
+      }
+      if (parsed['primer_no_fire'] != null) {
+        _primerHbarMinus2SController.text = parsed['primer_no_fire'].toString();
+        count++;
+      }
+      if (parsed['cartridge_temp'] != null) {
+        _cartridgeTempController.text = parsed['cartridge_temp'].toString();
+        count++;
+      }
+      if (parsed['barrel_sn'] != null && _barrelSNController.text.isEmpty) {
+        _barrelSNController.text = parsed['barrel_sn'].toString();
+        count++;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Auto-extracted $count parameters for $_testName!'),
+        backgroundColor: const Color(0xFF10B981),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -3592,6 +3958,22 @@ class _EntryTabState extends State<EntryTab> {
                   ),
                 ),
                 const SizedBox(width: 12.0),
+                ElevatedButton.icon(
+                  onPressed: _showAutoExtractModal,
+                  icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 15),
+                  label: const Text(
+                    'Auto-Extract Results (Upload/Paste)',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: const Size(0, 32),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
                 OutlinedButton.icon(
                   onPressed: _openReportWithoutSaving,
                   icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFF0284C7), size: 15),
@@ -3698,8 +4080,8 @@ class _EntryTabState extends State<EntryTab> {
                       label: 'Shift',
                       isRequired: true,
                       child: _buildDropdownField(
-                        value: _shift,
-                        items: ['Day', 'Night'],
+                        value: ['Morning', 'Afternoon'].contains(_shift) ? _shift : 'Morning',
+                        items: ['Morning', 'Afternoon'],
                         onChanged: (v) => setState(() => _shift = v!),
                       ),
                     ),
@@ -4246,15 +4628,26 @@ class _EntryTabState extends State<EntryTab> {
                           if (_showResidualDiagram) ...[
                             const Divider(color: Color(0xFFD6E4F0), height: 1.0),
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6.0),
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
                               child: Center(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(6.0),
-                                  child: Image.asset(
-                                    _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
-                                    height: 110,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                                child: Tooltip(
+                                  message: 'Click to view diagram fullscreen / zoom',
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    onTap: () {
+                                      final asset = _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png';
+                                      final title = _isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
+                                      _showZoomDiagramDialog(asset, title);
+                                    },
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      child: Image.asset(
+                                        _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
+                                        height: 260,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -6952,7 +7345,7 @@ class _EntryTabState extends State<EntryTab> {
     required int level,
     String tempKey = '',
   }) {
-    final defectItems = subtitle.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final defectItems = _getDefectItemsForLevel(level);
 
     return _buildFlexibleField(
       flex: 1,
@@ -6984,14 +7377,14 @@ class _EntryTabState extends State<EntryTab> {
               setState(() {});
             },
           ),
-          if (defectItems.isNotEmpty) ...[
-            const SizedBox(height: 8.0),
-            Text('Select defect found (Click to increment count):', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10.5)),
-            const SizedBox(height: 6.0),
-            Wrap(
-              spacing: 6.0,
-              runSpacing: 6.0,
-              children: defectItems.map((item) {
+          const SizedBox(height: 8.0),
+          Text('Select defect found (Click to increment count):', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10.5, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6.0),
+          Wrap(
+            spacing: 6.0,
+            runSpacing: 6.0,
+            children: [
+              ...defectItems.map((item) {
                 final count = _getDefectCount(item, tempKey);
                 final bool hasCount = count > 0;
                 return Container(
@@ -7016,7 +7409,7 @@ class _EntryTabState extends State<EntryTab> {
                             Text(
                               item,
                               style: TextStyle(
-                                color: hasCount ? Colors.white : Colors.white.withOpacity(0.7),
+                                color: hasCount ? Colors.white : Colors.white.withOpacity(0.8),
                                 fontSize: 11.0,
                                 fontWeight: hasCount ? FontWeight.bold : FontWeight.normal,
                               ),
@@ -7049,9 +7442,32 @@ class _EntryTabState extends State<EntryTab> {
                     ),
                   ),
                 );
-              }).toList(),
-            ),
-          ],
+              }),
+              InkWell(
+                borderRadius: BorderRadius.circular(6.0),
+                onTap: () => _promptAddCustomDefect(level, controller, tempKey),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF38BDF8).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4)),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 13.0, color: Color(0xFF38BDF8)),
+                      SizedBox(width: 4.0),
+                      Text(
+                        '+ Add Defect',
+                        style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -7804,15 +8220,26 @@ class _EntryTabState extends State<EntryTab> {
           if (_showFunctionDiagram) ...[
             const Divider(color: Color(0xFFBAE6FD), height: 1.0),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6.0),
-                  child: Image.asset(
-                    _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
-                    height: 110,
-                    fit: BoxFit.contain,
-                    errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                child: Tooltip(
+                  message: 'Click to view diagram fullscreen / zoom',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8.0),
+                    onTap: () {
+                      final asset = _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png';
+                      final title = _isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
+                      _showZoomDiagramDialog(asset, title);
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: Image.asset(
+                        _isCaliber9mm ? 'assets/cartridge_9mm.png' : 'assets/cartridge_bottleneck.png',
+                        height: 260,
+                        fit: BoxFit.contain,
+                        errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -8247,12 +8674,23 @@ class _EntryTabState extends State<EntryTab> {
         limits = Map<String, dynamic>.from(accLimits['default'] ?? {});
       }
     }
+    final double targetMean = (limits['vel_target_mean'] ?? (_caliber.toLowerCase().contains('ss109') ? 915.0 : (_caliber.toLowerCase().contains('m193') ? 940.0 : (_caliber.toLowerCase().contains('m80') ? 830.0 : (_caliber.toLowerCase().contains('9') ? 375.0 : 850.0))))).toDouble();
+    final double tolerance = (limits['vel_tolerance'] ?? 13.0).toDouble();
+    final double velMin = limits['vel_min'] != null
+        ? (limits['vel_min'] as num).toDouble()
+        : (targetMean - tolerance);
+    final double velMax = limits['vel_max'] != null
+        ? (limits['vel_max'] as num).toDouble()
+        : (targetMean + tolerance);
+
     return {
       'max_mean_radius': (limits['max_mean_radius'] ?? 50.0).toDouble(),
       'max_sd': (limits['max_sd'] ?? 200.0).toDouble(),
       'cond_sd': (limits['cond_sd'] ?? 170.0).toDouble(),
-      'vel_min': (limits['vel_min'] ?? 700.0).toDouble(),
-      'vel_max': (limits['vel_max'] ?? 900.0).toDouble(),
+      'vel_target_mean': targetMean,
+      'vel_tolerance': tolerance,
+      'vel_min': velMin,
+      'vel_max': velMax,
       'instructions': limits['instructions'] ?? acc['instructions'] ?? 'Assess group sizing at target distance and mean velocity bounds.',
     };
   }
@@ -9373,7 +9811,11 @@ class _EntryTabState extends State<EntryTab> {
       final matchingPrimerRecords = widget.componentPrimerRecords.where((r) {
         final c = r.caliber.toLowerCase();
         final curr = _caliber.toLowerCase();
-        return c == curr || c.contains(curr) || curr.contains(c);
+        final matchesCaliber = c == curr || c.contains(curr) || curr.contains(c);
+        if (_primerSupplier.isNotEmpty) {
+          return matchesCaliber && r.primerSupplier.trim().toLowerCase() == _primerSupplier.trim().toLowerCase();
+        }
+        return matchesCaliber;
       }).toList();
       final primerLotOptions = matchingPrimerRecords
           .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
@@ -9520,7 +9962,29 @@ class _EntryTabState extends State<EntryTab> {
                     : (_primerSuppliers.isNotEmpty ? _primerSuppliers.first : ''),
                 items: _primerSuppliers,
                 onChanged: (v) {
-                  if (v != null) setState(() => _primerSupplier = v);
+                  if (v != null) {
+                    setState(() {
+                      _primerSupplier = v;
+                      final subMatching = widget.componentPrimerRecords.where((r) {
+                        final c = r.caliber.toLowerCase();
+                        final curr = _caliber.toLowerCase();
+                        final matchesCaliber = c == curr || c.contains(curr) || curr.contains(c);
+                        return matchesCaliber && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
+                      }).toList();
+                      final subLots = subMatching
+                          .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
+                          .where((l) => l.isNotEmpty)
+                          .toSet()
+                          .toList();
+                      if (subLots.isNotEmpty) {
+                        _selectedComponentPrimerLot = subLots.first;
+                        _primerLotController.text = subLots.first;
+                      } else {
+                        _selectedComponentPrimerLot = null;
+                        _primerLotController.clear();
+                      }
+                    });
+                  }
                 },
               ),
             ),
@@ -10372,9 +10836,11 @@ class _EntryTabState extends State<EntryTab> {
       final accRules = _getAccuracyRulesForCaliber();
       final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
       final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
+      final double targetMean = (accRules['vel_target_mean'] ?? 915.0).toDouble();
+      final double tolerance = (accRules['vel_tolerance'] ?? 13.0).toDouble();
       final double velMin = (accRules['vel_min'] ?? 700.0).toDouble();
       final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
-      specText = 'Caliber: $_caliber | Velocity: ${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s | Max Radius: ${maxMeanRadius.toStringAsFixed(1)} mm | Max SD: ${maxSD.toStringAsFixed(1)} mm';
+      specText = 'Caliber: $_caliber | Mean Velocity: Target ${targetMean.toStringAsFixed(1)} ± ${tolerance.toStringAsFixed(1)} m/s [${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s] | Max Radius: ${maxMeanRadius.toStringAsFixed(1)} mm | Max SD: ${maxSD.toStringAsFixed(1)} mm';
       instructionsText = accRules['instructions'] ?? 'Assess group sizing at target distance.';
     } else if (_testName.toLowerCase().contains('epvat') || _testName.toLowerCase().contains('propellant')) {
       return const SizedBox.shrink();

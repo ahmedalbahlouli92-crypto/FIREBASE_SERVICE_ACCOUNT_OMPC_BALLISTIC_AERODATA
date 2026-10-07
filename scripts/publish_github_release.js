@@ -19,30 +19,29 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.5';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.5 (Comprehensive Quality & Inspection Suite Update)';
-const BODY = `## OMPC Ballistic AeroData v1.9.5
+const TAG_NAME = 'v1.9.7';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.7 (Inspection & Engineering Quality Suite Update)';
+const BODY = `## OMPC Ballistic AeroData v1.9.7
 
-Comprehensive quality inspection update featuring standardized reports, enhanced component testing, natural lot sequencing, and streamlined retesting workflows:
+Comprehensive quality and engineering inspection update featuring enhanced diagrams, defect level selection, automated file result extraction, strict 1-page reports, reorganized executive exports, and multi-platform deployment:
 
 ### Key Enhancements & Features:
-1. **Inspector Name on Reports**: Prioritizes operators from inspection logs over generic logged-in usernames on all individual and batch test reports.
-2. **Lot Acceptance Certificate Cover**: Certificate cover correctly displays generator, while all individual sub-test sheets show their respective inspectors.
-3. **Single Page Fitting**: Individual test reports strictly fit within 1 A4 page with optimized print layout.
-4. **Unperformed Tests in Lot Certificate**: Omit unperformed test rows from certificate and alert user in UI before generating.
-5. **EPVAT Title & Formulas**: Renamed to EPVAT BALLISTIC ANALYSIS, removed Formula Expression column, and displayed evaluated calculation values with units.
-6. **Component Module Calibers**: Strictly restricted component calibers to 5.56, 7.62, and 9mm.
-7. **Supabase Component Table**: Created and seeded public.component_tests catalog table with RLS policies.
-8. **SPC Chart Lot Sequence**: Sorted SPC Matrix chart X-axis strictly by lot number in natural numerical sequence.
-9. **Equipment Report Opening & Status Lock**: Added individual issue report viewer and locked resolved/calibrated/closed issues.
-10. **Executive Report Table Export**: Added dedicated pure tabular HTML export for executive quality metrics.
-11. **Component Test Signatures**: Added selectable technician signature, displaying 3 signatures (or 2 if inspector is technician).
-12. **Inspection Log Sorting**: Added filter dropdown to sort logs by Date of Inspection, Lot / Hopper, Test Name, or Caliber.
-13. **Waterproof Sealant Notes**: Auto-note 'need for sealant' on failures/retests, and 'sealant applied' on PC110 retest pass.
-14. **Primer Retest Action Taken**: Added Action Taken dropdown and enforced New Insertion Depth entry when changing insertion depth.
-15. **Reference Number Resequencing**: Resequenced non-deleted records cleanly starting from REF:01.
-16. **Standardized Deletion Alerts**: Standardized deletion confirmation messages across history and equipment logs.
-17. **Cross-Platform Release**: Full deployment across Web (Firebase Hosting), Windows Desktop Setup & Portable, and Android APK.
+1. **Interactive Enlarged Reference Diagrams**: Pinch-to-zoom and pan reference diagrams for Function Test and Residual Stress test.
+2. **Dynamic Multi-Level Defect Selection**: Custom defect picker and interactive level counters for each defect classification level.
+3. **Accuracy Test Evaluation Rules**: Admin velocity tolerance configuration (target mean &plusmn; tolerance) correctly evaluating lots (e.g. Lot 010 SS109 passes under 915 &plusmn; 12 m/s).
+4. **Caliber-First Lot Filtering**: In Lot Acceptance module, caliber specification selection drives dynamic lot population.
+5. **Bold Day Separators**: Inspection logs feature distinct bold separators between consecutive test days for visual clarity.
+6. **Automated Test Results File Extraction**: Direct file upload/paste parser extracting values automatically into test forms.
+7. **Sequential Reference Numbering**: Clean sequential report references (REF 1, REF 2, REF 3...) across all modules.
+8. **EPVAT Primer Supplier Selection**: Primer supplier selection in EPVAT test dynamically drives verified lot options.
+9. **Dual Lot Acceptance Report Generator**: Option 1 for general log report (all, caliber, or test) and Option 2 for official certificate and complete dossier.
+10. **Daily Test Hopper-Only Filtering**: Removed lot filter in Daily Test inspection log, keeping hopper number.
+11. **Morning / Afternoon Shift System**: Standardized shift options strictly to Morning and Afternoon across app, dashboard, and logs.
+12. **Dashboard Trend Reports with Embedded Charts**: Export trend reports with engineering test requirements, process state compliance badges, and embedded charts.
+13. **Strict 1-Page Final Acceptance Certificate**: Fitted certificate and individual dossier test sheets strictly onto single A4 pages.
+14. **Modular Unified Dashboard Export**: Single unified export dialog with customizable section inclusion toggles.
+15. **Module & Caliber Isolated Executive Quality Report**: Executive report organized strictly by module, and within each module each caliber alone with its dedicated charts.
+16. **Cross-Platform Deployment**: Published to GitHub, Supabase sync, Windows Desktop, Android APK, and Firebase Web.
 `;
 
 function request(options, postData) {

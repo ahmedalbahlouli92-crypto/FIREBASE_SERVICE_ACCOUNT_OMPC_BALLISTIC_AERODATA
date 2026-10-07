@@ -12,6 +12,34 @@ class ReportGenerator {
     return '#b91c1c';
   }
 
+  static String formatReportRefNumber(dynamic rawRef, [int fallbackIndex = 1]) {
+    if (rawRef == null) return 'REF $fallbackIndex';
+    String s = rawRef.toString().trim();
+    if (s.isEmpty || s == '-' || s == '.') return 'REF $fallbackIndex';
+    s = s.replaceAll(RegExp(r'[\[\]\(\)]'), ' ').trim();
+    if (s.contains(',')) {
+      final parts = s.split(',').map((p) => formatReportRefNumber(p.trim())).where((p) => p.isNotEmpty).toSet().toList();
+      if (parts.isNotEmpty) return parts.join(', ');
+    }
+    final match = RegExp(r'(?:REF\s*[:\-_]?\s*)+(\d+)', caseSensitive: false).firstMatch(s);
+    if (match != null) {
+      final numStr = match.group(1)!;
+      final numVal = int.tryParse(numStr);
+      return 'REF ${numVal ?? numStr}';
+    }
+    final pureNum = int.tryParse(s);
+    if (pureNum != null) {
+      return 'REF $pureNum';
+    }
+    if (s.toUpperCase().startsWith('REF')) {
+      s = s.replaceFirst(RegExp(r'^REF\s*[:\-_]?\s*', caseSensitive: false), '').trim();
+      final numVal = int.tryParse(s);
+      if (numVal != null) return 'REF $numVal';
+      if (s.isNotEmpty) return 'REF $s';
+    }
+    return 'REF $s';
+  }
+
   static String formatCartridgeTemp(String raw) {
     if (raw.trim().isEmpty) return '';
     String s = raw.replaceAll('&deg;C', '°C').trim();
@@ -37,6 +65,7 @@ class ReportGenerator {
     s = s.replaceAll(RegExp(r'\([^\)]*REF[:\-][^\)]*\)', caseSensitive: false), ' ').trim();
     s = s.replaceAll(RegExp(r'\bREF[:\-]\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
     s = s.replaceAll(RegExp(r'\bRef\s*No[:\-]?\s*[A-Za-z0-9_-]+\b', caseSensitive: false), ' ').trim();
+    s = s.replaceAll(RegExp(r'\bREF\s*\d+\b', caseSensitive: false), ' ').trim();
     s = s.replaceAll(RegExp(r'\[TECH:[^\]]*\]', caseSensitive: false), ' ').trim();
 
     if (s.contains('Temps:')) {
@@ -507,10 +536,10 @@ class ReportGenerator {
         ? '<img src="data:image/png;base64,$base64Logo" style="height: 85px; width: auto; object-fit: contain;" />' 
         : '';
 
-    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
+    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).map((s) => formatReportRefNumber(s)).toSet().toList();
     final String reportRefNo = refList.isNotEmpty
         ? refList.join(', ')
-        : 'REF:01';
+        : 'REF 1';
 
     final remarksList = records
         .map((r) => cleanRemarks(r.notes))
@@ -587,9 +616,9 @@ class ReportGenerator {
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
       classificationImageTag = '''
-        <div style="min-height: 140px; height: 140px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px;">
-          <img src="$src" style="max-width: 100%; max-height: 115px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Residual Stress Reference" />
-          <div style="font-size: 9px; color: #64748b; margin-top: 3px; font-style: italic;">$title</div>
+        <div style="min-height: 230px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
+          <img src="$src" style="max-width: 100%; max-height: 200px; width: auto; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 4px rgba(0,0,0,0.08);" alt="Residual Stress Reference" />
+          <div style="font-size: 10px; font-weight: bold; color: #475569; margin-top: 4px;">$title</div>
         </div>
       ''';
     } else if (testName == 'Function Test') {
@@ -598,9 +627,9 @@ class ReportGenerator {
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
       classificationImageTag = '''
-        <div style="min-height: 140px; height: 140px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px;">
-          <img src="$src" style="max-width: 100%; max-height: 115px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" alt="Function Test Reference" />
-          <div style="font-size: 9px; color: #64748b; margin-top: 3px; font-style: italic;">$title</div>
+        <div style="min-height: 230px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
+          <img src="$src" style="max-width: 100%; max-height: 200px; width: auto; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 4px rgba(0,0,0,0.08);" alt="Function Test Reference" />
+          <div style="font-size: 10px; font-weight: bold; color: #475569; margin-top: 4px;">$title</div>
         </div>
       ''';
     }
@@ -613,7 +642,7 @@ class ReportGenerator {
           <tr>
             <td style="width: 50%; vertical-align: top; border: none; padding-right: 8px; padding-left: 0; padding-top: 0; padding-bottom: 0;">
               <h3 class="section-title" style="margin-top: 0; margin-bottom: 4px;">Remarks</h3>
-              <div class="sentence-box" style="min-height: 140px; height: 140px; box-sizing: border-box; overflow-y: auto;">
+              <div class="sentence-box" style="min-height: 230px; box-sizing: border-box; overflow-y: auto;">
                 $remarksText
               </div>
             </td>
@@ -1104,7 +1133,7 @@ class ReportGenerator {
       </td>
       <td style="width: 35%; text-align: right; vertical-align: middle;">
         $logoHtml
-        <div style="margin-top: 6px; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">Ref No: $reportRefNo</div>
+        <div style="margin-top: 6px; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">$reportRefNo</div>
       </td>
     </tr>
   </table>
@@ -1930,10 +1959,10 @@ class ReportGenerator {
         ? '<img src="data:image/png;base64,$base64Logo" width="140" height="85" style="object-fit: contain;" />' 
         : '';
 
-    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
+    final refList = records.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).map((s) => formatReportRefNumber(s)).toSet().toList();
     final String reportRefNo = refList.isNotEmpty
         ? refList.join(', ')
-        : 'REF:01';
+        : 'REF 1';
 
     final displayTestTitle = testName == 'All' ? 'Final Lot Acceptance Certificate' : testName;
 
@@ -2004,7 +2033,7 @@ class ReportGenerator {
       final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
       classificationImageTag = '''
         <div style="min-height: 210px; height: 210px; box-sizing: border-box; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
-          <img src="$src" width="250" style="max-width: 100%; max-height: 175px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Residual Stress Reference" />
+          <img src="$src" width="340" style="max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Residual Stress Reference" />
           <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
         </div>
       ''';
@@ -2015,7 +2044,7 @@ class ReportGenerator {
       final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
       classificationImageTag = '''
         <div style="min-height: 210px; height: 210px; box-sizing: border-box; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
-          <img src="$src" width="250" style="max-width: 100%; max-height: 175px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Function Test Reference" />
+          <img src="$src" width="340" style="max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Function Test Reference" />
           <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">$title</div>
         </div>
       ''';
@@ -2402,7 +2431,7 @@ class ReportGenerator {
       </td>
       <td style="width: 35%; text-align: right; vertical-align: middle; padding-bottom: 15px;">
         $logoHtml
-        <p style="margin: 6px 0 0 0; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">Ref No: $reportRefNo</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">$reportRefNo</p>
       </td>
     </tr>
   </table>
@@ -2922,19 +2951,50 @@ class ReportGenerator {
   <title>$title</title>
   $headContent
   <style>
+    @page {
+      size: A4 portrait;
+      margin: 5mm 7mm !important;
+    }
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 5mm 7mm !important;
+      }
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .dossier-page {
+        page-break-before: always !important;
+        break-before: page !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        max-height: 282mm !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+      .dossier-page:first-child {
+        page-break-before: avoid !important;
+        break-before: avoid !important;
+      }
+      .dossier-divider {
+        display: none !important;
+      }
+    }
+    .dossier-page {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 30px;
+    }
     .dossier-divider {
       page-break-before: always;
       break-before: page;
-      margin-top: 30px;
-      padding-top: 25px;
-      border-top: 3px dashed #94a3b8;
-    }
-    @media print {
-      .dossier-divider {
-        margin-top: 0;
-        padding-top: 0;
-        border-top: none;
-      }
+      margin: 20px 0;
+      border-top: 2px dashed #94a3b8;
     }
   </style>
 </head>
@@ -2945,7 +3005,7 @@ class ReportGenerator {
       if (i > 0) {
         buffer.writeln('<div class="dossier-divider"></div>');
       }
-      buffer.writeln(sections[i]);
+      buffer.writeln('<div class="dossier-page">${sections[i]}</div>');
     }
 
     buffer.writeln('''
@@ -3071,8 +3131,8 @@ class ReportGenerator {
       return true;
     }).toList();
 
-    final refList = scopedRecords.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).toSet().toList();
-    final String reportRefNo = refList.isNotEmpty ? refList.first : 'REF:01';
+    final refList = scopedRecords.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).map((s) => formatReportRefNumber(s)).toSet().toList();
+    final String reportRefNo = refList.isNotEmpty ? refList.first : 'REF 1';
 
     final inspectorName = loggedInUser.trim().isNotEmpty
         ? loggedInUser.trim()
@@ -3706,30 +3766,39 @@ class ReportGenerator {
   <style>
     @page {
       size: A4 portrait;
-      margin: 0 !important;
+      margin: 5mm 7mm !important;
     }
     @media print {
       @page {
         size: A4 portrait;
-        margin: 0 !important;
+        margin: 5mm 7mm !important;
       }
-      body {
+      html, body {
         margin: 0 !important;
-        padding: 8mm 10mm !important;
+        padding: 0 !important;
+        height: 100% !important;
+        max-height: 282mm !important;
+        overflow: hidden !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
       .cert-wrapper {
         width: 100% !important;
         max-width: 100% !important;
+        max-height: 280mm !important;
+        overflow: hidden !important;
         margin: 0 !important;
         padding: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       margin: 0;
-      padding: 12px 16px;
+      padding: 8px 12px;
       color: #0f172a;
       background-color: #ffffff;
       -webkit-print-color-adjust: exact;
@@ -3738,6 +3807,7 @@ class ReportGenerator {
     .cert-wrapper {
       max-width: 860px;
       margin: 0 auto;
+      box-sizing: border-box;
     }
     .header-table {
       width: 100%;
@@ -3799,8 +3869,8 @@ class ReportGenerator {
       border-collapse: collapse;
     }
     .details-table td {
-      padding: 2.5px 6px;
-      font-size: 9.5pt;
+      padding: 1.5px 4px;
+      font-size: 8.5pt;
       border: none !important;
       background: none !important;
     }
@@ -3817,18 +3887,18 @@ class ReportGenerator {
       font-weight: bold;
       text-align: center;
       vertical-align: middle;
-      padding: 5px 4px;
+      padding: 3.5px 4px;
       border: 1px solid #cbd5e1;
-      font-size: 8pt;
+      font-size: 7.5pt;
       text-transform: uppercase;
       letter-spacing: 0.3px;
     }
     .results-table td {
       border: 1px solid #cbd5e1;
-      padding: 4px 6px;
+      padding: 2.5px 5px;
       vertical-align: middle;
-      font-size: 8pt;
-      line-height: 1.35;
+      font-size: 7.5pt;
+      line-height: 1.25;
     }
     .test-name-cell {
       color: #0284c7;
@@ -3886,7 +3956,7 @@ class ReportGenerator {
         </td>
         <td style="width: 35%; text-align: right; vertical-align: middle;">
           $logoHtml
-          <div style="margin-top: 6px; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">Ref No: $reportRefNo</div>
+          <div style="margin-top: 6px; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">$reportRefNo</div>
         </td>
       </tr>
     </table>

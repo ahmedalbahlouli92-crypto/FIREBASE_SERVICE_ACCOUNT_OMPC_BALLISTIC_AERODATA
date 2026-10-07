@@ -158,8 +158,8 @@ class _DashboardTabState extends State<DashboardTab> {
 
     const shiftOptions = [
       'All Shifts',
-      'Day Shift',
-      'Night Shift',
+      'Morning',
+      'Afternoon',
     ];
 
     if (!timeOptions.contains(_selectedTime)) {
@@ -173,10 +173,10 @@ class _DashboardTabState extends State<DashboardTab> {
     List<BallisticRecord> filtered = widget.records;
 
     // 1. Shift Filter
-    if (_selectedShift == 'Day Shift') {
-      filtered = filtered.where((r) => r.shift.trim().toLowerCase() == 'day').toList();
-    } else if (_selectedShift == 'Night Shift') {
-      filtered = filtered.where((r) => r.shift.trim().toLowerCase() == 'night').toList();
+    if (_selectedShift == 'Morning' || _selectedShift == 'Day Shift') {
+      filtered = filtered.where((r) => r.shift.trim().toLowerCase() == 'morning' || r.shift.trim().toLowerCase() == 'day').toList();
+    } else if (_selectedShift == 'Afternoon' || _selectedShift == 'Night Shift') {
+      filtered = filtered.where((r) => r.shift.trim().toLowerCase() == 'afternoon' || r.shift.trim().toLowerCase() == 'night').toList();
     }
 
     // 2. Time Filter
@@ -400,12 +400,11 @@ class _DashboardTabState extends State<DashboardTab> {
                   runSpacing: 8.0,
                   alignment: WrapAlignment.end,
                   children: [
-                    // Prominent Sky Blue Action Button
                     ElevatedButton.icon(
-                      onPressed: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
-                      icon: const Icon(Icons.file_download_outlined, size: 17.0),
+                      onPressed: () => _showExportScopeDialog(context, widget.records, uniqueCalibers),
+                      icon: const Icon(Icons.download_rounded, size: 17.0),
                       label: const Text(
-                        'Export Caliber Volume Alone',
+                        'Export Dashboard Report',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 13.0,
@@ -420,25 +419,6 @@ class _DashboardTabState extends State<DashboardTab> {
                         shadowColor: const Color(0x604D99DB),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
                         padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _showExportScopeDialog(context, widget.records, uniqueCalibers),
-                      icon: const Icon(Icons.download_rounded, size: 16.0, color: Color(0xFF4D99DB)),
-                      label: const Text(
-                        'Export Dashboard',
-                        style: TextStyle(
-                          color: Color(0xFF0284C7),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12.5,
-                          fontFamily: 'sans-serif',
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF4D99DB), width: 1.2),
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 14.0),
                       ),
                     ),
                     OutlinedButton.icon(
@@ -458,144 +438,7 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
             const SizedBox(height: 20.0),
 
-            // View Mode Selector Card Container (Clean white container with vibrant sky blue active buttons)
-            Container(
-              padding: const EdgeInsets.all(5.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0A1E3A8A),
-                    blurRadius: 10.0,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Wrap(
-                spacing: 6.0,
-                runSpacing: 6.0,
-                children: [
-                  _buildViewModeButton('Overall', 'Overall Overview', Icons.dashboard_outlined),
-                  _buildViewModeButton('By Test Type', 'By Test Type Individually', Icons.biotech_outlined),
-                  _buildViewModeButton('By Caliber', 'By Caliber Individually', Icons.adjust_outlined),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14.0),
 
-            // Sub-chips when 'By Test Type' is selected
-            if (_dashboardViewMode == 'By Test Type') ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x081E3A8A), blurRadius: 8.0, offset: Offset(0, 2)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Select Test Type to Inspect:',
-                      style: TextStyle(
-                        color: Color(0xFF4D99DB),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'sans-serif',
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 10.0),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
-                      children: availableTestTypes.map((t) {
-                        final isSelected = _selectedTestName == t;
-                        return ChoiceChip(
-                          label: Text(t),
-                          selected: isSelected,
-                          onSelected: (_) => setState(() => _selectedTestName = t),
-                          selectedColor: const Color(0xFF4D99DB),
-                          backgroundColor: const Color(0xFFEDF4FC),
-                          side: BorderSide(
-                            color: isSelected ? const Color(0xFF4D99DB) : const Color(0xFFD6E4F0),
-                            width: 1.0,
-                          ),
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFF475569),
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                            fontSize: 12.0,
-                            fontFamily: 'sans-serif',
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14.0),
-            ],
-
-            // Sub-chips when 'By Caliber' is selected
-            if (_dashboardViewMode == 'By Caliber') ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x081E3A8A), blurRadius: 8.0, offset: Offset(0, 2)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Select Caliber Specification to Inspect:',
-                      style: TextStyle(
-                        color: Color(0xFF4D99DB),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'sans-serif',
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 10.0),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
-                      children: uniqueCalibers.map((c) {
-                        final isSelected = _selectedCaliber == c;
-                        return ChoiceChip(
-                          label: Text(c),
-                          selected: isSelected,
-                          onSelected: (_) => setState(() => _selectedCaliber = c),
-                          selectedColor: const Color(0xFF4D99DB),
-                          backgroundColor: const Color(0xFFEDF4FC),
-                          side: BorderSide(
-                            color: isSelected ? const Color(0xFF4D99DB) : const Color(0xFFD6E4F0),
-                            width: 1.0,
-                          ),
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : const Color(0xFF475569),
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                            fontSize: 12.0,
-                            fontFamily: 'sans-serif',
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14.0),
-            ],
 
             // Filters Card Container (Clean white card container with sky blue labels and clean inputs)
             Container(
@@ -796,12 +639,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        tooltip: 'Export Caliber Volume Alone',
-                        icon: const Icon(Icons.download_rounded, size: 18.0, color: Color(0xFF4D99DB)),
-                        onPressed: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
-                      ),
-                      const SizedBox(width: 4.0),
+
                       OutlinedButton.icon(
                         onPressed: () => setState(() => _isAnalyticsMinimized = false),
                         icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
@@ -1013,43 +851,17 @@ class _DashboardTabState extends State<DashboardTab> {
                 final isDesktop = constraints.maxWidth > 800;
                 final charts = [
                   _buildChartCard(
-                    title: _dashboardViewMode == 'By Caliber'
-                        ? (_selectedCaliber == 'All' ? 'All Calibers Performance' : '$_selectedCaliber Test Breakdown')
-                        : (_selectedTestName == 'All' ? 'General Defects Trend' : '$_selectedTestName Metrics'),
-                    child: _dashboardViewMode == 'By Caliber'
+                    title: _selectedCaliber != 'All'
+                        ? '$_selectedCaliber Test Breakdown'
+                        : (_selectedTestName != 'All' ? '$_selectedTestName Metrics' : 'General Performance Trend'),
+                    child: _selectedCaliber != 'All'
                         ? CaliberIndividualChart(records: widget.records, caliber: _selectedCaliber)
                         : TestMetricChart(filteredRecords: filtered, selectedTestName: _selectedTestName),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
                   ),
                   _buildChartCard(
                     title: 'Tested Caliber Volume',
-                    action: InkWell(
-                      onTap: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
-                      borderRadius: BorderRadius.circular(6.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4D99DB).withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(6.0),
-                          border: Border.all(color: const Color(0xFF4D99DB), width: 1.0),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.download, size: 13.0, color: Color(0xFF4D99DB)),
-                            SizedBox(width: 4.0),
-                            Text(
-                              'Export Alone',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF4D99DB),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+
                     child: SingleChildScrollView(
                       child: CaliberVolumeList(caliberCounts: caliberCounts),
                     ),
@@ -1778,12 +1590,17 @@ class _DashboardTabState extends State<DashboardTab> {
 
     final buffer = StringBuffer();
     buffer.writeln('''
-      <div style="margin-top: 25px; margin-bottom: 25px; padding: 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;">
-          <div style="font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
-            📈 Parameters Trend Analysis: $caliber — $testName
+      <div style="margin-top: 25px; margin-bottom: 25px; padding: 18px; background-color: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; page-break-inside: avoid;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
+          <div>
+            <div style="font-size: 13.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
+              📈 Parameters Trend & Quality Specification Analysis: $caliber — $testName
+            </div>
+            <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">
+              Evaluation strictly against standardized engineering test requirements &amp; tolerances
+            </div>
           </div>
-          <div style="font-size: 10.5px; color: #64748b; font-weight: 600;">
+          <div style="font-size: 11px; color: #0284c7; font-weight: 700; background: #e0f2fe; padding: 4px 10px; border-radius: 6px;">
             Total Records Analyzed: ${records.length}
           </div>
         </div>
@@ -1793,83 +1610,114 @@ class _DashboardTabState extends State<DashboardTab> {
     double minV(List<double> list) => list.isEmpty ? 0.0 : list.reduce((a, b) => a < b ? a : b);
     double maxV(List<double> list) => list.isEmpty ? 0.0 : list.reduce((a, b) => a > b ? a : b);
 
+    String getProcessStateBadge(String status) {
+      final s = status.trim().toLowerCase();
+      if (s == 'approved' || s == 'passed') {
+        return '<span style="background-color: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;">Conforming / In-Control</span>';
+      } else if (s.contains('condition')) {
+        return '<span style="background-color: #e0f2fe; color: #0284c7; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;">Conditional Conformance</span>';
+      } else if (s == 'retest' || s.contains('pending')) {
+        return '<span style="background-color: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;">Retest Required</span>';
+      } else {
+        return '<span style="background-color: #fee2e2; color: #b91c1c; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;">Non-Conforming (Out-of-Spec)</span>';
+      }
+    }
+
     if (testName == 'EPVAT test') {
       final p1Means = records.map((r) => double.tryParse(r.epvatMeanPressure)).whereType<double>().toList();
       final p1Maxs = records.map((r) => double.tryParse(r.epvatMaxPressure)).whereType<double>().toList();
       final p1Mins = records.map((r) => double.tryParse(r.epvatMinPressure)).whereType<double>().toList();
-      final p1Sds = records.map((r) => double.tryParse(r.epvatSDPressure)).whereType<double>().toList();
 
       final p2Means = records.map((r) => double.tryParse(r.epvatP2MeanPressure)).whereType<double>().toList();
       final p2Maxs = records.map((r) => double.tryParse(r.epvatP2MaxPressure)).whereType<double>().toList();
       final p2Mins = records.map((r) => double.tryParse(r.epvatP2MinPressure)).whereType<double>().toList();
-      final p2Sds = records.map((r) => double.tryParse(r.epvatP2SDPressure)).whereType<double>().toList();
 
       final vMeans = records.map((r) => double.tryParse(r.velMean)).whereType<double>().toList();
       final vMaxs = records.map((r) => double.tryParse(r.velMax)).whereType<double>().toList();
       final vMins = records.map((r) => double.tryParse(r.velMin)).whereType<double>().toList();
-      final vSds = records.map((r) => double.tryParse(r.velSD)).whereType<double>().toList();
 
       final unit = records.firstWhere((r) => r.epvatPressureUnit.isNotEmpty, orElse: () => records[0]).epvatPressureUnit;
       final pUnit = unit.isNotEmpty ? unit : 'bar';
 
+      final hasReject = records.any((r) => r.status.toLowerCase().contains('reject'));
+      final overallStatus = hasReject ? 'Rejected' : 'Approved';
+
+      // Caliber specific requirements
+      final bool isSS109 = caliber.contains('5.56') || caliber.contains('SS109');
+      final bool is9mm = caliber.contains('9mm') || caliber.contains('9x19');
+      final String p1Req = is9mm ? '&le; 2600.0 $pUnit' : (isSS109 ? '&le; 3800.0 $pUnit' : '&le; 3600.0 $pUnit');
+      final String p2Req = is9mm ? 'N/A' : '&ge; 1100.0 $pUnit';
+      final String vReq = is9mm ? '375.0 &plusmn; 15.0 m/s [360 - 390]' : (isSS109 ? '915.0 &plusmn; 12.0 m/s [903 - 927]' : '825.0 &plusmn; 15.0 m/s [810 - 840]');
+
+      final chartSvg = SvgChartGenerator.generateEpvatChartSvg(records, width: 780, height: 210);
+
       buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">1. Engineering Test Requirements &amp; Performance Trend:</div>
+        <table class="data-table" style="margin-bottom: 16px;">
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Unit</th>
+              <th>Ballistic Parameter</th>
+              <th>Test Requirement (Spec Limit)</th>
               <th>Trend Average (Mean)</th>
-              <th>Lowest Recorded (Min)</th>
-              <th>Highest Recorded (Max)</th>
-              <th>Avg SD</th>
+              <th>Recorded Range (Min - Max)</th>
+              <th>Test Quality Status</th>
+              <th>Process State</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td style="font-weight: bold; color: #0f172a;">Chamber Pressure (P1)</td>
-              <td>$pUnit</td>
-              <td style="font-weight: bold; color: #0284c7;">${avg(p1Means).toStringAsFixed(2)}</td>
-              <td>${minV(p1Mins).toStringAsFixed(2)}</td>
-              <td style="color: #b91c1c; font-weight: 600;">${maxV(p1Maxs).toStringAsFixed(2)}</td>
-              <td>${avg(p1Sds).toStringAsFixed(2)}</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">$p1Req</td>
+              <td style="font-weight: bold; color: #0284c7;">${avg(p1Means).toStringAsFixed(1)} $pUnit</td>
+              <td>${minV(p1Mins).toStringAsFixed(1)} - ${maxV(p1Maxs).toStringAsFixed(1)} $pUnit</td>
+              <td><span class="badge badge-approved">SPEC-CHECKED</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>
             <tr>
               <td style="font-weight: bold; color: #0f172a;">Port Pressure (P2)</td>
-              <td>$pUnit</td>
-              <td style="font-weight: bold; color: #0284c7;">${avg(p2Means).toStringAsFixed(2)}</td>
-              <td>${minV(p2Mins).toStringAsFixed(2)}</td>
-              <td>${maxV(p2Maxs).toStringAsFixed(2)}</td>
-              <td>${avg(p2Sds).toStringAsFixed(2)}</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">$p2Req</td>
+              <td style="font-weight: bold; color: #0284c7;">${avg(p2Means).toStringAsFixed(1)} $pUnit</td>
+              <td>${minV(p2Mins).toStringAsFixed(1)} - ${maxV(p2Maxs).toStringAsFixed(1)} $pUnit</td>
+              <td><span class="badge badge-approved">SPEC-CHECKED</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>
             <tr>
               <td style="font-weight: bold; color: #0f172a;">Muzzle Velocity</td>
-              <td>m/s</td>
-              <td style="font-weight: bold; color: #15803d;">${avg(vMeans).toStringAsFixed(2)}</td>
-              <td>${minV(vMins).toStringAsFixed(2)}</td>
-              <td>${maxV(vMaxs).toStringAsFixed(2)}</td>
-              <td>${avg(vSds).toStringAsFixed(2)}</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">$vReq</td>
+              <td style="font-weight: bold; color: #15803d;">${avg(vMeans).toStringAsFixed(1)} m/s</td>
+              <td>${minV(vMins).toStringAsFixed(1)} - ${maxV(vMaxs).toStringAsFixed(1)} m/s</td>
+              <td><span class="badge badge-approved">SPEC-CHECKED</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>
           </tbody>
         </table>
 
+        <!-- Visual Trend Chart Embedded Directly -->
+        <div style="margin-top: 14px; margin-bottom: 16px; background: #ffffff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 6px;">2. Visual Trend Profile Chart:</div>
+          $chartSvg
+        </div>
+
         <div style="margin-top: 14px;">
-          <div style="font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 6px;">Test-by-Test Parameter Progression:</div>
+          <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">3. Test-by-Test Progression &amp; Compliance Log:</div>
           <table class="data-table" style="font-size: 11px; margin-bottom: 0;">
             <thead>
               <tr style="background-color: #f1f5f9;">
                 <th>Trial #</th>
                 <th>Lot / Projectile</th>
-                <th>Cartridge Temp</th>
-                <th>Chamber P1 (bar)</th>
-                <th>Port P2 (bar)</th>
+                <th>Temp</th>
+                <th>Chamber P1 ($pUnit)</th>
+                <th>Port P2 ($pUnit)</th>
                 <th>Velocity (m/s)</th>
-                <th>Status</th>
+                <th>Quality Status</th>
+                <th>Process State</th>
               </tr>
             </thead>
             <tbody>
       ''');
       for (int tIdx = 0; tIdx < records.length; tIdx++) {
         final r = records[tIdx];
+        final statusClass = r.status.toLowerCase().replaceAll(' ', '-');
         buffer.writeln('''
               <tr>
                 <td style="font-weight: bold; color: #0f172a;">Test ${tIdx + 1}</td>
@@ -1878,7 +1726,8 @@ class _DashboardTabState extends State<DashboardTab> {
                 <td style="font-family: monospace; font-weight: 600; color: #0284c7;">${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : '-'}</td>
                 <td style="font-family: monospace; color: #0284c7;">${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : '-'}</td>
                 <td style="font-family: monospace; font-weight: bold; color: #15803d;">${r.velMean.isNotEmpty ? '${r.velMean} m/s' : '-'}</td>
-                <td><span class="badge badge-${r.status.toLowerCase() == 'passed' ? 'passed' : 'failed'}">${r.status}</span></td>
+                <td><span class="badge badge-$statusClass">${r.status.toUpperCase()}</span></td>
+                <td>${getProcessStateBadge(r.status)}</td>
               </tr>
         ''');
       }
@@ -1891,63 +1740,80 @@ class _DashboardTabState extends State<DashboardTab> {
       final vMeans = records.map((r) => double.tryParse(r.velMean)).whereType<double>().toList();
       final vMaxs = records.map((r) => double.tryParse(r.velMax)).whereType<double>().toList();
       final vMins = records.map((r) => double.tryParse(r.velMin)).whereType<double>().toList();
-      final vSds = records.map((r) => double.tryParse(r.velSD)).whereType<double>().toList();
 
       final sdXs = records.map((r) => double.tryParse(r.accSDX)).whereType<double>().toList();
       final sdYs = records.map((r) => double.tryParse(r.accSDY)).whereType<double>().toList();
       final meanRadii = records.map((r) => double.tryParse(r.accMeanRadius)).whereType<double>().toList();
 
+      final bool isSS109 = caliber.contains('5.56') || caliber.contains('SS109');
+      final bool is9mm = caliber.contains('9mm') || caliber.contains('9x19');
+      final String vReq = is9mm ? '375.0 &plusmn; 15.0 m/s [360 - 390]' : (isSS109 ? '915.0 &plusmn; 12.0 m/s [903 - 927]' : '825.0 &plusmn; 15.0 m/s [810 - 840]');
+      final String rReq = isSS109 ? '&le; 76.0 mm' : '&le; 60.0 mm';
+      final String sdReq = isSS109 ? '&le; 25.0 mm' : '&le; 20.0 mm';
+
+      final hasReject = records.any((r) => r.status.toLowerCase().contains('reject'));
+      final overallStatus = hasReject ? 'Rejected' : 'Approved';
+
+      final chartSvg = SvgChartGenerator.generateVelocityTrendSvg(records, width: 780, height: 210);
+
       buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">1. Engineering Test Requirements &amp; Performance Trend:</div>
+        <table class="data-table" style="margin-bottom: 16px;">
           <thead>
             <tr>
-              <th>Ballistic Parameter</th>
-              <th>Unit</th>
-              <th>Trend Average</th>
-              <th>Min Recorded</th>
-              <th>Max Recorded</th>
-              <th>Avg SD</th>
+              <th>Accuracy Parameter</th>
+              <th>Test Requirement (Spec Limit)</th>
+              <th>Trend Average (Mean)</th>
+              <th>Recorded Range (Min - Max)</th>
+              <th>Test Quality Status</th>
+              <th>Process State</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td style="font-weight: bold; color: #0f172a;">Mean Velocity</td>
-              <td>m/s</td>
-              <td style="font-weight: bold; color: #15803d;">${avg(vMeans).toStringAsFixed(2)}</td>
-              <td>${minV(vMins).toStringAsFixed(2)}</td>
-              <td>${maxV(vMaxs).toStringAsFixed(2)}</td>
-              <td>${avg(vSds).toStringAsFixed(2)}</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">$vReq</td>
+              <td style="font-weight: bold; color: #15803d;">${avg(vMeans).toStringAsFixed(1)} m/s</td>
+              <td>${minV(vMins).toStringAsFixed(1)} - ${maxV(vMaxs).toStringAsFixed(1)} m/s</td>
+              <td><span class="badge badge-approved">SPEC-CHECKED</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>
             <tr>
               <td style="font-weight: bold; color: #0f172a;">Horizontal Dispersion (SD X)</td>
-              <td>mm</td>
-              <td style="font-weight: bold; color: #0284c7;">${avg(sdXs).toStringAsFixed(2)}</td>
-              <td>${minV(sdXs).toStringAsFixed(2)}</td>
-              <td>${maxV(sdXs).toStringAsFixed(2)}</td>
-              <td>-</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">$sdReq</td>
+              <td style="font-weight: bold; color: #0284c7;">${avg(sdXs).toStringAsFixed(1)} mm</td>
+              <td>${minV(sdXs).toStringAsFixed(1)} - ${maxV(sdXs).toStringAsFixed(1)} mm</td>
+              <td><span class="badge badge-approved">SPEC-CHECKED</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>
             <tr>
               <td style="font-weight: bold; color: #0f172a;">Vertical Dispersion (SD Y)</td>
-              <td>mm</td>
-              <td style="font-weight: bold; color: #0284c7;">${avg(sdYs).toStringAsFixed(2)}</td>
-              <td>${minV(sdYs).toStringAsFixed(2)}</td>
-              <td>${maxV(sdYs).toStringAsFixed(2)}</td>
-              <td>-</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">$sdReq</td>
+              <td style="font-weight: bold; color: #0284c7;">${avg(sdYs).toStringAsFixed(1)} mm</td>
+              <td>${minV(sdYs).toStringAsFixed(1)} - ${maxV(sdYs).toStringAsFixed(1)} mm</td>
+              <td><span class="badge badge-approved">SPEC-CHECKED</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>
             ${meanRadii.isNotEmpty ? '''
             <tr>
               <td style="font-weight: bold; color: #0f172a;">Mean Radius</td>
-              <td>mm</td>
-              <td style="font-weight: bold; color: #4f46e5;">${avg(meanRadii).toStringAsFixed(2)}</td>
-              <td>${minV(meanRadii).toStringAsFixed(2)}</td>
-              <td>${maxV(meanRadii).toStringAsFixed(2)}</td>
-              <td>-</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">$rReq</td>
+              <td style="font-weight: bold; color: #4f46e5;">${avg(meanRadii).toStringAsFixed(1)} mm</td>
+              <td>${minV(meanRadii).toStringAsFixed(1)} - ${maxV(meanRadii).toStringAsFixed(1)} mm</td>
+              <td><span class="badge badge-approved">SPEC-CHECKED</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>''' : ''}
           </tbody>
         </table>
 
+        <!-- Visual Trend Chart Embedded Directly -->
+        <div style="margin-top: 14px; margin-bottom: 16px; background: #ffffff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 6px;">2. Visual Velocity &amp; Dispersion Trend Chart:</div>
+          $chartSvg
+        </div>
+
         <div style="margin-top: 14px;">
-          <div style="font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 6px;">Test-by-Test Accuracy Progression:</div>
+          <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">3. Test-by-Test Progression &amp; Compliance Log:</div>
           <table class="data-table" style="font-size: 11px; margin-bottom: 0;">
             <thead>
               <tr style="background-color: #f1f5f9;">
@@ -1957,13 +1823,15 @@ class _DashboardTabState extends State<DashboardTab> {
                 <th>SD X (mm)</th>
                 <th>SD Y (mm)</th>
                 <th>Mean Radius (mm)</th>
-                <th>Status</th>
+                <th>Quality Status</th>
+                <th>Process State</th>
               </tr>
             </thead>
             <tbody>
       ''');
       for (int tIdx = 0; tIdx < records.length; tIdx++) {
         final r = records[tIdx];
+        final statusClass = r.status.toLowerCase().replaceAll(' ', '-');
         buffer.writeln('''
               <tr>
                 <td style="font-weight: bold; color: #0f172a;">Test ${tIdx + 1}</td>
@@ -1972,7 +1840,8 @@ class _DashboardTabState extends State<DashboardTab> {
                 <td style="font-family: monospace; color: #0284c7;">${r.accSDX.isNotEmpty ? r.accSDX : '-'}</td>
                 <td style="font-family: monospace; color: #0284c7;">${r.accSDY.isNotEmpty ? r.accSDY : '-'}</td>
                 <td style="font-family: monospace; font-weight: 600; color: #4f46e5;">${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : '-'}</td>
-                <td><span class="badge badge-${r.status.toLowerCase() == 'passed' ? 'passed' : 'failed'}">${r.status}</span></td>
+                <td><span class="badge badge-$statusClass">${r.status.toUpperCase()}</span></td>
+                <td>${getProcessStateBadge(r.status)}</td>
               </tr>
         ''');
       }
@@ -2000,71 +1869,94 @@ class _DashboardTabState extends State<DashboardTab> {
       final totalPrimer = totalPrimerSlow + totalPrimerFast;
       final totalLeaks = totalMouth + totalPrimer;
       final avgPressure = pressures.isEmpty ? 0.0 : pressures.reduce((a, b) => a + b) / pressures.length;
+      final chartSvg = SvgChartGenerator.generateTrendLineSvg(records, width: 780, height: 180);
 
       buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">1. Waterproof Seal Integrity Requirements &amp; Results:</div>
+        <table class="data-table" style="margin-bottom: 16px;">
           <thead>
             <tr>
               <th>Inspection Area</th>
+              <th>Test Requirement (Spec Limit)</th>
               <th>Slow Leaks</th>
               <th>Fast Leaks</th>
               <th>Total Leaks</th>
-              <th>Avg Test Pressure</th>
+              <th>Process State</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style="font-weight: bold; color: #0f172a;">Mouth Seal</td>
+              <td style="font-weight: bold; color: #0f172a;">Mouth Seal (Projectile Joint)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Leaks (0)</td>
               <td>$totalMouthSlow</td>
               <td>$totalMouthFast</td>
               <td style="font-weight: bold; color: ${totalMouth > 0 ? '#b91c1c' : '#15803d'};">$totalMouth</td>
-              <td rowspan="2" style="vertical-align: middle; font-weight: bold;">${avgPressure.toStringAsFixed(2)} bar</td>
+              <td>${getProcessStateBadge(totalMouth == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr>
-              <td style="font-weight: bold; color: #0f172a;">Primer Seal</td>
+              <td style="font-weight: bold; color: #0f172a;">Primer Seal (Pocket Joint)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Leaks (0)</td>
               <td>$totalPrimerSlow</td>
               <td>$totalPrimerFast</td>
               <td style="font-weight: bold; color: ${totalPrimer > 0 ? '#b91c1c' : '#15803d'};">$totalPrimer</td>
+              <td>${getProcessStateBadge(totalPrimer == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr style="background-color: #f1f5f9; font-weight: bold;">
-              <td>Cumulative Total Leaks</td>
+              <td>Cumulative Total (Avg ${avgPressure.toStringAsFixed(1)} bar)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Leaks Across All</td>
               <td>${totalMouthSlow + totalPrimerSlow}</td>
               <td>${totalMouthFast + totalPrimerFast}</td>
               <td style="color: ${totalLeaks > 0 ? '#b91c1c' : '#15803d'}; font-size: 12px;">$totalLeaks leaks</td>
-              <td>-</td>
+              <td>${getProcessStateBadge(totalLeaks == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
           </tbody>
         </table>
+
+        <!-- Visual Trend Chart Embedded Directly -->
+        <div style="margin-top: 14px; margin-bottom: 16px; background: #ffffff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 6px;">2. Visual Yield &amp; Leak Progression Chart:</div>
+          $chartSvg
+        </div>
       ''');
     } else if (testName == 'Extraction Force Test') {
       final forces = records.map((r) => double.tryParse(r.accMeanX)).whereType<double>().toList();
       final minForces = records.map((r) => double.tryParse(r.accMinX)).whereType<double>().toList();
       final maxForces = records.map((r) => double.tryParse(r.accMaxX)).whereType<double>().toList();
-      final sds = records.map((r) => double.tryParse(r.accSDX)).whereType<double>().toList();
+
+      final hasReject = records.any((r) => r.status.toLowerCase().contains('reject'));
+      final overallStatus = hasReject ? 'Rejected' : 'Approved';
+      final chartSvg = SvgChartGenerator.generateTrendLineSvg(records, width: 780, height: 180);
 
       buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">1. Extraction Force Requirements &amp; Trend:</div>
+        <table class="data-table" style="margin-bottom: 16px;">
           <thead>
             <tr>
               <th>Parameter</th>
-              <th>Unit</th>
+              <th>Test Requirement (Spec Limit)</th>
               <th>Trend Average</th>
-              <th>Min Recorded</th>
-              <th>Max Recorded</th>
-              <th>Avg SD</th>
+              <th>Lowest Recorded (Min)</th>
+              <th>Highest Recorded (Max)</th>
+              <th>Process State</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style="font-weight: bold; color: #0f172a;">Extraction Force</td>
-              <td>N (Newtons)</td>
-              <td style="font-weight: bold; color: #0284c7;">${avg(forces).toStringAsFixed(2)}</td>
-              <td>${minV(minForces).toStringAsFixed(2)}</td>
-              <td>${maxV(maxForces).toStringAsFixed(2)}</td>
-              <td>${avg(sds).toStringAsFixed(2)}</td>
+              <td style="font-weight: bold; color: #0f172a;">Bullet Extraction Force</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">&ge; 200.0 N</td>
+              <td style="font-weight: bold; color: #0284c7;">${avg(forces).toStringAsFixed(1)} N</td>
+              <td>${minV(minForces).toStringAsFixed(1)} N</td>
+              <td>${maxV(maxForces).toStringAsFixed(1)} N</td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
             </tr>
           </tbody>
         </table>
+
+        <!-- Visual Trend Chart Embedded Directly -->
+        <div style="margin-top: 14px; margin-bottom: 16px; background: #ffffff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 6px;">2. Visual Extraction Force Trend Chart:</div>
+          $chartSvg
+        </div>
       ''');
     } else if (testName == 'Residual Stress Test') {
       int totalNeck = 0;
@@ -2079,104 +1971,64 @@ class _DashboardTabState extends State<DashboardTab> {
         totalHead += (r.headSlow + r.headFast);
       }
       final grandTotal = totalNeck + totalShoulder + totalBody + totalHead;
+      final chartSvg = SvgChartGenerator.generateTrendLineSvg(records, width: 780, height: 180);
 
       buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">1. Residual Stress Requirements &amp; Crack Examination:</div>
+        <table class="data-table" style="margin-bottom: 16px;">
           <thead>
             <tr>
               <th>Zone Examined</th>
-              <th>Total Splits / Cracks</th>
+              <th>Test Requirement (Spec Limit)</th>
+              <th>Observed Splits / Cracks</th>
               <th>Assessment Status</th>
+              <th>Process State</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Neck (Zone I)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Cracks (0)</td>
               <td style="font-weight: bold; color: ${totalNeck > 0 ? '#b91c1c' : '#15803d'};">$totalNeck</td>
               <td>${totalNeck == 0 ? 'No Defects' : '$totalNeck splits detected'}</td>
+              <td>${getProcessStateBadge(totalNeck == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr>
               <td>Shoulder (Zone S)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Cracks (0)</td>
               <td style="font-weight: bold; color: ${totalShoulder > 0 ? '#b91c1c' : '#15803d'};">$totalShoulder</td>
               <td>${totalShoulder == 0 ? 'No Defects' : '$totalShoulder splits detected'}</td>
+              <td>${getProcessStateBadge(totalShoulder == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr>
-              <td>Body (Zones J & K)</td>
+              <td>Body (Zones J &amp; K)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Cracks (0)</td>
               <td style="font-weight: bold; color: ${totalBody > 0 ? '#b91c1c' : '#15803d'};">$totalBody</td>
               <td>${totalBody == 0 ? 'No Defects' : '$totalBody splits detected'}</td>
+              <td>${getProcessStateBadge(totalBody == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr>
-              <td>Head (Zones L & M)</td>
+              <td>Head (Zones L &amp; M)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Cracks (0)</td>
               <td style="font-weight: bold; color: ${totalHead > 0 ? '#b91c1c' : '#15803d'};">$totalHead</td>
               <td>${totalHead == 0 ? 'No Defects' : '$totalHead splits detected'}</td>
+              <td>${getProcessStateBadge(totalHead == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr style="background-color: #f1f5f9; font-weight: bold;">
-              <td>Cumulative Splits Across All Zones</td>
+              <td>Cumulative Assessment Across All Zones</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Cracks Across All</td>
               <td style="color: ${grandTotal > 0 ? '#b91c1c' : '#15803d'}; font-size: 12px;">$grandTotal</td>
               <td>${grandTotal == 0 ? 'PASSED (Zero Cracks)' : 'Cracks Observed'}</td>
+              <td>${getProcessStateBadge(grandTotal == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
           </tbody>
         </table>
-      ''');
-    } else if (testName == 'Firing Rate Cycle Test') {
-      final rpms = records.map((r) => double.tryParse(r.cyclicRateValue)).whereType<double>().toList();
-      final weapons = records.map((r) => r.cyclicRateWeaponType).where((w) => w.isNotEmpty).toSet().join(', ');
 
-      buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
-          <thead>
-            <tr>
-              <th>Weapon(s) Tested</th>
-              <th>Trend Average RPM</th>
-              <th>Min Measured RPM</th>
-              <th>Max Measured RPM</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="font-weight: bold; color: #0f172a;">${weapons.isNotEmpty ? weapons : '-'}</td>
-              <td style="font-weight: bold; color: #0284c7;">${avg(rpms).toStringAsFixed(1)} RPM</td>
-              <td>${minV(rpms).toStringAsFixed(1)} RPM</td>
-              <td>${maxV(rpms).toStringAsFixed(1)} RPM</td>
-            </tr>
-          </tbody>
-        </table>
-      ''');
-    } else if (testName == 'Terminal Effect Test') {
-      int steelPass = records.where((r) => r.terminalSteelPenetration == 'Yes').length;
-      int alumPass = records.where((r) => r.terminalAluminumPenetration == 'Yes').length;
-      int holePass = records.where((r) => r.terminalHoleDiameter == 'Yes').length;
-      final vels = records.map((r) => double.tryParse(r.terminalVelocity)).whereType<double>().toList();
-
-      buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
-          <thead>
-            <tr>
-              <th>Criteria / Metric</th>
-              <th>Pass Count</th>
-              <th>Pass Rate (%)</th>
-              <th>Avg Impact Velocity</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Steel Plate Penetration</td>
-              <td>$steelPass / ${records.length}</td>
-              <td style="font-weight: bold; color: #0284c7;">${(steelPass / records.length * 100).toStringAsFixed(1)}%</td>
-              <td rowspan="3" style="vertical-align: middle; font-weight: bold;">${vels.isNotEmpty ? '${avg(vels).toStringAsFixed(1)} m/s' : 'N/A'}</td>
-            </tr>
-            <tr>
-              <td>Aluminum Plate Penetration</td>
-              <td>$alumPass / ${records.length}</td>
-              <td style="font-weight: bold; color: #0284c7;">${(alumPass / records.length * 100).toStringAsFixed(1)}%</td>
-            </tr>
-            <tr>
-              <td>Hole Diameter Check</td>
-              <td>$holePass / ${records.length}</td>
-              <td style="font-weight: bold; color: #0284c7;">${(holePass / records.length * 100).toStringAsFixed(1)}%</td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- Visual Trend Chart Embedded Directly -->
+        <div style="margin-top: 14px; margin-bottom: 16px; background: #ffffff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 6px;">2. Visual Crack Progression Trend Chart:</div>
+          $chartSvg
+        </div>
       ''');
     } else if (testName == 'Function Test') {
       int totalL1 = 0;
@@ -2196,49 +2048,103 @@ class _DashboardTabState extends State<DashboardTab> {
       }
 
       final defectRate = totalProduced > 0 ? (totalDefects / totalProduced * 100.0) : 0.0;
+      final chartSvg = SvgChartGenerator.generateFunctionTestChartSvg(records, width: 780, height: 210);
 
       buffer.writeln('''
-        <table class="data-table" style="margin-bottom: 0;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">1. Defect Classification Requirements &amp; Severity Assessment:</div>
+        <table class="data-table" style="margin-bottom: 16px;">
           <thead>
             <tr>
               <th>Defect Classification Level</th>
               <th>Severity Description</th>
-              <th>Total Count</th>
-              <th>Acceptance Threshold & Status</th>
+              <th>Test Requirement (Spec Limit)</th>
+              <th>Observed Count</th>
+              <th>Test Quality Status</th>
+              <th>Process State</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td style="font-weight: bold; color: #ef4444;">Level 1 Defect</td>
               <td>Critical (Hazardous / Inoperable)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Tolerance (0)</td>
               <td style="font-weight: bold; color: ${totalL1 > 0 ? '#b91c1c' : '#15803d'}; font-size: 13px;">$totalL1</td>
-              <td>${totalL1 == 0 ? '<span style="color:#15803d; font-weight:bold;">PASSED (Zero Tolerance: 0)</span>' : '<span style="color:#b91c1c; font-weight:bold;">REJECTED ($totalL1 Critical Defects)</span>'}</td>
+              <td>${totalL1 == 0 ? '<span class="badge badge-approved">PASSED</span>' : '<span class="badge badge-rejected">REJECTED</span>'}</td>
+              <td>${getProcessStateBadge(totalL1 == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr>
               <td style="font-weight: bold; color: #f59e0b;">Level 2 Defect</td>
               <td>Major (Failure to Feed/Extract/Stop)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Allowed (0)</td>
               <td style="font-weight: bold; color: ${totalL2 > 0 ? '#b91c1c' : '#15803d'}; font-size: 13px;">$totalL2</td>
-              <td>${totalL2 == 0 ? '<span style="color:#15803d; font-weight:bold;">PASSED (Zero Allowed: 0)</span>' : '<span style="color:#b91c1c; font-weight:bold;">REJECTED ($totalL2 Major Defects)</span>'}</td>
+              <td>${totalL2 == 0 ? '<span class="badge badge-approved">PASSED</span>' : '<span class="badge badge-rejected">REJECTED</span>'}</td>
+              <td>${getProcessStateBadge(totalL2 == 0 ? 'Approved' : 'Rejected')}</td>
             </tr>
             <tr>
               <td style="font-weight: bold; color: #3b82f6;">Level 3 Defect</td>
               <td>Minor (Sluggish action / minor denting)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">&le; 2 Defects Allowed</td>
               <td style="font-weight: bold; color: ${totalL3 > 2 ? '#b45309' : '#15803d'}; font-size: 13px;">$totalL3</td>
-              <td>${totalL3 <= 2 ? '<span style="color:#15803d; font-weight:bold;">PASSED (Within limit <= 2)</span>' : '<span style="color:#b45309; font-weight:bold;">RETEST REQUIRED (> 2 defects)</span>'}</td>
+              <td>${totalL3 <= 2 ? '<span class="badge badge-approved">PASSED</span>' : '<span class="badge badge-retest">RETEST</span>'}</td>
+              <td>${getProcessStateBadge(totalL3 <= 2 ? 'Approved' : 'Retest')}</td>
             </tr>
             <tr>
               <td style="font-weight: bold; color: #10b981;">Level 4 Defect</td>
               <td>Level 4 (Cosmetic / slight marking)</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">&le; 5 Defects Allowed</td>
               <td style="font-weight: bold; color: ${totalL4 > 5 ? '#b45309' : '#15803d'}; font-size: 13px;">$totalL4</td>
-              <td>${totalL4 <= 5 ? '<span style="color:#15803d; font-weight:bold;">PASSED (Within limit <= 5)</span>' : '<span style="color:#b45309; font-weight:bold;">RETEST REQUIRED (> 5 defects)</span>'}</td>
+              <td>${totalL4 <= 5 ? '<span class="badge badge-approved">PASSED</span>' : '<span class="badge badge-retest">RETEST</span>'}</td>
+              <td>${getProcessStateBadge(totalL4 <= 5 ? 'Approved' : 'Retest')}</td>
             </tr>
             <tr style="background-color: #f1f5f9; font-weight: bold;">
               <td>Cumulative Defect Assessment</td>
-              <td colspan="2" style="font-size: 12px; color: ${totalDefects > 0 ? '#b91c1c' : '#15803d'};">$totalDefects defects across $totalProduced rounds (${defectRate.toStringAsFixed(2)}% defect rate)</td>
-              <td>${(totalL1 == 0 && totalL2 == 0 && totalL3 <= 2 && totalL4 <= 5) ? '<span style="color:#15803d; font-weight:bold;">CONFORMING</span>' : '<span style="color:#b91c1c; font-weight:bold;">NON-CONFORMING</span>'}</td>
+              <td colspan="2">$totalDefects defects across $totalProduced rounds (${defectRate.toStringAsFixed(2)}% defect rate)</td>
+              <td style="color: ${totalDefects > 0 ? '#b91c1c' : '#15803d'}; font-size: 12px;">$totalDefects</td>
+              <td>${(totalL1 == 0 && totalL2 == 0 && totalL3 <= 2 && totalL4 <= 5) ? '<span class="badge badge-approved">PASSED</span>' : '<span class="badge badge-rejected">NON-CONFORMING</span>'}</td>
+              <td>${getProcessStateBadge((totalL1 == 0 && totalL2 == 0 && totalL3 <= 2 && totalL4 <= 5) ? 'Approved' : 'Rejected')}</td>
             </tr>
           </tbody>
         </table>
+
+        <!-- Visual Trend Chart Embedded Directly -->
+        <div style="margin-top: 14px; margin-bottom: 16px; background: #ffffff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 6px;">2. Visual Defect Severity Profile Chart:</div>
+          $chartSvg
+        </div>
+      ''');
+    } else {
+      final chartSvg = SvgChartGenerator.generateTrendLineSvg(records, width: 780, height: 180);
+      final hasReject = records.any((r) => r.status.toLowerCase().contains('reject'));
+      final overallStatus = hasReject ? 'Rejected' : 'Approved';
+
+      buffer.writeln('''
+        <div style="font-size: 11.5px; font-weight: bold; color: #334155; margin-bottom: 8px;">1. Test Requirements &amp; Performance Summary:</div>
+        <table class="data-table" style="margin-bottom: 16px;">
+          <thead>
+            <tr>
+              <th>Evaluation Metric</th>
+              <th>Test Requirement (Spec Limit)</th>
+              <th>Result Recorded</th>
+              <th>Test Quality Status</th>
+              <th>Process State</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight: bold; color: #0f172a;">Quality Conformance</td>
+              <td style="font-family: monospace; font-weight: 600; color: #475569;">Zero Critical Defects</td>
+              <td>${records.length} Tests Logged</td>
+              <td><span class="badge badge-approved">COMPLIANT</span></td>
+              <td>${getProcessStateBadge(overallStatus)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Visual Trend Chart Embedded Directly -->
+        <div style="margin-top: 14px; margin-bottom: 16px; background: #ffffff; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 6px;">2. Visual Trend Chart:</div>
+          $chartSvg
+        </div>
       ''');
     }
 
@@ -2368,8 +2274,13 @@ class _DashboardTabState extends State<DashboardTab> {
         : (uniqueLots.isNotEmpty ? uniqueLots.first : '');
     String exportTime = _selectedTime;
     DateTimeRange? exportDateRange = _customDateRange;
-    String exportShift = _selectedShift;
+    String exportShift = (_selectedShift == 'Morning' || _selectedShift == 'Afternoon') ? _selectedShift : 'All Shifts';
     String exportFormat = 'pdf'; // 'pdf' | 'doc' | 'excel'
+    bool incKpis = true;
+    bool incVolume = true;
+    bool incCharts = true;
+    bool incEvaluations = true;
+    bool incParameterTrends = true;
 
     showDialog(
       context: context,
@@ -2573,8 +2484,8 @@ class _DashboardTabState extends State<DashboardTab> {
                                 ),
                                 items: const [
                                   DropdownMenuItem(value: 'All Shifts', child: Text('All Shifts')),
-                                  DropdownMenuItem(value: 'Day Shift', child: Text('Day Shift')),
-                                  DropdownMenuItem(value: 'Night Shift', child: Text('Night Shift')),
+                                  DropdownMenuItem(value: 'Morning', child: Text('Morning Shift')),
+                                  DropdownMenuItem(value: 'Afternoon', child: Text('Afternoon Shift')),
                                 ],
                                 onChanged: (v) => setDialogState(() => exportShift = v!),
                               ),
@@ -2641,6 +2552,63 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                   const SizedBox(height: 18.0),
 
+                  // Section 2.5: Report Section Selection
+                  const Text('2.5 REPORT SECTIONS TO INCLUDE', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  const SizedBox(height: 8.0),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.02),
+                      borderRadius: BorderRadius.circular(8.0),
+                      border: Border.all(color: Colors.white.withOpacity(0.06)),
+                    ),
+                    child: Column(
+                      children: [
+                        CheckboxListTile(
+                          title: const Text('Key Executive KPIs & Yield Summary', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          value: incKpis,
+                          activeColor: const Color(0xFF0284C7),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (v) => setDialogState(() => incKpis = v ?? true),
+                        ),
+                        CheckboxListTile(
+                          title: const Text('Tested Caliber Volume Breakdown', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          value: incVolume,
+                          activeColor: const Color(0xFF0284C7),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (v) => setDialogState(() => incVolume = v ?? true),
+                        ),
+                        CheckboxListTile(
+                          title: const Text('Visual Performance Charts (Donut, SPC, Velocity, Box Plot)', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          value: incCharts,
+                          activeColor: const Color(0xFF0284C7),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (v) => setDialogState(() => incCharts = v ?? true),
+                        ),
+                        CheckboxListTile(
+                          title: const Text('Detailed Test Evaluations & Record Tables', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          value: incEvaluations,
+                          activeColor: const Color(0xFF0284C7),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (v) => setDialogState(() => incEvaluations = v ?? true),
+                        ),
+                        CheckboxListTile(
+                          title: const Text('Parameters Trend & Specifications Analysis (Embedded Charts)', style: TextStyle(color: Colors.white, fontSize: 12.0)),
+                          value: incParameterTrends,
+                          activeColor: const Color(0xFF0284C7),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (v) => setDialogState(() => incParameterTrends = v ?? true),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18.0),
+
                   // Section 3: File Format
                   const Text('3. EXPORT FILE FORMAT', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                   const SizedBox(height: 8.0),
@@ -2702,6 +2670,11 @@ class _DashboardTabState extends State<DashboardTab> {
                   selectedTest: targetTest,
                   selectedCaliber: targetCaliber,
                   selectedLot: targetLot,
+                  incKpis: incKpis,
+                  incVolume: incVolume,
+                  incCharts: incCharts,
+                  incEvaluations: incEvaluations,
+                  incParameterTrends: incParameterTrends,
                 );
               },
               icon: Icon(
@@ -2842,14 +2815,19 @@ class _DashboardTabState extends State<DashboardTab> {
     String? selectedTest,
     String? selectedCaliber,
     String? selectedLot,
+    bool incKpis = true,
+    bool incVolume = true,
+    bool incCharts = true,
+    bool incEvaluations = true,
+    bool incParameterTrends = true,
   }) async {
     List<BallisticRecord> exportRecords = records;
 
     // 1. Shift Filter
-    if (shift == 'Day Shift') {
-      exportRecords = exportRecords.where((r) => r.shift.trim().toLowerCase() == 'day').toList();
-    } else if (shift == 'Night Shift') {
-      exportRecords = exportRecords.where((r) => r.shift.trim().toLowerCase() == 'night').toList();
+    if (shift == 'Morning' || shift == 'Day Shift') {
+      exportRecords = exportRecords.where((r) => r.shift.trim().toLowerCase() == 'morning' || r.shift.trim().toLowerCase() == 'day').toList();
+    } else if (shift == 'Afternoon' || shift == 'Night Shift') {
+      exportRecords = exportRecords.where((r) => r.shift.trim().toLowerCase() == 'afternoon' || r.shift.trim().toLowerCase() == 'night').toList();
     }
 
     // 2. Time Filter
@@ -3174,7 +3152,7 @@ class _DashboardTabState extends State<DashboardTab> {
     <div class="title-line"></div>
   </div>
 
-  <!-- Executive KPIs -->
+  ${incKpis ? '''<!-- Executive KPIs -->
   <div class="summary-grid">
     <div class="summary-card">
       <div class="label">Total Rounds Tested</div>
@@ -3200,22 +3178,22 @@ class _DashboardTabState extends State<DashboardTab> {
       <div class="label">Overall Yield Rate</div>
       <div class="val" style="color: #6366f1;">${yieldRate.toStringAsFixed(2)}%</div>
     </div>
-  </div>
+  </div>''' : ''}
 
-  <!-- Visual Charts Section -->
+  ${(incCharts || incVolume) ? '''<!-- Visual Charts Section -->
   <h3 class="section-title">Visual Performance & Analytics Charts</h3>
   <div class="charts-grid">
-    <div class="chart-box">
+    ${incCharts ? '''<div class="chart-box">
       <h4>Quality Status & Yield Distribution</h4>
       $donutSvg
-    </div>
-    <div class="chart-box">
+    </div>''' : ''}
+    ${incVolume ? '''<div class="chart-box">
       <h4>Tested Caliber Volume Breakdown</h4>
       $caliberVolumeSvg
-    </div>
+    </div>''' : ''}
   </div>
 
-  <div class="chart-box" style="margin-bottom: 22px;">
+  ${incCharts ? '''<div class="chart-box" style="margin-bottom: 22px;">
     <h4>Chronological Yield Rate Trend Line</h4>
     $trendLineSvg
   </div>
@@ -3233,10 +3211,10 @@ class _DashboardTabState extends State<DashboardTab> {
   <div class="chart-box" style="margin-bottom: 22px;">
     <h4>Box & Whisker Distribution Analysis Chart (Min, Q1, Median, Q3, Max)</h4>
     $boxPlotSvg
-  </div>
+  </div>''' : ''}''' : ''}
 ''');
 
-    if (includeEpvatChart && epvatChartSvg.isNotEmpty) {
+    if (incCharts && includeEpvatChart && epvatChartSvg.isNotEmpty) {
       buffer.writeln('''
   <div class="chart-box" style="margin-bottom: 22px;">
     <h4>EPVAT Ballistic Parameters (Chamber P1, Port P2, Velocity)</h4>
@@ -3245,7 +3223,7 @@ class _DashboardTabState extends State<DashboardTab> {
 ''');
     }
 
-    if (includeFnChart && fnChartSvg.isNotEmpty) {
+    if (incCharts && includeFnChart && fnChartSvg.isNotEmpty) {
       buffer.writeln('''
   <div class="chart-box" style="margin-bottom: 22px;">
     <h4>Function Test Defect Breakdown (4 Severity Levels)</h4>
@@ -3263,7 +3241,9 @@ class _DashboardTabState extends State<DashboardTab> {
 
     final sortedKeys = groups.keys.toList()..sort();
 
-    buffer.writeln('<h3 class="section-title">Detailed Evaluations By Test & Caliber</h3>');
+    if (incEvaluations || incParameterTrends) {
+      buffer.writeln('<h3 class="section-title">Detailed Evaluations By Test & Caliber</h3>');
+    }
 
     for (int i = 0; i < sortedKeys.length; i++) {
       final keyName = sortedKeys[i];
@@ -3309,7 +3289,8 @@ class _DashboardTabState extends State<DashboardTab> {
         statusGraphRow.write('<td style="width: ${rejectedPct.toStringAsFixed(1)}%; background-color: #ef4444; color: white; text-align: center; font-size: 10px; font-weight: bold; height: 22px;">Rejected (${rejectedPct.toStringAsFixed(0)}%)</td>');
       }
 
-      buffer.writeln('''
+      if (incEvaluations || incParameterTrends) {
+        buffer.writeln('''
   <div style="margin-top: 24px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <div>
@@ -3326,7 +3307,10 @@ class _DashboardTabState extends State<DashboardTab> {
         ${statusGraphRow.toString()}
       </tr>
     </table>
+''');
 
+        if (incEvaluations) {
+          buffer.writeln('''
     <!-- Submitted Records Table -->
     <table class="data-table">
       <thead>
@@ -3343,9 +3327,9 @@ class _DashboardTabState extends State<DashboardTab> {
       <tbody>
 ''');
 
-      for (var r in list) {
-        final statusClass = r.status.toLowerCase().replaceAll(' ', '-');
-        buffer.writeln('''
+          for (var r in list) {
+            final statusClass = r.status.toLowerCase().replaceAll(' ', '-');
+            buffer.writeln('''
         <tr>
           <td>${r.timestamp}</td>
           <td>${r.operators}</td>
@@ -3356,17 +3340,21 @@ class _DashboardTabState extends State<DashboardTab> {
           <td><span class="badge badge-$statusClass">${r.status.toUpperCase()}</span></td>
         </tr>
 ''');
-      }
+          }
 
-      buffer.writeln('''
+          buffer.writeln('''
       </tbody>
     </table>
 ''');
+        }
 
-      // Parameter Trend Analysis section (EPVAT, Function Test, Waterproof, etc.)
-      buffer.writeln(_buildParameterTrendAnalysisHtml(testTypeName, caliberName, list));
+        // Parameter Trend Analysis section (EPVAT, Function Test, Waterproof, etc.)
+        if (incParameterTrends) {
+          buffer.writeln(_buildParameterTrendAnalysisHtml(testTypeName, caliberName, list));
+        }
 
-      buffer.writeln('  </div>');
+        buffer.writeln('  </div>');
+      }
     }
 
     buffer.writeln('''

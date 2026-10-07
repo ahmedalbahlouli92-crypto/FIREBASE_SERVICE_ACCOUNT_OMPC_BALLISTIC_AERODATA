@@ -1544,11 +1544,11 @@ class _HistoryTabState extends State<HistoryTab> {
                         _buildDialogField(
                           label: 'Shift Time',
                           child: DropdownButtonFormField<String>(
-                            value: ['Day', 'Night'].contains(editShift) ? editShift : 'Day',
+                            value: ['Morning', 'Afternoon'].contains(editShift) ? editShift : 'Morning',
                             dropdownColor: const Color(0xFF1A2035),
                             style: const TextStyle(color: Colors.white, fontSize: 13.0),
                             decoration: _dialogInputDecoration(),
-                            items: ['Day', 'Night'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            items: ['Morning', 'Afternoon'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                             onChanged: (v) => setDialogState(() => editShift = v!),
                           ),
                         ),
@@ -1568,11 +1568,11 @@ class _HistoryTabState extends State<HistoryTab> {
                               child: _buildDialogField(
                                 label: 'Shift Time',
                                 child: DropdownButtonFormField<String>(
-                                  value: ['Day', 'Night'].contains(editShift) ? editShift : 'Day',
+                                  value: ['Morning', 'Afternoon'].contains(editShift) ? editShift : 'Morning',
                                   dropdownColor: const Color(0xFF1A2035),
                                   style: const TextStyle(color: Colors.white, fontSize: 13.0),
                                   decoration: _dialogInputDecoration(),
-                                  items: ['Day', 'Night'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                  items: ['Morning', 'Afternoon'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                                   onChanged: (v) => setDialogState(() => editShift = v!),
                                 ),
                               ),
@@ -2986,7 +2986,11 @@ class _HistoryTabState extends State<HistoryTab> {
       _testNameFilter = 'All';
     }
     final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
-    final availableLots = {'All', ...widget.records.map((r) => r.lotNo.trim()).where((s) => s.isNotEmpty)}.toList()..sort();
+    final availableLots = {'All', ...(isLotAcceptance && _caliberFilter != 'All'
+        ? widget.records.where((r) => r.caliber.trim() == _caliberFilter.trim())
+        : widget.records)
+        .map((r) => r.lotNo.trim())
+        .where((s) => s.isNotEmpty)}.toList()..sort();
     final availableHoppers = {'All', ...widget.records.map((r) => r.hopperNo.trim()).where((s) => s.isNotEmpty)}.toList()..sort();
     if (!availableLots.contains(_lotFilter)) _lotFilter = 'All';
     if (!availableHoppers.contains(_hopperFilter)) _hopperFilter = 'All';
@@ -3002,7 +3006,7 @@ class _HistoryTabState extends State<HistoryTab> {
 
       final matchesCaliber = _caliberFilter == 'All' || r.caliber == _caliberFilter;
       final matchesStatus = _statusFilter == 'All' || r.status.trim().toLowerCase() == _statusFilter.trim().toLowerCase();
-      final matchesLot = _lotFilter == 'All' || r.lotNo.trim() == _lotFilter;
+      final matchesLot = !isLotAcceptance || _lotFilter == 'All' || r.lotNo.trim() == _lotFilter;
       final matchesHopper = isLotAcceptance || _hopperFilter == 'All' || r.hopperNo.trim() == _hopperFilter;
       final matchesTestName = _testNameFilter == 'All' || r.testName == _testNameFilter;
 
@@ -3077,7 +3081,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     ),
                   ),
                 ElevatedButton.icon(
-                  onPressed: () => _showReportGenerationDialog(widget.records.where((r) => r.module == widget.currentModule).toList()),
+                  onPressed: () => _showReportGenerationDialog(displayRecords),
                   icon: const Icon(Icons.picture_as_pdf, size: 16.0),
                   label: const Text('Generate Report'),
                   style: ElevatedButton.styleFrom(
@@ -3234,18 +3238,13 @@ class _HistoryTabState extends State<HistoryTab> {
                           ],
                         ),
                         const SizedBox(height: 10.0),
-                        if (!isLotAcceptance)
-                          Row(
-                            children: [
-                              Expanded(child: lotField),
-                              const SizedBox(width: 10.0),
-                              Expanded(child: hopperField),
-                            ],
-                          )
-                        else
-                          lotField,
-                        const SizedBox(height: 10.0),
-                        statusField,
+                        Row(
+                          children: [
+                            Expanded(child: isLotAcceptance ? lotField : hopperField),
+                            const SizedBox(width: 10.0),
+                            Expanded(child: statusField),
+                          ],
+                        ),
                       ],
                     )
                   : Column(
@@ -3253,22 +3252,17 @@ class _HistoryTabState extends State<HistoryTab> {
                         Row(
                           children: [
                             Expanded(flex: 2, child: searchField),
-                            const SizedBox(width: 14.0),
+                            const SizedBox(width: 12.0),
                             Expanded(flex: 1, child: caliberField),
-                            const SizedBox(width: 14.0),
+                            const SizedBox(width: 12.0),
+                            if (isLotAcceptance)
+                              Expanded(flex: 1, child: lotField)
+                            else
+                              Expanded(flex: 1, child: hopperField),
+                            const SizedBox(width: 12.0),
                             Expanded(flex: 1, child: testNameField),
-                          ],
-                        ),
-                        const SizedBox(height: 12.0),
-                        Row(
-                          children: [
-                            Expanded(child: lotField),
-                            if (!isLotAcceptance) ...[
-                              const SizedBox(width: 14.0),
-                              Expanded(child: hopperField),
-                            ],
-                            const SizedBox(width: 14.0),
-                            Expanded(child: statusField),
+                            const SizedBox(width: 12.0),
+                            Expanded(flex: 1, child: statusField),
                           ],
                         ),
                       ],
@@ -3378,7 +3372,57 @@ class _HistoryTabState extends State<HistoryTab> {
               itemCount: displayRecords.length,
               itemBuilder: (context, index) {
                 final r = displayRecords[index];
-                return _buildTableRow(r, index);
+                final String currDate = r.testTime.isNotEmpty && r.testTime.contains(' ')
+                    ? r.testTime.split(' ').first
+                    : (r.timestamp.contains(' ') ? r.timestamp.split(' ').first : r.timestamp);
+                bool showDateDivider = false;
+                if (index > 0) {
+                  final prev = displayRecords[index - 1];
+                  final String prevDate = prev.testTime.isNotEmpty && prev.testTime.contains(' ')
+                      ? prev.testTime.split(' ').first
+                      : (prev.timestamp.contains(' ') ? prev.timestamp.split(' ').first : prev.timestamp);
+                  if (currDate != prevDate) {
+                    showDateDivider = true;
+                  }
+                }
+
+                final rowWidget = _buildTableRow(r, index);
+                if (showDateDivider) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 2.0),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: Color(0xFF0284C7), width: 3.0),
+                          ),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 5.0),
+                          color: const Color(0xFFE2E8F0),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_today, size: 12.0, color: Color(0xFF0284C7)),
+                              const SizedBox(width: 6.0),
+                              Text(
+                                'Day Separator — Tests of $currDate',
+                                style: const TextStyle(
+                                  fontSize: 11.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      rowWidget,
+                    ],
+                  );
+                }
+                return rowWidget;
               },
             ),
           ),
@@ -3942,13 +3986,16 @@ class _HistoryTabState extends State<HistoryTab> {
         ? singleRecord.caliber
         : (_caliberFilter != 'All'
             ? _caliberFilter
-            : (initialRecords.isNotEmpty ? initialRecords.first.caliber : (calibers.isNotEmpty ? calibers.first : '7.62x51 M80')));
+            : (isLotAcceptance ? (initialRecords.isNotEmpty ? initialRecords.first.caliber : (calibers.isNotEmpty ? calibers.first : '7.62x51 M80')) : 'All'));
     String selectedReportLot = singleRecord != null
         ? singleRecord.lotNo
         : (_lotFilter != 'All' ? _lotFilter : 'All');
     String selectedReportTest = singleRecord != null
         ? singleRecord.testName
-        : (_lotFilter != 'All' ? 'All' : _testNameFilter);
+        : (_testNameFilter != 'All' ? _testNameFilter : 'All');
+
+    int selectedReportMode = isLotAcceptance ? 1 : 0; // 0 = General Log Report, 1 = Lot Acceptance Certificate / Dossier
+    int certScopeOption = 0; // 0 = Certificate Only (1 Page), 1 = Certificate + Complete Dossier (1 Page each)
 
     if (singleRecord == null && selectedReportLot == 'All') {
       final initialLots = initialRecords
@@ -3979,7 +4026,7 @@ class _HistoryTabState extends State<HistoryTab> {
             final reportRecords = singleRecord != null
                 ? [singleRecord]
                 : initialRecords.where((r) {
-                    if (r.caliber.trim() != selectedReportCaliber.trim()) return false;
+                    if (selectedReportCaliber != 'All' && r.caliber.trim() != selectedReportCaliber.trim()) return false;
                     if (selectedReportLot != 'All' && r.lotNo.trim() != selectedReportLot.trim()) return false;
                     return selectedReportTest == 'All' || r.testName == selectedReportTest;
                   }).toList();
@@ -4098,7 +4145,119 @@ class _HistoryTabState extends State<HistoryTab> {
                         ),
                       ],
                     ),
-                    const Divider(color: Color(0xFF1E3A8A), height: 24.0),
+                    const Divider(color: Color(0xFF1E3A8A), height: 16.0),
+
+                    if (isLotAcceptance && singleRecord == null) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 14.0),
+                        padding: const EdgeInsets.all(4.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(10.0),
+                          border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  setStateDialog(() {
+                                    selectedReportMode = 0;
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                  decoration: BoxDecoration(
+                                    color: selectedReportMode == 0 ? const Color(0xFF0284C7) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.table_rows_rounded, size: 16.0, color: selectedReportMode == 0 ? Colors.white : const Color(0xFF94A3B8)),
+                                      const SizedBox(width: 8.0),
+                                      Text(
+                                        '1. General Inspection Log Report',
+                                        style: TextStyle(
+                                          color: selectedReportMode == 0 ? Colors.white : const Color(0xFF94A3B8),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6.0),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  setStateDialog(() {
+                                    selectedReportMode = 1;
+                                    selectedReportTest = 'All';
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                  decoration: BoxDecoration(
+                                    color: selectedReportMode == 1 ? const Color(0xFF0284C7) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.verified_rounded, size: 16.0, color: selectedReportMode == 1 ? Colors.white : const Color(0xFF94A3B8)),
+                                      const SizedBox(width: 8.0),
+                                      Text(
+                                        '2. Lot Acceptance Certificate & Dossier',
+                                        style: TextStyle(
+                                          color: selectedReportMode == 1 ? Colors.white : const Color(0xFF94A3B8),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (selectedReportMode == 1) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('Certificate Format:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 14.0),
+                              ChoiceChip(
+                                label: const Text('Certificate Cover Only (1 Page)', style: TextStyle(fontSize: 11.5)),
+                                selected: certScopeOption == 0,
+                                selectedColor: const Color(0xFF0284C7),
+                                onSelected: (v) => setStateDialog(() => certScopeOption = 0),
+                              ),
+                              const SizedBox(width: 10.0),
+                              ChoiceChip(
+                                label: const Text('Certificate + Complete Dossier (1 Page per Test)', style: TextStyle(fontSize: 11.5)),
+                                selected: certScopeOption == 1,
+                                selectedColor: const Color(0xFF0284C7),
+                                onSelected: (v) => setStateDialog(() => certScopeOption = 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
 
                     Builder(
                       builder: (context) {
@@ -4152,11 +4311,13 @@ class _HistoryTabState extends State<HistoryTab> {
                                                   ),
                                                   child: DropdownButtonHideUnderline(
                                                     child: DropdownButton<String>(
-                                                      value: calibers.contains(selectedReportCaliber) ? selectedReportCaliber : (calibers.isNotEmpty ? calibers.first : null),
+                                                      value: (selectedReportMode == 0 && selectedReportCaliber == 'All') || calibers.contains(selectedReportCaliber)
+                                                          ? selectedReportCaliber
+                                                          : (calibers.isNotEmpty ? calibers.first : 'All'),
                                                       isExpanded: true,
                                                       dropdownColor: const Color(0xFF344D6E),
                                                       style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w500),
-                                                      items: calibers.map((String value) {
+                                                      items: (selectedReportMode == 0 ? ['All', ...calibers] : calibers).map((String value) {
                                                         return DropdownMenuItem<String>(
                                                           value: value,
                                                           child: Text(value, overflow: TextOverflow.ellipsis),
@@ -4605,14 +4766,22 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
-                            final docContent = ReportGenerator.generateWordHtml(
-                              reportRecords, 
-                              selectedReportTest,
-                              widget.currentModule,
-                              base64Logo: widget.base64Logo,
-                              adminRules: widget.adminRules,
-                              loggedInUser: widget.loggedInUser,
-                            );
+                            final docContent = (isLotAcceptance && selectedReportMode == 1 && certScopeOption == 1)
+                                ? ReportGenerator.generateLotDossierWord(
+                                    reportRecords,
+                                    widget.currentModule,
+                                    base64Logo: widget.base64Logo,
+                                    adminRules: widget.adminRules,
+                                    loggedInUser: widget.loggedInUser,
+                                  )
+                                : ReportGenerator.generateWordHtml(
+                                    reportRecords, 
+                                    selectedReportTest,
+                                    widget.currentModule,
+                                    base64Logo: widget.base64Logo,
+                                    adminRules: widget.adminRules,
+                                    loggedInUser: widget.loggedInUser,
+                                  );
                             final repCaliber = (singleRecord?.caliber ?? (isLotAcceptance ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber'))).replaceAll(';', ' ').trim();
                             final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch'));
@@ -4640,14 +4809,22 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
-                            final htmlContent = ReportGenerator.generateHtml(
-                              reportRecords, 
-                              selectedReportTest,
-                              widget.currentModule,
-                              base64Logo: widget.base64Logo,
-                              adminRules: widget.adminRules,
-                              loggedInUser: widget.loggedInUser,
-                            );
+                            final htmlContent = (isLotAcceptance && selectedReportMode == 1 && certScopeOption == 1)
+                                ? ReportGenerator.generateLotDossierHtml(
+                                    reportRecords,
+                                    widget.currentModule,
+                                    base64Logo: widget.base64Logo,
+                                    adminRules: widget.adminRules,
+                                    loggedInUser: widget.loggedInUser,
+                                  )
+                                : ReportGenerator.generateHtml(
+                                    reportRecords, 
+                                    selectedReportTest,
+                                    widget.currentModule,
+                                    base64Logo: widget.base64Logo,
+                                    adminRules: widget.adminRules,
+                                    loggedInUser: widget.loggedInUser,
+                                  );
                             final repCaliber = (singleRecord?.caliber ?? (isLotAcceptance ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : 'Caliber'))).replaceAll(';', ' ').trim();
                             final repTestName = selectedReportTest == 'All' ? (isLotAcceptance ? 'Final_Lot_Acceptance_Certificate' : 'Comprehensive_Summary') : (singleRecord?.testName ?? selectedReportTest);
                             final repLotNo = singleRecord?.lotNo ?? (isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : 'Batch'));
@@ -4668,14 +4845,22 @@ class _HistoryTabState extends State<HistoryTab> {
                         ),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
-                            final htmlContent = ReportGenerator.generateHtml(
-                              reportRecords, 
-                              selectedReportTest,
-                              widget.currentModule,
-                              base64Logo: widget.base64Logo,
-                              adminRules: widget.adminRules,
-                              loggedInUser: widget.loggedInUser,
-                            );
+                            final htmlContent = (isLotAcceptance && selectedReportMode == 1 && certScopeOption == 1)
+                                ? ReportGenerator.generateLotDossierHtml(
+                                    reportRecords,
+                                    widget.currentModule,
+                                    base64Logo: widget.base64Logo,
+                                    adminRules: widget.adminRules,
+                                    loggedInUser: widget.loggedInUser,
+                                  )
+                                : ReportGenerator.generateHtml(
+                                    reportRecords, 
+                                    selectedReportTest,
+                                    widget.currentModule,
+                                    base64Logo: widget.base64Logo,
+                                    adminRules: widget.adminRules,
+                                    loggedInUser: widget.loggedInUser,
+                                  );
                             final repTestName = selectedReportTest == 'All' 
                                 ? (widget.currentModule == 'Lot Acceptance Test' ? 'Lot_Acceptance_Certificate' : 'Comprehensive_Summary') 
                                 : (singleRecord?.testName ?? selectedReportTest);
