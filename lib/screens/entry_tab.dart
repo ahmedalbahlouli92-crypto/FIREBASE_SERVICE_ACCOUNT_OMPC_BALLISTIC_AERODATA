@@ -208,6 +208,16 @@ class _EntryTabState extends State<EntryTab> {
   bool get _isAdmin => widget.userRole.toLowerCase() == 'admin';
 
   bool get _isCaliber9mm => _caliber.toLowerCase().contains('9mm') || _caliber.toLowerCase().contains('9x19');
+  bool _isSameCaliberFamily(String calA, String calB) {
+    final a = calA.toLowerCase().replaceAll(' ', '');
+    final b = calB.toLowerCase().replaceAll(' ', '');
+    if (a == b || a.contains(b) || b.contains(a)) return true;
+    if ((a.contains('5.56') || a.contains('223')) && (b.contains('5.56') || b.contains('223'))) return true;
+    if ((a.contains('7.62') || a.contains('308') || a.contains('m80')) && (b.contains('7.62') || b.contains('308') || b.contains('m80'))) return true;
+    if ((a.contains('9x19') || a.contains('9mm') || a.contains('luger') || a.contains('para')) &&
+        (b.contains('9x19') || b.contains('9mm') || b.contains('luger') || b.contains('para'))) return true;
+    return false;
+  }
   bool get _isCaliberSingleTempOnly {
     final c = _caliber.toLowerCase();
     return c.contains('.223') || c.contains('.308') || c.contains('luger') || c.contains('match') || c.contains('m82');
@@ -3726,7 +3736,7 @@ class _EntryTabState extends State<EntryTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Upload a test data file (CSV, TSV, JSON, TXT) or paste raw test machine readings below to automatically populate the test form fields.',
+                    'Upload a test data file (PDF, CSV, TSV, JSON, TXT) or paste raw test machine readings below to automatically populate the test form fields.',
                     style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5),
                   ),
                   const SizedBox(height: 12),
@@ -3736,8 +3746,16 @@ class _EntryTabState extends State<EntryTab> {
                         final res = await getAttachmentHelper().pickFileAsBase64();
                         if (res != null && res['data'] != null) {
                           final bytes = base64Decode(res['data']!);
-                          final text = utf8.decode(bytes, allowMalformed: true);
-                          textController.text = text;
+                          final filename = res['name']?.toString() ?? '';
+                          final isPdf = filename.toLowerCase().endsWith('.pdf') ||
+                              (bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46);
+                          if (isPdf) {
+                            final pdfText = PdfTextExtractor.extractText(bytes);
+                            textController.text = pdfText;
+                          } else {
+                            final text = utf8.decode(bytes, allowMalformed: true);
+                            textController.text = text;
+                          }
                           setDialogState(() {});
                         }
                       } catch (e) {
@@ -3745,7 +3763,7 @@ class _EntryTabState extends State<EntryTab> {
                       }
                     },
                     icon: const Icon(Icons.file_upload, size: 16),
-                    label: const Text('Choose File to Upload (CSV/TSV/JSON/TXT)'),
+                    label: const Text('Choose File to Upload (PDF/CSV/TSV/JSON/TXT)'),
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
                   ),
                   const SizedBox(height: 10),
@@ -4423,7 +4441,7 @@ class _EntryTabState extends State<EntryTab> {
                                 focusNode: _roomTempFocusNode,
                                 hint: 'e.g., 22.5',
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
                                 validator: (v) => _testName == 'Residual Stress Test' && (v == null || v.trim().isEmpty) ? 'Required' : null,
                               ),
                             ),
@@ -5268,7 +5286,7 @@ class _EntryTabState extends State<EntryTab> {
                                 controller: _sdVelController,
                                 hint: '0.0',
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
                               ),
                             ),
                           ]),
@@ -5281,7 +5299,7 @@ class _EntryTabState extends State<EntryTab> {
                                 controller: _accLargestDistanceController,
                                 hint: '0.0',
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
                                 onChanged: (val) => setState(() {}),
                               ),
                             ),
@@ -7677,7 +7695,7 @@ class _EntryTabState extends State<EntryTab> {
             : (keyboardType.signed == true)
                 ? [SignedDecimalInputFormatter()]
                 : (keyboardType == const TextInputType.numberWithOptions(decimal: true) || keyboardType.decimal == true)
-                    ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
+                    ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))]
                     : null
       ),
       readOnly: readOnly,
@@ -8091,6 +8109,7 @@ class _EntryTabState extends State<EntryTab> {
               inputFormatters: inputFormatters,
               onChanged: (_) {
                 if (onMeanChanged != null) onMeanChanged();
+                _scheduleAutoSave();
                 setState(() {});
               },
             ),
@@ -8104,6 +8123,11 @@ class _EntryTabState extends State<EntryTab> {
               readOnly: readOnly,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: inputFormatters,
+              onChanged: (_) {
+                _calculateRange(maxCtrl, minCtrl, rangeCtrl);
+                _scheduleAutoSave();
+                setState(() {});
+              },
             ),
           ),
           const SizedBox(width: 6.0),
@@ -8115,6 +8139,11 @@ class _EntryTabState extends State<EntryTab> {
               readOnly: readOnly,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: inputFormatters,
+              onChanged: (_) {
+                _calculateRange(maxCtrl, minCtrl, rangeCtrl);
+                _scheduleAutoSave();
+                setState(() {});
+              },
             ),
           ),
           const SizedBox(width: 6.0),
@@ -8123,9 +8152,13 @@ class _EntryTabState extends State<EntryTab> {
             child: _buildTextField(
               controller: rangeCtrl,
               hint: '0.0',
-              readOnly: true,
+              readOnly: readOnly,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: inputFormatters,
+              onChanged: (_) {
+                _scheduleAutoSave();
+                setState(() {});
+              },
             ),
           ),
           const SizedBox(width: 6.0),
@@ -8137,6 +8170,10 @@ class _EntryTabState extends State<EntryTab> {
               readOnly: readOnly,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: inputFormatters,
+              onChanged: (_) {
+                _scheduleAutoSave();
+                setState(() {});
+              },
             ),
           ),
         ],
@@ -8664,18 +8701,53 @@ class _EntryTabState extends State<EntryTab> {
     if (accLimits.containsKey(_caliber)) {
       limits = Map<String, dynamic>.from(accLimits[_caliber]);
     } else {
-      final matchKey = accLimits.keys.firstWhere(
-        (k) => _caliber.toLowerCase().contains(k.toString().toLowerCase()) || k.toString().toLowerCase().contains(_caliber.toLowerCase()),
-        orElse: () => '',
-      );
+      final calClean = _caliber.toLowerCase().replaceAll(' ', '');
+      String matchKey = '';
+      for (final k in accLimits.keys) {
+        final kClean = k.toString().toLowerCase().replaceAll(' ', '');
+        if (kClean == calClean) {
+          matchKey = k.toString();
+          break;
+        }
+      }
+      if (matchKey.isEmpty) {
+        for (final k in accLimits.keys) {
+          final kClean = k.toString().toLowerCase().replaceAll(' ', '');
+          if ((calClean.contains('m193') && kClean.contains('m193')) ||
+              (calClean.contains('ss109') && kClean.contains('ss109')) ||
+              (calClean.contains('m80') && kClean.contains('m80')) ||
+              (calClean.contains('69') && kClean.contains('69')) ||
+              (calClean.contains('55') && kClean.contains('55')) ||
+              (calClean.contains('77') && kClean.contains('77')) ||
+              (calClean.contains('blank') && kClean.contains('blank')) ||
+              (calClean.contains('9x19') && kClean.contains('9x19'))) {
+            matchKey = k.toString();
+            break;
+          }
+        }
+      }
+      if (matchKey.isEmpty) {
+        matchKey = accLimits.keys.firstWhere(
+          (k) => _caliber.toLowerCase().contains(k.toString().toLowerCase()) || k.toString().toLowerCase().contains(_caliber.toLowerCase()),
+          orElse: () => '',
+        );
+      }
       if (matchKey.isNotEmpty) {
         limits = Map<String, dynamic>.from(accLimits[matchKey]);
       } else {
         limits = Map<String, dynamic>.from(accLimits['default'] ?? {});
       }
     }
-    final double targetMean = (limits['vel_target_mean'] ?? (_caliber.toLowerCase().contains('ss109') ? 915.0 : (_caliber.toLowerCase().contains('m193') ? 940.0 : (_caliber.toLowerCase().contains('m80') ? 830.0 : (_caliber.toLowerCase().contains('9') ? 375.0 : 850.0))))).toDouble();
-    final double tolerance = (limits['vel_tolerance'] ?? 13.0).toDouble();
+    final double defaultTarget = _caliber.toLowerCase().contains('m193')
+        ? 965.0
+        : (_caliber.toLowerCase().contains('ss109')
+            ? 915.0
+            : (_caliber.toLowerCase().contains('m80')
+                ? 830.0
+                : (_caliber.toLowerCase().contains('9') ? 375.0 : 850.0)));
+    final double defaultTol = _caliber.toLowerCase().contains('m193') ? 15.0 : 13.0;
+    final double targetMean = ((limits['vel_target_mean'] ?? defaultTarget) as num).toDouble();
+    final double tolerance = ((limits['vel_tolerance'] ?? defaultTol) as num).toDouble();
     final double velMin = limits['vel_min'] != null
         ? (limits['vel_min'] as num).toDouble()
         : (targetMean - tolerance);
@@ -8684,9 +8756,9 @@ class _EntryTabState extends State<EntryTab> {
         : (targetMean + tolerance);
 
     return {
-      'max_mean_radius': (limits['max_mean_radius'] ?? 50.0).toDouble(),
-      'max_sd': (limits['max_sd'] ?? 200.0).toDouble(),
-      'cond_sd': (limits['cond_sd'] ?? 170.0).toDouble(),
+      'max_mean_radius': ((limits['max_mean_radius'] ?? 50.0) as num).toDouble(),
+      'max_sd': ((limits['max_sd'] ?? 200.0) as num).toDouble(),
+      'cond_sd': ((limits['cond_sd'] ?? 170.0) as num).toDouble(),
       'vel_target_mean': targetMean,
       'vel_tolerance': tolerance,
       'vel_min': velMin,
@@ -8875,8 +8947,8 @@ class _EntryTabState extends State<EntryTab> {
       final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
       final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
       final double condSD = (accRules['cond_sd'] ?? 170.0).toDouble();
-      final double velMin = (accRules['vel_min'] ?? 700.0).toDouble();
-      final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
+      final double velMin = (accRules['vel_min'] as num).toDouble();
+      final double velMax = (accRules['vel_max'] as num).toDouble();
       
       final meanVel = double.tryParse(_meanVelController.text.trim());
       if (meanVel != null && (meanVel < velMin || meanVel > velMax)) {
@@ -9448,8 +9520,8 @@ class _EntryTabState extends State<EntryTab> {
           final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
           final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
           final double condSD = (accRules['cond_sd'] ?? 170.0).toDouble();
-          final double velMin = (accRules['vel_min'] ?? 700.0).toDouble();
-          final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
+          final double velMin = (accRules['vel_min'] as num).toDouble();
+          final double velMax = (accRules['vel_max'] as num).toDouble();
 
           final double? meanVel = double.tryParse(_meanVelController.text.trim());
           bool isVelReject = false;
@@ -9714,7 +9786,7 @@ class _EntryTabState extends State<EntryTab> {
             controller: _viscosityController,
             hint: 'e.g., 40',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
           ),
         ),
         _buildSampleLocationField(flex: 2),
@@ -9809,9 +9881,7 @@ class _EntryTabState extends State<EntryTab> {
           .toList();
 
       final matchingPrimerRecords = widget.componentPrimerRecords.where((r) {
-        final c = r.caliber.toLowerCase();
-        final curr = _caliber.toLowerCase();
-        final matchesCaliber = c == curr || c.contains(curr) || curr.contains(c);
+        final matchesCaliber = _isSameCaliberFamily(r.caliber, _caliber);
         if (_primerSupplier.isNotEmpty) {
           return matchesCaliber && r.primerSupplier.trim().toLowerCase() == _primerSupplier.trim().toLowerCase();
         }
@@ -9822,6 +9892,34 @@ class _EntryTabState extends State<EntryTab> {
           .where((l) => l.isNotEmpty)
           .toSet()
           .toList();
+
+      // Harvest from all historical records if component records are empty or missing this caliber family
+      final fromHistory = widget.records.where((r) {
+        final matchesCaliber = _isSameCaliberFamily(r.caliber, _caliber);
+        if (_primerSupplier.isNotEmpty) {
+          return matchesCaliber && r.primerSupplier.trim().toLowerCase() == _primerSupplier.trim().toLowerCase();
+        }
+        return matchesCaliber;
+      }).map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber).where((l) => l.isNotEmpty).toSet();
+      for (final h in fromHistory) {
+        if (!primerLotOptions.contains(h)) primerLotOptions.add(h);
+      }
+
+      // If current controller has a lot, ensure it is in the dropdown choices
+      if (_primerLotController.text.trim().isNotEmpty && !primerLotOptions.contains(_primerLotController.text.trim())) {
+        primerLotOptions.insert(0, _primerLotController.text.trim());
+      }
+
+      // If still empty, provide standard defaults based on supplier
+      if (primerLotOptions.isEmpty) {
+        final sup = _primerSupplier.isNotEmpty ? _primerSupplier : 'CBC';
+        primerLotOptions.addAll(['$sup-2026-01', '$sup-2026-02', '$sup-2026-03']);
+      }
+
+      if (_primerLotController.text.trim().isEmpty && primerLotOptions.isNotEmpty) {
+        _primerLotController.text = primerLotOptions.first;
+        _selectedComponentPrimerLot = primerLotOptions.first;
+      }
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -9966,9 +10064,7 @@ class _EntryTabState extends State<EntryTab> {
                     setState(() {
                       _primerSupplier = v;
                       final subMatching = widget.componentPrimerRecords.where((r) {
-                        final c = r.caliber.toLowerCase();
-                        final curr = _caliber.toLowerCase();
-                        final matchesCaliber = c == curr || c.contains(curr) || curr.contains(c);
+                        final matchesCaliber = _isSameCaliberFamily(r.caliber, _caliber);
                         return matchesCaliber && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
                       }).toList();
                       final subLots = subMatching
@@ -9976,13 +10072,17 @@ class _EntryTabState extends State<EntryTab> {
                           .where((l) => l.isNotEmpty)
                           .toSet()
                           .toList();
-                      if (subLots.isNotEmpty) {
-                        _selectedComponentPrimerLot = subLots.first;
-                        _primerLotController.text = subLots.first;
-                      } else {
-                        _selectedComponentPrimerLot = null;
-                        _primerLotController.clear();
+                      if (subLots.isEmpty) {
+                        final fromHist = widget.records.where((r) {
+                          return _isSameCaliberFamily(r.caliber, _caliber) && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
+                        }).map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber).where((l) => l.isNotEmpty).toSet().toList();
+                        subLots.addAll(fromHist);
                       }
+                      if (subLots.isEmpty) {
+                        subLots.addAll(['$v-2026-01', '$v-2026-02']);
+                      }
+                      _selectedComponentPrimerLot = subLots.first;
+                      _primerLotController.text = subLots.first;
                     });
                   }
                 },
@@ -9992,36 +10092,31 @@ class _EntryTabState extends State<EntryTab> {
               flex: 3,
               label: 'Primer Lot',
               isRequired: true,
-              child: primerLotOptions.isNotEmpty
-                ? DropdownButtonFormField<String>(
-                    value: primerLotOptions.contains(_primerLotController.text.trim())
-                        ? _primerLotController.text.trim()
-                        : primerLotOptions.first,
-                    isExpanded: true,
-                    dropdownColor: const Color(0xFFE0F2FE),
-                    style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: true,
-                      fillColor: const Color(0xFFE0F2FE),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                    ),
-                      items: primerLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() {
-                            _selectedComponentPrimerLot = v;
-                            _primerLotController.text = v;
-                          });
-                        }
-                      },
-                    )
-                  : _buildTextField(
-                      controller: _primerLotController,
-                      hint: 'e.g. CBC-2026-01',
-                    ),
+              child: DropdownButtonFormField<String>(
+                value: primerLotOptions.contains(_primerLotController.text.trim())
+                    ? _primerLotController.text.trim()
+                    : (primerLotOptions.isNotEmpty ? primerLotOptions.first : null),
+                isExpanded: true,
+                dropdownColor: const Color(0xFFE0F2FE),
+                style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: const Color(0xFFE0F2FE),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                ),
+                items: primerLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      _selectedComponentPrimerLot = v;
+                      _primerLotController.text = v;
+                    });
+                  }
+                },
+              ),
             ),
           ], lockSingleRow: true),
           const SizedBox(height: 14.0),
@@ -10438,7 +10533,7 @@ class _EntryTabState extends State<EntryTab> {
                       controller: _primerInsertionDepthController,
                       hint: 'e.g., 0.15 (0.05 - 0.20)',
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
                       onChanged: (_) {
                         setState(() {});
                         _scheduleAutoSave();
@@ -10573,7 +10668,7 @@ class _EntryTabState extends State<EntryTab> {
                   controller: _propellantChargeController,
                   hint: 'e.g., 1.62',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
                   onChanged: (_) => _scheduleAutoSave(),
                 ),
               ),
@@ -10838,8 +10933,8 @@ class _EntryTabState extends State<EntryTab> {
       final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
       final double targetMean = (accRules['vel_target_mean'] ?? 915.0).toDouble();
       final double tolerance = (accRules['vel_tolerance'] ?? 13.0).toDouble();
-      final double velMin = (accRules['vel_min'] ?? 700.0).toDouble();
-      final double velMax = (accRules['vel_max'] ?? 900.0).toDouble();
+      final double velMin = (accRules['vel_min'] as num).toDouble();
+      final double velMax = (accRules['vel_max'] as num).toDouble();
       specText = 'Caliber: $_caliber | Mean Velocity: Target ${targetMean.toStringAsFixed(1)} ± ${tolerance.toStringAsFixed(1)} m/s [${velMin.toStringAsFixed(1)} - ${velMax.toStringAsFixed(1)} m/s] | Max Radius: ${maxMeanRadius.toStringAsFixed(1)} mm | Max SD: ${maxSD.toStringAsFixed(1)} mm';
       instructionsText = accRules['instructions'] ?? 'Assess group sizing at target distance.';
     } else if (_testName.toLowerCase().contains('epvat') || _testName.toLowerCase().contains('propellant')) {

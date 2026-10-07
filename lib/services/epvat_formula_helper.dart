@@ -8,6 +8,7 @@ class EpvatFormulaResult {
   final double calculatedValue;
   final String op;
   final double limitValue;
+  final double? toleranceValue;
   final String unit;
   final bool isPassed;
   final bool isApplicable;
@@ -19,6 +20,7 @@ class EpvatFormulaResult {
     required this.calculatedValue,
     required this.op,
     required this.limitValue,
+    this.toleranceValue,
     required this.unit,
     required this.isPassed,
     this.isApplicable = true,
@@ -640,16 +642,34 @@ class EpvatFormulaHelper {
     double limitVal = 0.0;
     bool passed = true;
 
-    // Check if limitStr is formatted as "Target ± Tol" (e.g. "920 ± 15" or "920 +/- 15")
+    double? toleranceVal;
+
+    // Check if tolerance is explicitly defined in item or limitStr is formatted as "Target ± Tol"
+    final double? explicitTol = (item['tolerance'] is num)
+        ? (item['tolerance'] as num).toDouble()
+        : double.tryParse('${item['tolerance'] ?? ''}');
     final targetTolMatch = RegExp(r'^([\d\.\-]+)\s*(?:±|\+\/-)\s*([\d\.]+)$').firstMatch(limitStr);
-    if (targetTolMatch != null) {
+
+    if (explicitTol != null && explicitTol > 0.0) {
+      double target = evaluate(limitStr.replaceAll('±', '').replaceAll('+/-', '').trim(), variables, defaultTemp: defaultTemp);
+      double tol = explicitTol;
+      if (isPressure && rawUnit != activePressureUnit) {
+        target = convertPressure(target, rawUnit, activePressureUnit);
+        tol = convertPressure(tol, rawUnit, activePressureUnit);
+      }
+      limitVal = target;
+      toleranceVal = tol;
+      passed = (calculated >= (target - tol - 0.0001)) && (calculated <= (target + tol + 0.0001));
+    } else if (targetTolMatch != null) {
       final target = double.tryParse(targetTolMatch.group(1)!) ?? 0.0;
       final tol = double.tryParse(targetTolMatch.group(2)!) ?? 0.0;
-      limitVal = tol;
+      limitVal = target;
+      toleranceVal = tol;
       if (isPressure && rawUnit != activePressureUnit) {
         final convTarget = convertPressure(target, rawUnit, activePressureUnit);
         final convTol = convertPressure(tol, rawUnit, activePressureUnit);
-        limitVal = convTol;
+        limitVal = convTarget;
+        toleranceVal = convTol;
         passed = (calculated >= (convTarget - convTol - 0.0001)) && (calculated <= (convTarget + convTol + 0.0001));
       } else {
         passed = (calculated >= (target - tol - 0.0001)) && (calculated <= (target + tol + 0.0001));
@@ -678,6 +698,7 @@ class EpvatFormulaHelper {
         case '±':
         case '+/-':
           passed = calculated.abs() <= (limitVal.abs() + 0.0001);
+          toleranceVal = limitVal.abs();
           break;
         default:
           passed = calculated <= limitVal;
@@ -691,6 +712,7 @@ class EpvatFormulaHelper {
       calculatedValue: calculated,
       op: op,
       limitValue: limitVal,
+      toleranceValue: toleranceVal,
       unit: displayUnit,
       isPassed: passed,
     );

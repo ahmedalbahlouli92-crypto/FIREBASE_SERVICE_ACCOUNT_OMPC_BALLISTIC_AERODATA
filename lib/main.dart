@@ -1802,6 +1802,8 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _newWeaponTypeInputCtrl = TextEditingController();
   final TextEditingController _newWeaponSerialInputCtrl = TextEditingController();
   String _selectedPropellantCodeSupplier = '';
+  String _selectedAdminWeaponCaliber = '5.56x45';
+  String _adminWeaponCaliberViewTab = 'All';
   String _selectedAdminWeaponType = 'Pistol';
   String _selectedAdminWeaponManufacturer = 'Beretta';
   String _selectedEpvatBarrelCaliber = '5.56x45 SS109';
@@ -1820,6 +1822,7 @@ class _MainShellState extends State<MainShell> {
   final Set<String> _locallySubmittedRecordIds = {};
   final Set<String> _recentlyAlertedRecordIds = {};
   int? _editingFormulaIndex;
+  final TextEditingController _ruleNewFormulaToleranceCtrl = TextEditingController();
   final Map<String, List<String>> _adminWeaponManufacturers = {
     'Pistol': ['Beretta', 'Glock', 'SIG Sauer', 'CZ', 'Smith & Wesson', 'Colt', 'Browning', 'Other'],
     'Rifle': ['Colt', 'FN Herstal', 'Heckler & Koch', 'Steyr', 'Kalashnikov', 'Remington', 'Other'],
@@ -1828,6 +1831,18 @@ class _MainShellState extends State<MainShell> {
     'Machine Gun': ['FN Herstal', 'U.S. Ordnance', 'Browning', 'Rheinmetall', 'Other'],
     'Other': ['Other'],
   };
+
+  List<String> get _allWeaponManufacturers {
+    final custom = List<String>.from((_adminRules['custom_weapon_manufacturers'] as List<dynamic>? ?? []).map((e) => e.toString()));
+    final base = <String>{};
+    for (var list in _adminWeaponManufacturers.values) {
+      base.addAll(list);
+    }
+    base.addAll(custom);
+    base.remove('Other');
+    final sorted = base.toList()..sort();
+    return [...sorted, 'Other'];
+  }
   
   List<Map<String, String>> _operators = [];
   String _loginErrorMessage = '';
@@ -5491,6 +5506,300 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  String _inferWeaponCaliber(Map<String, dynamic> w) {
+    final cal = (w['caliber'] ?? '').toString();
+    if (cal.isNotEmpty) return cal;
+    final text = '${w['type']} ${w['model']} ${w['category']}'.toLowerCase();
+    if (text.contains('9mm') || text.contains('9x19') || text.contains('mp5') || text.contains('beretta') || text.contains('glock') || text.contains('pistol')) {
+      return '9x19mm';
+    }
+    if (text.contains('7.62') || text.contains('g3') || text.contains('fn mag') || text.contains('m60') || text.contains('m240') || text.contains('fal')) {
+      return '7.62x51';
+    }
+    return '5.56x45';
+  }
+
+  void _showAddManufacturerDialog() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF334155))),
+        title: Row(
+          children: const [
+            Icon(Icons.factory_rounded, color: Color(0xFF38BDF8), size: 20),
+            SizedBox(width: 8),
+            Text('Add Weapon Manufacturer', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            labelText: 'Manufacturer Name',
+            labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+            hintText: 'e.g. SIG Sauer, Steyr, Walther, Beretta...',
+            hintStyle: const TextStyle(color: Color(0xFF64748B)),
+            filled: true,
+            fillColor: const Color(0xFF0F172A),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = ctrl.text.trim();
+              if (name.isNotEmpty) {
+                final customList = List<String>.from((_adminRules['custom_weapon_manufacturers'] as List<dynamic>? ?? []).map((e) => e.toString()));
+                if (!customList.contains(name)) {
+                  customList.add(name);
+                  _adminRules['custom_weapon_manufacturers'] = customList;
+                  await _storageService.saveRules(_adminRules);
+                  setState(() {
+                    _adminRules = Map<String, dynamic>.from(_adminRules);
+                    _selectedAdminWeaponManufacturer = name;
+                  });
+                }
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Manufacturer "$name" added successfully.'), backgroundColor: const Color(0xFF10B981)),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+            child: const Text('Add Manufacturer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditWeaponDialog(Map<String, dynamic> weapon) {
+    final modelCtrl = TextEditingController(text: (weapon['model'] ?? weapon['type'] ?? '').toString());
+    final serialCtrl = TextEditingController(text: (weapon['serial'] ?? '').toString());
+    String selectedCal = ['5.56x45', '7.62x51', '9x19mm'].contains(weapon['caliber']) ? weapon['caliber'] : _inferWeaponCaliber(weapon);
+    String selectedMfg = _allWeaponManufacturers.contains(weapon['manufacturer']) ? weapon['manufacturer'] : (_allWeaponManufacturers.isNotEmpty ? _allWeaponManufacturers.first : 'Other');
+    String selectedCat = weapon['category']?.toString() ?? 'Rifle';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF334155))),
+          title: Row(
+            children: const [
+              Icon(Icons.edit_note_rounded, color: Color(0xFF38BDF8), size: 22),
+              SizedBox(width: 8),
+              Text('Edit Registered Weapon', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Caliber Specification', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F172A),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFF334155)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedCal,
+                                isExpanded: true,
+                                dropdownColor: const Color(0xFF0F172A),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                items: const [
+                                  DropdownMenuItem(value: '5.56x45', child: Text('5.56x45 mm')),
+                                  DropdownMenuItem(value: '7.62x51', child: Text('7.62x51 mm')),
+                                  DropdownMenuItem(value: '9x19mm', child: Text('9x19 mm')),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) setDlgState(() => selectedCal = v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Manufacturer', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F172A),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFF334155)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedMfg,
+                                isExpanded: true,
+                                dropdownColor: const Color(0xFF0F172A),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                items: _allWeaponManufacturers.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                                onChanged: (v) {
+                                  if (v != null) setDlgState(() => selectedMfg = v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: modelCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    labelText: 'Weapon Model / Variant Name',
+                    labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    hintText: 'e.g. M4A1, G3A3, Beretta 92FS',
+                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                    filled: true,
+                    fillColor: const Color(0xFF0F172A),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: serialCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'JetBrainsMono'),
+                  decoration: InputDecoration(
+                    labelText: 'Serial Number',
+                    labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    hintText: 'e.g. W-9012, 123456',
+                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                    filled: true,
+                    fillColor: const Color(0xFF0F172A),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final model = modelCtrl.text.trim();
+                final serial = serialCtrl.text.trim();
+                if (model.isEmpty) return;
+
+                final cleanModel = model.toLowerCase().startsWith(selectedMfg.toLowerCase())
+                    ? model
+                    : (selectedMfg != 'Other' ? '$selectedMfg $model' : model);
+
+                final oldKey = (weapon['serial']?.toString().isNotEmpty ?? false)
+                    ? weapon['serial'].toString()
+                    : (weapon['type'] ?? '').toString();
+
+                final weaponsList = List<Map<String, dynamic>>.from(
+                  (_adminRules['weapons'] as List<dynamic>? ?? []).map((e) {
+                    if (e is Map) return Map<String, dynamic>.from(e);
+                    return {'type': e.toString(), 'serial': ''};
+                  }),
+                );
+
+                final idx = weaponsList.indexWhere((w) {
+                  final s = w['serial']?.toString() ?? '';
+                  final t = w['type']?.toString() ?? '';
+                  final k = s.isNotEmpty ? s : t;
+                  return k == oldKey;
+                });
+
+                final updatedWeapon = {
+                  'type': cleanModel,
+                  'serial': serial,
+                  'category': selectedCat,
+                  'manufacturer': selectedMfg,
+                  'model': model,
+                  'caliber': selectedCal,
+                };
+
+                if (idx != -1) {
+                  weaponsList[idx] = updatedWeapon;
+                } else {
+                  weaponsList.add(updatedWeapon);
+                }
+                _adminRules['weapons'] = weaponsList;
+
+                // Update function_test weapons list
+                final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
+                final funcWeapons = List<String>.from(func['weapons'] ?? []);
+                final newLabel = serial.isNotEmpty ? '$cleanModel (SN: $serial)' : cleanModel;
+                final oldLabel = (weapon['serial']?.toString().isNotEmpty ?? false)
+                    ? '${weapon['type']} (SN: ${weapon['serial']})'
+                    : (weapon['type'] ?? '').toString();
+                funcWeapons.remove(oldLabel);
+                if (!funcWeapons.contains(newLabel)) {
+                  funcWeapons.add(newLabel);
+                }
+                func['weapons'] = funcWeapons;
+                _adminRules['function_test'] = func;
+
+                // Update cyclic_rate weapons
+                final cyclic = Map<String, dynamic>.from(_adminRules['cyclic_rate'] ?? {});
+                final cyclicWeapons = List<Map<String, dynamic>>.from(
+                  (cyclic['weapons'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
+                );
+                cyclicWeapons.removeWhere((w) => w['name'] == oldLabel);
+                if (!cyclicWeapons.any((w) => w['name'] == newLabel)) {
+                  cyclicWeapons.add({
+                    'name': newLabel,
+                    'type': selectedCat == 'Machine Gun' ? 'Linked' : 'Loose',
+                    'min': 600,
+                    'max': 950,
+                  });
+                }
+                cyclic['weapons'] = cyclicWeapons;
+                _adminRules['cyclic_rate'] = cyclic;
+
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Weapon "$cleanModel" updated successfully.'), backgroundColor: const Color(0xFF10B981)),
+                );
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEquipmentFleetCard(double width) {
     final allRecords = [..._records, ..._dailyTestRecords];
 
@@ -5559,13 +5868,13 @@ class _MainShellState extends State<MainShell> {
           if (_isEquipmentCardExpanded) ...[
             const SizedBox(height: 12.0),
             const Text(
-              'Admin enters Weapon Types & Serials, GP1/GP2 Transducers, EPVAT & Accuracy Barrels, and Component Suppliers. The system automatically tracks cumulative rounds fired through each asset.',
+              'Admin enters Weapon Types & Serials (separated by Caliber: 5.56x45, 7.62x51, 9x19mm), GP1/GP2 Transducers, EPVAT & Accuracy Barrels, and Component Suppliers. The system automatically tracks cumulative rounds fired through each asset.',
               style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
             ),
             const SizedBox(height: 20.0),
 
-            // 1. WEAPONS SECTION (Type & Serial)
-            _buildAssetCategoryHeader('Weapons Registration (Type, Manufacturer & Serial)', Icons.military_tech_rounded, const Color(0xFF38BDF8)),
+            // 1. WEAPONS SECTION (Caliber-Separated with Add Manufacturer and Edit)
+            _buildAssetCategoryHeader('Weapons Registration (Separated by Caliber: 5.56x45, 7.62x51 & 9x19mm)', Icons.military_tech_rounded, const Color(0xFF38BDF8)),
             const SizedBox(height: 10.0),
             Container(
               padding: const EdgeInsets.all(12.0),
@@ -5579,12 +5888,52 @@ class _MainShellState extends State<MainShell> {
                 children: [
                   Row(
                     children: [
+                      // Caliber Dropdown (Required: 5.56x45, 7.62x51, 9x19mm)
                       Expanded(
-                        flex: 1,
+                        flex: 2,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Weapon Category', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            const Text('Caliber *', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4.0),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C415E),
+                                borderRadius: BorderRadius.circular(6.0),
+                                border: Border.all(color: const Color(0xFF38BDF8)),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: ['5.56x45', '7.62x51', '9x19mm'].contains(_selectedAdminWeaponCaliber)
+                                      ? _selectedAdminWeaponCaliber
+                                      : '5.56x45',
+                                  isExpanded: true,
+                                  dropdownColor: const Color(0xFF2C415E),
+                                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                  onChanged: (val) {
+                                    if (val != null) setState(() => _selectedAdminWeaponCaliber = val);
+                                  },
+                                  items: const [
+                                    DropdownMenuItem(value: '5.56x45', child: Text('5.56x45 mm')),
+                                    DropdownMenuItem(value: '7.62x51', child: Text('7.62x51 mm')),
+                                    DropdownMenuItem(value: '9x19mm', child: Text('9x19 mm')),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10.0),
+                      // Weapon Category Dropdown
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Category', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 4.0),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10.0),
@@ -5604,8 +5953,6 @@ class _MainShellState extends State<MainShell> {
                                     if (val != null) {
                                       setState(() {
                                         _selectedAdminWeaponType = val;
-                                        final mfgList = _adminWeaponManufacturers[val] ?? ['Other'];
-                                        _selectedAdminWeaponManufacturer = mfgList.first;
                                       });
                                     }
                                   },
@@ -5617,16 +5964,26 @@ class _MainShellState extends State<MainShell> {
                         ),
                       ),
                       const SizedBox(width: 10.0),
+                      // Manufacturer Dropdown + Add Manufacturer button
                       Expanded(
-                        flex: 1,
+                        flex: 3,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Manufacturer (Cascaded)', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Manufacturer', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                InkWell(
+                                  onTap: _showAddManufacturerDialog,
+                                  child: const Text('+ New Mfg', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 4.0),
                             Builder(builder: (ctx) {
-                              final mfgList = _adminWeaponManufacturers[_selectedAdminWeaponType] ?? ['Other'];
-                              final currentMfg = mfgList.contains(_selectedAdminWeaponManufacturer) ? _selectedAdminWeaponManufacturer : mfgList.first;
+                              final allM = _allWeaponManufacturers;
+                              final currentMfg = allM.contains(_selectedAdminWeaponManufacturer) ? _selectedAdminWeaponManufacturer : allM.first;
                               return Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                                 decoration: BoxDecoration(
@@ -5648,7 +6005,7 @@ class _MainShellState extends State<MainShell> {
                                         });
                                       }
                                     },
-                                    items: mfgList.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                                    items: allM.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
                                   ),
                                 ),
                               );
@@ -5667,7 +6024,7 @@ class _MainShellState extends State<MainShell> {
                           controller: _newWeaponTypeInputCtrl,
                           style: const TextStyle(color: Colors.white, fontSize: 12.5),
                           decoration: InputDecoration(
-                            hintText: 'Model / Variant (e.g., M9, M4A1, MP5)',
+                            hintText: 'Model / Variant (e.g., M9, M4A1, MP5, G3)',
                             hintStyle: const TextStyle(color: Color(0xFF64748B)),
                             filled: true,
                             fillColor: const Color(0xFF2C415E),
@@ -5702,6 +6059,7 @@ class _MainShellState extends State<MainShell> {
                           final model = _newWeaponTypeInputCtrl.text.trim();
                           final mfg = _selectedAdminWeaponManufacturer;
                           final weaponType = _selectedAdminWeaponType;
+                          final cal = _selectedAdminWeaponCaliber;
                           final cleanModel = model.isNotEmpty
                               ? (model.toLowerCase().startsWith(mfg.toLowerCase()) ? model : (mfg != 'Other' ? '$mfg $model' : model))
                               : (mfg != 'Other' ? '$mfg $weaponType' : weaponType);
@@ -5719,6 +6077,7 @@ class _MainShellState extends State<MainShell> {
                             'category': weaponType,
                             'manufacturer': mfg,
                             'model': model.isNotEmpty ? model : cleanModel,
+                            'caliber': cal,
                           });
                           _adminRules['weapons'] = list;
 
@@ -5762,57 +6121,188 @@ class _MainShellState extends State<MainShell> {
                           padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
                         ),
                         icon: const Icon(Icons.add, size: 16.0),
-                        label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text('Add Weapon', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8.0),
-            _buildAssetItemList(
-              items: weaponsList.map((w) {
-                final type = w['type'] ?? '';
-                final serial = w['serial'] ?? '';
-                final label = serial.isNotEmpty ? '$type (SN: $serial)' : '$type';
-                final rounds = _storageService.calculateAssetRounds(allRecords, serial.isNotEmpty ? serial : type);
-                return {
-                  'label': label,
-                  'serial': serial.isNotEmpty ? serial : type,
-                  'rounds': rounds,
-                  'category': 'Weapon',
-                };
-              }).toList(),
-              accentColor: const Color(0xFF6366F1),
-              onDelete: (item) async {
-                weaponsList.removeWhere((w) {
-                  final serial = w['serial'] ?? '';
-                  final type = w['type'] ?? '';
-                  final key = serial.isNotEmpty ? serial : type;
-                  return key == item['serial'];
-                });
-                _adminRules['weapons'] = weaponsList;
+            const SizedBox(height: 10.0),
 
-                final fullLabel = item['label'] as String? ?? '';
-                final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
-                final funcWeapons = List<String>.from(func['weapons'] ?? []);
-                funcWeapons.remove(fullLabel);
-                func['weapons'] = funcWeapons;
-                _adminRules['function_test'] = func;
-
-                final cyclic = Map<String, dynamic>.from(_adminRules['cyclic_rate'] ?? {});
-                final cyclicWeapons = List<Map<String, dynamic>>.from(
-                  (cyclic['weapons'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
-                );
-                cyclicWeapons.removeWhere((w) => w['name'] == fullLabel);
-                cyclic['weapons'] = cyclicWeapons;
-                _adminRules['cyclic_rate'] = cyclic;
-
-                await _storageService.saveRules(_adminRules);
-                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
-              },
+            // Caliber Filter Tabs for Weapons List (5.56x45, 7.62x51, 9x19mm)
+            Row(
+              children: [
+                const Text('Caliber Group:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8.0),
+                ...['All', '5.56x45', '7.62x51', '9x19mm'].map((tabCal) {
+                  final isSelected = _adminWeaponCaliberViewTab == tabCal;
+                  final count = tabCal == 'All'
+                      ? weaponsList.length
+                      : weaponsList.where((w) => _inferWeaponCaliber(w) == tabCal).length;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6.0),
+                    child: ChoiceChip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text('$tabCal ($count)', style: TextStyle(fontSize: 11.0, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                      selected: isSelected,
+                      selectedColor: const Color(0xFF0284C7),
+                      backgroundColor: const Color(0xFF2C415E),
+                      labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFFCBD5E1)),
+                      onSelected: (val) {
+                        if (val) setState(() => _adminWeaponCaliberViewTab = tabCal);
+                      },
+                    ),
+                  );
+                }),
+              ],
             ),
+            const SizedBox(height: 8.0),
+
+            // Weapons List Item Container with Edit, Delete & Caliber Badges
+            Builder(builder: (ctx) {
+              final displayedWeapons = weaponsList.where((w) {
+                if (_adminWeaponCaliberViewTab == 'All') return true;
+                return _inferWeaponCaliber(w) == _adminWeaponCaliberViewTab;
+              }).toList();
+
+              if (displayedWeapons.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C415E),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(color: const Color(0xFF1E3A8A)),
+                  ),
+                  child: Text(
+                    'No weapons registered for ${_adminWeaponCaliberViewTab == 'All' ? 'any caliber' : _adminWeaponCaliberViewTab}. Use the form above to add.',
+                    style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.5, fontStyle: FontStyle.italic),
+                  ),
+                );
+              }
+
+              return Container(
+                constraints: const BoxConstraints(maxHeight: 220.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C415E),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFF1E3A8A)),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  itemCount: displayedWeapons.length,
+                  separatorBuilder: (_, __) => const Divider(color: Color(0xFF1E3A8A), height: 6.0),
+                  itemBuilder: (context, index) {
+                    final w = displayedWeapons[index];
+                    final type = w['type'] ?? '';
+                    final serial = w['serial'] ?? '';
+                    final cal = _inferWeaponCaliber(w);
+                    final mfg = w['manufacturer'] ?? 'Generic';
+                    final label = serial.isNotEmpty ? '$type (SN: $serial)' : '$type';
+                    final rounds = _storageService.calculateAssetRounds(allRecords, serial.isNotEmpty ? serial : type);
+
+                    Color calBadgeColor = const Color(0xFF38BDF8);
+                    if (cal == '7.62x51') calBadgeColor = const Color(0xFFF59E0B);
+                    if (cal == '9x19mm') calBadgeColor = const Color(0xFF10B981);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                            decoration: BoxDecoration(
+                              color: calBadgeColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(4.0),
+                              border: Border.all(color: calBadgeColor.withOpacity(0.4)),
+                            ),
+                            child: Text(
+                              cal,
+                              style: TextStyle(color: calBadgeColor, fontSize: 10.5, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 8.0),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  label,
+                                  style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(width: 6.0),
+                                Text(
+                                  '• $mfg',
+                                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6366F1).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(4.0),
+                              border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              '$rounds rounds',
+                              style: const TextStyle(color: Color(0xFF818CF8), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'JetBrainsMono'),
+                            ),
+                          ),
+                          const SizedBox(width: 8.0),
+                          IconButton(
+                            icon: const Icon(Icons.edit_note_rounded, color: Color(0xFF38BDF8), size: 18.0),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Edit Weapon',
+                            onPressed: () => _showEditWeaponDialog(w),
+                          ),
+                          const SizedBox(width: 8.0),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16.0),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Delete Weapon',
+                            onPressed: () async {
+                              weaponsList.removeWhere((item) {
+                                final s = item['serial'] ?? '';
+                                final t = item['type'] ?? '';
+                                final key = s.isNotEmpty ? s : t;
+                                final currKey = serial.isNotEmpty ? serial : type;
+                                return key == currKey;
+                              });
+                              _adminRules['weapons'] = weaponsList;
+
+                              final func = Map<String, dynamic>.from(_adminRules['function_test'] ?? {});
+                              final funcWeapons = List<String>.from(func['weapons'] ?? []);
+                              funcWeapons.remove(label);
+                              func['weapons'] = funcWeapons;
+                              _adminRules['function_test'] = func;
+
+                              final cyclic = Map<String, dynamic>.from(_adminRules['cyclic_rate'] ?? {});
+                              final cyclicWeapons = List<Map<String, dynamic>>.from(
+                                (cyclic['weapons'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)),
+                              );
+                              cyclicWeapons.removeWhere((w) => w['name'] == label);
+                              cyclic['weapons'] = cyclicWeapons;
+                              _adminRules['cyclic_rate'] = cyclic;
+
+                              await _storageService.saveRules(_adminRules);
+                              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
             const SizedBox(height: 18.0),
+
 
             // 2. GP6 TRANSDUCER SERIAL NUMBERS (EPVAT CHAMBER & PORT)
             _buildAssetCategoryHeader('GP6 Transducer Serial Numbers (Unified Chamber & Port Sensors)', Icons.sensors_rounded, const Color(0xFF06B6D4)),
@@ -6590,6 +7080,7 @@ class _MainShellState extends State<MainShell> {
     final nameCtrl = TextEditingController(text: item['name'] ?? '');
     final exprCtrl = TextEditingController(text: item['formula'] ?? '');
     final limitCtrl = TextEditingController(text: '${item['limit'] ?? ''}');
+    final toleranceCtrl = TextEditingController(text: '${item['tolerance'] ?? ''}');
     final unitCtrl = TextEditingController(text: '${item['unit'] ?? ''}');
     String selectedOp = item['operator'] ?? '<=';
     if (!['<=', '>=', '<', '>', '==', '±'].contains(selectedOp)) {
@@ -6620,7 +7111,7 @@ class _MainShellState extends State<MainShell> {
                 ],
               ),
               content: SizedBox(
-                width: 540,
+                width: 580,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -6678,7 +7169,7 @@ class _MainShellState extends State<MainShell> {
                       Row(
                         children: [
                           Expanded(
-                            flex: 3,
+                            flex: 2,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -6710,9 +7201,9 @@ class _MainShellState extends State<MainShell> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           Expanded(
-                            flex: 4,
+                            flex: 3,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -6726,9 +7217,25 @@ class _MainShellState extends State<MainShell> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           Expanded(
                             flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Tolerance (±)', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: toleranceCtrl,
+                                  style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                                  decoration: _getFormulaFieldDecoration(hint: 'e.g. 50 (opt)'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -6762,6 +7269,7 @@ class _MainShellState extends State<MainShell> {
                     final name = nameCtrl.text.trim();
                     final expr = exprCtrl.text.trim();
                     final limit = limitCtrl.text.trim();
+                    final tol = toleranceCtrl.text.trim();
                     final unit = unitCtrl.text.trim();
                     if (name.isEmpty || expr.isEmpty) return;
                     Navigator.pop(ctx);
@@ -6770,6 +7278,7 @@ class _MainShellState extends State<MainShell> {
                       'formula': expr,
                       'operator': selectedOp,
                       'limit': limit.isEmpty ? '0' : limit,
+                      'tolerance': tol,
                       'unit': unit.isEmpty ? (expr.toLowerCase().contains('vel') ? 'm/s' : 'bar') : unit,
                       'description': item['description'] ?? 'Custom rule for $caliber',
                     });
@@ -7530,6 +8039,23 @@ class _MainShellState extends State<MainShell> {
                               ),
                             ),
                             const SizedBox(width: 10),
+                            // Tolerance (±)
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Tolerance (±)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: _ruleNewFormulaToleranceCtrl,
+                                    style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                                    decoration: _getFormulaFieldDecoration(hint: 'e.g. 50 (opt)'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
                             // Unit
                             Expanded(
                               flex: 2,
@@ -7593,6 +8119,7 @@ class _MainShellState extends State<MainShell> {
                                     _ruleNewFormulaNameCtrl.clear();
                                     _ruleNewFormulaExprCtrl.clear();
                                     _ruleNewFormulaLimitCtrl.clear();
+                                    _ruleNewFormulaToleranceCtrl.clear();
                                     _ruleNewFormulaUnitCtrl.text = 'bar';
                                     _ruleNewFormulaOperator = '<=';
                                   });
@@ -7612,6 +8139,7 @@ class _MainShellState extends State<MainShell> {
                                 final name = _ruleNewFormulaNameCtrl.text.trim();
                                 final expr = _ruleNewFormulaExprCtrl.text.trim();
                                 final limit = _ruleNewFormulaLimitCtrl.text.trim();
+                                final tol = _ruleNewFormulaToleranceCtrl.text.trim();
                                 final unit = _ruleNewFormulaUnitCtrl.text.trim();
                                 
                                 if (name.isEmpty) {
@@ -7634,6 +8162,7 @@ class _MainShellState extends State<MainShell> {
                                   'formula': expr,
                                   'operator': _ruleNewFormulaOperator,
                                   'limit': limit.isEmpty ? '0' : limit,
+                                  'tolerance': tol,
                                   'unit': unit.isEmpty ? (expr.toLowerCase().contains('vel') ? 'm/s' : 'bar') : unit,
                                   'description': 'Custom rule for $_ruleSelectedCaliber',
                                 };
@@ -7654,6 +8183,7 @@ class _MainShellState extends State<MainShell> {
                                 _ruleNewFormulaNameCtrl.clear();
                                 _ruleNewFormulaExprCtrl.clear();
                                 _ruleNewFormulaLimitCtrl.clear();
+                                _ruleNewFormulaToleranceCtrl.clear();
                               },
                               icon: Icon(_editingFormulaIndex == null ? Icons.check_circle_outline : Icons.save_outlined, size: 16),
                               label: Text(
@@ -7764,7 +8294,7 @@ class _MainShellState extends State<MainShell> {
                               Expanded(
                                 flex: 2,
                                 child: Text(
-                                  '${item['limit'] ?? ''}',
+                                  '${item['limit'] ?? ''}${item['tolerance'] != null && item['tolerance'].toString().trim().isNotEmpty ? ' ± ${item['tolerance']}' : ''}',
                                   style: const TextStyle(color: Colors.white, fontSize: 12.0, fontFamily: 'JetBrainsMono'),
                                 ),
                               ),

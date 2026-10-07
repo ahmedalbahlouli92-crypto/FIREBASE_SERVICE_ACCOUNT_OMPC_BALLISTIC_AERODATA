@@ -19,29 +19,25 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.7';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.7 (Inspection & Engineering Quality Suite Update)';
-const BODY = `## OMPC Ballistic AeroData v1.9.7
+const TAG_NAME = 'v1.9.8';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.8 (Quality Engineering & Control Suite Update)';
+const BODY = `## OMPC Ballistic AeroData v1.9.8
 
-Comprehensive quality and engineering inspection update featuring enhanced diagrams, defect level selection, automated file result extraction, strict 1-page reports, reorganized executive exports, and multi-platform deployment:
+Comprehensive ballistic engineering & quality control update featuring weapon caliber categorizations, EPVAT formula tolerances, caliber-first reporting workflows, PDF machine auto-extraction, and individual equipment report exports:
 
 ### Key Enhancements & Features:
-1. **Interactive Enlarged Reference Diagrams**: Pinch-to-zoom and pan reference diagrams for Function Test and Residual Stress test.
-2. **Dynamic Multi-Level Defect Selection**: Custom defect picker and interactive level counters for each defect classification level.
-3. **Accuracy Test Evaluation Rules**: Admin velocity tolerance configuration (target mean &plusmn; tolerance) correctly evaluating lots (e.g. Lot 010 SS109 passes under 915 &plusmn; 12 m/s).
-4. **Caliber-First Lot Filtering**: In Lot Acceptance module, caliber specification selection drives dynamic lot population.
-5. **Bold Day Separators**: Inspection logs feature distinct bold separators between consecutive test days for visual clarity.
-6. **Automated Test Results File Extraction**: Direct file upload/paste parser extracting values automatically into test forms.
-7. **Sequential Reference Numbering**: Clean sequential report references (REF 1, REF 2, REF 3...) across all modules.
-8. **EPVAT Primer Supplier Selection**: Primer supplier selection in EPVAT test dynamically drives verified lot options.
-9. **Dual Lot Acceptance Report Generator**: Option 1 for general log report (all, caliber, or test) and Option 2 for official certificate and complete dossier.
-10. **Daily Test Hopper-Only Filtering**: Removed lot filter in Daily Test inspection log, keeping hopper number.
-11. **Morning / Afternoon Shift System**: Standardized shift options strictly to Morning and Afternoon across app, dashboard, and logs.
-12. **Dashboard Trend Reports with Embedded Charts**: Export trend reports with engineering test requirements, process state compliance badges, and embedded charts.
-13. **Strict 1-Page Final Acceptance Certificate**: Fitted certificate and individual dossier test sheets strictly onto single A4 pages.
-14. **Modular Unified Dashboard Export**: Single unified export dialog with customizable section inclusion toggles.
-15. **Module & Caliber Isolated Executive Quality Report**: Executive report organized strictly by module, and within each module each caliber alone with its dedicated charts.
-16. **Cross-Platform Deployment**: Published to GitHub, Supabase sync, Windows Desktop, Android APK, and Firebase Web.
+1. **Weapon Registration Caliber Separation**: In Control, registered weapons are categorized into \`5.56x45\`, \`7.62x51\`, and \`9x19mm\` with segmented filter tabs and caliber badges.
+2. **Manufacturer Management & Weapon Editing**: Admins can register new manufacturers and edit weapon details (name, serial number, manufacturer, caliber).
+3. **EPVAT Formula Auto-Calculation Tolerance**: Explicit tolerance (±) option when registering EPVAT formulas for automatic pass/conditional/fail evaluation.
+4. **EPVAT Stats-Only Mode Unlocked**: Operators can directly enter and edit statistics values across M193 and all calibers with reactive auto-calculation and saving.
+5. **EPVAT Primer Supplier & Lot Dropdowns Across All Calibers**: Primer supplier and primer lot selections strictly enforce dropdown selection (no manual text entry) across M193 and all calibers.
+6. **Accuracy Test Velocity Approval from Control**: Mean velocity pass/conditional/reject evaluation strictly adheres to admin-configured target mean, tolerance, and bounds in Control.
+7. **Consolidated Lot Acceptance Caliber-First**: Report scope dialog requires selecting Caliber Specification first, dynamically populating available lot numbers.
+8. **Individual Test Type Caliber-First**: Report scope dialog requires selecting Caliber Specification first, dynamically configuring applicable test types.
+9. **Tested Caliber Volume Breakdown Alone**: Standalone volume report shows total rounds tested per lot and the sum of all lots per caliber specification in CSV and Print/PDF.
+10. **Auto-Extraction from PDF**: Machine test result parser extracts metrics directly from uploaded PDF test reports without native plugin dependencies.
+11. **Individual Equipment Inspection Reports**: Save and export individual equipment inspection reports directly to Word (.doc) or Print/PDF.
+12. **Cross-Platform Deployment**: Synchronized across GitHub, Supabase sync, Windows Desktop, Android APK, and Firebase Web.
 `;
 
 function request(options, postData) {
@@ -151,8 +147,9 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
+    { name: 'OMPC_Ballistic_AeroData_v1.9.8.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.8.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v1.9.7.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.7.apk' },
     { name: 'OMPC_Ballistic_AeroData_v1.9.5.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.5.apk' },
-    { name: 'OMPC_Ballistic_AeroData_v1.9.4.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.4.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

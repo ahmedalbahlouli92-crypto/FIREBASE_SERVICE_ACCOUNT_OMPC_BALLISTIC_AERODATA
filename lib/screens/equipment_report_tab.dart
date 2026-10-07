@@ -151,7 +151,7 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
     }
   }
 
-  Future<void> _openIndividualIssueReport(Map<String, dynamic> issue) async {
+  String _buildIndividualReportHtml(Map<String, dynamic> issue) {
     final eq = issue['equipment'] ?? 'Equipment';
     final title = issue['title'] ?? 'Maintenance Report';
     final time = issue['timestamp'] ?? '';
@@ -160,18 +160,23 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
     final desc = issue['description'] ?? 'No description provided';
     final action = issue['actionTaken'] ?? 'Pending resolution';
     final status = issue['status'] ?? 'Open / Reported';
+    final reportId = issue['id'] ?? 'EQ-${DateTime.now().millisecondsSinceEpoch}';
 
-    final html = '''
+    return '''
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Equipment Report - $eq</title>
+  <title>Equipment Inspection Report - $eq</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #0f172a; line-height: 1.5; }
-    .header { border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 24px; }
-    .header h1 { margin: 0; color: #0284c7; font-size: 20px; text-transform: uppercase; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #0f172a; line-height: 1.5; background-color: #f8fafc; }
+    .container { max-width: 800px; margin: 0 auto; background: #ffffff; padding: 32px; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .header { border-bottom: 2px solid #0284c7; padding-bottom: 14px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { margin: 0; color: #0284c7; font-size: 19px; text-transform: uppercase; }
     .header .subtitle { color: #64748b; font-size: 12px; margin-top: 4px; }
+    .no-print { margin-bottom: 18px; display: flex; gap: 10px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; }
+    .btn-primary { background-color: #0284c7; color: #ffffff; }
     .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin-bottom: 20px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .label { font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; }
@@ -179,56 +184,156 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
     .status-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #e0f2fe; color: #0369a1; }
     .section-title { font-size: 13px; font-weight: bold; color: #1e293b; margin-top: 16px; margin-bottom: 6px; }
     .content-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; font-size: 12.5px; }
-    .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; text-align: right; }
+    .footer { margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; text-align: right; }
+    @media print {
+      body { margin: 0; background: #ffffff; }
+      .container { border: none; box-shadow: none; padding: 0; max-width: 100%; }
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Oman Munition Production Company - Equipment Inspection Report</h1>
-    <div class="subtitle">QC & Ballistic Lab Section &bull; Technical Issue & Maintenance Record</div>
-  </div>
-  <div class="card">
-    <div class="grid">
+  <div class="container">
+    <div class="no-print">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+    <div class="header">
       <div>
-        <div class="label">Equipment</div>
-        <div class="val" style="color: #0284c7; font-size: 15px;">$eq</div>
+        <h1>Oman Munition Production Company</h1>
+        <div class="subtitle">QC & Ballistic Lab Section &bull; Equipment Inspection Report</div>
       </div>
-      <div>
-        <div class="label">Reported Timestamp</div>
-        <div class="val">$time</div>
-      </div>
-      <div>
-        <div class="label">Severity Level</div>
-        <div class="val">$severity</div>
-      </div>
-      <div>
-        <div class="label">Current Status</div>
-        <div class="val"><span class="status-badge">$status</span></div>
-      </div>
-      <div>
-        <div class="label">Reported By</div>
-        <div class="val">$reporter</div>
-      </div>
-      <div>
-        <div class="label">Issue Title</div>
-        <div class="val">$title</div>
+      <div style="text-align: right;">
+        <span style="font-size: 11px; font-weight: bold; color: #64748b;">REF ID:</span><br/>
+        <span style="font-size: 12px; font-weight: bold; color: #0284c7;">$reportId</span>
       </div>
     </div>
-    <div class="section-title">Fault Description & Observations:</div>
-    <div class="content-box">$desc</div>
-    <div class="section-title">Action Taken / Resolution Notes:</div>
-    <div class="content-box" style="color: #059669; font-weight: 500;">$action</div>
-  </div>
-  <div class="footer">
-    Generated via OMPC Ballistic AeroData &bull; Confidential Internal QA Document
+    <div class="card">
+      <div class="grid">
+        <div>
+          <div class="label">Equipment</div>
+          <div class="val" style="color: #0284c7; font-size: 15px;">$eq</div>
+        </div>
+        <div>
+          <div class="label">Reported Timestamp</div>
+          <div class="val">$time</div>
+        </div>
+        <div>
+          <div class="label">Severity Level</div>
+          <div class="val">$severity</div>
+        </div>
+        <div>
+          <div class="label">Current Status</div>
+          <div class="val"><span class="status-badge">$status</span></div>
+        </div>
+        <div>
+          <div class="label">Reported By</div>
+          <div class="val">$reporter</div>
+        </div>
+        <div>
+          <div class="label">Issue Title</div>
+          <div class="val">$title</div>
+        </div>
+      </div>
+      <div class="section-title">Fault Description & Observations:</div>
+      <div class="content-box">$desc</div>
+      <div class="section-title">Action Taken / Resolution Notes:</div>
+      <div class="content-box" style="color: #059669; font-weight: 500;">$action</div>
+    </div>
+    <div class="footer">
+      Generated via OMPC Ballistic AeroData &bull; Confidential Internal QA Document &bull; ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}
+    </div>
   </div>
 </body>
 </html>
 ''';
+  }
+
+  Future<void> _openIndividualIssueReport(Map<String, dynamic> issue) async {
+    final eq = issue['equipment'] ?? 'Equipment';
+    final html = _buildIndividualReportHtml(issue);
     await ReportHelper.instance.openReport(
       htmlContent: html,
       title: 'Equipment_Report_${eq}_${issue['id'] ?? ''}'.replaceAll(' ', '_'),
     );
+  }
+
+  Future<void> _saveIndividualIssueReport(Map<String, dynamic> issue) async {
+    final eq = (issue['equipment'] ?? 'Equipment').toString();
+    final issueId = (issue['id'] ?? 'report').toString();
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.0),
+          side: const BorderSide(color: Color(0xFF334155)),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.save_alt_rounded, color: Color(0xFF10B981), size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Save Equipment Report',
+              style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Save inspection report for "$eq" ($issueId). Select export format:',
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF3B82F6)),
+              foregroundColor: const Color(0xFF60A5FA),
+            ),
+            onPressed: () => Navigator.pop(ctx, 'doc'),
+            icon: const Icon(Icons.description, size: 16),
+            label: const Text('Word (.doc)'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0284C7),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, 'pdf'),
+            icon: const Icon(Icons.print, size: 16),
+            label: const Text('Print / PDF'),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == null) return;
+
+    final html = _buildIndividualReportHtml(issue);
+    final cleanName = 'equipment_report_${eq.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}_${issueId.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')}';
+
+    if (choice == 'doc') {
+      final filename = '${cleanName}_${DateTime.now().millisecondsSinceEpoch}.doc';
+      await ReportHelper.instance.downloadDoc(content: html, filename: filename);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved Equipment Report (.doc): $filename'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
+    } else {
+      await ReportHelper.instance.printHtml(htmlContent: html);
+    }
   }
 
   Future<void> _deleteIssue(Map<String, dynamic> issue) async {
@@ -755,6 +860,12 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
                                                   icon: const Icon(Icons.open_in_new_rounded, size: 18.0, color: Color(0xFF0284C7)),
                                                   tooltip: 'Open Report',
                                                   onPressed: () => _openIndividualIssueReport(issue),
+                                                ),
+                                                const SizedBox(width: 2.0),
+                                                IconButton(
+                                                  icon: const Icon(Icons.save_alt_rounded, size: 18.0, color: Color(0xFF059669)),
+                                                  tooltip: 'Save / Export Report',
+                                                  onPressed: () => _saveIndividualIssueReport(issue),
                                                 ),
                                                 const SizedBox(width: 6.0),
                                                 if (isLocked) ...[

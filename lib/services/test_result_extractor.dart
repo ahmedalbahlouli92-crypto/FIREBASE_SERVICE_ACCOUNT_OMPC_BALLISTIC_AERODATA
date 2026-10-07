@@ -577,4 +577,113 @@ class TestResultExtractor {
       detectedTest: preferredTest ?? (json['testName'] ?? json['test_name'] ?? 'Accuracy Test').toString(),
     );
   }
+
+  /// Extracts results from raw file bytes, supporting PDF, CSV, TSV, TXT, and JSON formats.
+  static ExtractedResults extractFromBytes({
+    required List<int> bytes,
+    String? filename,
+    String? preferredTestName,
+  }) {
+    final isPdf = (filename != null && filename.toLowerCase().endsWith('.pdf')) ||
+        (bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46); // %PDF
+
+    String content = '';
+    if (isPdf) {
+      content = PdfTextExtractor.extractText(bytes);
+    } else {
+      content = utf8.decode(bytes, allowMalformed: true);
+    }
+
+    return extract(content: content, preferredTestName: preferredTestName);
+  }
+}
+
+/// Standalone PDF Text Extraction engine supporting extraction of machine test results
+class PdfTextExtractor {
+  /// Extracts text from PDF bytes without requiring external native dependencies.
+  static String extractText(List<int> bytes) {
+    if (bytes.isEmpty) return '';
+
+    // Convert bytes to Latin-1 string so that byte offsets match character indexes
+    final raw = latin1.decode(bytes, allowInvalid: true);
+    final buffer = StringBuffer();
+
+    // 1. Search for text objects BT ... ET
+    final btEtPattern = RegExp(r'BT\b([\s\S]*?)\bET', caseSensitive: false);
+    final btMatches = btEtPattern.allMatches(raw);
+
+    if (btMatches.isNotEmpty) {
+      for (final match in btMatches) {
+        final textBlock = match.group(1) ?? '';
+        final blockText = _parsePdfTextBlock(textBlock);
+        if (blockText.trim().isNotEmpty) {
+          buffer.writeln(blockText.trim());
+        }
+      }
+    }
+
+    // 2. If BT ... ET was empty or yielded minimal text, parse all text string literals in the file
+    if (buffer.length < 20) {
+      final literalPattern = RegExp(r'\(([^)]+)\)\s*(?:Tj|\x27|\x22)', caseSensitive: false);
+      for (final m in literalPattern.allMatches(raw)) {
+        final unescaped = _unescapePdfString(m.group(1) ?? '');
+        if (unescaped.trim().isNotEmpty) {
+          buffer.writeln(unescaped.trim());
+        }
+      }
+
+      final tjArrayPattern = RegExp(r'\[([\s\S]*?)\]\s*TJ', caseSensitive: false);
+      for (final m in tjArrayPattern.allMatches(raw)) {
+        final inner = m.group(1) ?? '';
+        final parts = RegExp(r'\(([^)]*)\)').allMatches(inner).map((sm) => _unescapePdfString(sm.group(1) ?? '')).join('');
+        if (parts.trim().isNotEmpty) {
+          buffer.writeln(parts.trim());
+        }
+      }
+    }
+
+    // 3. Fallback: extract readable ASCII strings (measurements, labels, values)
+    if (buffer.length < 20) {
+      final readablePattern = RegExp(r'([A-Za-z0-9\.\-\:\,\=\s\/\+\#]{4,})');
+      for (final m in readablePattern.allMatches(raw)) {
+        final s = m.group(0)!.trim();
+        if (s.length >= 4 && !s.contains('obj') && !s.contains('endobj') && !s.contains('xref') && !s.contains('/Filter') && !s.contains('/Type')) {
+          buffer.writeln(s);
+        }
+      }
+    }
+
+    return buffer.toString().trim();
+  }
+
+  static String _parsePdfTextBlock(String block) {
+    final sb = StringBuffer();
+    final tjPattern = RegExp(r'\(([^)]*)\)\s*(?:Tj|\x27|\x22)', caseSensitive: false);
+    for (final m in tjPattern.allMatches(block)) {
+      final str = _unescapePdfString(m.group(1) ?? '');
+      sb.write('$str ');
+    }
+
+    final arrayPattern = RegExp(r'\[([\s\S]*?)\]\s*TJ', caseSensitive: false);
+    for (final m in arrayPattern.allMatches(block)) {
+      final inner = m.group(1) ?? '';
+      final innerMatches = RegExp(r'\(([^)]*)\)').allMatches(inner);
+      for (final im in innerMatches) {
+        sb.write(_unescapePdfString(im.group(1) ?? ''));
+      }
+      sb.write(' ');
+    }
+
+    return sb.toString();
+  }
+
+  static String _unescapePdfString(String input) {
+    return input
+        .replaceAll(r'\(', '(')
+        .replaceAll(r'\)', ')')
+        .replaceAll(r'\\', r'\')
+        .replaceAll(r'\r', '\n')
+        .replaceAll(r'\n', '\n')
+        .replaceAll(r'\t', ' ');
+  }
 }

@@ -2263,15 +2263,25 @@ class _DashboardTabState extends State<DashboardTab> {
     String exportScope = 'All'; // 'All' | 'TestType' | 'Caliber' | 'Lot'
     String targetTest = _selectedTestName != 'All' ? _selectedTestName : 'EPVAT test';
     String targetCaliber = _selectedCaliber != 'All' ? _selectedCaliber : (uniqueCalibers.isNotEmpty ? uniqueCalibers.first : '5.56x45 M193');
+    String targetLotCaliber = targetCaliber;
+    String targetTestCaliber = targetCaliber;
     final uniqueLots = widget.records
         .map((r) => r.lotNo.trim())
         .where((l) => l.isNotEmpty)
         .toSet()
         .toList();
     uniqueLots.sort();
-    String targetLot = _selectedLot != 'Overall' && _selectedLot.isNotEmpty
-        ? _selectedLot
-        : (uniqueLots.isNotEmpty ? uniqueLots.first : '');
+    final initialCalLots = widget.records
+        .where((r) => r.caliber == targetLotCaliber)
+        .map((r) => r.lotNo.trim())
+        .where((l) => l.isNotEmpty)
+        .toSet()
+        .toList()..sort();
+    String targetLot = initialCalLots.isNotEmpty
+        ? initialCalLots.first
+        : (_selectedLot != 'Overall' && _selectedLot.isNotEmpty
+            ? _selectedLot
+            : (uniqueLots.isNotEmpty ? uniqueLots.first : ''));
     String exportTime = _selectedTime;
     DateTimeRange? exportDateRange = _customDateRange;
     String exportShift = (_selectedShift == 'Morning' || _selectedShift == 'Afternoon') ? _selectedShift : 'All Shifts';
@@ -2334,20 +2344,62 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                   if (exportScope == 'Lot') ...[
                     Padding(
-                      padding: const EdgeInsets.only(left: 36.0, top: 8.0, bottom: 8.0),
+                      padding: const EdgeInsets.only(left: 36.0, top: 8.0, bottom: 4.0),
                       child: DropdownButtonFormField<String>(
-                        value: uniqueLots.contains(targetLot) ? targetLot : (uniqueLots.isNotEmpty ? uniqueLots.first : null),
+                        value: uniqueCalibers.contains(targetLotCaliber) ? targetLotCaliber : (uniqueCalibers.isNotEmpty ? uniqueCalibers.first : null),
                         dropdownColor: const Color(0xFF1A1F36),
                         style: const TextStyle(color: Colors.white, fontSize: 13.0),
                         decoration: InputDecoration(
-                          labelText: 'Select Lot Number to Consolidate',
+                          labelText: '1. Select Caliber Specification First',
                           labelStyle: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
                         ),
-                        items: uniqueLots.map((l) => DropdownMenuItem(value: l, child: Text('Lot # $l'))).toList(),
-                        onChanged: (v) => setDialogState(() => targetLot = v ?? ''),
+                        items: uniqueCalibers.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        onChanged: (v) {
+                          if (v != null) {
+                            setDialogState(() {
+                              targetLotCaliber = v;
+                              final calLots = widget.records
+                                  .where((r) => r.caliber == targetLotCaliber)
+                                  .map((r) => r.lotNo.trim())
+                                  .where((l) => l.isNotEmpty)
+                                  .toSet()
+                                  .toList()..sort();
+                              targetLot = calLots.isNotEmpty ? calLots.first : '';
+                            });
+                          }
+                        },
                       ),
+                    ),
+                    Builder(
+                      builder: (ctx) {
+                        final calLots = widget.records
+                            .where((r) => r.caliber == targetLotCaliber)
+                            .map((r) => r.lotNo.trim())
+                            .where((l) => l.isNotEmpty)
+                            .toSet()
+                            .toList()..sort();
+                        final currentLotVal = calLots.contains(targetLot) ? targetLot : (calLots.isNotEmpty ? calLots.first : null);
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 36.0, top: 4.0, bottom: 8.0),
+                          child: DropdownButtonFormField<String>(
+                            value: currentLotVal,
+                            dropdownColor: const Color(0xFF1A1F36),
+                            style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                            decoration: InputDecoration(
+                              labelText: '2. Select Lot Number for $targetLotCaliber',
+                              labelStyle: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                            ),
+                            items: calLots.isNotEmpty
+                                ? calLots.map((l) => DropdownMenuItem(value: l, child: Text('Lot # $l'))).toList()
+                                : [const DropdownMenuItem(value: '', child: Text('No lots found for this caliber', style: TextStyle(color: Colors.grey)))],
+                            onChanged: (v) => setDialogState(() => targetLot = v ?? ''),
+                          ),
+                        );
+                      },
                     ),
                   ],
                   const SizedBox(height: 8.0),
@@ -2360,13 +2412,35 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                   if (exportScope == 'TestType') ...[
                     Padding(
-                      padding: const EdgeInsets.only(left: 36.0, top: 8.0, bottom: 8.0),
+                      padding: const EdgeInsets.only(left: 36.0, top: 8.0, bottom: 4.0),
+                      child: DropdownButtonFormField<String>(
+                        value: uniqueCalibers.contains(targetTestCaliber) ? targetTestCaliber : (uniqueCalibers.isNotEmpty ? uniqueCalibers.first : null),
+                        dropdownColor: const Color(0xFF1A1F36),
+                        style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                        decoration: InputDecoration(
+                          labelText: '1. Select Caliber Specification First',
+                          labelStyle: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                        ),
+                        items: uniqueCalibers.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        onChanged: (v) {
+                          if (v != null) {
+                            setDialogState(() {
+                              targetTestCaliber = v;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 36.0, top: 4.0, bottom: 8.0),
                       child: DropdownButtonFormField<String>(
                         value: targetTest,
                         dropdownColor: const Color(0xFF1A1F36),
                         style: const TextStyle(color: Colors.white, fontSize: 13.0),
                         decoration: InputDecoration(
-                          labelText: 'Select Test Type to Export',
+                          labelText: '2. Select Test Type for $targetTestCaliber',
                           labelStyle: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
@@ -2668,7 +2742,9 @@ class _DashboardTabState extends State<DashboardTab> {
                   shift: exportShift,
                   format: exportFormat,
                   selectedTest: targetTest,
-                  selectedCaliber: targetCaliber,
+                  selectedCaliber: exportScope == 'Lot'
+                      ? targetLotCaliber
+                      : (exportScope == 'TestType' ? targetTestCaliber : targetCaliber),
                   selectedLot: targetLot,
                   incKpis: incKpis,
                   incVolume: incVolume,
@@ -2879,16 +2955,29 @@ class _DashboardTabState extends State<DashboardTab> {
 
     if (scope == 'TestType' && selectedTest != null) {
       exportRecords = records.where((r) => r.testName == selectedTest).toList();
-      reportTitle = '$selectedTest Report';
-      scopeLabel = 'Individual Test: $selectedTest';
+      if (selectedCaliber != null && selectedCaliber.isNotEmpty && selectedCaliber != 'All') {
+        exportRecords = exportRecords.where((r) => r.caliber == selectedCaliber).toList();
+      }
+      reportTitle = selectedCaliber != null && selectedCaliber.isNotEmpty && selectedCaliber != 'All'
+          ? '$selectedCaliber - $selectedTest Report'
+          : '$selectedTest Report';
+      scopeLabel = selectedCaliber != null && selectedCaliber.isNotEmpty && selectedCaliber != 'All'
+          ? 'Individual Test: $selectedTest ($selectedCaliber)'
+          : 'Individual Test: $selectedTest';
     } else if (scope == 'Caliber' && selectedCaliber != null) {
       exportRecords = records.where((r) => r.caliber == selectedCaliber).toList();
       reportTitle = '$selectedCaliber Performance Report';
       scopeLabel = 'Individual Caliber: $selectedCaliber';
     } else if (scope == 'Lot' && selectedLot != null) {
       exportRecords = widget.records.where((r) => r.lotNo.trim() == selectedLot.trim()).toList();
+      if (selectedCaliber != null && selectedCaliber.isNotEmpty && selectedCaliber != 'All') {
+        final filteredByCal = exportRecords.where((r) => r.caliber == selectedCaliber).toList();
+        if (filteredByCal.isNotEmpty) {
+          exportRecords = filteredByCal;
+        }
+      }
       reportTitle = 'Lot $selectedLot Acceptance Dossier';
-      scopeLabel = 'Consolidated Lot: $selectedLot (${exportRecords.length} Tests)';
+      scopeLabel = 'Consolidated Lot: $selectedLot ${selectedCaliber != null && selectedCaliber.isNotEmpty ? "($selectedCaliber)" : ""} (${exportRecords.length} Tests)';
     } else if (scope == 'CaliberVolume') {
       final Map<String, int> counts = {};
       for (var r in exportRecords) {
@@ -3438,27 +3527,62 @@ class _DashboardTabState extends State<DashboardTab> {
 
     if (choice == null) return;
 
-    final totalVolume = caliberCounts.values.fold<int>(0, (sum, val) => sum + val);
-    final sortedEntries = caliberCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sourceRecords = (records != null && records.isNotEmpty) ? records : widget.records;
 
+    // Grouping by caliber specification -> lot number -> total rounds
+    final Map<String, Map<String, int>> breakdown = {};
+    for (final r in sourceRecords) {
+      final cal = r.caliber.trim().isNotEmpty ? r.caliber.trim() : 'Unspecified Caliber';
+      final lot = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'Unassigned Lot';
+      final rounds = r.produced;
+      breakdown.putIfAbsent(cal, () => {});
+      breakdown[cal]![lot] = (breakdown[cal]![lot] ?? 0) + rounds;
+    }
+
+    // Ensure any caliber from caliberCounts is represented
+    for (final entry in caliberCounts.entries) {
+      if (!breakdown.containsKey(entry.key)) {
+        breakdown[entry.key] = {'Total Tested': entry.value};
+      }
+    }
+
+    // Sort calibers alphabetically or by total volume
+    final sortedCalibers = breakdown.keys.toList()
+      ..sort((a, b) {
+        final sumA = breakdown[a]!.values.fold<int>(0, (s, v) => s + v);
+        final sumB = breakdown[b]!.values.fold<int>(0, (s, v) => s + v);
+        return sumB.compareTo(sumA);
+      });
+
+    int grandTotalRounds = 0;
 
     if (choice == 'csv' || choice == 'excel') {
       final buffer = StringBuffer();
-      buffer.writeln('Caliber,Quantity Used');
+      buffer.writeln('Caliber Specification,Lot Number,Rounds Tested per Lot,Sum of All Lots for Caliber');
 
-      for (final entry in sortedEntries) {
-        final cleanCal = entry.key.replaceAll('"', '""');
-        buffer.writeln('"$cleanCal",${entry.value}');
+      for (final cal in sortedCalibers) {
+        final lotMap = breakdown[cal]!;
+        final sortedLots = lotMap.keys.toList()..sort();
+        final calSum = lotMap.values.fold<int>(0, (s, v) => s + v);
+        grandTotalRounds += calSum;
+
+        for (final lot in sortedLots) {
+          final rounds = lotMap[lot]!;
+          final cleanCal = cal.replaceAll('"', '""');
+          final cleanLot = lot.replaceAll('"', '""');
+          buffer.writeln('"$cleanCal","$cleanLot",$rounds,');
+        }
+        final cleanCal = cal.replaceAll('"', '""');
+        buffer.writeln('"$cleanCal - Total","ALL LOTS",$calSum,$calSum');
       }
-      buffer.writeln('"Total",$totalVolume');
+      buffer.writeln('"GRAND TOTAL ACROSS ALL CALIBERS","ALL LOTS",$grandTotalRounds,$grandTotalRounds');
 
-      final filename = 'ompc_caliber_volume_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final filename = 'ompc_caliber_volume_breakdown_${DateTime.now().millisecondsSinceEpoch}.csv';
       await ReportHelper.instance.downloadCsv(content: buffer.toString(), filename: filename);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Exported Caliber Volume CSV: $filename'),
+            content: Text('Exported Caliber Volume Breakdown CSV: $filename'),
             backgroundColor: const Color(0xFF10B981),
           ),
         );
@@ -3466,13 +3590,17 @@ class _DashboardTabState extends State<DashboardTab> {
       return;
     }
 
-    // PDF / HTML Print preview (Only Caliber and Quantity Used without extra data)
+    // PDF / HTML Print preview
+    for (final cal in sortedCalibers) {
+      grandTotalRounds += breakdown[cal]!.values.fold<int>(0, (s, v) => s + v);
+    }
+
     final html = StringBuffer();
     html.writeln('''<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OMPC Ballistic AeroData - Tested Caliber Volume</title>
+  <title>OMPC Ballistic AeroData - Tested Caliber Volume Breakdown</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -3482,7 +3610,7 @@ class _DashboardTabState extends State<DashboardTab> {
       background-color: #f8fafc;
     }
     .container {
-      max-width: 650px;
+      max-width: 820px;
       margin: 0 auto;
       background: #ffffff;
       padding: 32px;
@@ -3500,23 +3628,23 @@ class _DashboardTabState extends State<DashboardTab> {
     }
     .header-title h1 {
       margin: 0;
-      font-size: 18px;
+      font-size: 20px;
       color: #0c2a4d;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .header-title p {
       margin: 3px 0 0 0;
-      font-size: 12px;
+      font-size: 13px;
       color: #64748b;
     }
     .badge {
       background-color: #edf4fc;
       color: #1e6091;
       border: 1px solid #4d99db;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 16px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
     }
     .no-print {
@@ -3539,14 +3667,14 @@ class _DashboardTabState extends State<DashboardTab> {
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 8px;
+      margin-top: 12px;
       font-size: 13px;
     }
     th {
-      background: #edf4fc;
-      color: #0c2a4d;
+      background: #1e3a8a;
+      color: #ffffff;
       padding: 10px 14px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #1e3a8a;
       text-align: left;
       font-weight: 700;
       font-size: 13px;
@@ -3555,28 +3683,43 @@ class _DashboardTabState extends State<DashboardTab> {
       text-align: right;
     }
     td {
-      padding: 10px 14px;
+      padding: 9px 14px;
       border: 1px solid #e2e8f0;
       font-size: 13px;
     }
     td.num {
       text-align: right;
       font-family: monospace;
-      font-weight: bold;
+      font-weight: 600;
       color: #0c2a4d;
       font-size: 13.5px;
     }
-    tr:nth-child(even) {
-      background-color: #f8fafc;
-    }
-    tr.total-row {
-      background-color: #e2e8f0 !important;
-      font-weight: bold;
-      border-top: 2px solid #94a3b8;
-    }
-    tr.total-row td {
+    .caliber-header {
+      background-color: #edf4fc !important;
+      color: #0c2a4d;
+      font-weight: 700;
       font-size: 13.5px;
+      border-top: 2px solid #93c5fd;
+    }
+    .caliber-subtotal {
+      background-color: #f1f5f9 !important;
       font-weight: bold;
+      color: #1e3a8a;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .caliber-subtotal td {
+      font-weight: bold;
+      color: #1e3a8a;
+    }
+    tr.grand-total {
+      background-color: #dbeafe !important;
+      font-weight: bold;
+      border-top: 3px solid #1e3a8a;
+      border-bottom: 3px solid #1e3a8a;
+    }
+    tr.grand-total td {
+      font-size: 14px;
+      font-weight: 800;
       color: #0c2a4d;
     }
     @media print {
@@ -3604,7 +3747,7 @@ class _DashboardTabState extends State<DashboardTab> {
     <div class="header-bar">
       <div class="header-title">
         <h1>OMPC Ballistic AeroData</h1>
-        <p>Tested Caliber Volume</p>
+        <p>Tested Caliber Volume Breakdown (Rounds per Lot & Caliber Sum)</p>
       </div>
       <div class="badge">${widget.currentModule.toUpperCase()}</div>
     </div>
@@ -3612,32 +3755,52 @@ class _DashboardTabState extends State<DashboardTab> {
     <table>
       <thead>
         <tr>
-          <th>Caliber</th>
-          <th class="num">Quantity Used</th>
+          <th>Caliber Specification</th>
+          <th>Lot Number</th>
+          <th class="num">Rounds Tested</th>
+          <th class="num">Caliber Total</th>
         </tr>
       </thead>
       <tbody>''');
 
-    for (final entry in sortedEntries) {
-      final cal = entry.key;
-      final count = entry.value;
+    for (final cal in sortedCalibers) {
+      final lotMap = breakdown[cal]!;
+      final sortedLots = lotMap.keys.toList()..sort();
+      final calSum = lotMap.values.fold<int>(0, (s, v) => s + v);
 
       html.writeln('''
+        <tr class="caliber-header">
+          <td colspan="4">🏷️ <strong>Caliber Specification: $cal</strong></td>
+        </tr>''');
+
+      for (final lot in sortedLots) {
+        final rounds = lotMap[lot]!;
+        html.writeln('''
         <tr>
-          <td><strong>$cal</strong></td>
-          <td class="num">$count</td>
+          <td style="padding-left: 24px; color: #64748b;">$cal</td>
+          <td><strong>Lot # $lot</strong></td>
+          <td class="num">$rounds</td>
+          <td class="num" style="color: #94a3b8;">-</td>
+        </tr>''');
+      }
+
+      html.writeln('''
+        <tr class="caliber-subtotal">
+          <td colspan="2" style="padding-left: 24px;">📊 <strong>Sum of All Lots for $cal</strong></td>
+          <td class="num" style="color: #1e3a8a;"><strong>$calSum</strong></td>
+          <td class="num" style="color: #1e3a8a;"><strong>$calSum rounds</strong></td>
         </tr>''');
     }
 
     html.writeln('''
-        <tr class="total-row">
-          <td>Total</td>
-          <td class="num">$totalVolume</td>
+        <tr class="grand-total">
+          <td colspan="2">🏆 <strong>GRAND TOTAL ACROSS ALL CALIBERS</strong></td>
+          <td class="num" colspan="2"><strong>$grandTotalRounds rounds</strong></td>
         </tr>
       </tbody>
     </table>
     <div style="margin-top: 24px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-      OMPC Ballistic AeroData • ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}
+      OMPC Ballistic AeroData • Generated on ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}
     </div>
   </div>
 </body>
