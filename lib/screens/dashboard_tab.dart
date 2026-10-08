@@ -303,8 +303,8 @@ class _DashboardTabState extends State<DashboardTab> {
     }
     final int activeCalibersCount = caliberCounts.values.where((c) => c > 0).length;
 
-    // Instruction 15: Lot Acceptance tests done based on lot numbers
-    final lotAcceptanceRecords = widget.records
+    // Lot Acceptance tests based on filtered records
+    final lotAcceptanceRecords = filtered
         .where((r) => r.module == 'Lot Acceptance Test' || r.lotNo.trim().isNotEmpty)
         .toList();
     final Set<String> lotAcceptanceLots = lotAcceptanceRecords
@@ -549,17 +549,6 @@ class _DashboardTabState extends State<DashboardTab> {
                         ),
                       ],
                     ),
-                  if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Component Test')
-                    _buildFilterDropdown(
-                      label: widget.currentModule == 'Component Test' ? 'COMPONENT LOT NUMBER' : 'LOT NUMBER',
-                      value: _selectedLot,
-                      items: ['Overall', ...uniqueLots],
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedLot = val!;
-                        });
-                      },
-                    ),
                   _buildFilterDropdown(
                     label: 'CALIBER SPECIFICATION',
                     value: _selectedCaliber,
@@ -580,6 +569,17 @@ class _DashboardTabState extends State<DashboardTab> {
                       });
                     },
                   ),
+                  if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Component Test')
+                    _buildFilterDropdown(
+                      label: widget.currentModule == 'Component Test' ? 'COMPONENT LOT NUMBER' : 'LOT NUMBER',
+                      value: _selectedLot,
+                      items: ['Overall', ...uniqueLots],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedLot = val!;
+                        });
+                      },
+                    ),
                 ],
               ),
             ),
@@ -756,7 +756,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     _buildKpiCard(
                       title: widget.currentModule == 'Component Test' ? 'COMPONENT TESTS' : 'LOT ACCEPTANCE TESTS',
                       value: widget.currentModule == 'Component Test'
-                          ? '${widget.records.length} Tests'
+                          ? '${filtered.length} Tests'
                           : '$lotAcceptanceTestsCount Tests',
                       desc: widget.currentModule == 'Component Test'
                           ? '${uniqueLots.length} unique component lots'
@@ -848,14 +848,14 @@ class _DashboardTabState extends State<DashboardTab> {
             // Charts Card
             LayoutBuilder(
               builder: (context, constraints) {
-                final isDesktop = constraints.maxWidth > 800;
+                final isDesktop = constraints.maxWidth >= 1100;
                 final charts = [
                   _buildChartCard(
                     title: _selectedCaliber != 'All'
                         ? '$_selectedCaliber Test Breakdown'
                         : (_selectedTestName != 'All' ? '$_selectedTestName Metrics' : 'General Performance Trend'),
                     child: _selectedCaliber != 'All'
-                        ? CaliberIndividualChart(records: widget.records, caliber: _selectedCaliber)
+                        ? CaliberIndividualChart(records: filtered, caliber: _selectedCaliber)
                         : TestMetricChart(filteredRecords: filtered, selectedTestName: _selectedTestName),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
                   ),
@@ -946,7 +946,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 const SizedBox(height: 12.0),
                 Expanded(
                   child: TrendLineChart(
-                    records: widget.records,
+                    records: filtered,
                     selectedCaliber: _selectedCaliber,
                     selectedTestType: _selectedTestName,
                     currentModule: widget.currentModule,

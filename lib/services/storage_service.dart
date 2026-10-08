@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:intl/intl.dart';
 import '../models/ballistic_record.dart';
 import 'web_storage_stub.dart'
     if (dart.library.js) 'web_storage_web.dart';
@@ -1248,27 +1249,63 @@ class StorageService {
     if (kIsWeb) saveWebActiveModule(module);
   }
 
-  // Sequential Reference Number Counter for Tests
-  Future<int> getNextReferenceNumber() async {
+  // Sequential Reference Number Counter for Tests - Based on Date of the Report Across All Modules & Tests
+  Future<int> getNextReferenceNumber([DateTime? date]) async {
+    final targetDate = date ?? DateTime.now();
+    final dateStr = DateFormat('yyyy-MM-dd').format(targetDate);
+
+    // Scan existing records across all modules on this date to guarantee no collisions
+    int maxExisting = 0;
+    try {
+      final allRecords = <BallisticRecord>[];
+      final lots = await loadRecords(module: 'Lot Acceptance Test');
+      final daily = await loadRecords(module: 'Daily Test');
+      final comp = await loadRecords(module: 'Component Test');
+      allRecords.addAll(lots);
+      allRecords.addAll(daily);
+      allRecords.addAll(comp);
+
+      for (final r in allRecords) {
+        final ts = r.timestamp.trim();
+        final testTime = r.testTime.trim();
+        bool isSameDate = ts.startsWith(dateStr) || testTime.startsWith(dateStr);
+        if (!isSameDate) {
+          final d = DateTime.tryParse(ts);
+          if (d != null && DateFormat('yyyy-MM-dd').format(d) == dateStr) {
+            isSameDate = true;
+          }
+        }
+        if (isSameDate && r.referenceNo.isNotEmpty) {
+          final match = RegExp(r'\d+').firstMatch(r.referenceNo);
+          if (match != null) {
+            final num = int.tryParse(match.group(0)!) ?? 0;
+            if (num > maxExisting) maxExisting = num;
+          }
+        }
+      }
+    } catch (_) {}
+
     if (kIsWeb) {
-      int current = getWebRefCounter();
+      int current = getWebRefCounterForDate(dateStr);
+      if (maxExisting > current) current = maxExisting;
       current++;
-      saveWebRefCounter(current);
+      saveWebRefCounterForDate(dateStr, current);
       return current;
     }
     try {
       final dirPath = await getDirectoryPath();
-      final file = File('$dirPath/test_reference_counter.json');
+      final file = File('$dirPath/test_reference_counter_$dateStr.json');
       int current = 0;
       if (await file.exists()) {
         final content = await file.readAsString();
         current = int.tryParse(content.trim()) ?? 0;
       }
+      if (maxExisting > current) current = maxExisting;
       current++;
       await file.writeAsString(current.toString(), mode: FileMode.write, flush: true);
       return current;
     } catch (e) {
-      return 1;
+      return maxExisting + 1;
     }
   }
 

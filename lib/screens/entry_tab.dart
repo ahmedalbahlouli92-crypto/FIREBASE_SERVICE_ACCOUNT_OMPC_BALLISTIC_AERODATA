@@ -170,6 +170,8 @@ class _EntryTabState extends State<EntryTab> {
   final _propellantCodeController = TextEditingController(text: 'D-073.4');
   String _primerSupplier = 'CBC';
   String _propellantSupplier = 'Explosia';
+  late final _epvatAdminPropellantSupplierController = TextEditingController(text: _propellantSupplier);
+  late final _epvatAdminPrimerSupplierController = TextEditingController(text: _primerSupplier);
   String? _selectedComponentPrimerLot;
   String? _selectedComponentPropellantLot;
   final List<String> _propellantCodes = const [
@@ -345,7 +347,7 @@ class _EntryTabState extends State<EntryTab> {
   final _customWeaponSNController = TextEditingController();
 
   // Function Test 3-tier weapon selection: Category -> Model -> Serial
-  String _functionSelectedCategory = 'Rifle';
+  String _functionSelectedCategory = '';
   String _functionSelectedModel = '';
   String _functionSelectedSerial = '';
   final _functionCustomModelController = TextEditingController();
@@ -1036,7 +1038,49 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  bool _weaponMatchesCaliber(Map<String, String> w, String currentCaliber) {
+    final wCal = (w['caliber'] ?? '').trim().toLowerCase();
+    final c = currentCaliber.toLowerCase();
+
+    if (wCal.isNotEmpty) {
+      if (wCal == c) return true;
+      if (c.contains('9mm') || c.contains('9x19')) {
+        return wCal.contains('9mm') || wCal.contains('9x19') || wCal.contains('9 mm');
+      }
+      if (c.contains('5.56')) {
+        return wCal.contains('5.56') || wCal.contains('.223');
+      }
+      if (c.contains('7.62')) {
+        return wCal.contains('7.62') || wCal.contains('.308');
+      }
+      if (c.contains('12.7')) {
+        return wCal.contains('12.7') || wCal.contains('.50');
+      }
+      return false;
+    }
+
+    final cat = (w['category'] ?? '').trim().toLowerCase();
+    if (c.contains('9mm') || c.contains('9x19')) {
+      return cat == 'pistol';
+    }
+    if (c.contains('5.56') || c.contains('7.62') || c.contains('12.7')) {
+      return cat == 'rifle' || cat == 'machine gun' || cat == 'carbine';
+    }
+    return true;
+  }
+
+  List<Map<String, String>> get _weaponsForCurrentCaliber {
+    return _fleetWeaponsDetailed.where((w) => _weaponMatchesCaliber(w, _caliber)).toList();
+  }
+
   List<String> get _allowedWeaponCategoriesForCaliber {
+    final cats = _weaponsForCurrentCaliber
+        .map((w) => w['category'] ?? '')
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList();
+    if (cats.isNotEmpty) return cats;
+
     final c = _caliber.toLowerCase();
     if (c.contains('9mm') || c.contains('9x19')) {
       return ['Pistol'];
@@ -1056,6 +1100,7 @@ class _EntryTabState extends State<EntryTab> {
       required String model,
       required String serial,
       required String raw,
+      String caliber = '',
     }) {
       String cleanModel = model
           .replaceAll(RegExp(r'\s*\((Rifle|Machine Gun|Pistol|Carbine|Submachine Gun|Other)\)', caseSensitive: false), '')
@@ -1092,6 +1137,7 @@ class _EntryTabState extends State<EntryTab> {
           'model': cleanModel,
           'serial': cleanSerial,
           'raw': cleanSerial.isNotEmpty ? '$cleanModel (SN: $cleanSerial)' : cleanModel,
+          'caliber': caliber.trim(),
         });
       }
     }
@@ -1106,11 +1152,12 @@ class _EntryTabState extends State<EntryTab> {
           final s = (e['serial'] ?? '').toString().trim();
           final c = (e['category'] ?? '').toString().trim();
           final mfg = (e['manufacturer'] ?? '').toString().trim();
+          final cal = (e['caliber'] ?? '').toString().trim();
           String modelName = m.isNotEmpty ? m : t;
           if (mfg.isNotEmpty && mfg != 'Other' && !modelName.toLowerCase().startsWith(mfg.toLowerCase())) {
             modelName = '$mfg $modelName';
           }
-          addWeaponItem(category: c, model: modelName, serial: s, raw: t.isNotEmpty ? t : modelName);
+          addWeaponItem(category: c, model: modelName, serial: s, raw: t.isNotEmpty ? t : modelName, caliber: cal);
         } else if (e != null && e.toString().trim().isNotEmpty) {
           addWeaponItem(category: '', model: e.toString().trim(), serial: '', raw: e.toString().trim());
         }
@@ -1145,41 +1192,37 @@ class _EntryTabState extends State<EntryTab> {
 
     // Default fleet weapons if none registered
     if (items.isEmpty) {
-      addWeaponItem(category: 'Rifle', model: 'Steyr AUG A3', serial: 'ST-556-01', raw: 'Steyr AUG A3 (SN: ST-556-01)');
-      addWeaponItem(category: 'Rifle', model: 'M4A1 Carbine', serial: 'W-9012', raw: 'M4A1 Carbine (SN: W-9012)');
-      addWeaponItem(category: 'Rifle', model: 'M16A4 Rifle', serial: 'W-9015', raw: 'M16A4 Rifle (SN: W-9015)');
-      addWeaponItem(category: 'Rifle', model: 'G3A3 Rifle', serial: 'W-7721', raw: 'G3A3 Rifle (SN: W-7721)');
-      addWeaponItem(category: 'Machine Gun', model: 'M249 SAW', serial: 'W-4401', raw: 'M249 SAW (SN: W-4401)');
-      addWeaponItem(category: 'Pistol', model: 'Beretta M9 Pistol', serial: 'W-1102', raw: 'Beretta M9 Pistol (SN: W-1102)');
-      addWeaponItem(category: 'Pistol', model: 'Beretta 92FS', serial: 'B-9201', raw: 'Beretta 92FS (SN: B-9201)');
-      addWeaponItem(category: 'Pistol', model: 'Glock 17', serial: 'G-1701', raw: 'Glock 17 (SN: G-1701)');
+      addWeaponItem(category: 'Rifle', model: 'Steyr AUG A3', serial: 'ST-556-01', raw: 'Steyr AUG A3 (SN: ST-556-01)', caliber: '5.56x45 SS109');
+      addWeaponItem(category: 'Rifle', model: 'M4A1 Carbine', serial: 'W-9012', raw: 'M4A1 Carbine (SN: W-9012)', caliber: '5.56x45 M193');
+      addWeaponItem(category: 'Rifle', model: 'M16A4 Rifle', serial: 'W-9015', raw: 'M16A4 Rifle (SN: W-9015)', caliber: '5.56x45 SS109');
+      addWeaponItem(category: 'Rifle', model: 'G3A3 Rifle', serial: 'W-7721', raw: 'G3A3 Rifle (SN: W-7721)', caliber: '7.62x51 M80');
+      addWeaponItem(category: 'Machine Gun', model: 'M249 SAW', serial: 'W-4401', raw: 'M249 SAW (SN: W-4401)', caliber: '5.56x45 SS109');
+      addWeaponItem(category: 'Pistol', model: 'Beretta M9 Pistol', serial: 'W-1102', raw: 'Beretta M9 Pistol (SN: W-1102)', caliber: '9x19mm Para');
+      addWeaponItem(category: 'Pistol', model: 'Beretta 92FS', serial: 'B-9201', raw: 'Beretta 92FS (SN: B-9201)', caliber: '9x19mm Para');
+      addWeaponItem(category: 'Pistol', model: 'Glock 17', serial: 'G-1701', raw: 'Glock 17 (SN: G-1701)', caliber: '9x19mm Para');
     }
 
     return items;
   }
 
   List<String> get _weaponsList {
-    return _fleetWeaponsDetailed.map((w) => w['raw']!).toSet().toList();
+    return _weaponsForCurrentCaliber.map((w) => w['raw']!).toSet().toList();
   }
 
   List<String> _getModelsForCategory(String category) {
-    final models = _fleetWeaponsDetailed
+    if (category.isEmpty) return [];
+    final models = _weaponsForCurrentCaliber
         .where((w) => w['category'] == category)
         .map((w) => w['model']!)
         .where((m) => m.isNotEmpty)
         .toSet()
         .toList();
-    if (models.isEmpty) {
-      if (category == 'Pistol') return ['Beretta 92FS', 'Glock 17', 'Browning HP'];
-      if (category == 'Machine Gun') return ['M249 SAW', 'M60', 'M240'];
-      return ['Steyr AUG A3', 'M16A4 Rifle', 'M4A1 Carbine', 'G3A3 Rifle'];
-    }
     return models;
   }
 
   List<String> _getSerialsForModel(String category, String model) {
-    if (model.isEmpty || model == '[+ Custom Model]') return [];
-    return _fleetWeaponsDetailed
+    if (category.isEmpty || model.isEmpty || model == '[+ Custom Model]') return [];
+    return _weaponsForCurrentCaliber
         .where((w) => w['category'] == category && w['model'] == model && w['serial']!.isNotEmpty)
         .map((w) => w['serial']!)
         .toSet()
@@ -1187,20 +1230,35 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   void _syncFunctionWeaponState({bool resetSelections = false}) {
+    if (resetSelections) {
+      _functionSelectedCategory = '';
+      _functionSelectedModel = '';
+      _functionSelectedSerial = '';
+      _functionWeapon = '';
+      _selectedFunctionWeapons = [];
+      return;
+    }
+
     final allowedCats = _allowedWeaponCategoriesForCaliber;
-    if (!allowedCats.contains(_functionSelectedCategory)) {
-      _functionSelectedCategory = allowedCats.first;
-      resetSelections = true;
+    if (_functionSelectedCategory.isNotEmpty && !allowedCats.contains(_functionSelectedCategory)) {
+      _functionSelectedCategory = '';
+      _functionSelectedModel = '';
+      _functionSelectedSerial = '';
     }
 
-    final models = _getModelsForCategory(_functionSelectedCategory);
-    if (resetSelections || _functionSelectedModel.isEmpty || (!models.contains(_functionSelectedModel) && _functionSelectedModel != '[+ Custom Model]')) {
-      _functionSelectedModel = models.isNotEmpty ? models.first : '[+ Custom Model]';
+    if (_functionSelectedCategory.isNotEmpty) {
+      final models = _getModelsForCategory(_functionSelectedCategory);
+      if (_functionSelectedModel.isNotEmpty && !models.contains(_functionSelectedModel) && _functionSelectedModel != '[+ Custom Model]') {
+        _functionSelectedModel = '';
+        _functionSelectedSerial = '';
+      }
     }
 
-    final serials = _getSerialsForModel(_functionSelectedCategory, _functionSelectedModel);
-    if (resetSelections || _functionSelectedSerial.isEmpty || (!serials.contains(_functionSelectedSerial) && _functionSelectedSerial != '[+ Enter Custom Serial]')) {
-      _functionSelectedSerial = serials.isNotEmpty ? serials.first : '';
+    if (_functionSelectedCategory.isNotEmpty && _functionSelectedModel.isNotEmpty) {
+      final serials = _getSerialsForModel(_functionSelectedCategory, _functionSelectedModel);
+      if (_functionSelectedSerial.isNotEmpty && !serials.contains(_functionSelectedSerial) && _functionSelectedSerial != '[+ Enter Custom Serial]') {
+        _functionSelectedSerial = '';
+      }
     }
 
     final activeModel = _functionSelectedModel == '[+ Custom Model]'
@@ -1210,15 +1268,17 @@ class _EntryTabState extends State<EntryTab> {
         ? _functionCustomSerialController.text.trim()
         : _functionSelectedSerial;
 
-    final composed = activeSerial.isNotEmpty
+    final composed = (activeModel.isNotEmpty && activeSerial.isNotEmpty)
         ? '$activeModel (SN: $activeSerial)'
         : activeModel;
 
     if (composed.isNotEmpty) {
       _functionWeapon = composed;
-      if (_selectedFunctionWeapons.isEmpty || (_selectedFunctionWeapons.length == 1 && resetSelections)) {
+      if (_selectedFunctionWeapons.isEmpty || (_selectedFunctionWeapons.length == 1 && _selectedFunctionWeapons.first != composed)) {
         _selectedFunctionWeapons = [composed];
       }
+    } else {
+      _functionWeapon = '';
     }
   }
 
@@ -1531,6 +1591,16 @@ class _EntryTabState extends State<EntryTab> {
         return false;
       }
     } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+      if (_propellantChargeController.text.trim().isEmpty) {
+        notifyMissing('Powder Charge in Gram');
+        return false;
+      }
+      if (double.tryParse(_propellantChargeController.text.trim()) == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Powder Charge must be a valid number in grams.'), backgroundColor: Colors.red),
+        );
+        return false;
+      }
       if (_testName == 'Propellant Test') {
         if (_propellantSupplier.isEmpty) {
           notifyMissing('Propellant Supplier');
@@ -1538,16 +1608,6 @@ class _EntryTabState extends State<EntryTab> {
         }
         if (_propellantCodeController.text.trim().isEmpty) {
           notifyMissing('Powder Code');
-          return false;
-        }
-        if (_propellantChargeController.text.trim().isEmpty) {
-          notifyMissing('Powder Charge in Gram');
-          return false;
-        }
-        if (double.tryParse(_propellantChargeController.text.trim()) == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Powder Charge must be a valid number in grams.'), backgroundColor: Colors.red),
-          );
           return false;
         }
         if (_propellantLotController.text.trim().isEmpty) {
@@ -1660,7 +1720,7 @@ class _EntryTabState extends State<EntryTab> {
                       ? (_customWeaponSNController.text.trim().isNotEmpty
                           ? '${_customWeaponTypeController.text.trim()} (SN: ${_customWeaponSNController.text.trim()})'
                           : _customWeaponTypeController.text.trim())
-                      : (_weaponsList.isNotEmpty ? _weaponsList.first : ''))));
+                      : '')));
       if (effectiveWeapon.trim().isEmpty) {
         jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type & Serial');
         return false;
@@ -2531,17 +2591,9 @@ class _EntryTabState extends State<EntryTab> {
     if (_epvatSensor2Controller.text.isEmpty && _gp2Transducers.isNotEmpty) {
       _epvatSensor2Controller.text = _gp2Transducers.first;
     }
-    if (_weaponsList.isNotEmpty) {
-      if (_selectedRegisteredWeapon.isEmpty) {
-        _selectedRegisteredWeapon = _weaponsList.first;
-      }
-      if (_functionWeapon.isEmpty) {
-        _functionWeapon = _weaponsList.first;
-      }
-      if (_selectedFunctionWeapons.isEmpty) {
-        _selectedFunctionWeapons = [_weaponsList.first];
-      }
-    }
+    _selectedRegisteredWeapon = '';
+    _functionWeapon = '';
+    _selectedFunctionWeapons = [];
     _syncFunctionWeaponState(resetSelections: true);
     
     // Initialize test date and time locked to opening time (allows manual edit or defaults to submission time)
@@ -2668,6 +2720,49 @@ class _EntryTabState extends State<EntryTab> {
     });
   }
 
+  @override
+  void didUpdateWidget(covariant EntryTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.loggedInUser != widget.loggedInUser) {
+      _operatorsController.text = widget.loggedInUser;
+    }
+    if (oldWidget.currentModule != widget.currentModule) {
+      final allowed = _allowedTestsForCaliber(_caliber);
+      if (allowed.isNotEmpty) {
+        final newTest = allowed.first;
+        setState(() {
+          _testName = newTest;
+          _locationController.text = _getDefaultSamplingLocation(
+            module: widget.currentModule,
+            test: newTest,
+          );
+        });
+        widget.onTestNameChanged(newTest);
+      }
+    }
+    if (oldWidget.adminRules != widget.adminRules) {
+      _syncFunctionWeaponState();
+      if (_accuracyBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_accuracyBarrels.contains(_barrelSNController.text))) {
+        if (_testName == 'Accuracy Test') _barrelSNController.text = _accuracyBarrels.first;
+      }
+      if (_epvatBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_epvatBarrels.contains(_barrelSNController.text))) {
+        if (_testName == 'EPVAT test') _barrelSNController.text = _epvatBarrels.first;
+      }
+      if (_gp1Transducers.isNotEmpty && (_epvatSensor1Controller.text.isEmpty || !_gp1Transducers.contains(_epvatSensor1Controller.text))) {
+        _epvatSensor1Controller.text = _gp1Transducers.first;
+      }
+      if (_gp6Serials.isNotEmpty && (_gp6SerialController.text.isEmpty || !_gp6Serials.contains(_gp6SerialController.text))) {
+        _gp6SerialController.text = _gp6Serials.first;
+      }
+      if (_gp2Transducers.isNotEmpty && (_epvatSensor2Controller.text.isEmpty || !_gp2Transducers.contains(_epvatSensor2Controller.text))) {
+        _epvatSensor2Controller.text = _gp2Transducers.first;
+      }
+      if (_barrelSerialNumbers.isNotEmpty && (_terminalBarrelSNController.text.isEmpty || !_barrelSerialNumbers.contains(_terminalBarrelSNController.text))) {
+        _terminalBarrelSNController.text = _barrelSerialNumbers.first;
+      }
+    }
+  }
+
   void _calculateRange(TextEditingController maxCtrl, TextEditingController minCtrl, TextEditingController rangeCtrl) {
     final maxVal = double.tryParse(maxCtrl.text.trim());
     final minVal = double.tryParse(minCtrl.text.trim());
@@ -2708,52 +2803,7 @@ class _EntryTabState extends State<EntryTab> {
     }
   }
 
-  @override
-  void didUpdateWidget(covariant EntryTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.loggedInUser != widget.loggedInUser) {
-      _operatorsController.text = widget.loggedInUser;
-    }
-    if (oldWidget.currentModule != widget.currentModule) {
-      if ((widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') && (_testName == 'Primer Sensitivity Test' || _testName == 'Propellant Test')) {
-        setState(() {
-          _testName = 'Waterproof Test';
-        });
-      }
-      _locationController.text = _getDefaultSamplingLocation(
-        module: widget.currentModule,
-        test: _testName,
-      );
-    }
-    if (oldWidget.adminRules != widget.adminRules) {
-      _syncFunctionWeaponState();
-      if (_weaponsList.isNotEmpty && (_selectedRegisteredWeapon.isEmpty || !_weaponsList.contains(_selectedRegisteredWeapon))) {
-        _selectedRegisteredWeapon = _weaponsList.first;
-        if (_selectedFunctionWeapons.isEmpty) {
-          _selectedFunctionWeapons = [_weaponsList.first];
-          _functionWeapon = _weaponsList.first;
-        }
-      }
-      if (_accuracyBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_accuracyBarrels.contains(_barrelSNController.text))) {
-        if (_testName == 'Accuracy Test') _barrelSNController.text = _accuracyBarrels.first;
-      }
-      if (_epvatBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_epvatBarrels.contains(_barrelSNController.text))) {
-        if (_testName == 'EPVAT test') _barrelSNController.text = _epvatBarrels.first;
-      }
-      if (_gp1Transducers.isNotEmpty && (_epvatSensor1Controller.text.isEmpty || !_gp1Transducers.contains(_epvatSensor1Controller.text))) {
-        _epvatSensor1Controller.text = _gp1Transducers.first;
-      }
-      if (_gp6Serials.isNotEmpty && (_gp6SerialController.text.isEmpty || !_gp6Serials.contains(_gp6SerialController.text))) {
-        _gp6SerialController.text = _gp6Serials.first;
-      }
-      if (_gp2Transducers.isNotEmpty && (_epvatSensor2Controller.text.isEmpty || !_gp2Transducers.contains(_epvatSensor2Controller.text))) {
-        _epvatSensor2Controller.text = _gp2Transducers.first;
-      }
-      if (_barrelSerialNumbers.isNotEmpty && (_terminalBarrelSNController.text.isEmpty || !_barrelSerialNumbers.contains(_terminalBarrelSNController.text))) {
-        _terminalBarrelSNController.text = _barrelSerialNumbers.first;
-      }
-    }
-  }
+
 
   @override
   void dispose() {
@@ -2766,6 +2816,8 @@ class _EntryTabState extends State<EntryTab> {
     _propellantLotController.dispose();
     _propellantChargeController.dispose();
     _propellantCodeController.dispose();
+    _epvatAdminPropellantSupplierController.dispose();
+    _epvatAdminPrimerSupplierController.dispose();
     _lotThreeDigitsController.dispose();
     _lotYearController.dispose();
     _producedController.dispose();
@@ -4912,29 +4964,37 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ),
                           ]),
-                          const SizedBox(height: 4.0),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Table(
-                              defaultColumnWidth: const FixedColumnWidth(120.0),
-                              columnWidths: const {
-                                0: FixedColumnWidth(50.0),   // Round #
-                                1: FixedColumnWidth(160.0),  // Hole Diameter
-                                2: FixedColumnWidth(130.0),  // Steel Penetration
-                                3: FixedColumnWidth(130.0),  // Aluminum Penetration
-                                4: FixedColumnWidth(120.0),  // Velocity (m/s)
-                              },
-                              children: [
-                                // Table Header
-                                TableRow(
-                                  children: const [
-                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Round', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Hole > Bullet?', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Steel Penetration', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Alum Penetration', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                  ],
-                                ),
+                          Builder(builder: (context) {
+                            final termRules = (widget.adminRules['terminal_effect'] is Map) ? widget.adminRules['terminal_effect'] as Map : {};
+                            final p1Mat = (termRules['plate1_material'] ?? 'Steel').toString().trim();
+                            final p1Thick = (termRules['plate1_thickness'] ?? '3.5 mm').toString().trim();
+                            final p2Mat = (termRules['plate2_material'] ?? 'Aluminum').toString().trim();
+                            final p2Thick = (termRules['plate2_thickness'] ?? '0.5 mm').toString().trim();
+                            final p1Header = '$p1Mat ($p1Thick)';
+                            final p2Header = '$p2Mat ($p2Thick)';
+
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Table(
+                                defaultColumnWidth: const FixedColumnWidth(120.0),
+                                columnWidths: const {
+                                  0: FixedColumnWidth(50.0),   // Round #
+                                  1: FixedColumnWidth(150.0),  // Hole Diameter
+                                  2: FixedColumnWidth(150.0),  // Plate 1 Penetration
+                                  3: FixedColumnWidth(150.0),  // Plate 2 Penetration
+                                  4: FixedColumnWidth(120.0),  // Velocity (m/s)
+                                },
+                                children: [
+                                  // Table Header
+                                  TableRow(
+                                    children: [
+                                      const Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Round', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      const Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Hole > Bullet?', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('$p1Header Penetration', style: const TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('$p2Header Penetration', style: const TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      const Padding(padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0), child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    ],
+                                  ),
                                 // Table Rows
                                 ...List.generate(_getTerminalVisibleRounds(), (idx) {
                                   while (_terminalHoleDiameterRounds.length <= idx) {
@@ -5040,7 +5100,8 @@ class _EntryTabState extends State<EntryTab> {
                                 }),
                               ],
                             ),
-                          ),
+                          );
+                        }),
                         ],
                       ),
                     ),
@@ -5623,9 +5684,9 @@ class _EntryTabState extends State<EntryTab> {
                                       Row(
                                         children: [
                                           const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                          Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'P1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                          Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP6 (1) Chamber', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           if (!_isCaliber9mm)
-                                            const Expanded(flex: 2, child: Text('P2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                            const Expanded(flex: 2, child: Text('GP6 (2) Port', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                           const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                         ],
@@ -5711,7 +5772,7 @@ class _EntryTabState extends State<EntryTab> {
                                     // Compact Table for Summary Statistics
                                     _buildEpvatTableHeader(),
                                     _buildEpvatMetricTableRow(
-                                      parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'GP1 Pres. ($_epvatPressureUnit)',
+                                      parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'GP6 (1) Chamber ($_epvatPressureUnit)',
                                       meanCtrl: _overallEpvatControllers[t]!['p1_mean']!,
                                       maxCtrl: _overallEpvatControllers[t]!['p1_max']!,
                                       minCtrl: _overallEpvatControllers[t]!['p1_min']!,
@@ -5721,7 +5782,7 @@ class _EntryTabState extends State<EntryTab> {
                                     ),
                                     if (!_isCaliber9mm)
                                       _buildEpvatMetricTableRow(
-                                        parameterName: 'GP2 (Port) Pres. ($_epvatPressureUnit)',
+                                        parameterName: 'GP6 (2) Port ($_epvatPressureUnit)',
                                         meanCtrl: _overallEpvatControllers[t]!['p2_mean']!,
                                         maxCtrl: _overallEpvatControllers[t]!['p2_max']!,
                                         minCtrl: _overallEpvatControllers[t]!['p2_min']!,
@@ -5814,9 +5875,9 @@ class _EntryTabState extends State<EntryTab> {
                                 Row(
                                   children: [
                                     const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'P1 (Chamber) Pres.', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP6 (1) Chamber', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     if (!_isCaliber9mm)
-                                      const Expanded(flex: 2, child: Text('P2 (Port) Pres.', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      const Expanded(flex: 2, child: Text('GP6 (2) Port', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                   ],
@@ -5888,7 +5949,7 @@ class _EntryTabState extends State<EntryTab> {
                                 const SizedBox(height: 6.0),
                                 _buildEpvatTableHeader(),
                                 _buildEpvatMetricTableRow(
-                                  parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'P1 Pres. ($_epvatPressureUnit)',
+                                  parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'GP6 (1) Chamber ($_epvatPressureUnit)',
                                   meanCtrl: _epvatMeanPressureController,
                                   maxCtrl: _epvatMaxPressureController,
                                   minCtrl: _epvatMinPressureController,
@@ -5898,7 +5959,7 @@ class _EntryTabState extends State<EntryTab> {
                                 ),
                                 if (!_isCaliber9mm)
                                   _buildEpvatMetricTableRow(
-                                    parameterName: 'P2 Pres. ($_epvatPressureUnit)',
+                                    parameterName: 'GP6 (2) Port ($_epvatPressureUnit)',
                                     meanCtrl: _epvatP2MeanPressureController,
                                     maxCtrl: _epvatP2MaxPressureController,
                                     minCtrl: _epvatP2MinPressureController,
@@ -6147,8 +6208,8 @@ class _EntryTabState extends State<EntryTab> {
         final width = constraints.maxWidth;
         final count = children.length;
 
-        if (lockSingleRow) {
-          final rowWidget = Row(
+        if (lockSingleRow && width >= (count * 125.0).clamp(550.0, 1920.0)) {
+          return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (int i = 0; i < count; i++) ...[
@@ -6160,17 +6221,6 @@ class _EntryTabState extends State<EntryTab> {
               ],
             ],
           );
-
-          if (width < 960) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: 980.0,
-                child: rowWidget,
-              ),
-            );
-          }
-          return rowWidget;
         }
 
         // Desktop single row if wide enough for all fields (min 130px per field, or >= 750px)
@@ -6437,16 +6487,16 @@ class _EntryTabState extends State<EntryTab> {
     final allowedCats = _allowedWeaponCategoriesForCaliber;
     final currentCat = allowedCats.contains(_functionSelectedCategory)
         ? _functionSelectedCategory
-        : allowedCats.first;
+        : '';
 
     final modelsInCat = _getModelsForCategory(currentCat);
     final modelDropdownItems = <String>[
       ...modelsInCat,
       '[+ Custom Model]',
     ];
-    final currentModel = modelDropdownItems.contains(_functionSelectedModel)
+    final currentModel = currentCat.isNotEmpty && modelDropdownItems.contains(_functionSelectedModel)
         ? _functionSelectedModel
-        : (modelDropdownItems.isNotEmpty ? modelDropdownItems.first : '[+ Custom Model]');
+        : '';
 
     final registeredSerials = _getSerialsForModel(currentCat, currentModel);
     final hasRegisteredSerials = registeredSerials.isNotEmpty;
@@ -6459,7 +6509,7 @@ class _EntryTabState extends State<EntryTab> {
     if (hasRegisteredSerials && _functionSelectedSerial != '[+ Enter Custom Serial]') {
       activeSerial = serialDropdownItems.contains(_functionSelectedSerial)
           ? _functionSelectedSerial
-          : registeredSerials.first;
+          : '';
     } else {
       activeSerial = _functionCustomSerialController.text.trim();
     }
@@ -6536,14 +6586,14 @@ class _EntryTabState extends State<EntryTab> {
                 focusNode: _weaponFocusNode,
                 value: currentCat,
                 items: allowedCats,
+                allowEmpty: true,
+                hintText: '-- Select Weapon Type --',
                 onChanged: (v) {
                   if (v != null) {
                     setState(() {
                       _functionSelectedCategory = v;
-                      final models = _getModelsForCategory(_functionSelectedCategory);
-                      _functionSelectedModel = models.isNotEmpty ? models.first : '[+ Custom Model]';
-                      final serials = _getSerialsForModel(_functionSelectedCategory, _functionSelectedModel);
-                      _functionSelectedSerial = serials.isNotEmpty ? serials.first : '';
+                      _functionSelectedModel = '';
+                      _functionSelectedSerial = '';
                       _syncFunctionWeaponState();
                     });
                   }
@@ -6553,17 +6603,18 @@ class _EntryTabState extends State<EntryTab> {
             // 2. Weapon Model
             _buildFlexibleField(
               flex: 3,
-              label: '$currentCat Model (Fleet)',
+              label: currentCat.isNotEmpty ? '$currentCat Model (Fleet)' : 'Weapon Model',
               isRequired: true,
               child: _buildDropdownField(
                 value: currentModel,
-                items: modelDropdownItems,
-                onChanged: (v) {
+                items: currentCat.isNotEmpty ? modelDropdownItems : const [],
+                allowEmpty: true,
+                hintText: currentCat.isEmpty ? '-- Select Type First --' : '-- Select Weapon Model --',
+                onChanged: currentCat.isEmpty ? null : (v) {
                   if (v != null) {
                     setState(() {
                       _functionSelectedModel = v;
-                      final serials = _getSerialsForModel(_functionSelectedCategory, _functionSelectedModel);
-                      _functionSelectedSerial = serials.isNotEmpty ? serials.first : '';
+                      _functionSelectedSerial = '';
                       _syncFunctionWeaponState();
                     });
                   }
@@ -6578,12 +6629,12 @@ class _EntryTabState extends State<EntryTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (hasRegisteredSerials && _functionSelectedSerial != '[+ Enter Custom Serial]')
+                  if (currentModel.isNotEmpty && hasRegisteredSerials && _functionSelectedSerial != '[+ Enter Custom Serial]')
                     _buildDropdownField(
-                      value: serialDropdownItems.contains(_functionSelectedSerial)
-                          ? _functionSelectedSerial
-                          : serialDropdownItems.first,
+                      value: _functionSelectedSerial,
                       items: serialDropdownItems,
+                      allowEmpty: true,
+                      hintText: '-- Select Serial --',
                       onChanged: (v) {
                         if (v != null) {
                           setState(() {
@@ -6596,7 +6647,8 @@ class _EntryTabState extends State<EntryTab> {
                   else
                     _buildTextField(
                       controller: _functionCustomSerialController,
-                      hint: hasRegisteredSerials ? 'Enter custom SN' : 'e.g., SN-001',
+                      hint: hasRegisteredSerials ? 'Enter custom SN' : (currentModel.isEmpty ? 'Select model first' : 'e.g., SN-001'),
+                      readOnly: currentModel.isEmpty,
                       onChanged: (val) {
                         setState(() {
                           _syncFunctionWeaponState();
@@ -7734,12 +7786,19 @@ class _EntryTabState extends State<EntryTab> {
     required List<String> items,
     required void Function(String?)? onChanged,
     FocusNode? focusNode,
+    bool allowEmpty = false,
+    String? hintText,
   }) {
+    final String? selectedValue = items.contains(value)
+        ? value
+        : (allowEmpty ? null : (items.isNotEmpty ? items.first : null));
+
     return DropdownButtonFormField<String>(
-      value: items.contains(value) ? value : (items.isNotEmpty ? items.first : null),
+      value: selectedValue,
       focusNode: focusNode,
       isExpanded: true,
       onChanged: onChanged,
+      hint: hintText != null ? Text(hintText, style: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0)) : null,
       style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5, fontWeight: FontWeight.w500),
       dropdownColor: const Color(0xFFE0F2FE),
       icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF31B9F6), size: 20.0),
@@ -9910,11 +9969,7 @@ class _EntryTabState extends State<EntryTab> {
         primerLotOptions.insert(0, _primerLotController.text.trim());
       }
 
-      // If still empty, provide standard defaults based on supplier
-      if (primerLotOptions.isEmpty) {
-        final sup = _primerSupplier.isNotEmpty ? _primerSupplier : 'CBC';
-        primerLotOptions.addAll(['$sup-2026-01', '$sup-2026-02', '$sup-2026-03']);
-      }
+
 
       if (_primerLotController.text.trim().isEmpty && primerLotOptions.isNotEmpty) {
         _primerLotController.text = primerLotOptions.first;
@@ -9978,48 +10033,82 @@ class _EntryTabState extends State<EntryTab> {
             ),
             _buildFlexibleField(
               flex: 2,
-              label: 'Propellant',
+              label: 'Powder Charge (g)',
               isRequired: true,
-              child: _buildDropdownField(
-                value: _propellantSuppliers.contains(_propellantSupplier)
-                    ? _propellantSupplier
-                    : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
-                items: _propellantSuppliers,
-                onChanged: (v) {
-                  if (v != null) {
-                    setState(() {
-                      _propellantSupplier = v;
-                      final codes = _currentSupplierPropellantCodes;
-                      if (codes.isNotEmpty && codes.first != 'Other') {
-                        _propellantCodeController.text = codes.first;
-                      }
-                    });
-                  }
+              child: _buildTextField(
+                controller: _propellantChargeController,
+                hint: 'e.g. 1.75',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (double.tryParse(v) == null) return 'Number';
+                  return null;
                 },
               ),
             ),
             _buildFlexibleField(
               flex: 2,
+              label: 'Propellant',
+              isRequired: true,
+              child: _isAdmin
+                  ? _buildTextField(
+                      controller: _epvatAdminPropellantSupplierController,
+                      hint: 'Supplier',
+                      onChanged: (v) {
+                        _propellantSupplier = v;
+                      },
+                    )
+                  : _buildDropdownField(
+                      value: _propellantSuppliers.contains(_propellantSupplier)
+                          ? _propellantSupplier
+                          : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
+                      items: _propellantSuppliers,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _propellantSupplier = v;
+                            _epvatAdminPropellantSupplierController.text = v;
+                            final codes = _currentSupplierPropellantCodes;
+                            if (codes.isNotEmpty && codes.first != 'Other') {
+                              _propellantCodeController.text = codes.first;
+                            }
+                          });
+                        }
+                      },
+                    ),
+            ),
+            _buildFlexibleField(
+              flex: 2,
               label: 'Propellant Code',
               isRequired: true,
-              child: _buildDropdownField(
-                value: _currentSupplierPropellantCodes.contains(_propellantCodeController.text.trim())
-                    ? _propellantCodeController.text.trim()
-                    : (_currentSupplierPropellantCodes.isNotEmpty ? _currentSupplierPropellantCodes.first : 'Other'),
-                items: _currentSupplierPropellantCodes,
-                onChanged: (v) {
-                  if (v != null && v != 'Other') {
-                    setState(() => _propellantCodeController.text = v);
-                  }
-                },
-              ),
+              child: _isAdmin
+                  ? _buildTextField(
+                      controller: _propellantCodeController,
+                      hint: 'Code',
+                    )
+                  : _buildDropdownField(
+                      value: _currentSupplierPropellantCodes.contains(_propellantCodeController.text.trim())
+                          ? _propellantCodeController.text.trim()
+                          : (_currentSupplierPropellantCodes.isNotEmpty ? _currentSupplierPropellantCodes.first : 'Other'),
+                      items: _currentSupplierPropellantCodes,
+                      onChanged: (v) {
+                        if (v != null && v != 'Other') {
+                          setState(() => _propellantCodeController.text = v);
+                        }
+                      },
+                    ),
             ),
             _buildFlexibleField(
               flex: 3,
               label: 'Propellant Lot No.',
               isRequired: true,
-              child: propellantLotOptions.isNotEmpty
-                  ? DropdownButtonFormField<String>(
+              child: (_isAdmin || propellantLotOptions.isEmpty)
+                  ? _buildTextField(
+                      controller: _propellantLotController,
+                      hint: 'e.g. 90124',
+                      keyboardType: TextInputType.text,
+                    )
+                  : DropdownButtonFormField<String>(
                       value: propellantLotOptions.contains(_propellantLotController.text.trim())
                           ? _propellantLotController.text.trim()
                           : propellantLotOptions.first,
@@ -10043,80 +10132,92 @@ class _EntryTabState extends State<EntryTab> {
                           });
                         }
                       },
-                    )
-                  : _buildTextField(
-                      controller: _propellantLotController,
-                      hint: 'e.g. 90124',
-                      keyboardType: TextInputType.text,
                     ),
             ),
             _buildFlexibleField(
               flex: 2,
               label: 'Primer Supplier',
               isRequired: true,
-              child: _buildDropdownField(
-                value: _primerSuppliers.contains(_primerSupplier)
-                    ? _primerSupplier
-                    : (_primerSuppliers.isNotEmpty ? _primerSuppliers.first : ''),
-                items: _primerSuppliers,
-                onChanged: (v) {
-                  if (v != null) {
-                    setState(() {
-                      _primerSupplier = v;
-                      final subMatching = widget.componentPrimerRecords.where((r) {
-                        final matchesCaliber = _isSameCaliberFamily(r.caliber, _caliber);
-                        return matchesCaliber && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
-                      }).toList();
-                      final subLots = subMatching
-                          .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
-                          .where((l) => l.isNotEmpty)
-                          .toSet()
-                          .toList();
-                      if (subLots.isEmpty) {
-                        final fromHist = widget.records.where((r) {
-                          return _isSameCaliberFamily(r.caliber, _caliber) && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
-                        }).map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber).where((l) => l.isNotEmpty).toSet().toList();
-                        subLots.addAll(fromHist);
-                      }
-                      if (subLots.isEmpty) {
-                        subLots.addAll(['$v-2026-01', '$v-2026-02']);
-                      }
-                      _selectedComponentPrimerLot = subLots.first;
-                      _primerLotController.text = subLots.first;
-                    });
-                  }
-                },
-              ),
+              child: _isAdmin
+                  ? _buildTextField(
+                      controller: _epvatAdminPrimerSupplierController,
+                      hint: 'Supplier',
+                      onChanged: (v) {
+                        _primerSupplier = v;
+                      },
+                    )
+                  : _buildDropdownField(
+                      value: _primerSuppliers.contains(_primerSupplier)
+                          ? _primerSupplier
+                          : (_primerSuppliers.isNotEmpty ? _primerSuppliers.first : ''),
+                      items: _primerSuppliers,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _primerSupplier = v;
+                            _epvatAdminPrimerSupplierController.text = v;
+                            final subMatching = widget.componentPrimerRecords.where((r) {
+                              final matchesCaliber = _isSameCaliberFamily(r.caliber, _caliber);
+                              return matchesCaliber && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
+                            }).toList();
+                            final subLots = subMatching
+                                .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
+                                .where((l) => l.isNotEmpty)
+                                .toSet()
+                                .toList();
+                            if (subLots.isEmpty) {
+                              final fromHist = widget.records.where((r) {
+                                return _isSameCaliberFamily(r.caliber, _caliber) && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
+                              }).map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber).where((l) => l.isNotEmpty).toSet().toList();
+                              subLots.addAll(fromHist);
+                            }
+                            if (subLots.isNotEmpty) {
+                              _selectedComponentPrimerLot = subLots.first;
+                              _primerLotController.text = subLots.first;
+                            } else {
+                              _selectedComponentPrimerLot = '';
+                              _primerLotController.clear();
+                            }
+                          });
+                        }
+                      },
+                    ),
             ),
             _buildFlexibleField(
               flex: 3,
               label: 'Primer Lot',
               isRequired: true,
-              child: DropdownButtonFormField<String>(
-                value: primerLotOptions.contains(_primerLotController.text.trim())
-                    ? _primerLotController.text.trim()
-                    : (primerLotOptions.isNotEmpty ? primerLotOptions.first : null),
-                isExpanded: true,
-                dropdownColor: const Color(0xFFE0F2FE),
-                style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  isDense: true,
-                  filled: true,
-                  fillColor: const Color(0xFFE0F2FE),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                ),
-                items: primerLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-                onChanged: (v) {
-                  if (v != null) {
-                    setState(() {
-                      _selectedComponentPrimerLot = v;
-                      _primerLotController.text = v;
-                    });
-                  }
-                },
-              ),
+              child: (_isAdmin || primerLotOptions.isEmpty)
+                  ? _buildTextField(
+                      controller: _primerLotController,
+                      hint: 'e.g. P-2026',
+                      keyboardType: TextInputType.text,
+                    )
+                  : DropdownButtonFormField<String>(
+                      value: primerLotOptions.contains(_primerLotController.text.trim())
+                          ? _primerLotController.text.trim()
+                          : (primerLotOptions.isNotEmpty ? primerLotOptions.first : null),
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFFE0F2FE),
+                      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        filled: true,
+                        fillColor: const Color(0xFFE0F2FE),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
+                      ),
+                      items: primerLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _selectedComponentPrimerLot = v;
+                            _primerLotController.text = v;
+                          });
+                        }
+                      },
+                    ),
             ),
           ], lockSingleRow: true),
           const SizedBox(height: 14.0),

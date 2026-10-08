@@ -616,9 +616,11 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
                                       decoration: _inputDecoration(),
                                       items: const [
                                         DropdownMenuItem(value: 'Open / Reported', child: Text('Open / Reported')),
+                                        DropdownMenuItem(value: 'Under Process', child: Text('Under Process')),
                                         DropdownMenuItem(value: 'Under Repair', child: Text('Under Repair')),
                                         DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
                                         DropdownMenuItem(value: 'Calibrated', child: Text('Calibrated')),
+                                        DropdownMenuItem(value: 'Closed', child: Text('Closed')),
                                       ],
                                       onChanged: (v) => setState(() => _selectedStatus = v!),
                                     ),
@@ -773,8 +775,8 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
                                 final issue = filteredList[idx];
                                 final status = (issue['status'] ?? 'Open').toString();
                                 final isResolved = status.contains('Resolved') || status.contains('Calibrated') || status.contains('Closed');
-                                final isLocked = status == 'Resolved' || status == 'Calibrated' || status == 'Closed';
-                                final isRepair = status.contains('Repair');
+                                final isLocked = (status == 'Resolved' || status == 'Calibrated' || status == 'Closed') && !widget.isAdmin;
+                                final isRepair = status.contains('Repair') || status.contains('Process');
 
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -890,11 +892,12 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
                                                   ),
                                                 ] else ...[
                                                   DropdownButton<String>(
-                                                    value: ['Open / Reported', 'Under Repair', 'Resolved', 'Calibrated', 'Closed'].contains(status) ? status : 'Open / Reported',
+                                                    value: ['Open / Reported', 'Under Process', 'Under Repair', 'Resolved', 'Calibrated', 'Closed'].contains(status) ? status : 'Open / Reported',
                                                     underline: const SizedBox(),
                                                     style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
                                                     items: const [
                                                       DropdownMenuItem(value: 'Open / Reported', child: Text('Open / Reported')),
+                                                      DropdownMenuItem(value: 'Under Process', child: Text('Under Process')),
                                                       DropdownMenuItem(value: 'Under Repair', child: Text('Under Repair')),
                                                       DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
                                                       DropdownMenuItem(value: 'Calibrated', child: Text('Calibrated')),

@@ -879,53 +879,57 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14.0),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 960.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Table Header with 4 defined columns
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  color: const Color(0xFFF1F6FB),
-                  child: const Row(
-                    children: [
-                      SizedBox(
-                        width: 250.0,
-                        child: Text(
-                          'ITEM NAME',
-                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
-                        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 750;
+            return SingleChildScrollView(
+              scrollDirection: isNarrow ? Axis.horizontal : Axis.vertical,
+              physics: isNarrow ? null : const NeverScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: isNarrow ? 750.0 : constraints.maxWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Table Header with responsive fluid flex columns
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                      color: const Color(0xFFF1F6FB),
+                      child: const Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'ITEM NAME',
+                              style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                            ),
+                          ),
+                          SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'SERIAL NUMBER',
+                              style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                            ),
+                          ),
+                          SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'AVAILABLE STOCK',
+                              style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                            ),
+                          ),
+                          SizedBox(width: 12.0),
+                          Expanded(
+                            flex: 5,
+                            child: Text(
+                              'CONSUMPTION ACTION (Caliber | Quantity | Remark | Submit)',
+                              style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 12.0),
-                      SizedBox(
-                        width: 150.0,
-                        child: Text(
-                          'SERIAL NUMBER',
-                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
-                        ),
-                      ),
-                      SizedBox(width: 12.0),
-                      SizedBox(
-                        width: 160.0,
-                        child: Text(
-                          'AVAILABLE STOCK',
-                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
-                        ),
-                      ),
-                      SizedBox(width: 12.0),
-                      SizedBox(
-                        width: 440.0,
-                        child: Text(
-                          'CONSUMPTION ACTION (Caliber | Quantity | Remark | Submit)',
-                          style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 11.5, letterSpacing: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
                 const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
                 // Item Rows
                 ...items.asMap().entries.map((entry) {
@@ -933,13 +937,15 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                   final item = entry.value;
                   return _buildItemRow(item, index);
                 }).toList(),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildItemRow(Map<String, dynamic> item, int index) {
     final key = _getItemKey(item);
@@ -975,8 +981,8 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Column 1: Item Name
-          SizedBox(
-            width: 250.0,
+          Expanded(
+            flex: 3,
             child: Row(
               children: [
                 Container(
@@ -1012,8 +1018,8 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           const SizedBox(width: 12.0),
 
           // Column 2: Serial Number
-          SizedBox(
-            width: 150.0,
+          Expanded(
+            flex: 2,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
               decoration: BoxDecoration(
@@ -1031,8 +1037,8 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           const SizedBox(width: 12.0),
 
           // Column 3: Available Stock
-          SizedBox(
-            width: 160.0,
+          Expanded(
+            flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1066,8 +1072,8 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           const SizedBox(width: 12.0),
 
           // Column 4: Consumption Action (Caliber, Qty, Remark, Submit + More Menu)
-          SizedBox(
-            width: 440.0,
+          Expanded(
+            flex: 5,
             child: Row(
               children: [
                 // Caliber Dropdown (5.56, 7.62, 9mm)

@@ -2980,6 +2980,50 @@ class _HistoryTabState extends State<HistoryTab> {
     }
   }
 
+  DateTime _parseRecordUserTime(BallisticRecord r) {
+    final candidateStrings = [r.testTime, r.timestamp];
+    final formats = [
+      'yyyy-MM-dd HH:mm:ss',
+      'yyyy-MM-dd HH:mm',
+      'yyyy-MM-dd hh:mm:ss a',
+      'yyyy-MM-dd hh:mm a',
+      'yyyy-MM-dd h:mm:ss a',
+      'yyyy-MM-dd h:mm a',
+      'M/d/yyyy h:mm:ss a',
+      'M/d/yyyy hh:mm:ss a',
+      'M/d/yyyy h:mm a',
+      'M/d/yyyy hh:mm a',
+      'M/d/yyyy HH:mm:ss',
+      'M/d/yyyy HH:mm',
+      'yyyy/MM/dd HH:mm:ss',
+      'yyyy/MM/dd h:mm:ss a',
+      'dd/MM/yyyy HH:mm:ss',
+      'dd/MM/yyyy hh:mm:ss a',
+      'dd/MM/yyyy h:mm:ss a',
+    ];
+    for (final s in candidateStrings) {
+      final trimmed = s.trim();
+      if (trimmed.isEmpty) continue;
+      final iso = DateTime.tryParse(trimmed);
+      if (iso != null) return iso;
+      for (final fmt in formats) {
+        try {
+          return DateFormat(fmt).parse(trimmed);
+        } catch (_) {}
+      }
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  String _formatUserTimeAmPm(BallisticRecord r) {
+    final parsed = _parseRecordUserTime(r);
+    if (parsed.millisecondsSinceEpoch > 0) {
+      return DateFormat('yyyy-MM-dd hh:mm:ss a').format(parsed);
+    }
+    if (r.testTime.trim().isNotEmpty) return r.testTime.trim();
+    return r.timestamp.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!testNames.contains(_testNameFilter) && _testNameFilter != 'All') {
@@ -3013,16 +3057,16 @@ class _HistoryTabState extends State<HistoryTab> {
       return matchesSearch && matchesCaliber && matchesStatus && matchesTestName && matchesLot && matchesHopper;
     }).toList();
 
-    // Show newest first (explicitly sorted by timestamp descending)
+    // Show newest first (explicitly sorted by user-inserted time descending)
     final displayRecords = List<BallisticRecord>.from(filtered)
       ..sort((a, b) {
-        try {
-          final da = DateFormat('M/d/yyyy h:mm:ss a').parse(a.timestamp);
-          final db = DateFormat('M/d/yyyy h:mm:ss a').parse(b.timestamp);
-          return db.compareTo(da);
-        } catch (_) {
-          return b.timestamp.compareTo(a.timestamp);
+        final da = _parseRecordUserTime(a);
+        final db = _parseRecordUserTime(b);
+        if (da.millisecondsSinceEpoch > 0 && db.millisecondsSinceEpoch > 0) {
+          final cmp = db.compareTo(da);
+          if (cmp != 0) return cmp;
         }
+        return b.timestamp.compareTo(a.timestamp);
       });
     final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS);
 
@@ -4638,7 +4682,7 @@ class _HistoryTabState extends State<HistoryTab> {
 
                                         return DataRow(
                                           cells: [
-                                            DataCell(Text(r.timestamp, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF94A3B8)))),
+                                            DataCell(Text(_formatUserTimeAmPm(r), style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             DataCell(Text(r.operators, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Colors.white))),
                                             DataCell(Text(r.shift, style: const TextStyle(fontSize: 11.0, color: Color(0xFF94A3B8)))),
                                             DataCell(Text(r.caliber, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.0, color: Colors.white))),
@@ -5032,7 +5076,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     ),
                     const SizedBox(height: 4.0),
                     Text(
-                      'Caliber: ${r.caliber} | Lot: ${r.lotNo}${r.hopperNo.isNotEmpty ? " (Hopper: ${r.hopperNo})" : ""}${r.boxNo.isNotEmpty ? " (Box: ${r.boxNo})" : ""}',
+                      'Caliber: ${r.caliber} | Lot: ${r.lotNo}${r.module.contains("Daily") || r.hopperNo == r.lotNo || (r.hopperNo.isEmpty && r.boxNo.isEmpty) ? "" : "${r.hopperNo.isNotEmpty ? " (Hopper: " + r.hopperNo + ")" : ""}${r.boxNo.isNotEmpty ? " (Box: " + r.boxNo + ")" : ""}"}',
                       style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -5043,7 +5087,7 @@ class _HistoryTabState extends State<HistoryTab> {
                   children: [
                     _buildCompactMeta('INSPECTOR', r.operators),
                     if (r.shift.isNotEmpty) _buildCompactMeta('SHIFT', r.shift),
-                    _buildCompactMeta('TIME', r.testTime.isNotEmpty ? r.testTime : r.timestamp),
+                    _buildCompactMeta('TIME', _formatUserTimeAmPm(r)),
                     _buildCompactMeta('TESTED', '${r.produced} rounds'),
                     _buildCompactMeta('DEFECTS', '${r.defects}', valColor: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
                   ],

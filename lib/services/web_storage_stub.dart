@@ -28,6 +28,8 @@ List<Map<String, dynamic>> getWebWitnessConsumptions() => [];
 void saveWebWitnessConsumptions(List<Map<String, dynamic>> consumptions) {}
 int getWebRefCounter() => 0;
 void saveWebRefCounter(int val) {}
+int getWebRefCounterForDate(String dateStr) => 0;
+void saveWebRefCounterForDate(String dateStr, int val) {}
 List<Map<String, dynamic>> getWebEquipmentIssues() => [];
 void saveWebEquipmentIssues(List<Map<String, dynamic>> issues) {}
 

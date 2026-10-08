@@ -250,6 +250,16 @@ void saveWebRefCounter(int val) {
   _setItem('ompc_test_ref_counter', val.toString());
 }
 
+int getWebRefCounterForDate(String dateStr) {
+  final val = _getItem('ompc_test_ref_counter_$dateStr');
+  if (val == null || val.isEmpty) return 0;
+  return int.tryParse(val) ?? 0;
+}
+
+void saveWebRefCounterForDate(String dateStr, int val) {
+  _setItem('ompc_test_ref_counter_$dateStr', val.toString());
+}
+
 List<Map<String, dynamic>> getWebEquipmentIssues() {
   final data = _getItem('ompc_equipment_issues');
   if (data == null || data.isEmpty) return [];

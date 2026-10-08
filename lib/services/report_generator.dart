@@ -433,6 +433,17 @@ class ReportGenerator {
       caliber,
       isThreeTemp: isThreeTemp,
     );
+    if (list.isEmpty) {
+      // Apply the template/format of EPVAT SS109 test exported report to all calibers (Requirement 7)
+      list = EpvatFormulaHelper.getFormulasForCaliber(
+        formulasMap,
+        '5.56x45 SS109',
+        isThreeTemp: isThreeTemp,
+      );
+      if (list.isEmpty) {
+        list = EpvatFormulaHelper.getDefaultFormulas(isThreeTemp: isThreeTemp);
+      }
+    }
     // Kinetic Energy box if applicable
     String keBox = '';
     final r21 = records.firstWhere(
@@ -442,9 +453,22 @@ class ReportGenerator {
     final effectiveVel = r21.velMean.isNotEmpty ? r21.velMean : (records.isNotEmpty ? records[0].velMean : '');
     if (adminRules.isNotEmpty && effectiveVel.isNotEmpty) {
       final massMap = epvRules['bullet_mass_grams'] ?? {};
-      final double? massG = (massMap[caliber] as num?)?.toDouble();
+      double? massG = (massMap[caliber] as num?)?.toDouble();
+      if (massG == null) {
+        if (caliber.contains('SS109') || caliber.contains('62')) {
+          massG = 4.0;
+        } else if (caliber.contains('M193') || caliber.contains('55')) {
+          massG = 3.56;
+        } else if (caliber.contains('9mm') || caliber.contains('9x19')) {
+          massG = 8.0;
+        } else if (caliber.contains('7.62') || caliber.contains('M80') || caliber.contains('308')) {
+          massG = 9.5;
+        } else {
+          massG = 4.0;
+        }
+      }
       final double? vMean = double.tryParse(effectiveVel);
-      if (massG != null && vMean != null && vMean > 0) {
+      if (massG > 0 && vMean != null && vMean > 0) {
         final double ke = 0.5 * (massG / 1000.0) * vMean * vMean;
         keBox = '''
         <div style="margin-top: 6px; margin-bottom: 6px; padding: 6px 10px; background-color: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 6px; font-size: 10.5px;">
@@ -526,7 +550,7 @@ class ReportGenerator {
     Map<String, dynamic> adminRules = const {},
     String loggedInUser = '',
   }) {
-    final now = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    final now = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now());
     final totalQty = records.fold<int>(0, (sum, r) {
       final initial = r.produced;
       final retest = (r.isRetest && r.retestProduced > 0) ? r.retestProduced : 0;
@@ -568,8 +592,9 @@ class ReportGenerator {
         : '<div style="height: 55px;"></div>';
 
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
+    final bool isDaily = moduleName.trim().contains('Daily') || (records.isNotEmpty && records[0].module.contains('Daily'));
     final lotNo = records.isNotEmpty
-        ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
+        ? ((isDaily || (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty) || records[0].hopperNo == records[0].lotNo)
             ? records[0].lotNo
             : '${records[0].lotNo} (Hopper: ${records[0].hopperNo}, Box: ${records[0].boxNo})')
         : 'N/A';
@@ -1151,7 +1176,7 @@ class ReportGenerator {
       <tr>
         <td style="width: 25%; font-weight: bold; color: #475569;">Inspector Name:</td>
         <td>$inspectorName</td>
-        <td style="width: 25%; font-weight: bold; color: #475569;">Date:</td>
+        <td style="width: 25%; font-weight: bold; color: #475569;">Date &amp; Time:</td>
         <td>$now</td>
       </tr>
       <tr>
@@ -1212,9 +1237,9 @@ class ReportGenerator {
       final bool is9mm = records.isNotEmpty && (records[0].caliber.toLowerCase().contains('9mm') || records[0].caliber.toLowerCase().startsWith('9x19'));
       final pUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty ? records[0].epvatPressureUnit : 'Bar';
       buffer.writeln('''
-        <th>Parameter</th>
-        <th>P1 (Chamber) ($pUnit)</th>
-        ${!is9mm ? '<th>P2 (Port) ($pUnit)</th>' : ''}
+        <th>Condition / Parameter</th>
+        <th>GP6 (1) Chamber ($pUnit)</th>
+        ${!is9mm ? '<th>GP6 (2) Port ($pUnit)</th>' : ''}
         <th>Action Time (ms)</th>
         <th>Velocity (m/s)</th>
       ''');
@@ -1377,68 +1402,85 @@ class ReportGenerator {
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
-        // Side parameters: Mean, Max, Min, Range, SD
-        final p1Mean = r.epvatMeanPressure.trim().isNotEmpty ? r.epvatMeanPressure : '-';
-        final p1Max = r.epvatMaxPressure.trim().isNotEmpty ? r.epvatMaxPressure : '-';
-        final p1Min = r.epvatMinPressure.trim().isNotEmpty ? r.epvatMinPressure : '-';
-        final p1Range = r.epvatRangePressure.trim().isNotEmpty ? r.epvatRangePressure : '-';
-        final p1SD = r.epvatSDPressure.trim().isNotEmpty ? r.epvatSDPressure : '-';
+        final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
+        
+        final List<Map<String, String>> tempConfigs = [
+          {'key': '21', 'label': '+21 °C (Ambient)'},
+          {'key': '52', 'label': '+52 °C (Hot)'},
+          {'key': '54', 'label': '-54 °C (Cold)'},
+        ];
 
-        final p2Mean = r.epvatP2MeanPressure.trim().isNotEmpty ? r.epvatP2MeanPressure : '-';
-        final p2Max = r.epvatP2MaxPressure.trim().isNotEmpty ? r.epvatP2MaxPressure : '-';
-        final p2Min = r.epvatP2MinPressure.trim().isNotEmpty ? r.epvatP2MinPressure : '-';
-        final p2Range = r.epvatP2RangePressure.trim().isNotEmpty ? r.epvatP2RangePressure : '-';
-        final p2SD = r.epvatP2SDPressure.trim().isNotEmpty ? r.epvatP2SDPressure : '-';
+        for (final tc in tempConfigs) {
+          final k = tc['key']!;
+          final lbl = tc['label']!;
+          final p1m = variables['p1_mean_$k'] != null && variables['p1_mean_$k']! > 0 ? variables['p1_mean_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatMeanPressure : '');
+          final p1max = variables['p1_max_$k'] != null && variables['p1_max_$k']! > 0 ? variables['p1_max_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatMaxPressure : '');
+          final p1min = variables['p1_min_$k'] != null && variables['p1_min_$k']! > 0 ? variables['p1_min_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatMinPressure : '');
+          final p1rng = variables['p1_range_$k'] != null && variables['p1_range_$k']! > 0 ? variables['p1_range_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatRangePressure : '');
+          final p1sd = variables['p1_sd_$k'] != null && variables['p1_sd_$k']! > 0 ? variables['p1_sd_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatSDPressure : '');
 
-        final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
-        final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
-        final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
-        final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
-        final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
+          final p2m = variables['p2_mean_$k'] != null && variables['p2_mean_$k']! > 0 ? variables['p2_mean_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2MeanPressure : '');
+          final p2max = variables['p2_max_$k'] != null && variables['p2_max_$k']! > 0 ? variables['p2_max_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2MaxPressure : '');
+          final p2min = variables['p2_min_$k'] != null && variables['p2_min_$k']! > 0 ? variables['p2_min_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2MinPressure : '');
+          final p2rng = variables['p2_range_$k'] != null && variables['p2_range_$k']! > 0 ? variables['p2_range_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2RangePressure : '');
+          final p2sd = variables['p2_sd_$k'] != null && variables['p2_sd_$k']! > 0 ? variables['p2_sd_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2SDPressure : '');
 
-        final vMean = r.velMean.trim().isNotEmpty ? r.velMean : '-';
-        final vMax = r.velMax.trim().isNotEmpty ? r.velMax : '-';
-        final vMin = r.velMin.trim().isNotEmpty ? r.velMin : '-';
-        final vRange = r.velRange.trim().isNotEmpty ? r.velRange : '-';
-        final vSD = r.velSD.trim().isNotEmpty ? r.velSD : '-';
+          final atm = variables['action_time_mean_$k'] != null && variables['action_time_mean_$k']! > 0 ? variables['action_time_mean_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeMean : '');
+          final atmax = variables['action_time_max_$k'] != null && variables['action_time_max_$k']! > 0 ? variables['action_time_max_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeMax : '');
+          final atmin = variables['action_time_min_$k'] != null && variables['action_time_min_$k']! > 0 ? variables['action_time_min_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeMin : '');
+          final atrng = variables['action_time_range_$k'] != null && variables['action_time_range_$k']! > 0 ? variables['action_time_range_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeRange : '');
+          final atsd = variables['action_time_sd_$k'] != null && variables['action_time_sd_$k']! > 0 ? variables['action_time_sd_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeSD : '');
 
-        buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Mean</td>
-            <td>$p1Mean</td>
-            ${!is9mm ? '<td>$p2Mean</td>' : ''}
-            <td>$atMean</td>
-            <td>$vMean</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">Max</td>
-            <td>$p1Max</td>
-            ${!is9mm ? '<td>$p2Max</td>' : ''}
-            <td>$atMax</td>
-            <td>$vMax</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">Min</td>
-            <td>$p1Min</td>
-            ${!is9mm ? '<td>$p2Min</td>' : ''}
-            <td>$atMin</td>
-            <td>$vMin</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">Range</td>
-            <td>$p1Range</td>
-            ${!is9mm ? '<td>$p2Range</td>' : ''}
-            <td>$atRange</td>
-            <td>$vRange</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">SD</td>
-            <td>$p1SD</td>
-            ${!is9mm ? '<td>$p2SD</td>' : ''}
-            <td>$atSD</td>
-            <td>$vSD</td>
-          </tr>
-        ''');
+          final vm = variables['vel_mean_$k'] != null && variables['vel_mean_$k']! > 0 ? variables['vel_mean_$k']!.toStringAsFixed(1) : (k == '21' ? r.velMean : '');
+          final vmax = variables['vel_max_$k'] != null && variables['vel_max_$k']! > 0 ? variables['vel_max_$k']!.toStringAsFixed(1) : (k == '21' ? r.velMax : '');
+          final vmin = variables['vel_min_$k'] != null && variables['vel_min_$k']! > 0 ? variables['vel_min_$k']!.toStringAsFixed(1) : (k == '21' ? r.velMin : '');
+          final vrng = variables['vel_range_$k'] != null && variables['vel_range_$k']! > 0 ? variables['vel_range_$k']!.toStringAsFixed(1) : (k == '21' ? r.velRange : '');
+          final vsd = variables['vel_sd_$k'] != null && variables['vel_sd_$k']! > 0 ? variables['vel_sd_$k']!.toStringAsFixed(1) : (k == '21' ? r.velSD : '');
+
+          final hasDataForTemp = (p1m.isNotEmpty && p1m != '-') || (vm.isNotEmpty && vm != '-');
+          if (!hasDataForTemp && k != '21') continue;
+
+          buffer.writeln('''
+            <tr style="background-color: #f1f5f9; font-weight: bold;">
+              <td colspan="${is9mm ? 4 : 5}" style="padding: 4px 6px; font-size: 10.5px; color: #0284c7; text-transform: uppercase;">Condition: $lbl</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Mean</td>
+              <td style="padding: 3px 6px;">${p1m.isNotEmpty ? p1m : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2m.isNotEmpty ? p2m : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atm.isNotEmpty ? atm : '-'}</td>
+              <td style="padding: 3px 6px;">${vm.isNotEmpty ? vm : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Max</td>
+              <td style="padding: 3px 6px;">${p1max.isNotEmpty ? p1max : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2max.isNotEmpty ? p2max : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atmax.isNotEmpty ? atmax : '-'}</td>
+              <td style="padding: 3px 6px;">${vmax.isNotEmpty ? vmax : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Min</td>
+              <td style="padding: 3px 6px;">${p1min.isNotEmpty ? p1min : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2min.isNotEmpty ? p2min : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atmin.isNotEmpty ? atmin : '-'}</td>
+              <td style="padding: 3px 6px;">${vmin.isNotEmpty ? vmin : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Range</td>
+              <td style="padding: 3px 6px;">${p1rng.isNotEmpty ? p1rng : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2rng.isNotEmpty ? p2rng : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atrng.isNotEmpty ? atrng : '-'}</td>
+              <td style="padding: 3px 6px;">${vrng.isNotEmpty ? vrng : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">SD</td>
+              <td style="padding: 3px 6px;">${p1sd.isNotEmpty ? p1sd : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2sd.isNotEmpty ? p2sd : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atsd.isNotEmpty ? atsd : '-'}</td>
+              <td style="padding: 3px 6px;">${vsd.isNotEmpty ? vsd : '-'}</td>
+            </tr>
+          ''');
+        }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
           buffer.writeln('<tr><td colspan="5" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
@@ -1462,13 +1504,21 @@ class ReportGenerator {
         final alumList = r.terminalAluminumPenetration.split(',');
         final velList = r.terminalVelocity.split(',');
         
+        final termRules = adminRules['terminal_effect'] as Map<String, dynamic>? ?? {};
+        final p1Mat = (termRules['plate1_material'] ?? 'Steel').toString().trim();
+        final p1Thick = (termRules['plate1_thickness'] ?? '3.5 mm').toString().trim();
+        final p2Mat = (termRules['plate2_material'] ?? 'Aluminum').toString().trim();
+        final p2Thick = (termRules['plate2_thickness'] ?? '0.5 mm').toString().trim();
+        final p1Header = p1Thick.isNotEmpty ? '$p1Mat ($p1Thick)' : '$p1Mat Penetration';
+        final p2Header = p2Thick.isNotEmpty ? '$p2Mat ($p2Thick)' : '$p2Mat Penetration';
+
         final bufferRounds = StringBuffer();
         bufferRounds.write('<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">');
         bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
         bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round No.</th>');
         bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Hole > Bullet Dia.</th>');
-        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Steel Penetration</th>');
-        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Aluminum Penetration</th>');
+        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$p1Header</th>');
+        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$p2Header</th>');
         bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
         bufferRounds.write('</tr>');
         
@@ -1631,6 +1681,7 @@ class ReportGenerator {
     </table>
   </div>
 
+  ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '<div class="page-break" style="page-break-before: always; break-before: page; margin-top: 15px;"></div><div style="font-size: 12px; font-weight: bold; color: #0f172a; border-bottom: 2px solid #06b6d4; padding-bottom: 4px; margin-bottom: 10px; display: flex; justify-content: space-between;"><span>EPVAT BALLISTIC ANALYSIS &amp; CALCULATIONS (Page 2)</span><span>Caliber: $cleanCaliber | Lot: $cleanLotNo</span></div>' : ''}
   $epvatCombinedSection
   ${_buildRetestSectionHtml(records, testName, isWord: false)}
     </div> <!-- end report-content -->
@@ -1928,7 +1979,7 @@ class ReportGenerator {
     } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
       final bool is9mm = records.isNotEmpty && (records[0].caliber.toLowerCase().contains('9mm') || records[0].caliber.toLowerCase().startsWith('9x19'));
       final pUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty ? records[0].epvatPressureUnit : 'Bar';
-      return '<th>Parameter</th><th>P1 (Chamber) ($pUnit)</th>${!is9mm ? '<th>P2 (Port) ($pUnit)</th>' : ''}<th>Action Time (ms)</th><th>Velocity (m/s)</th>';
+      return '<th>Condition / Parameter</th><th>GP6 (1) Chamber ($pUnit)</th>${!is9mm ? '<th>GP6 (2) Port ($pUnit)</th>' : ''}<th>Action Time (ms)</th><th>Velocity (m/s)</th>';
     } else if (testName == 'Primer Sensitivity Test') {
       return '<th>Mean Height (H̄)</th><th>SD (Standard Deviation)</th><th>All Fire Height (H̄ + 5S)</th><th>No Fire Height (H̄ - 2S)</th><th>Remarks</th>';
     } else if (testName == 'Firing Rate Cycle Test') {
@@ -1949,7 +2000,7 @@ class ReportGenerator {
     Map<String, dynamic> adminRules = const {},
     String loggedInUser = '',
   }) {
-    final now = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    final now = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now());
     final totalQty = records.fold<int>(0, (sum, r) {
       final initial = r.produced;
       final retest = (r.isRetest && r.retestProduced > 0) ? r.retestProduced : 0;
@@ -2003,8 +2054,9 @@ class ReportGenerator {
         ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
         : '<div style="height: 55px;"></div>';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
+    final bool isDaily = moduleName.trim().contains('Daily') || (records.isNotEmpty && records[0].module.contains('Daily'));
     final lotNo = records.isNotEmpty
-        ? (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty
+        ? ((isDaily || (records[0].hopperNo.isEmpty && records[0].boxNo.isEmpty) || records[0].hopperNo == records[0].lotNo)
             ? records[0].lotNo
             : '${records[0].lotNo} (Hopper: ${records[0].hopperNo}, Box: ${records[0].boxNo})')
         : 'N/A';
@@ -2446,7 +2498,7 @@ class ReportGenerator {
     <tr>
       <td style="width: 25%; font-weight: bold; color: #475569;">Inspector Name:</td>
       <td>$inspectorName</td>
-      <td style="width: 25%; font-weight: bold; color: #475569;">Date:</td>
+      <td style="width: 25%; font-weight: bold; color: #475569;">Date &amp; Time:</td>
       <td>$now</td>
     </tr>
     <tr>
@@ -2593,67 +2645,85 @@ class ReportGenerator {
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
-        final p1Mean = r.epvatMeanPressure.trim().isNotEmpty ? r.epvatMeanPressure : '-';
-        final p1Max = r.epvatMaxPressure.trim().isNotEmpty ? r.epvatMaxPressure : '-';
-        final p1Min = r.epvatMinPressure.trim().isNotEmpty ? r.epvatMinPressure : '-';
-        final p1Range = r.epvatRangePressure.trim().isNotEmpty ? r.epvatRangePressure : '-';
-        final p1SD = r.epvatSDPressure.trim().isNotEmpty ? r.epvatSDPressure : '-';
+        final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
+        
+        final List<Map<String, String>> tempConfigs = [
+          {'key': '21', 'label': '+21 °C (Ambient)'},
+          {'key': '52', 'label': '+52 °C (Hot)'},
+          {'key': '54', 'label': '-54 °C (Cold)'},
+        ];
 
-        final p2Mean = r.epvatP2MeanPressure.trim().isNotEmpty ? r.epvatP2MeanPressure : '-';
-        final p2Max = r.epvatP2MaxPressure.trim().isNotEmpty ? r.epvatP2MaxPressure : '-';
-        final p2Min = r.epvatP2MinPressure.trim().isNotEmpty ? r.epvatP2MinPressure : '-';
-        final p2Range = r.epvatP2RangePressure.trim().isNotEmpty ? r.epvatP2RangePressure : '-';
-        final p2SD = r.epvatP2SDPressure.trim().isNotEmpty ? r.epvatP2SDPressure : '-';
+        for (final tc in tempConfigs) {
+          final k = tc['key']!;
+          final lbl = tc['label']!;
+          final p1m = variables['p1_mean_$k'] != null && variables['p1_mean_$k']! > 0 ? variables['p1_mean_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatMeanPressure : '');
+          final p1max = variables['p1_max_$k'] != null && variables['p1_max_$k']! > 0 ? variables['p1_max_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatMaxPressure : '');
+          final p1min = variables['p1_min_$k'] != null && variables['p1_min_$k']! > 0 ? variables['p1_min_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatMinPressure : '');
+          final p1rng = variables['p1_range_$k'] != null && variables['p1_range_$k']! > 0 ? variables['p1_range_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatRangePressure : '');
+          final p1sd = variables['p1_sd_$k'] != null && variables['p1_sd_$k']! > 0 ? variables['p1_sd_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatSDPressure : '');
 
-        final atMean = r.actionTimeMean.trim().isNotEmpty ? r.actionTimeMean : '-';
-        final atMax = r.actionTimeMax.trim().isNotEmpty ? r.actionTimeMax : '-';
-        final atMin = r.actionTimeMin.trim().isNotEmpty ? r.actionTimeMin : '-';
-        final atRange = r.actionTimeRange.trim().isNotEmpty ? r.actionTimeRange : '-';
-        final atSD = r.actionTimeSD.trim().isNotEmpty ? r.actionTimeSD : '-';
+          final p2m = variables['p2_mean_$k'] != null && variables['p2_mean_$k']! > 0 ? variables['p2_mean_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2MeanPressure : '');
+          final p2max = variables['p2_max_$k'] != null && variables['p2_max_$k']! > 0 ? variables['p2_max_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2MaxPressure : '');
+          final p2min = variables['p2_min_$k'] != null && variables['p2_min_$k']! > 0 ? variables['p2_min_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2MinPressure : '');
+          final p2rng = variables['p2_range_$k'] != null && variables['p2_range_$k']! > 0 ? variables['p2_range_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2RangePressure : '');
+          final p2sd = variables['p2_sd_$k'] != null && variables['p2_sd_$k']! > 0 ? variables['p2_sd_$k']!.toStringAsFixed(1) : (k == '21' ? r.epvatP2SDPressure : '');
 
-        final vMean = r.velMean.trim().isNotEmpty ? r.velMean : '-';
-        final vMax = r.velMax.trim().isNotEmpty ? r.velMax : '-';
-        final vMin = r.velMin.trim().isNotEmpty ? r.velMin : '-';
-        final vRange = r.velRange.trim().isNotEmpty ? r.velRange : '-';
-        final vSD = r.velSD.trim().isNotEmpty ? r.velSD : '-';
+          final atm = variables['action_time_mean_$k'] != null && variables['action_time_mean_$k']! > 0 ? variables['action_time_mean_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeMean : '');
+          final atmax = variables['action_time_max_$k'] != null && variables['action_time_max_$k']! > 0 ? variables['action_time_max_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeMax : '');
+          final atmin = variables['action_time_min_$k'] != null && variables['action_time_min_$k']! > 0 ? variables['action_time_min_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeMin : '');
+          final atrng = variables['action_time_range_$k'] != null && variables['action_time_range_$k']! > 0 ? variables['action_time_range_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeRange : '');
+          final atsd = variables['action_time_sd_$k'] != null && variables['action_time_sd_$k']! > 0 ? variables['action_time_sd_$k']!.toStringAsFixed(3) : (k == '21' ? r.actionTimeSD : '');
 
-        buffer.writeln('''
-          <tr>
-            <td style="font-weight: bold;">Mean</td>
-            <td>$p1Mean</td>
-            ${!is9mm ? '<td>$p2Mean</td>' : ''}
-            <td>$atMean</td>
-            <td>$vMean</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">Max</td>
-            <td>$p1Max</td>
-            ${!is9mm ? '<td>$p2Max</td>' : ''}
-            <td>$atMax</td>
-            <td>$vMax</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">Min</td>
-            <td>$p1Min</td>
-            ${!is9mm ? '<td>$p2Min</td>' : ''}
-            <td>$atMin</td>
-            <td>$vMin</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">Range</td>
-            <td>$p1Range</td>
-            ${!is9mm ? '<td>$p2Range</td>' : ''}
-            <td>$atRange</td>
-            <td>$vRange</td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold;">SD</td>
-            <td>$p1SD</td>
-            ${!is9mm ? '<td>$p2SD</td>' : ''}
-            <td>$atSD</td>
-            <td>$vSD</td>
-          </tr>
-        ''');
+          final vm = variables['vel_mean_$k'] != null && variables['vel_mean_$k']! > 0 ? variables['vel_mean_$k']!.toStringAsFixed(1) : (k == '21' ? r.velMean : '');
+          final vmax = variables['vel_max_$k'] != null && variables['vel_max_$k']! > 0 ? variables['vel_max_$k']!.toStringAsFixed(1) : (k == '21' ? r.velMax : '');
+          final vmin = variables['vel_min_$k'] != null && variables['vel_min_$k']! > 0 ? variables['vel_min_$k']!.toStringAsFixed(1) : (k == '21' ? r.velMin : '');
+          final vrng = variables['vel_range_$k'] != null && variables['vel_range_$k']! > 0 ? variables['vel_range_$k']!.toStringAsFixed(1) : (k == '21' ? r.velRange : '');
+          final vsd = variables['vel_sd_$k'] != null && variables['vel_sd_$k']! > 0 ? variables['vel_sd_$k']!.toStringAsFixed(1) : (k == '21' ? r.velSD : '');
+
+          final hasDataForTemp = (p1m.isNotEmpty && p1m != '-') || (vm.isNotEmpty && vm != '-');
+          if (!hasDataForTemp && k != '21') continue;
+
+          buffer.writeln('''
+            <tr style="background-color: #f1f5f9; font-weight: bold;">
+              <td colspan="${is9mm ? 4 : 5}" style="padding: 4px 6px; font-size: 10.5px; color: #0284c7; text-transform: uppercase;">Condition: $lbl</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Mean</td>
+              <td style="padding: 3px 6px;">${p1m.isNotEmpty ? p1m : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2m.isNotEmpty ? p2m : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atm.isNotEmpty ? atm : '-'}</td>
+              <td style="padding: 3px 6px;">${vm.isNotEmpty ? vm : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Max</td>
+              <td style="padding: 3px 6px;">${p1max.isNotEmpty ? p1max : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2max.isNotEmpty ? p2max : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atmax.isNotEmpty ? atmax : '-'}</td>
+              <td style="padding: 3px 6px;">${vmax.isNotEmpty ? vmax : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Min</td>
+              <td style="padding: 3px 6px;">${p1min.isNotEmpty ? p1min : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2min.isNotEmpty ? p2min : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atmin.isNotEmpty ? atmin : '-'}</td>
+              <td style="padding: 3px 6px;">${vmin.isNotEmpty ? vmin : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">Range</td>
+              <td style="padding: 3px 6px;">${p1rng.isNotEmpty ? p1rng : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2rng.isNotEmpty ? p2rng : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atrng.isNotEmpty ? atrng : '-'}</td>
+              <td style="padding: 3px 6px;">${vrng.isNotEmpty ? vrng : '-'}</td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; padding: 3px 6px;">SD</td>
+              <td style="padding: 3px 6px;">${p1sd.isNotEmpty ? p1sd : '-'}</td>
+              ${!is9mm ? '<td style="padding: 3px 6px;">${p2sd.isNotEmpty ? p2sd : "-"}</td>' : ''}
+              <td style="padding: 3px 6px;">${atsd.isNotEmpty ? atsd : '-'}</td>
+              <td style="padding: 3px 6px;">${vsd.isNotEmpty ? vsd : '-'}</td>
+            </tr>
+          ''');
+        }
       } else if (testName == 'Firing Rate Cycle Test') {
         if (records.length > 1) {
           buffer.writeln('<tr><td colspan="5" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
@@ -2677,13 +2747,21 @@ class ReportGenerator {
         final alumList = r.terminalAluminumPenetration.split(',');
         final velList = r.terminalVelocity.split(',');
         
+        final termRules = adminRules['terminal_effect'] as Map<String, dynamic>? ?? {};
+        final p1Mat = (termRules['plate1_material'] ?? 'Steel').toString().trim();
+        final p1Thick = (termRules['plate1_thickness'] ?? '3.5 mm').toString().trim();
+        final p2Mat = (termRules['plate2_material'] ?? 'Aluminum').toString().trim();
+        final p2Thick = (termRules['plate2_thickness'] ?? '0.5 mm').toString().trim();
+        final p1Header = p1Thick.isNotEmpty ? '$p1Mat ($p1Thick)' : '$p1Mat Penetration';
+        final p2Header = p2Thick.isNotEmpty ? '$p2Mat ($p2Thick)' : '$p2Mat Penetration';
+
         final bufferRounds = StringBuffer();
         bufferRounds.write('<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">');
         bufferRounds.write('<tr style="background-color: #f1f5f9; text-align: left;">');
         bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Round No.</th>');
         bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Hole > Bullet Dia.</th>');
-        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Steel Penetration</th>');
-        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Aluminum Penetration</th>');
+        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$p1Header</th>');
+        bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">$p2Header</th>');
         bufferRounds.write('<th style="border: 1px solid #cbd5e1; padding: 4px;">Velocity (m/s)</th>');
         bufferRounds.write('</tr>');
         
@@ -2839,6 +2917,7 @@ class ReportGenerator {
     </tbody>
   </table>
 
+  ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '<br clear="all" style="page-break-before:always; mso-break-type:section-break" /><div style="font-size: 12px; font-weight: bold; color: #0f172a; border-bottom: 2px solid #06b6d4; padding-bottom: 4px; margin-bottom: 10px;">EPVAT BALLISTIC ANALYSIS &amp; CALCULATIONS (Page 2) — Caliber: $caliber | Lot: $lotNo</div>' : ''}
   $epvatCombinedSection
   ${_buildRetestSectionHtml(records, testName, isWord: true)}
   </div> <!-- end report-content -->

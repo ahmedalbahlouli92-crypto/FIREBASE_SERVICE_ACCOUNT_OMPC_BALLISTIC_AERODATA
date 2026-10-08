@@ -1734,6 +1734,12 @@ final Map<String, dynamic> _defaultRules = {
     'function_test': 'Level 3 or Level 4 defects within advisory limit',
     'cyclic_rate': 'RPM within advisory margin',
   },
+  'terminal_effect': {
+    'plate1_material': 'Steel',
+    'plate1_thickness': '3.5 mm',
+    'plate2_material': 'Aluminum',
+    'plate2_thickness': '0.5 mm',
+  },
 };
 
 class MainShell extends StatefulWidget {
@@ -1913,6 +1919,10 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _rulePrimerCondCtrl = TextEditingController();
   final TextEditingController _ruleFunctionCondCtrl = TextEditingController();
   final TextEditingController _ruleCyclicCondCtrl = TextEditingController();
+  final TextEditingController _ruleTermPlate1MatCtrl = TextEditingController(text: 'Steel');
+  final TextEditingController _ruleTermPlate1ThickCtrl = TextEditingController(text: '3.5 mm');
+  final TextEditingController _ruleTermPlate2MatCtrl = TextEditingController(text: 'Aluminum');
+  final TextEditingController _ruleTermPlate2ThickCtrl = TextEditingController(text: '0.5 mm');
 
   // GP Transducers rule controllers
   String _ruleSelectedGPType = 'GP1'; // 'GP1' or 'GP2'
@@ -2200,6 +2210,10 @@ class _MainShellState extends State<MainShell> {
     _rulePrimerCondCtrl.dispose();
     _ruleFunctionCondCtrl.dispose();
     _ruleCyclicCondCtrl.dispose();
+    _ruleTermPlate1MatCtrl.dispose();
+    _ruleTermPlate1ThickCtrl.dispose();
+    _ruleTermPlate2MatCtrl.dispose();
+    _ruleTermPlate2ThickCtrl.dispose();
     
     super.dispose();
   }
@@ -2298,6 +2312,13 @@ class _MainShellState extends State<MainShell> {
     _rulePrimerCondCtrl.text = (condMap['primer_sensitivity'] ?? '').toString();
     _ruleFunctionCondCtrl.text = (condMap['function_test'] ?? '').toString();
     _ruleCyclicCondCtrl.text = (condMap['cyclic_rate'] ?? '').toString();
+
+    // Terminal Effect Plate rules
+    final term = Map<String, dynamic>.from(_adminRules['terminal_effect'] ?? {});
+    _ruleTermPlate1MatCtrl.text = (term['plate1_material'] ?? 'Steel').toString();
+    _ruleTermPlate1ThickCtrl.text = (term['plate1_thickness'] ?? '3.5 mm').toString();
+    _ruleTermPlate2MatCtrl.text = (term['plate2_material'] ?? 'Aluminum').toString();
+    _ruleTermPlate2ThickCtrl.text = (term['plate2_thickness'] ?? '0.5 mm').toString();
 
     // Final Lot Acceptance Certificate template for selected caliber
     _loadCertTemplateForCaliber(_certSelectedCaliber);
@@ -2567,6 +2588,14 @@ class _MainShellState extends State<MainShell> {
     condMap['function_test'] = _ruleFunctionCondCtrl.text.trim();
     condMap['cyclic_rate'] = _ruleCyclicCondCtrl.text.trim();
     _adminRules['approved_with_condition'] = condMap;
+
+    // Terminal Effect
+    final term = Map<String, dynamic>.from(_adminRules['terminal_effect'] ?? {});
+    term['plate1_material'] = _ruleTermPlate1MatCtrl.text.trim();
+    term['plate1_thickness'] = _ruleTermPlate1ThickCtrl.text.trim();
+    term['plate2_material'] = _ruleTermPlate2MatCtrl.text.trim();
+    term['plate2_thickness'] = _ruleTermPlate2ThickCtrl.text.trim();
+    _adminRules['terminal_effect'] = term;
 
     await _storageService.saveRules(_adminRules);
     setState(() {
@@ -7383,6 +7412,7 @@ class _MainShellState extends State<MainShell> {
                   'Primer Sensitivity Test',
                   'Function Test',
                   'Firing Rate Cycle Test',
+                  'Terminal Effect Test',
                   'GP6 Transducers (EPVAT)',
                   'Barrels',
                   'Weapons',
@@ -7395,6 +7425,7 @@ class _MainShellState extends State<MainShell> {
           // Caliber selector for tests that have caliber-specific specifications
           Builder(builder: (context) {
             final bool isCaliberAware = _selectedRuleTest != 'Firing Rate Cycle Test' &&
+                _selectedRuleTest != 'Terminal Effect Test' &&
                 _selectedRuleTest != 'Barrel Serial Numbers' &&
                 _selectedRuleTest != 'Barrels' &&
                 _selectedRuleTest != 'GP6 Transducers (EPVAT)' &&
@@ -8472,6 +8503,16 @@ class _MainShellState extends State<MainShell> {
             ),
             _buildRuleTextField('Configure "Approved with condition" Specification / Criteria for Primer Sensitivity', _rulePrimerCondCtrl, isMultiline: true),
             _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _rulePrimerInstructionsCtrl, isMultiline: true),
+          ] else if (_selectedRuleTest == 'Terminal Effect Test') ...[
+            const Text(
+              'Configure the default plate materials and thicknesses used for Terminal Effect testing. These settings dynamically update the test input form headers and exported ballistic reports.',
+              style: TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3), height: 1.4),
+            ),
+            const SizedBox(height: 12.0),
+            _buildRuleTextField('First Plate Material Type (e.g. Steel)', _ruleTermPlate1MatCtrl),
+            _buildRuleTextField('First Plate Thickness (e.g. 3.5 mm)', _ruleTermPlate1ThickCtrl),
+            _buildRuleTextField('Second Plate Material Type (e.g. Aluminum)', _ruleTermPlate2MatCtrl),
+            _buildRuleTextField('Second Plate Thickness (e.g. 0.5 mm)', _ruleTermPlate2ThickCtrl),
           ] else if (_selectedRuleTest == 'Firing Rate Cycle Test') ...[
             const Text(
               'Configure weapon types and cyclic rate limits. The operator selects a weapon category (Rifle or Machine Gun) and weapon model, then inputs the measured cyclic rate which must fall within the configured range (empty max limit means no upper limit).',
@@ -10784,6 +10825,13 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  String _getFirstTestForModule(String module) {
+    if (module == 'Component Test') {
+      return 'Primer Sensitivity Test';
+    }
+    return 'Waterproof Test';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -10808,6 +10856,7 @@ class _MainShellState extends State<MainShell> {
         onClearAllRecords: _handleClearDashboardRecords,
       ),
       EntryTab(
+        key: ValueKey('$_currentModule|$_selectedEntryTestName'),
         currentModule: _currentModule,
         onSubmit: _handleNewRecord,
         loggedInUser: _currentUserEmail,
@@ -10899,6 +10948,7 @@ class _MainShellState extends State<MainShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isDesktop = constraints.maxWidth > 800;
+        final bool isNarrowDesktop = constraints.maxWidth < 1100;
 
         if (isDesktop) {
           // DESKTOP LAYOUT WITH AUTO-HIDING SIDEBAR NAVIGATION
@@ -10914,7 +10964,7 @@ class _MainShellState extends State<MainShell> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 220),
                         curve: Curves.easeInOut,
-                        width: (_sidebarPinned || _sidebarHovered) ? 250.0 : 0.0,
+                        width: ((_sidebarPinned && !isNarrowDesktop) || _sidebarHovered) ? 250.0 : 0.0,
                         child: ClipRect(
                           child: OverflowBox(
                             minWidth: 250.0,
@@ -11144,7 +11194,7 @@ class _MainShellState extends State<MainShell> {
                   child: Container(
                     color: const Color(0xFFC4D6EC),
                     child: Padding(
-                      padding: const EdgeInsets.all(32.0),
+                      padding: EdgeInsets.all(isNarrowDesktop ? 12.0 : 28.0),
                       child: mainContent,
                     ),
                   ),
@@ -11152,7 +11202,7 @@ class _MainShellState extends State<MainShell> {
               ],
             ),
             // Left hover detection strip to reveal sidebar when auto-hidden
-            if (!_sidebarPinned && !_sidebarHovered)
+            if (!(_sidebarPinned && !isNarrowDesktop) && !_sidebarHovered)
               Positioned(
                 left: 0,
                 top: 0,
@@ -11201,6 +11251,7 @@ class _MainShellState extends State<MainShell> {
                       setState(() {
                         _currentModule = val;
                         _activeTabIndex = 0;
+                        _selectedEntryTestName = _getFirstTestForModule(val);
                       });
                       _storageService.saveActiveModule(val);
                     }
@@ -11384,6 +11435,7 @@ class _MainShellState extends State<MainShell> {
         onPressed: () => setState(() {
           _currentModule = label;
           _activeTabIndex = 0; // Reset sub-tab
+          _selectedEntryTestName = _getFirstTestForModule(label);
           _storageService.saveActiveModule(label);
         }),
         icon: Icon(icon, color: isActive ? activeColor : const Color(0xFF38BDF8), size: 18.0),
