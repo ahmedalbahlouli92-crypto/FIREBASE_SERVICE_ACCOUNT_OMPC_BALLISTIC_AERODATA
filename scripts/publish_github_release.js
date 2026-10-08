@@ -19,25 +19,31 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.8';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.8 (Quality Engineering & Control Suite Update)';
-const BODY = `## OMPC Ballistic AeroData v1.9.8
+const TAG_NAME = 'v1.9.9';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.9 (Multi-Temp EPVAT, Weapon Cascading & UI Suite Update)';
+const BODY = `## OMPC Ballistic AeroData v1.9.9
 
-Comprehensive ballistic engineering & quality control update featuring weapon caliber categorizations, EPVAT formula tolerances, caliber-first reporting workflows, PDF machine auto-extraction, and individual equipment report exports:
+Comprehensive ballistic suite update featuring admin EPVAT component editing, dynamic weapon cascading without AUG fallback, 2-page multi-temperature EPVAT reports with SS109 universal format, powder charge entry, split-screen responsiveness, dynamic terminal effect plates, and date-based sequential REF numbers:
 
 ### Key Enhancements & Features:
-1. **Weapon Registration Caliber Separation**: In Control, registered weapons are categorized into \`5.56x45\`, \`7.62x51\`, and \`9x19mm\` with segmented filter tabs and caliber badges.
-2. **Manufacturer Management & Weapon Editing**: Admins can register new manufacturers and edit weapon details (name, serial number, manufacturer, caliber).
-3. **EPVAT Formula Auto-Calculation Tolerance**: Explicit tolerance (±) option when registering EPVAT formulas for automatic pass/conditional/fail evaluation.
-4. **EPVAT Stats-Only Mode Unlocked**: Operators can directly enter and edit statistics values across M193 and all calibers with reactive auto-calculation and saving.
-5. **EPVAT Primer Supplier & Lot Dropdowns Across All Calibers**: Primer supplier and primer lot selections strictly enforce dropdown selection (no manual text entry) across M193 and all calibers.
-6. **Accuracy Test Velocity Approval from Control**: Mean velocity pass/conditional/reject evaluation strictly adheres to admin-configured target mean, tolerance, and bounds in Control.
-7. **Consolidated Lot Acceptance Caliber-First**: Report scope dialog requires selecting Caliber Specification first, dynamically populating available lot numbers.
-8. **Individual Test Type Caliber-First**: Report scope dialog requires selecting Caliber Specification first, dynamically configuring applicable test types.
-9. **Tested Caliber Volume Breakdown Alone**: Standalone volume report shows total rounds tested per lot and the sum of all lots per caliber specification in CSV and Print/PDF.
-10. **Auto-Extraction from PDF**: Machine test result parser extracts metrics directly from uploaded PDF test reports without native plugin dependencies.
-11. **Individual Equipment Inspection Reports**: Save and export individual equipment inspection reports directly to Word (.doc) or Print/PDF.
-12. **Cross-Platform Deployment**: Synchronized across GitHub, Supabase sync, Windows Desktop, Android APK, and Firebase Web.
+1. **Admin EPVAT Component Editability**: Administrators can directly edit/type primer supplier, primer lot, propellant supplier, propellant code, and propellant lot.
+2. **Dynamic Weapon Cascading**: Caliber -> Weapon Type -> Weapon Model -> Serial Number cascading with empty initial selection (no AUG Steyr default).
+3. **Module Switch Automatic Test Reset**: Switching modules immediately sets and displays the first test of that module.
+4. **Dashboard Filter Hierarchy & Chart Scoping**: Filters strictly reordered to Shift -> Time Range -> Caliber -> Test Type -> Lot Number with full chart scoping.
+5. **EPVAT 2-Page Multi-Temperature Report**: All 3 temperatures (+21°C, +52°C, -54°C) rendered on Page 1; clean page break before Ballistic Analysis calculations, KE, and signatures onto Page 2.
+6. **Universal SS109 EPVAT Template**: Standardized NATO SS109 structure applied to all calibers.
+7. **12-Hour AM/PM Format**: Formatted across all exported reports, inspection logs, and views.
+8. **EPVAT Powder Charge**: Direct entry and validation of Powder Charge in grams.
+9. **Inspection Log Time Sorting**: Chronological descending order by user-inserted test time.
+10. **Clean Daily Test Lot Display**: Hopper and box clutter stripped to show clean lot number (e.g. 276-26).
+11. **Removal of Unregistered Lots**: Clean freeform fallback when no registered lots exist.
+12. **Desktop File Attachment Picker**: Windows PowerShell native OpenFileDialog fallback.
+13. **EPVAT Sensor Labels**: Renamed to GP6 (1) Chamber and GP6 (2) Port.
+14. **Universal Sequential REF Counter**: Daily date-based sequential REF counter across all modules, tests, and components.
+15. **Admin Equipment Report Status**: Admins can freely reopen or change status to Under Process / Open.
+16. **Dynamic Terminal Effect Plates**: Admin-configurable Plate 1 and Plate 2 Material & Thickness dynamically rendered in forms and reports.
+17. **Responsive Consumables & Split-Screen UI**: Auto-collapsing sidebar and wrap for split-screen snapping on PC without layout scattering.
+18. **Cross-Platform Deployment**: Published to Firebase Hosting, GitHub repository, and Windows Desktop standalone installer.
 `;
 
 function request(options, postData) {
