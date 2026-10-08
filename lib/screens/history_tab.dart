@@ -2981,7 +2981,39 @@ class _HistoryTabState extends State<HistoryTab> {
   }
 
   DateTime _parseRecordUserTime(BallisticRecord r) {
-    final candidateStrings = [r.testTime, r.timestamp];
+    // 1. Try parsing r.testTime first (user-entered time)
+    final testTimeStr = r.testTime.trim();
+    if (testTimeStr.isNotEmpty) {
+      final parsed = _tryParseDateTimeString(testTimeStr);
+      if (parsed != null) {
+        // If testTime only had time (year is 1970), borrow year/month/day from r.timestamp if possible
+        if (parsed.year == 1970) {
+          final tsParsed = _tryParseDateTimeString(r.timestamp.trim());
+          if (tsParsed != null && tsParsed.year > 1970) {
+            return DateTime(tsParsed.year, tsParsed.month, tsParsed.day, parsed.hour, parsed.minute, parsed.second);
+          }
+        }
+        return parsed;
+      }
+    }
+
+    // 2. Try parsing r.timestamp (fallback)
+    final tsStr = r.timestamp.trim();
+    if (tsStr.isNotEmpty) {
+      final parsed = _tryParseDateTimeString(tsStr);
+      if (parsed != null) return parsed;
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  DateTime? _tryParseDateTimeString(String input) {
+    final s = input.trim();
+    if (s.isEmpty) return null;
+
+    final iso = DateTime.tryParse(s);
+    if (iso != null) return iso;
+
     final formats = [
       'yyyy-MM-dd HH:mm:ss',
       'yyyy-MM-dd HH:mm',
@@ -2989,30 +3021,52 @@ class _HistoryTabState extends State<HistoryTab> {
       'yyyy-MM-dd hh:mm a',
       'yyyy-MM-dd h:mm:ss a',
       'yyyy-MM-dd h:mm a',
+      'yyyy-MM-dd',
       'M/d/yyyy h:mm:ss a',
       'M/d/yyyy hh:mm:ss a',
       'M/d/yyyy h:mm a',
       'M/d/yyyy hh:mm a',
       'M/d/yyyy HH:mm:ss',
       'M/d/yyyy HH:mm',
-      'yyyy/MM/dd HH:mm:ss',
-      'yyyy/MM/dd h:mm:ss a',
+      'M/d/yyyy',
+      'MM/dd/yyyy HH:mm:ss',
+      'MM/dd/yyyy hh:mm:ss a',
+      'MM/dd/yyyy',
       'dd/MM/yyyy HH:mm:ss',
+      'dd/MM/yyyy HH:mm',
       'dd/MM/yyyy hh:mm:ss a',
       'dd/MM/yyyy h:mm:ss a',
+      'dd/MM/yyyy hh:mm a',
+      'dd/MM/yyyy h:mm a',
+      'dd/MM/yyyy',
+      'yyyy/MM/dd HH:mm:ss',
+      'yyyy/MM/dd HH:mm',
+      'yyyy/MM/dd hh:mm:ss a',
+      'yyyy/MM/dd h:mm:ss a',
+      'yyyy/MM/dd',
+      'dd-MM-yyyy HH:mm:ss',
+      'dd-MM-yyyy HH:mm',
+      'dd-MM-yyyy hh:mm:ss a',
+      'dd-MM-yyyy',
+      'yyyy.MM.dd HH:mm:ss',
+      'yyyy.MM.dd',
+      'dd.MM.yyyy HH:mm:ss',
+      'dd.MM.yyyy',
+      'hh:mm:ss a',
+      'h:mm:ss a',
+      'hh:mm a',
+      'h:mm a',
+      'HH:mm:ss',
+      'HH:mm',
     ];
-    for (final s in candidateStrings) {
-      final trimmed = s.trim();
-      if (trimmed.isEmpty) continue;
-      final iso = DateTime.tryParse(trimmed);
-      if (iso != null) return iso;
-      for (final fmt in formats) {
-        try {
-          return DateFormat(fmt).parse(trimmed);
-        } catch (_) {}
-      }
+
+    for (final fmt in formats) {
+      try {
+        return DateFormat(fmt).parse(s);
+      } catch (_) {}
     }
-    return DateTime.fromMillisecondsSinceEpoch(0);
+
+    return null;
   }
 
   String _formatUserTimeAmPm(BallisticRecord r) {
@@ -3057,15 +3111,19 @@ class _HistoryTabState extends State<HistoryTab> {
       return matchesSearch && matchesCaliber && matchesStatus && matchesTestName && matchesLot && matchesHopper;
     }).toList();
 
-    // Show newest first (explicitly sorted by user-inserted time descending)
+    // Show newest first (older dates/times manually entered strictly sort downwards)
     final displayRecords = List<BallisticRecord>.from(filtered)
       ..sort((a, b) {
         final da = _parseRecordUserTime(a);
         final db = _parseRecordUserTime(b);
-        if (da.millisecondsSinceEpoch > 0 && db.millisecondsSinceEpoch > 0) {
-          final cmp = db.compareTo(da);
+        final msA = da.millisecondsSinceEpoch;
+        final msB = db.millisecondsSinceEpoch;
+
+        if (msA > 0 || msB > 0) {
+          final cmp = msB.compareTo(msA);
           if (cmp != 0) return cmp;
         }
+
         return b.timestamp.compareTo(a.timestamp);
       });
     final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS);

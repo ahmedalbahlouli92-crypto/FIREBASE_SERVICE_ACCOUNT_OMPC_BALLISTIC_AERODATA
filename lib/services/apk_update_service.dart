@@ -19,7 +19,7 @@ class ApkUpdateInfo {
 }
 
 class ApkUpdateService {
-  static const String currentAppVersion = '1.9.4';
+  static const String currentAppVersion = '2.0.0';
   static const String repoOwner = 'ahmedalbahlouli92-crypto';
   static const String repoName = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
 

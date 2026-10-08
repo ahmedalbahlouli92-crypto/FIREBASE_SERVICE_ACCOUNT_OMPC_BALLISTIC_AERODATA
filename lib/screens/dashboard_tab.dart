@@ -34,6 +34,27 @@ class _DashboardTabState extends State<DashboardTab> {
   String _selectedCaliber = 'All';
   String _selectedTestName = 'All';
 
+  // Sectional independent filters (multi-level filtering)
+  String _analyticsCaliber = 'All';
+  String _analyticsTestName = 'All';
+  String _analyticsLot = 'Overall';
+  String _analyticsShift = 'All Shifts';
+  String _analyticsTime = 'Overall';
+
+  String _overviewCaliber = 'All';
+  String _overviewTestName = 'All';
+  String _overviewLot = 'Overall';
+  String _overviewTime = 'Overall';
+
+  String _spcCaliber = 'All';
+  String _spcTestName = 'All';
+  String _spcLot = 'Overall';
+  String _spcTime = 'Overall';
+
+  String _boxCaliber = 'All';
+  String _boxTestName = 'All';
+  String _boxLot = 'Overall';
+
   bool _isAnalyticsMinimized = true;
   bool _isOverviewChartsMinimized = true;
   bool _isBoxPlotMinimized = true;
@@ -94,6 +115,142 @@ class _DashboardTabState extends State<DashboardTab> {
     } catch (e) {
       return null;
     }
+  }
+
+  List<BallisticRecord> _applyRecordFilters({
+    required List<BallisticRecord> source,
+    String shift = 'All Shifts',
+    String time = 'Overall',
+    DateTimeRange? customRange,
+    String lot = 'Overall',
+    String caliber = 'All',
+    String testName = 'All',
+  }) {
+    List<BallisticRecord> res = source;
+
+    if (shift == 'Morning' || shift == 'Day Shift') {
+      res = res.where((r) => r.shift.trim().toLowerCase() == 'morning' || r.shift.trim().toLowerCase() == 'day').toList();
+    } else if (shift == 'Afternoon' || shift == 'Night Shift') {
+      res = res.where((r) => r.shift.trim().toLowerCase() == 'afternoon' || r.shift.trim().toLowerCase() == 'night').toList();
+    }
+
+    final now = DateTime.now();
+    if (time == 'Daily') {
+      res = res.where((r) {
+        final d = parseTimestamp(r.timestamp);
+        if (d == null) return false;
+        return d.year == now.year && d.month == now.month && d.day == now.day;
+      }).toList();
+    } else if (time == 'Weekly') {
+      res = res.where((r) {
+        final d = parseTimestamp(r.timestamp);
+        if (d == null) return false;
+        return now.difference(d).inDays <= 7;
+      }).toList();
+    } else if (time == 'Monthly') {
+      res = res.where((r) {
+        final d = parseTimestamp(r.timestamp);
+        if (d == null) return false;
+        return now.difference(d).inDays <= 30;
+      }).toList();
+    } else if (time == 'Yearly') {
+      res = res.where((r) {
+        final d = parseTimestamp(r.timestamp);
+        if (d == null) return false;
+        return d.year == now.year;
+      }).toList();
+    } else if (time == 'Custom Range' && customRange != null) {
+      final start = DateTime(customRange.start.year, customRange.start.month, customRange.start.day);
+      final end = DateTime(customRange.end.year, customRange.end.month, customRange.end.day, 23, 59, 59);
+      res = res.where((r) {
+        final d = parseTimestamp(r.timestamp);
+        if (d == null) return false;
+        return (d.isAfter(start) || d.isAtSameMomentAs(start)) &&
+               (d.isBefore(end) || d.isAtSameMomentAs(end));
+      }).toList();
+    }
+
+    if (lot != 'Overall' && lot != 'All') {
+      res = res.where((r) =>
+        r.lotNo.trim() == lot ||
+        r.primerLot.trim() == lot ||
+        r.propellantLot.trim() == lot ||
+        r.hopperNo.trim() == lot
+      ).toList();
+    }
+
+    if (caliber != 'All') {
+      res = res.where((r) => r.caliber == caliber).toList();
+    }
+
+    if (testName != 'All') {
+      res = res.where((r) {
+        final rTest = r.testName.trim().toLowerCase();
+        final sTest = testName.trim().toLowerCase();
+        return rTest == sTest ||
+            (rTest.contains('epvat') && sTest.contains('epvat')) ||
+            (rTest.contains('waterproof') && sTest.contains('waterproof')) ||
+            (rTest.contains('accuracy') && sTest.contains('accuracy')) ||
+            (rTest.contains('stress') && sTest.contains('stress')) ||
+            (rTest.contains('primer') && sTest.contains('primer')) ||
+            (rTest.contains('propellant') && sTest.contains('propellant')) ||
+            (rTest.contains('function') && sTest.contains('function')) ||
+            (rTest.contains('extraction') && sTest.contains('extraction')) ||
+            (rTest.contains('terminal') && sTest.contains('terminal')) ||
+            ((rTest.contains('firing rate') || rTest.contains('cyclic')) && (sTest.contains('firing rate') || sTest.contains('cyclic')));
+      }).toList();
+    }
+
+    return res;
+  }
+
+  Widget _buildSectionFilterBar({
+    required String title,
+    required List<Widget> filters,
+    required VoidCallback onResetToGlobal,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F6FB),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFFD6E4F0)),
+      ),
+      child: Wrap(
+        spacing: 12.0,
+        runSpacing: 10.0,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.tune_rounded, size: 16.0, color: Color(0xFF0284C7)),
+              const SizedBox(width: 6.0),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0C2A4D),
+                ),
+              ),
+            ],
+          ),
+          ...filters,
+          OutlinedButton.icon(
+            onPressed: onResetToGlobal,
+            icon: const Icon(Icons.sync_rounded, size: 13.0, color: Color(0xFF64748B)),
+            label: const Text('Sync with Global', style: TextStyle(fontSize: 11.0, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+              side: const BorderSide(color: Color(0xFFCBD5E1)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -249,6 +406,103 @@ class _DashboardTabState extends State<DashboardTab> {
             ((rTest.contains('firing rate') || rTest.contains('cyclic')) && (sTest.contains('firing rate') || sTest.contains('cyclic')));
       }).toList();
     }
+
+    // Sectional independent filtered record sets
+    final analyticsFiltered = _applyRecordFilters(
+      source: widget.records,
+      shift: _analyticsShift,
+      time: _analyticsTime,
+      lot: _analyticsLot,
+      caliber: _analyticsCaliber,
+      testName: _analyticsTestName,
+    );
+
+    int analyticsTotalRounds = 0;
+    int analyticsTotalDefects = 0;
+    int analyticsPassCount = 0;
+    int analyticsCondCount = 0;
+    int analyticsRejectCount = 0;
+    int analyticsRetestCount = 0;
+    final Map<String, int> analyticsCaliberCounts = {};
+
+    for (var r in analyticsFiltered) {
+      analyticsTotalRounds += r.produced;
+      analyticsTotalDefects += r.defects;
+      analyticsCaliberCounts[r.caliber] = (analyticsCaliberCounts[r.caliber] ?? 0) + r.produced;
+
+      if (r.status == 'Approved') {
+        analyticsPassCount++;
+      } else if (r.status == 'Approved with condition') {
+        analyticsCondCount++;
+      } else if (r.status == 'Rejected') {
+        analyticsRejectCount++;
+      } else if (r.status == 'Retest') {
+        analyticsRetestCount++;
+      }
+    }
+
+    final double analyticsYieldRate = analyticsTotalRounds > 0
+        ? (((analyticsTotalRounds - analyticsTotalDefects) / analyticsTotalRounds) * 100.0)
+        : 100.0;
+
+    String analyticsTopCaliber = '';
+    int analyticsTopCaliberRounds = 0;
+    for (final entry in analyticsCaliberCounts.entries) {
+      if (entry.value > analyticsTopCaliberRounds) {
+        analyticsTopCaliberRounds = entry.value;
+        analyticsTopCaliber = entry.key;
+      }
+    }
+    final int analyticsActiveCalibersCount = analyticsCaliberCounts.values.where((c) => c > 0).length;
+
+    final overviewFiltered = _applyRecordFilters(
+      source: widget.records,
+      time: _overviewTime,
+      lot: _overviewLot,
+      caliber: _overviewCaliber,
+      testName: _overviewTestName,
+    );
+
+    final Map<String, int> overviewCaliberCounts = {};
+    final Map<String, int> overviewStatusCounts = {
+      'Approved': 0,
+      'Pending Review': 0,
+      'Rejected': 0,
+      'Retest': 0,
+      'Approved with condition': 0,
+    };
+    int overviewTotalRounds = 0;
+    int overviewTotalDefects = 0;
+
+    for (var r in overviewFiltered) {
+      overviewTotalRounds += r.produced;
+      overviewTotalDefects += r.defects;
+      overviewCaliberCounts[r.caliber] = (overviewCaliberCounts[r.caliber] ?? 0) + r.produced;
+      if (overviewStatusCounts.containsKey(r.status)) {
+        overviewStatusCounts[r.status] = (overviewStatusCounts[r.status] ?? 0) + 1;
+      } else {
+        overviewStatusCounts[r.status] = 1;
+      }
+    }
+
+    final double overviewYieldRate = overviewTotalRounds > 0
+        ? (((overviewTotalRounds - overviewTotalDefects) / overviewTotalRounds) * 100.0)
+        : 100.0;
+
+    final spcFiltered = _applyRecordFilters(
+      source: widget.records,
+      time: _spcTime,
+      lot: _spcLot,
+      caliber: _spcCaliber,
+      testName: _spcTestName,
+    );
+
+    final boxFiltered = _applyRecordFilters(
+      source: widget.records,
+      lot: _boxLot,
+      caliber: _boxCaliber,
+      testName: _boxTestName,
+    );
 
     // Calculate metrics
     int totalRounds = 0;
@@ -672,21 +926,61 @@ class _DashboardTabState extends State<DashboardTab> {
                 ),
               ),
             ),
+            _buildSectionFilterBar(
+              title: 'Ballistic Analytics & Fleet Volume Filters',
+              filters: [
+                _buildFilterDropdown(
+                  label: 'CALIBER',
+                  value: _analyticsCaliber,
+                  items: ['All', ...uniqueCalibers],
+                  width: 150.0,
+                  onChanged: (v) => setState(() => _analyticsCaliber = v!),
+                ),
+                _buildFilterDropdown(
+                  label: 'TEST TYPE',
+                  value: _analyticsTestName,
+                  items: ['All', ...availableTestTypes],
+                  width: 150.0,
+                  onChanged: (v) => setState(() => _analyticsTestName = v!),
+                ),
+                _buildFilterDropdown(
+                  label: 'SHIFT',
+                  value: _analyticsShift,
+                  items: shiftOptions,
+                  width: 120.0,
+                  onChanged: (v) => setState(() => _analyticsShift = v!),
+                ),
+                _buildFilterDropdown(
+                  label: 'TIME RANGE',
+                  value: _analyticsTime,
+                  items: timeOptions,
+                  width: 120.0,
+                  onChanged: (v) => setState(() => _analyticsTime = v!),
+                ),
+              ],
+              onResetToGlobal: () => setState(() {
+                _analyticsCaliber = _selectedCaliber;
+                _analyticsTestName = _selectedTestName;
+                _analyticsShift = _selectedShift;
+                _analyticsTime = _selectedTime;
+                _analyticsLot = _selectedLot;
+              }),
+            ),
             // Modern Analytics Overview Component (#edf4fc background, #4d99db sky blue accents)
             ModernAnalyticsOverviewCard(
-              totalRounds: totalRounds,
-              totalInspections: filtered.length,
-              passCount: passCount,
-              condCount: condCount,
-              rejectCount: rejectCount,
-              retestCount: retestCount,
-              yieldRate: yieldRate,
-              activeCalibersCount: activeCalibersCount,
-              topCaliber: topCaliber,
-              topCaliberRounds: topCaliberRounds,
+              totalRounds: analyticsTotalRounds,
+              totalInspections: analyticsFiltered.length,
+              passCount: analyticsPassCount,
+              condCount: analyticsCondCount,
+              rejectCount: analyticsRejectCount,
+              retestCount: analyticsRetestCount,
+              yieldRate: analyticsYieldRate,
+              activeCalibersCount: analyticsActiveCalibersCount,
+              topCaliber: analyticsTopCaliber,
+              topCaliberRounds: analyticsTopCaliberRounds,
               currentModule: widget.currentModule,
-              onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
-              onQuickPrint: () => _exportCaliberVolumeAlone(context, caliberCounts, records: filtered),
+              onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
+              onQuickPrint: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
             ),
             const SizedBox(height: 24.0),
 
@@ -707,15 +1001,15 @@ class _DashboardTabState extends State<DashboardTab> {
                   children: [
                     _buildKpiCard(
                       title: 'QUANTITY TESTED',
-                      value: totalRounds.toString(),
-                      desc: _selectedTime == 'Overall' ? 'Total rounds logged' : 'Rounds in this period',
+                      value: analyticsTotalRounds.toString(),
+                      desc: _analyticsTime == 'Overall' ? 'Total rounds logged' : 'Rounds in this period',
                       accentColor: const Color(0xFF0284C7),
                       width: cardWidth,
                       icon: Icons.flash_on,
                     ),
                     _buildKpiCard(
                       title: 'PASSED TESTS',
-                      value: passCount.toString(),
+                      value: analyticsPassCount.toString(),
                       desc: 'Tests approved & conforming',
                       accentColor: const Color(0xFF10B981),
                       width: cardWidth,
@@ -723,7 +1017,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     _buildKpiCard(
                       title: 'COND. APPROVED',
-                      value: condCount.toString(),
+                      value: analyticsCondCount.toString(),
                       desc: 'Approved with condition',
                       accentColor: const Color(0xFF06B6D4),
                       width: cardWidth,
@@ -731,7 +1025,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     _buildKpiCard(
                       title: 'REJECTED TESTS',
-                      value: rejectCount.toString(),
+                      value: analyticsRejectCount.toString(),
                       desc: 'Failed evaluations',
                       accentColor: const Color(0xFFEF4444),
                       width: cardWidth,
@@ -739,7 +1033,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     _buildKpiCard(
                       title: 'RETEST REQUIRED',
-                      value: retestCount.toString(),
+                      value: analyticsRetestCount.toString(),
                       desc: 'Need new inspections',
                       accentColor: const Color(0xFFF59E0B),
                       width: cardWidth,
@@ -747,7 +1041,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     _buildKpiCard(
                       title: 'YIELD RATE',
-                      value: '${yieldRate.toStringAsFixed(2)}%',
+                      value: '${analyticsYieldRate.toStringAsFixed(2)}%',
                       desc: 'Percent within specifications',
                       accentColor: const Color(0xFF0EA5E9),
                       width: cardWidth,
@@ -756,7 +1050,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     _buildKpiCard(
                       title: widget.currentModule == 'Component Test' ? 'COMPONENT TESTS' : 'LOT ACCEPTANCE TESTS',
                       value: widget.currentModule == 'Component Test'
-                          ? '${filtered.length} Tests'
+                          ? '${analyticsFiltered.length} Tests'
                           : '$lotAcceptanceTestsCount Tests',
                       desc: widget.currentModule == 'Component Test'
                           ? '${uniqueLots.length} unique component lots'
@@ -845,31 +1139,63 @@ class _DashboardTabState extends State<DashboardTab> {
                 ),
               ),
             ),
+            _buildSectionFilterBar(
+              title: 'General Defects & Volume Trend Filters',
+              filters: [
+                _buildFilterDropdown(
+                  label: 'CALIBER',
+                  value: _overviewCaliber,
+                  items: ['All', ...uniqueCalibers],
+                  width: 150.0,
+                  onChanged: (v) => setState(() => _overviewCaliber = v!),
+                ),
+                _buildFilterDropdown(
+                  label: 'TEST TYPE',
+                  value: _overviewTestName,
+                  items: ['All', ...availableTestTypes],
+                  width: 150.0,
+                  onChanged: (v) => setState(() => _overviewTestName = v!),
+                ),
+                _buildFilterDropdown(
+                  label: 'TIME RANGE',
+                  value: _overviewTime,
+                  items: timeOptions,
+                  width: 120.0,
+                  onChanged: (v) => setState(() => _overviewTime = v!),
+                ),
+              ],
+              onResetToGlobal: () => setState(() {
+                _overviewCaliber = _selectedCaliber;
+                _overviewTestName = _selectedTestName;
+                _overviewTime = _selectedTime;
+                _overviewLot = _selectedLot;
+              }),
+            ),
             // Charts Card
             LayoutBuilder(
               builder: (context, constraints) {
                 final isDesktop = constraints.maxWidth >= 1100;
                 final charts = [
                   _buildChartCard(
-                    title: _selectedCaliber != 'All'
-                        ? '$_selectedCaliber Test Breakdown'
-                        : (_selectedTestName != 'All' ? '$_selectedTestName Metrics' : 'General Performance Trend'),
-                    child: _selectedCaliber != 'All'
-                        ? CaliberIndividualChart(records: filtered, caliber: _selectedCaliber)
-                        : TestMetricChart(filteredRecords: filtered, selectedTestName: _selectedTestName),
+                    title: _overviewCaliber != 'All'
+                        ? '$_overviewCaliber Test Breakdown'
+                        : (_overviewTestName != 'All' ? '$_overviewTestName Metrics' : 'General Performance Trend'),
+                    child: _overviewCaliber != 'All'
+                        ? CaliberIndividualChart(records: overviewFiltered, caliber: _overviewCaliber)
+                        : TestMetricChart(filteredRecords: overviewFiltered, selectedTestName: _overviewTestName),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
                   ),
                   _buildChartCard(
                     title: 'Tested Caliber Volume',
 
                     child: SingleChildScrollView(
-                      child: CaliberVolumeList(caliberCounts: caliberCounts),
+                      child: CaliberVolumeList(caliberCounts: overviewCaliberCounts),
                     ),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.28 : constraints.maxWidth,
                   ),
                   _buildChartCard(
                     title: 'Status Distribution',
-                    child: StatusDoughnutChart(statusCounts: statusCounts, yieldRate: yieldRate),
+                    child: StatusDoughnutChart(statusCounts: overviewStatusCounts, yieldRate: overviewYieldRate),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.27 : constraints.maxWidth,
                   ),
                 ];
@@ -897,7 +1223,7 @@ class _DashboardTabState extends State<DashboardTab> {
           // ── Statistical Process Control (SPC) Chart (MAXIMIZED, 4 Charts Default) ────────────────
           Container(
             width: double.infinity,
-            height: _isSpcMaximized ? 780.0 : 580.0,
+            height: _isSpcMaximized ? 850.0 : 680.0,
             padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -929,9 +1255,9 @@ class _DashboardTabState extends State<DashboardTab> {
                         ),
                         const SizedBox(width: 8.0),
                         Text(
-                          _selectedTestName == 'All'
+                          _spcTestName == 'All'
                               ? 'Statistical Process Control (SPC) Matrix'
-                              : 'Statistical Process Control (SPC) - $_selectedTestName',
+                              : 'Statistical Process Control (SPC) - $_spcTestName',
                           style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                       ],
@@ -943,12 +1269,52 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12.0),
+                const SizedBox(height: 8.0),
+                _buildSectionFilterBar(
+                  title: 'SPC Section Filters',
+                  filters: [
+                    _buildFilterDropdown(
+                      label: 'CALIBER',
+                      value: _spcCaliber,
+                      items: ['All', ...uniqueCalibers],
+                      width: 150.0,
+                      onChanged: (v) => setState(() => _spcCaliber = v!),
+                    ),
+                    _buildFilterDropdown(
+                      label: 'TEST TYPE',
+                      value: _spcTestName,
+                      items: ['All', ...availableTestTypes],
+                      width: 150.0,
+                      onChanged: (v) => setState(() => _spcTestName = v!),
+                    ),
+                    _buildFilterDropdown(
+                      label: 'LOT',
+                      value: _spcLot,
+                      items: ['Overall', ...uniqueLots],
+                      width: 140.0,
+                      onChanged: (v) => setState(() => _spcLot = v!),
+                    ),
+                    _buildFilterDropdown(
+                      label: 'TIME RANGE',
+                      value: _spcTime,
+                      items: timeOptions,
+                      width: 120.0,
+                      onChanged: (v) => setState(() => _spcTime = v!),
+                    ),
+                  ],
+                  onResetToGlobal: () => setState(() {
+                    _spcCaliber = _selectedCaliber;
+                    _spcTestName = _selectedTestName;
+                    _spcLot = _selectedLot;
+                    _spcTime = _selectedTime;
+                  }),
+                ),
+                const SizedBox(height: 8.0),
                 Expanded(
                   child: TrendLineChart(
-                    records: filtered,
-                    selectedCaliber: _selectedCaliber,
-                    selectedTestType: _selectedTestName,
+                    records: spcFiltered,
+                    selectedCaliber: _spcCaliber,
+                    selectedTestType: _spcTestName,
                     currentModule: widget.currentModule,
                   ),
                 ),
@@ -1030,6 +1396,37 @@ class _DashboardTabState extends State<DashboardTab> {
                 ),
               ),
             ),
+            _buildSectionFilterBar(
+              title: 'Box & Whisker Section Filters',
+              filters: [
+                _buildFilterDropdown(
+                  label: 'CALIBER',
+                  value: _boxCaliber,
+                  items: ['All', ...uniqueCalibers],
+                  width: 150.0,
+                  onChanged: (v) => setState(() => _boxCaliber = v!),
+                ),
+                _buildFilterDropdown(
+                  label: 'TEST TYPE',
+                  value: _boxTestName,
+                  items: ['All', ...availableTestTypes],
+                  width: 150.0,
+                  onChanged: (v) => setState(() => _boxTestName = v!),
+                ),
+                _buildFilterDropdown(
+                  label: 'LOT',
+                  value: _boxLot,
+                  items: ['Overall', ...uniqueLots],
+                  width: 140.0,
+                  onChanged: (v) => setState(() => _boxLot = v!),
+                ),
+              ],
+              onResetToGlobal: () => setState(() {
+                _boxCaliber = _selectedCaliber;
+                _boxTestName = _selectedTestName;
+                _boxLot = _selectedLot;
+              }),
+            ),
             Container(
               width: double.infinity,
               height: 380.0,
@@ -1046,7 +1443,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                 ],
               ),
-              child: BoxPlotChart(records: filtered),
+              child: BoxPlotChart(records: boxFiltered),
             ),
           ],
           const SizedBox(height: 18.0),
@@ -1325,6 +1722,7 @@ class _DashboardTabState extends State<DashboardTab> {
     required String value,
     required List<String> items,
     required void Function(String?) onChanged,
+    double width = 200.0,
   }) {
     final safeValue = items.contains(value) ? value : items.first;
 
@@ -1344,7 +1742,7 @@ class _DashboardTabState extends State<DashboardTab> {
         ),
         const SizedBox(height: 6.0),
         Container(
-          width: 200.0,
+          width: width,
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFD),

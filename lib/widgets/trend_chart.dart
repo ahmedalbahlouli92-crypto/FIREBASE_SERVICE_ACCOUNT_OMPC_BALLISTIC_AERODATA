@@ -121,15 +121,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
     return null;
   }
 
-  static const List<String> _timeRangeOptions = [
-    'All Time',
-    'Today',
-    'Last 7 Days',
-    'Last 30 Days',
-    'This Month',
-    'This Year',
-  ];
-
   String get _selectedTestType {
     if (_selectedTests.isNotEmpty) return _selectedTests.first;
     return _availableTests.isNotEmpty ? _availableTests.first : 'EPVAT test';
@@ -139,67 +130,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
     final t = _selectedTestType;
     final active = _getActiveParamsForTest(t);
     return active.isNotEmpty ? active.first : '';
-  }
-
-  List<String> _get4ParamsForTestType(String testType) {
-    final lower = testType.toLowerCase();
-    if (lower.contains('waterproof')) {
-      return [
-        'Total Fast Leaks',
-        'Total Slow Leaks',
-        'Total Leaks',
-      ];
-    } else if (lower.contains('accuracy')) {
-      return [
-        'Average SD (X & Y)',
-        'Mean Radius (mm)',
-        'SD X (mm)',
-        'SD Y (mm)',
-      ];
-    } else if (lower.contains('epvat')) {
-      return [
-        'Mean Velocity (m/s)',
-        'P1 Chamber Pressure (bar)',
-        'P2 Port Pressure (bar)',
-        'Action Time (ms)',
-      ];
-    } else if (lower.contains('stress')) {
-      return [
-        'Number of Cracks (Total Splits)',
-        'Neck Splits',
-        'Shoulder Splits',
-        'Body Splits',
-      ];
-    } else if (lower.contains('primer')) {
-      return [
-        'HM + 5SD (All Fire, mm)',
-        'HM - 2SD (No Fire, mm)',
-        'Mean Height H̄ (mm)',
-        'Std Deviation S (mm)',
-      ];
-    } else if (lower.contains('function')) {
-      return [
-        'Total Defects',
-        'Level 1 Critical Defects',
-        'Level 2 Major Defects',
-        'Level 3 Minor Defects',
-      ];
-    } else if (lower.contains('extraction')) {
-      return [
-        'Extraction Force (N)',
-        'Min Force (N)',
-        'Max Force (N)',
-      ];
-    } else if (lower.contains('firing rate') || lower.contains('cyclic')) {
-      return [
-        'Cyclic Rate (RPM)',
-      ];
-    } else if (lower.contains('terminal')) {
-      return [
-        'Terminal Velocity (m/s)',
-      ];
-    }
-    return [];
   }
 
   List<String> _getParamsForTestType(String testType) {

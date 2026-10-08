@@ -426,8 +426,11 @@ class ReportGenerator {
     final caliber = records[0].caliber;
     final epvRules = adminRules['epvat'] ?? {};
     final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-    final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
-        records.map((r) => r.cartridgeTemp).toSet().length > 1;
+    final bool isThreeTemp = records.any((r) =>
+        (r.cartridgeTemp.contains('21') && (r.cartridgeTemp.contains('52') || r.cartridgeTemp.contains('54'))) ||
+        (r.epvatPressureRounds.contains(';') && r.epvatPressureRounds.split(';').length >= 3) ||
+        r.notes.contains('Temps:')) ||
+        records.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
     var list = EpvatFormulaHelper.getFormulasForCaliber(
       formulasMap,
       caliber,
@@ -506,7 +509,9 @@ class ReportGenerator {
       final statusText = !res.isApplicable ? 'Not Tested' : (res.isPassed ? 'PASSED' : 'FAILED');
       final displayCalculation = !res.isApplicable
           ? 'Not Tested'
-          : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}';
+          : (res.substitutedText.isNotEmpty
+              ? res.substitutedText
+              : '${res.calculatedValue.toStringAsFixed(1)} ${res.unit}');
       final displayOp = res.op == '<=' ? '&le;' : (res.op == '>=' ? '&ge;' : (res.op == '<' ? '&lt;' : (res.op == '>' ? '&gt;' : res.op)));
       rowsBuffer.writeln('''
       <tr style="$bg">
@@ -641,7 +646,7 @@ class ReportGenerator {
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Residual Stress Reference Diagram' : '5.56 / 7.62 Residual Stress Reference Diagram';
       classificationImageTag = '''
-        <div style="min-height: 230px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
+        <div style="min-height: 210px; height: 210px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
           <img src="$src" style="max-width: 100%; max-height: 200px; width: auto; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 4px rgba(0,0,0,0.08);" alt="Residual Stress Reference" />
           <div style="font-size: 10px; font-weight: bold; color: #475569; margin-top: 4px;">$title</div>
         </div>
@@ -652,7 +657,7 @@ class ReportGenerator {
       final src = _formatImageSrc(imgToUse);
       final title = isCaliber9mm ? '9mm Function Test Reference Diagram' : '5.56 / 7.62 Function Test Reference Diagram';
       classificationImageTag = '''
-        <div style="min-height: 230px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
+        <div style="min-height: 210px; height: 210px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 0; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px;">
           <img src="$src" style="max-width: 100%; max-height: 200px; width: auto; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 4px rgba(0,0,0,0.08);" alt="Function Test Reference" />
           <div style="font-size: 10px; font-weight: bold; color: #475569; margin-top: 4px;">$title</div>
         </div>
@@ -737,8 +742,11 @@ class ReportGenerator {
     if (isEpvatTest) {
       final epvRules = adminRules['epvat'] ?? {};
       final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-      final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
-          records.map((r) => r.cartridgeTemp).toSet().length > 1;
+      final bool isThreeTemp = records.any((r) =>
+          (r.cartridgeTemp.contains('21') && (r.cartridgeTemp.contains('52') || r.cartridgeTemp.contains('54'))) ||
+          (r.epvatPressureRounds.contains(';') && r.epvatPressureRounds.split(';').length >= 3) ||
+          r.notes.contains('Temps:')) ||
+          records.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
       final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
         formulasMap,
         cleanCaliber,
@@ -1599,14 +1607,13 @@ class ReportGenerator {
 
     final String techName = records.isNotEmpty ? records[0].technicianName.trim() : '';
     final bool isComponent = moduleName == 'Component Test';
-    final bool inspectorIsTech = isComponent && (
-      (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
-      techName.isEmpty ||
-      techName.toLowerCase() == inspectorName.toLowerCase()
-    );
+    final bool inspectorIsTech = (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
+      (records.isNotEmpty && records[0].operators.toLowerCase().contains('technician')) ||
+      (loggedInUser.toLowerCase().contains('technician') && techName.isEmpty) ||
+      (techName.isNotEmpty && techName.toLowerCase() == inspectorName.toLowerCase());
 
     String signaturesHtml;
-    if (isComponent && !inspectorIsTech && techName.isNotEmpty) {
+    if (!inspectorIsTech && techName.isNotEmpty) {
       final techSig = _findSignatureBase64(techName, adminRules);
       final techSigImg = techSig.isNotEmpty
           ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
@@ -1617,14 +1624,14 @@ class ReportGenerator {
           $inspectorSigImg
           <div class="sig-box" style="width: 100%;">
             <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
-            <div>Component Inspector Signature</div>
+            <div>${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
           </div>
         </div>
         <div style="width: 30%; text-align: center;">
           $techSigImg
           <div class="sig-box" style="width: 100%;">
             <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$techName</div>
-            <div>Component Technician Signature</div>
+            <div>${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
           </div>
         </div>
         <div style="width: 30%; text-align: center;">
@@ -1636,14 +1643,14 @@ class ReportGenerator {
         </div>
       </div>
       ''';
-    } else if (isComponent && inspectorIsTech) {
+    } else if (inspectorIsTech) {
       signaturesHtml = '''
       <div class="signatures">
         <div style="width: 42%; text-align: center;">
           $inspectorSigImg
           <div class="sig-box" style="width: 100%;">
             <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
-            <div>Ballistic Technician Signature</div>
+            <div>${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
           </div>
         </div>
         <div style="width: 42%; text-align: center;">
@@ -1662,14 +1669,14 @@ class ReportGenerator {
           $inspectorSigImg
           <div class="sig-box" style="width: 100%;">
             <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
-            <div>Ballistic Inspector Signature</div>
+            <div>${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
           </div>
         </div>
         <div style="width: 42%; text-align: center;">
           $supervisorSigImg
           <div class="sig-box" style="width: 100%;">
             <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
-            <div>Ballistic Technician Approval</div>
+            <div>Ballistic Supervisor Approval</div>
           </div>
         </div>
       </div>
@@ -2181,8 +2188,11 @@ class ReportGenerator {
     if (isEpvatTest) {
       final epvRules = adminRules['epvat'] ?? {};
       final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-      final bool isThreeTemp = records.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
-          records.map((r) => r.cartridgeTemp).toSet().length > 1;
+      final bool isThreeTemp = records.any((r) =>
+          (r.cartridgeTemp.contains('21') && (r.cartridgeTemp.contains('52') || r.cartridgeTemp.contains('54'))) ||
+          (r.epvatPressureRounds.contains(';') && r.epvatPressureRounds.split(';').length >= 3) ||
+          r.notes.contains('Temps:')) ||
+          records.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
       final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
         formulasMap,
         caliber,
@@ -2842,14 +2852,13 @@ class ReportGenerator {
 
     final String techName = records.isNotEmpty ? records[0].technicianName.trim() : '';
     final bool isComponent = moduleName == 'Component Test';
-    final bool inspectorIsTech = isComponent && (
-      (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
-      techName.isEmpty ||
-      techName.toLowerCase() == inspectorName.toLowerCase()
-    );
+    final bool inspectorIsTech = (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
+      (records.isNotEmpty && records[0].operators.toLowerCase().contains('technician')) ||
+      (loggedInUser.toLowerCase().contains('technician') && techName.isEmpty) ||
+      (techName.isNotEmpty && techName.toLowerCase() == inspectorName.toLowerCase());
 
     String wordSignaturesHtml;
-    if (isComponent && !inspectorIsTech && techName.isNotEmpty) {
+    if (!inspectorIsTech && techName.isNotEmpty) {
       final techSig = _findSignatureBase64(techName, adminRules);
       final techSigImg = techSig.isNotEmpty
           ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
@@ -2860,12 +2869,12 @@ class ReportGenerator {
         <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $inspectorSigImg
           <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
-          <div style="font-size: 9pt; color: #475569;">Component Inspector Signature</div>
+          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
         </td>
         <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $techSigImg
           <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$techName</div>
-          <div style="font-size: 9pt; color: #475569;">Component Technician Signature</div>
+          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
         </td>
         <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $supervisorSigImg
@@ -2875,14 +2884,14 @@ class ReportGenerator {
       </tr>
     </table>
       ''';
-    } else if (isComponent && inspectorIsTech) {
+    } else if (inspectorIsTech) {
       wordSignaturesHtml = '''
     <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
       <tr>
         <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $inspectorSigImg
           <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Technician Signature</div>
+          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
         </td>
         <td style="width: 10%; border: none;"></td>
         <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
@@ -2900,13 +2909,13 @@ class ReportGenerator {
         <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $inspectorSigImg
           <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Inspector Signature</div>
+          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
         </td>
         <td style="width: 10%; border: none;"></td>
         <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $supervisorSigImg
           <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Technician Approval</div>
+          <div style="font-size: 9pt; color: #475569;">Ballistic Supervisor Approval</div>
         </td>
       </tr>
     </table>
@@ -3275,9 +3284,9 @@ class ReportGenerator {
       if (name.contains('terminal')) termRec ??= r;
       if (name.contains('primer')) primerRec ??= r;
       if (name.contains('epvat') || name.contains('propellant')) {
-        final isOverall = r.epvatPressureType == 'Overall' ||
-            (r.cartridgeTemp.contains('21') && (r.cartridgeTemp.contains('52') || r.cartridgeTemp.contains('54')));
-        if (isOverall) {
+        final isMultiTemp = (r.cartridgeTemp.contains('21') && (r.cartridgeTemp.contains('52') || r.cartridgeTemp.contains('54'))) ||
+            (r.epvatPressureRounds.contains(';') && r.epvatPressureRounds.split(';').length >= 3);
+        if (isMultiTemp) {
           epvRec21 ??= r;
           epvRec52 ??= r;
           epvRec54 ??= r;
@@ -3369,7 +3378,10 @@ class ReportGenerator {
     // Evaluate EPVAT custom formulas configured by admin
     final epvRules = adminRules['epvat'] ?? {};
     final formulasMap = Map<String, dynamic>.from(epvRules['custom_formulas'] ?? {});
-    final bool isThreeTemp = scopedRecords.any((r) => r.epvatPressureType == 'Overall' || r.cartridgeTemp.contains(',') || r.cartridgeTemp.contains(';') || r.notes.contains('Temps:')) ||
+    final bool isThreeTemp = scopedRecords.any((r) =>
+        (r.cartridgeTemp.contains('21') && (r.cartridgeTemp.contains('52') || r.cartridgeTemp.contains('54'))) ||
+        (r.epvatPressureRounds.contains(';') && r.epvatPressureRounds.split(';').length >= 3) ||
+        r.notes.contains('Temps:')) ||
         scopedRecords.where((r) => r.testName.toLowerCase().contains('epvat')).map((r) => r.cartridgeTemp).toSet().length > 1;
     final epvFormulaList = EpvatFormulaHelper.getFormulasForCaliber(
       formulasMap,
@@ -3658,8 +3670,7 @@ class ReportGenerator {
     final certRowsBuffer = StringBuffer();
 
     // 1. Waterproof Test
-    if (wpRec != null) {
-      certRowsBuffer.writeln('''
+    certRowsBuffer.writeln('''
           <tr>
             <td colspan="2" class="test-name-cell">Waterproof Test</td>
             <td style="text-align: center;">$wpSample</td>
@@ -3668,12 +3679,10 @@ class ReportGenerator {
             <td class="status-cell">${formatStatusBadge(wpStatus)}</td>
             <td style="text-align: center;">$wpRemarks</td>
           </tr>
-      ''');
-    }
+    ''');
 
     // 2. Bullet Extraction (Extraction Force Test)
-    if (extRec != null) {
-      certRowsBuffer.writeln('''
+    certRowsBuffer.writeln('''
           <tr>
             <td colspan="2" class="test-name-cell">Bullet Extraction</td>
             <td style="text-align: center;">$extSample</td>
@@ -3682,12 +3691,10 @@ class ReportGenerator {
             <td class="status-cell">${formatStatusBadge(extStatus)}</td>
             <td style="text-align: center;">$extRemarks</td>
           </tr>
-      ''');
-    }
+    ''');
 
     // 3. Accuracy Test
-    if (accRec != null) {
-      certRowsBuffer.writeln('''
+    certRowsBuffer.writeln('''
           <tr>
             <td colspan="2" class="test-name-cell">Accuracy Test</td>
             <td style="text-align: center;">$accSample</td>
@@ -3696,88 +3703,38 @@ class ReportGenerator {
             <td class="status-cell">${formatStatusBadge(accStatus)}</td>
             <td style="text-align: center;">$accRemarks</td>
           </tr>
-      ''');
-    }
+    ''');
 
     // 4. EPVAT test (+21 °C, +52 °C, -54 °C)
-    if (epvRec21 != null || epvRec52 != null || epvRec54 != null) {
-      final epvCount = (epvRec21 != null ? 1 : 0) + (epvRec52 != null ? 1 : 0) + (epvRec54 != null ? 1 : 0);
-      final spanAttr = epvCount > 1 ? 'rowspan="$epvCount"' : '';
-      bool firstRendered = false;
-
-      if (epvRec21 != null) {
-        firstRendered = true;
-        certRowsBuffer.writeln('''
+    final coldLabel = epvRec54?.cartridgeTemp.isNotEmpty == true ? epvRec54!.cartridgeTemp : '-54 &deg;C';
+    certRowsBuffer.writeln('''
           <tr>
-            <td $spanAttr style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
+            <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
             <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
-            <td $spanAttr style="text-align: center; vertical-align: middle;">$epvSample21</td>
+            <td rowspan="3" style="text-align: center; vertical-align: middle;">$epvSample21</td>
             <td style="text-align: center;">$epvResult21</td>
             <td style="text-align: center;">$epvReq21</td>
             <td class="status-cell">${formatStatusBadge(epvStatus21)}</td>
             <td style="text-align: center;">$epvRemarks21</td>
           </tr>
-        ''');
-      }
-
-      if (epvRec52 != null) {
-        if (!firstRendered) {
-          firstRendered = true;
-          certRowsBuffer.writeln('''
           <tr>
-            <td $spanAttr style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
             <td class="temp-cell" style="width: 7%;">+52 &deg;C</td>
-            <td $spanAttr style="text-align: center; vertical-align: middle;">$epvSample21</td>
             <td style="text-align: center;">$epvResult52</td>
             <td style="text-align: center;">$epvReq52</td>
             <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
             <td style="text-align: center;">$epvRemarks52</td>
           </tr>
-          ''');
-        } else {
-          certRowsBuffer.writeln('''
           <tr>
-            <td class="temp-cell">+52 &deg;C</td>
-            <td style="text-align: center;">$epvResult52</td>
-            <td style="text-align: center;">$epvReq52</td>
-            <td class="status-cell">${formatStatusBadge(epvStatus52)}</td>
-            <td style="text-align: center;">$epvRemarks52</td>
-          </tr>
-          ''');
-        }
-      }
-
-      if (epvRec54 != null) {
-        final coldLabel = epvRec54.cartridgeTemp.isNotEmpty ? epvRec54.cartridgeTemp : '-54 &deg;C';
-        if (!firstRendered) {
-          certRowsBuffer.writeln('''
-          <tr>
-            <td $spanAttr style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
             <td class="temp-cell" style="width: 7%;">$coldLabel</td>
-            <td $spanAttr style="text-align: center; vertical-align: middle;">$epvSample21</td>
             <td style="text-align: center;">$epvResult54</td>
             <td style="text-align: center;">$epvReq54</td>
             <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
             <td style="text-align: center;">$epvRemarks54</td>
           </tr>
-          ''');
-        } else {
-          certRowsBuffer.writeln('''
-          <tr>
-            <td class="temp-cell">$coldLabel</td>
-            <td style="text-align: center;">$epvResult54</td>
-            <td style="text-align: center;">$epvReq54</td>
-            <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
-            <td style="text-align: center;">$epvRemarks54</td>
-          </tr>
-          ''');
-        }
-      }
-    }
+    ''');
 
     // 5. Function Test
-    if (funcRec != null) {
-      certRowsBuffer.writeln('''
+    certRowsBuffer.writeln('''
           <tr>
             <td colspan="2" class="test-name-cell">Function Test</td>
             <td style="text-align: center;">$funcSample</td>
@@ -3786,12 +3743,10 @@ class ReportGenerator {
             <td class="status-cell">${formatStatusBadge(funcStatus)}</td>
             <td style="text-align: center;">$funcRemarks</td>
           </tr>
-      ''');
-    }
+    ''');
 
     // 6. Residual Stress Test
-    if (rsRec != null) {
-      certRowsBuffer.writeln('''
+    certRowsBuffer.writeln('''
           <tr>
             <td colspan="2" class="test-name-cell">Residual Stress Test</td>
             <td style="text-align: center;">$rsSample</td>
@@ -3800,12 +3755,10 @@ class ReportGenerator {
             <td class="status-cell">${formatStatusBadge(rsStatus)}</td>
             <td style="text-align: center;">$rsRemarks</td>
           </tr>
-      ''');
-    }
+    ''');
 
     // 7. Terminal Effect Test
-    if (termRec != null) {
-      certRowsBuffer.writeln('''
+    certRowsBuffer.writeln('''
           <tr>
             <td colspan="2" class="test-name-cell">Terminal Effect Test</td>
             <td style="text-align: center;">$termSample</td>
@@ -3814,12 +3767,10 @@ class ReportGenerator {
             <td class="status-cell">${formatStatusBadge(termStatus)}</td>
             <td style="text-align: center;">$termRemarks</td>
           </tr>
-      ''');
-    }
+    ''');
 
     // 8. Primer Sensitivity Test
-    if (primerRec != null) {
-      certRowsBuffer.writeln('''
+    certRowsBuffer.writeln('''
           <tr>
             <td colspan="2" class="test-name-cell">Primer Sensitivity Test</td>
             <td style="text-align: center;">$primerSample</td>
@@ -3828,12 +3779,7 @@ class ReportGenerator {
             <td class="status-cell">${formatStatusBadge(primerStatus)}</td>
             <td style="text-align: center;">$primerRemarks</td>
           </tr>
-      ''');
-    }
-
-    if (certRowsBuffer.isEmpty) {
-      certRowsBuffer.writeln('<tr><td colspan="7" style="text-align: center; padding: 12px; color: #64748b;">No completed test records found for this lot.</td></tr>');
-    }
+    ''');
 
     final buffer = StringBuffer();
     buffer.writeln('''

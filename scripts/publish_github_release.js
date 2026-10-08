@@ -19,31 +19,29 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v1.9.9';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v1.9.9 (Multi-Temp EPVAT, Weapon Cascading & UI Suite Update)';
-const BODY = `## OMPC Ballistic AeroData v1.9.9
+const TAG_NAME = 'v2.0.0';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.0 (Comprehensive Ballistic & Inspection Suite Update)';
+const BODY = `## OMPC Ballistic AeroData v2.0.0
 
-Comprehensive ballistic suite update featuring admin EPVAT component editing, dynamic weapon cascading without AUG fallback, 2-page multi-temperature EPVAT reports with SS109 universal format, powder charge entry, split-screen responsiveness, dynamic terminal effect plates, and date-based sequential REF numbers:
+Comprehensive ballistic and quality control suite release featuring cascading primer selections, caliber weapon filtering, administrator caliber controls, dashboard sectional filters, desktop split-screen responsive optimizations, APK in-app update launcher, and verified NATO report generation:
 
 ### Key Enhancements & Features:
-1. **Admin EPVAT Component Editability**: Administrators can directly edit/type primer supplier, primer lot, propellant supplier, propellant code, and propellant lot.
-2. **Dynamic Weapon Cascading**: Caliber -> Weapon Type -> Weapon Model -> Serial Number cascading with empty initial selection (no AUG Steyr default).
-3. **Module Switch Automatic Test Reset**: Switching modules immediately sets and displays the first test of that module.
-4. **Dashboard Filter Hierarchy & Chart Scoping**: Filters strictly reordered to Shift -> Time Range -> Caliber -> Test Type -> Lot Number with full chart scoping.
-5. **EPVAT 2-Page Multi-Temperature Report**: All 3 temperatures (+21°C, +52°C, -54°C) rendered on Page 1; clean page break before Ballistic Analysis calculations, KE, and signatures onto Page 2.
-6. **Universal SS109 EPVAT Template**: Standardized NATO SS109 structure applied to all calibers.
-7. **12-Hour AM/PM Format**: Formatted across all exported reports, inspection logs, and views.
-8. **EPVAT Powder Charge**: Direct entry and validation of Powder Charge in grams.
-9. **Inspection Log Time Sorting**: Chronological descending order by user-inserted test time.
-10. **Clean Daily Test Lot Display**: Hopper and box clutter stripped to show clean lot number (e.g. 276-26).
-11. **Removal of Unregistered Lots**: Clean freeform fallback when no registered lots exist.
-12. **Desktop File Attachment Picker**: Windows PowerShell native OpenFileDialog fallback.
-13. **EPVAT Sensor Labels**: Renamed to GP6 (1) Chamber and GP6 (2) Port.
-14. **Universal Sequential REF Counter**: Daily date-based sequential REF counter across all modules, tests, and components.
-15. **Admin Equipment Report Status**: Admins can freely reopen or change status to Under Process / Open.
-16. **Dynamic Terminal Effect Plates**: Admin-configurable Plate 1 and Plate 2 Material & Thickness dynamically rendered in forms and reports.
-17. **Responsive Consumables & Split-Screen UI**: Auto-collapsing sidebar and wrap for split-screen snapping on PC without layout scattering.
-18. **Cross-Platform Deployment**: Published to Firebase Hosting, GitHub repository, and Windows Desktop standalone installer.
+1. **Primer Cascading**: Selecting a caliber filters registered primer suppliers; selecting a primer supplier cascades to registered primer lots.
+2. **Caliber Weapon Filtering**: Strict caliber-based weapon selection (5.56 rifles & machine guns, 7.62 weapons, 9mm pistols).
+3. **Admin Caliber Specification**: Added administrative controls to create and edit/rename registered calibers in Control.
+4. **Module Parameter Switching Reset**: Switching between modules resets test selection to the module's first test and clears previous test parameters.
+5. **Inspection Log Chronological Sorting**: Strictly ordered chronologically descending by user-inserted test date and time.
+6. **Dashboard Independent Sectional Filters**: SPC charts, Ballistics/Fleet Volume, and Defects trend charts feature independent section-level filters in addition to global controls.
+7. **Split-Screen / Snapping Responsiveness**: Header and action button responsive wrapping prevents UI scattering when snapped/split on Windows PC.
+8. **Equipment Module Weapon Field**: Renamed "Weapon Repair" to "Weapon" and hooked into registered weapon selections.
+9. **Equipment Report Status Reopening**: Administrators can reopen closed/resolved equipment maintenance reports.
+10. **Lot 002 OMPC/25 Single-Temperature Record**: Restored original single-temperature (+21°C) EPVAT readings without leakage into other temperatures.
+11. **EPVAT Test Signatures & Kinetic Energy**: Display names and signatures populated on Page 2 alongside kinetic energy computations.
+12. **Technician Signature Selection**: Operator creators select technician from dropdown; technician creators automatically populate their own name.
+13. **Empty Field Defaults**: Caliber, test name, primer lot, primer supplier, propellant code, barrel SN, GP6 (1) & (2), weapon, and sampling location initialize empty.
+14. **Log Entry Test Switching Stability**: Retain selected test without bouncing back to previous test.
+15. **APK Direct In-App Update**: Automatic APK update downloader triggers direct install/download flow via external application launcher.
+16. **Full Multi-Platform Deployment**: Synchronized across Firebase Hosting web application, Windows Desktop portable zip and setup, and Android release APK.
 `;
 
 function request(options, postData) {
@@ -153,9 +151,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v1.9.8.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.8.apk' },
-    { name: 'OMPC_Ballistic_AeroData_v1.9.7.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.7.apk' },
-    { name: 'OMPC_Ballistic_AeroData_v1.9.5.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v1.9.5.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v2.0.0.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.0.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

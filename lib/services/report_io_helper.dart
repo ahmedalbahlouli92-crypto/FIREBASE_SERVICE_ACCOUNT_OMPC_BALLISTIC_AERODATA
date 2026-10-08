@@ -2,6 +2,8 @@ import 'dart:io';
 import 'report_helper.dart';
 import 'storage_service.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 class ReportHelperImpl implements ReportHelper {
   final _storage = StorageService();
 
@@ -59,6 +61,13 @@ class ReportHelperImpl implements ReportHelper {
 
   @override
   Future<void> openUrl({required String url}) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      try {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (launched) return;
+      } catch (_) {}
+    }
     if (Platform.isWindows) {
       await Process.run('cmd', ['/c', 'start', '', url]);
     } else if (Platform.isMacOS) {

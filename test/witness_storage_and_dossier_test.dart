@@ -86,13 +86,13 @@ void main() {
       );
 
       final html = ReportGenerator.generateHtml([epvatRecord], 'EPVAT test', 'Lot Acceptance Test');
-      expect(html, contains('P1 (Chamber)'));
-      expect(html, contains('P2 (Port)'));
+      expect(html, contains('GP6 (1) Chamber'));
+      expect(html, contains('GP6 (2) Port'));
       expect(html, contains('Action Time'));
       expect(html, contains('Velocity'));
 
-      final p1Idx = html.indexOf('<th>P1 (Chamber)');
-      final p2Idx = html.indexOf('<th>P2 (Port)');
+      final p1Idx = html.indexOf('<th>GP6 (1) Chamber');
+      final p2Idx = html.indexOf('<th>GP6 (2) Port');
       final atIdx = html.indexOf('<th>Action Time (ms)</th>');
       final velIdx = html.indexOf('<th>Velocity (m/s)</th>');
 
@@ -226,13 +226,13 @@ void main() {
 
       // Sequence verification
       final certPos = dossierHtml.indexOf('Final Lot Acceptance Certificate');
-      final primerPos = dossierHtml.indexOf('Primer Sensitivity Test');
-      final epvatPos = dossierHtml.indexOf('EPVAT test');
-      final funcPos = dossierHtml.indexOf('Function Test');
-      final resPos = dossierHtml.indexOf('Residual Stress Test');
-      final accPos = dossierHtml.indexOf('Accuracy Test');
-      final extractPos = dossierHtml.indexOf('Extraction Force Test');
-      final waterPos = dossierHtml.indexOf('Waterproof Test');
+      final waterPos = dossierHtml.indexOf('<h2>Waterproof Test</h2>');
+      final extractPos = dossierHtml.indexOf('<h2>Extraction Force Test</h2>');
+      final accPos = dossierHtml.indexOf('<h2>Accuracy Test</h2>');
+      final epvatPos = dossierHtml.indexOf('<h2>EPVAT test</h2>');
+      final funcPos = dossierHtml.indexOf('<h2>Function Test</h2>');
+      final resPos = dossierHtml.indexOf('<h2>Residual Stress Test</h2>');
+      final primerPos = dossierHtml.indexOf('<h2>Primer Sensitivity Test</h2>');
 
       expect(certPos, isNonNegative);
       expect(waterPos, greaterThan(certPos));
@@ -293,10 +293,10 @@ void main() {
       );
 
       final html = ReportGenerator.generateHtml([record], 'Waterproof Test', 'Lot Acceptance Test');
-      expect(html, contains('Ref No: REF-1008'));
+      expect(html, contains('REF 1008'));
 
       final word = ReportGenerator.generateWordHtml([record], 'Waterproof Test', 'Lot Acceptance Test');
-      expect(word, contains('Ref No: REF-1008'));
+      expect(word, contains('REF 1008'));
     });
 
     // -------------------------------------------------------------------------

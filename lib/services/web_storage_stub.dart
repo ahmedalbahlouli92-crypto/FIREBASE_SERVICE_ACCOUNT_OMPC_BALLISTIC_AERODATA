@@ -15,9 +15,9 @@ void saveWebOperator(String email, String password, {String role = 'operator', S
 void deleteWebOperator(String username) {}
 Map<String, dynamic> getWebRules() => {};
 void saveWebRules(Map<String, dynamic> rules) {}
-void saveWebFormDraft(Map<String, dynamic> draft) {}
-Map<String, dynamic>? getWebFormDraft() => null;
-void clearWebFormDraft() {}
+void saveWebFormDraft(Map<String, dynamic> draft, {String? scope}) {}
+Map<String, dynamic>? getWebFormDraft({String? scope}) => null;
+void clearWebFormDraft({String? scope}) {}
 List<Map<String, dynamic>> getWebConsumables() => [];
 void saveWebConsumables(List<Map<String, dynamic>> items) {}
 String? getWebActiveModule() => null;

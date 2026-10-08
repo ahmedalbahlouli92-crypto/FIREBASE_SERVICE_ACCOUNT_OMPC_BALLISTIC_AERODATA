@@ -1781,8 +1781,8 @@ class _MainShellState extends State<MainShell> {
   UserRole? _currentUserRole;
   String _currentUserEmail = '';
   String _currentModule = 'Daily Test';
-  String _selectedEntryCaliber = '5.56x45 SS109';
-  String _selectedEntryTestName = 'Waterproof Test';
+  String _selectedEntryCaliber = '';
+  String _selectedEntryTestName = '';
 
   List<BallisticRecord> get _activeRecords {
     if (_currentModule == 'Lot Acceptance Test') return _records;
@@ -1821,6 +1821,7 @@ class _MainShellState extends State<MainShell> {
   bool _isPersonnelCardExpanded = false;
   bool _isPermissionsCardExpanded = false;
   bool _isEquipmentCardExpanded = false;
+  bool _isCaliberCardExpanded = false;
   bool _isRulesCardExpanded = false; // Collapsed by default as requested; admin will open it
 
   // Report submission real-time alerting & audio chime tracking
@@ -3137,6 +3138,14 @@ class _MainShellState extends State<MainShell> {
         schemaMigrated = true;
       } else {
         activeRules['sample_locations'] = List<String>.from((activeRules['sample_locations'] as List).map((e) => e.toString()));
+      }
+      if (activeRules['calibers_list'] == null) {
+        activeRules['calibers_list'] = List<String>.from(EntryTab.defaultCalibers);
+        EntryTab.calibers = List<String>.from(EntryTab.defaultCalibers);
+        schemaMigrated = true;
+      } else {
+        activeRules['calibers_list'] = List<String>.from(activeRules['calibers_list'] as List);
+        EntryTab.calibers = List<String>.from(activeRules['calibers_list']);
       }
 
       // Cross-populate and synchronize equipment fleets across all keys:
@@ -4743,6 +4752,7 @@ class _MainShellState extends State<MainShell> {
                         _isPersonnelCardExpanded = false;
                         _isPermissionsCardExpanded = false;
                         _isEquipmentCardExpanded = false;
+                        _isCaliberCardExpanded = false;
                         _isRulesCardExpanded = false;
                         _isCertTemplateCardExpanded = false;
                       });
@@ -4764,6 +4774,7 @@ class _MainShellState extends State<MainShell> {
                         _isPersonnelCardExpanded = true;
                         _isPermissionsCardExpanded = true;
                         _isEquipmentCardExpanded = true;
+                        _isCaliberCardExpanded = true;
                         _isRulesCardExpanded = true;
                         _isCertTemplateCardExpanded = true;
                       });
@@ -4804,8 +4815,10 @@ class _MainShellState extends State<MainShell> {
                 _buildEquipmentFleetCard(double.infinity),
               ],
 
-              // 6. Rules Management (Admin only or authorized roles)
+              // 6. Calibers & Rules Management (Admin only or authorized roles)
               if (_currentUserRole == UserRole.admin || _hasPermission('can_manage_rules')) ...[
+                const SizedBox(height: 12.0),
+                _buildCaliberManagementCard(double.infinity),
                 const SizedBox(height: 12.0),
                 _buildRulesManagementCard(double.infinity),
                 const SizedBox(height: 12.0),
@@ -7321,6 +7334,339 @@ class _MainShellState extends State<MainShell> {
         );
       },
     );
+  }
+
+  Widget _buildCaliberManagementCard(double width) {
+    final List<String> registeredCalibers = (_adminRules['calibers_list'] is List)
+        ? List<String>.from(_adminRules['calibers_list'])
+        : List<String>.from(EntryTab.calibers);
+
+    return Container(
+      width: width,
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isCaliberCardExpanded ? 20.0 : 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isCaliberCardExpanded = !_isCaliberCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF0284C7)),
+                  ),
+                  child: const Icon(Icons.tune_rounded, color: Color(0xFF0284C7), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Caliber Specifications & Management',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2FE),
+                    borderRadius: BorderRadius.circular(6.0),
+                  ),
+                  child: Text(
+                    '${registeredCalibers.length} Registered',
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0369A1)),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                Icon(
+                  _isCaliberCardExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: const Color(0xFF0284C7),
+                  size: 24.0,
+                ),
+              ],
+            ),
+          ),
+          if (_isCaliberCardExpanded) ...[
+            const SizedBox(height: 12.0),
+            const Text(
+              'Register new ammunition calibers or rename/edit registered calibers. Changes automatically update log entry options, analytics filters, and ballistic evaluation limits.',
+              style: TextStyle(fontSize: 12.0, color: Color(0xFF64748B), height: 1.4),
+            ),
+            const SizedBox(height: 16.0),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Active Ballistic Calibers',
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _showAddNewCaliberDialog,
+                  icon: const Icon(Icons.add, size: 16.0, color: Colors.white),
+                  label: const Text('Add New Caliber', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12.0),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: registeredCalibers.length,
+                separatorBuilder: (_, __) => const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
+                itemBuilder: (context, index) {
+                  final caliber = registeredCalibers[index];
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      caliber,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.0, color: Color(0xFF0F172A)),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18.0, color: Color(0xFF0284C7)),
+                          tooltip: 'Edit / Rename Caliber',
+                          onPressed: () => _showEditCaliberDialog(caliber),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18.0, color: Color(0xFFEF4444)),
+                          tooltip: 'Delete Caliber',
+                          onPressed: registeredCalibers.length <= 1
+                              ? null
+                              : () => _confirmDeleteCaliber(caliber),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddNewCaliberDialog() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Text('Register New Caliber', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Enter the caliber specification designation:', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+            const SizedBox(height: 12.0),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'e.g. 5.56x45 M855A1 or 12.7x99 M33',
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) Navigator.pop(ctx, text);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+            child: const Text('Register', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final List<String> current = (_adminRules['calibers_list'] is List)
+          ? List<String>.from(_adminRules['calibers_list'])
+          : List<String>.from(EntryTab.calibers);
+      if (!current.contains(result)) {
+        current.add(result);
+        _adminRules['calibers_list'] = current;
+        EntryTab.calibers = current;
+        await _storageService.saveRules(_adminRules);
+        setState(() {});
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Caliber "$result" registered successfully.'), backgroundColor: const Color(0xFF10B981)),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showEditCaliberDialog(String oldCaliber) async {
+    final controller = TextEditingController(text: oldCaliber);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Text('Edit / Rename Caliber', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Rename "$oldCaliber" to:', style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+            const SizedBox(height: 12.0),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) Navigator.pop(ctx, text);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+            child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty && result != oldCaliber) {
+      final List<String> current = (_adminRules['calibers_list'] is List)
+          ? List<String>.from(_adminRules['calibers_list'])
+          : List<String>.from(EntryTab.calibers);
+      final idx = current.indexOf(oldCaliber);
+      if (idx != -1) {
+        current[idx] = result;
+      } else {
+        current.add(result);
+      }
+      _adminRules['calibers_list'] = current;
+      EntryTab.calibers = current;
+
+      // Migrate keys in sub-rule maps
+      final subMapsToMigrate = [
+        _adminRules['epvat']?['limits_by_caliber'],
+        _adminRules['epvat']?['bullet_mass_grams'],
+        _adminRules['epvat']?['custom_formulas'],
+        _adminRules['accuracy']?['limits'],
+        _adminRules['waterproof']?['calibers'],
+        _adminRules['residual_stress']?['calibers'],
+        _adminRules['extraction']?['calibers'],
+        _adminRules['function_test']?['calibers'],
+        _adminRules['primer_sensitivity']?['calibers'],
+        _adminRules['accuracy_barrels_by_caliber'],
+        _adminRules['epvat_barrels_by_caliber'],
+      ];
+      for (final m in subMapsToMigrate) {
+        if (m is Map && m.containsKey(oldCaliber)) {
+          m[result] = m[oldCaliber];
+          m.remove(oldCaliber);
+        }
+      }
+
+      if (_selectedEntryCaliber == oldCaliber) {
+        _selectedEntryCaliber = result;
+      }
+
+      await _storageService.saveRules(_adminRules);
+      setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Caliber renamed from "$oldCaliber" to "$result".'), backgroundColor: const Color(0xFF10B981)),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteCaliber(String caliber) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Text('Delete Caliber?', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
+        content: Text('Are you sure you want to remove "$caliber"? This will remove it from future test selections.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final List<String> current = (_adminRules['calibers_list'] is List)
+          ? List<String>.from(_adminRules['calibers_list'])
+          : List<String>.from(EntryTab.calibers);
+      current.remove(caliber);
+      _adminRules['calibers_list'] = current;
+      EntryTab.calibers = current;
+      if (_selectedEntryCaliber == caliber) {
+        _selectedEntryCaliber = '';
+      }
+      await _storageService.saveRules(_adminRules);
+      setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Caliber "$caliber" deleted.'), backgroundColor: const Color(0xFFEF4444)),
+        );
+      }
+    }
   }
 
   Widget _buildRulesManagementCard(double width) {
@@ -10856,7 +11202,7 @@ class _MainShellState extends State<MainShell> {
         onClearAllRecords: _handleClearDashboardRecords,
       ),
       EntryTab(
-        key: ValueKey('$_currentModule|$_selectedEntryTestName'),
+        key: ValueKey(_currentModule),
         currentModule: _currentModule,
         onSubmit: _handleNewRecord,
         loggedInUser: _currentUserEmail,
@@ -10918,6 +11264,7 @@ class _MainShellState extends State<MainShell> {
       mainContent = EquipmentReportTab(
         loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
         isAdmin: _currentUserRole == UserRole.admin,
+        adminRules: _adminRules,
       );
     } else if (_currentModule == 'Executive Reports') {
       mainContent = ExecutiveReportsTab(
@@ -10947,7 +11294,8 @@ class _MainShellState extends State<MainShell> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isDesktop = constraints.maxWidth > 800;
+        final bool isPlatformDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+        final bool isDesktop = isPlatformDesktop || constraints.maxWidth > 800;
         final bool isNarrowDesktop = constraints.maxWidth < 1100;
 
         if (isDesktop) {
@@ -11251,7 +11599,8 @@ class _MainShellState extends State<MainShell> {
                       setState(() {
                         _currentModule = val;
                         _activeTabIndex = 0;
-                        _selectedEntryTestName = _getFirstTestForModule(val);
+                        _selectedEntryCaliber = '';
+                        _selectedEntryTestName = '';
                       });
                       _storageService.saveActiveModule(val);
                     }
@@ -11435,7 +11784,8 @@ class _MainShellState extends State<MainShell> {
         onPressed: () => setState(() {
           _currentModule = label;
           _activeTabIndex = 0; // Reset sub-tab
-          _selectedEntryTestName = _getFirstTestForModule(label);
+          _selectedEntryCaliber = '';
+          _selectedEntryTestName = '';
           _storageService.saveActiveModule(label);
         }),
         icon: Icon(icon, color: isActive ? activeColor : const Color(0xFF38BDF8), size: 18.0),
@@ -11471,180 +11821,191 @@ class _MainShellState extends State<MainShell> {
       {'label': 'Controls', 'icon': Icons.settings_input_component_outlined},
     ];
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFFB8CEE5)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A1E3A8A),
-            blurRadius: 14.0,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Subtabs Navigation
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(subTabs.length, (index) {
-                  final bool isActive = _activeTabIndex == index;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3.0),
-                    child: TextButton.icon(
-                      onPressed: () => setState(() => _activeTabIndex = index),
-                      icon: Icon(
-                        subTabs[index]['icon'],
-                        size: 15.0,
-                        color: isActive ? Colors.white : const Color(0xFF64748B),
-                      ),
-                      label: Text(
-                        subTabs[index]['label'],
-                        style: TextStyle(
-                          color: isActive ? Colors.white : const Color(0xFF334155),
-                          fontSize: 12.5,
-                          fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                        backgroundColor: isActive ? const Color(0xFF4D99DB) : Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                          side: BorderSide(
-                            color: isActive ? const Color(0xFF4D99DB) : Colors.transparent,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12.0),
+    return LayoutBuilder(
+      builder: (context, barConstraints) {
+        final bool showGreeting = barConstraints.maxWidth >= 950;
+        final bool showClock = barConstraints.maxWidth >= 750;
 
-          // Header Badges: Welcome Greeting, Live Ticking Digital Clock, Alerts Toggle
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Welcome greeting with user's name
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F6FB),
-                  borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFFB8CEE5)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('👋', style: TextStyle(fontSize: 12.0)),
-                    const SizedBox(width: 6.0),
-                    Text(
-                      'Welcome, ${_currentUserEmail.isNotEmpty ? _currentUserEmail : 'User'}!',
-                      style: const TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8.0),
-
-              // Live ticking digital clock
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F6FB),
-                  borderRadius: BorderRadius.circular(6.0),
-                  border: Border.all(color: const Color(0xFFB8CEE5)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.schedule, size: 14.0, color: Color(0xFF0284C7)),
-                    const SizedBox(width: 6.0),
-                    Text(
-                      _formatLiveClock(_currentTime),
-                      style: const TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        color: Color(0xFF0284C7),
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8.0),
-
-              // Alerts toggle button
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    _submissionAlertsEnabled = !_submissionAlertsEnabled;
-                    _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
-                  });
-                  _storageService.saveRules(_adminRules);
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: const Color(0xFF0F172A),
-                      content: Text(
-                        _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
-                        style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(6.0),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
-                  decoration: BoxDecoration(
-                    color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFFF1F6FB),
-                    borderRadius: BorderRadius.circular(6.0),
-                    border: Border.all(
-                      color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFFB8CEE5),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
-                        size: 15.0,
-                        color: _submissionAlertsEnabled ? const Color(0xFF059669) : const Color(0xFF64748B),
-                      ),
-                      const SizedBox(width: 6.0),
-                      Text(
-                        _submissionAlertsEnabled ? 'Alerts: ON' : 'Alerts: OFF',
-                        style: TextStyle(
-                          color: _submissionAlertsEnabled ? const Color(0xFF059669) : const Color(0xFF475569),
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 24.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12.0),
+            border: Border.all(color: const Color(0xFFB8CEE5)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A1E3A8A),
+                blurRadius: 14.0,
+                offset: Offset(0, 3),
               ),
             ],
           ),
-        ],
-      ),
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Subtabs Navigation
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(subTabs.length, (index) {
+                      final bool isActive = _activeTabIndex == index;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                        child: TextButton.icon(
+                          onPressed: () => setState(() => _activeTabIndex = index),
+                          icon: Icon(
+                            subTabs[index]['icon'],
+                            size: 15.0,
+                            color: isActive ? Colors.white : const Color(0xFF64748B),
+                          ),
+                          label: Text(
+                            subTabs[index]['label'],
+                            style: TextStyle(
+                              color: isActive ? Colors.white : const Color(0xFF334155),
+                              fontSize: 12.5,
+                              fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                            backgroundColor: isActive ? const Color(0xFF4D99DB) : Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                              side: BorderSide(
+                                color: isActive ? const Color(0xFF4D99DB) : Colors.transparent,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+
+              // Header Badges: Welcome Greeting, Live Ticking Digital Clock, Alerts Toggle
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Welcome greeting with user's name
+                  if (showGreeting) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F6FB),
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(color: const Color(0xFFB8CEE5)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('👋', style: TextStyle(fontSize: 12.0)),
+                          const SizedBox(width: 6.0),
+                          Text(
+                            'Welcome, ${_currentUserEmail.isNotEmpty ? _currentUserEmail : 'User'}!',
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                  ],
+
+                  // Live ticking digital clock
+                  if (showClock) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F6FB),
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(color: const Color(0xFFB8CEE5)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule, size: 14.0, color: Color(0xFF0284C7)),
+                          const SizedBox(width: 6.0),
+                          Text(
+                            _formatLiveClock(_currentTime),
+                            style: const TextStyle(
+                              fontFamily: 'JetBrainsMono',
+                              color: Color(0xFF0284C7),
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                  ],
+
+                  // Alerts toggle button
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _submissionAlertsEnabled = !_submissionAlertsEnabled;
+                        _adminRules['submission_alerts_enabled'] = _submissionAlertsEnabled;
+                      });
+                      _storageService.saveRules(_adminRules);
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: const Color(0xFF0F172A),
+                          content: Text(
+                            _submissionAlertsEnabled ? 'Submission alerts enabled' : 'Submission alerts turned off',
+                            style: const TextStyle(color: Colors.white, fontSize: 12.0, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(6.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+                      decoration: BoxDecoration(
+                        color: _submissionAlertsEnabled ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFFF1F6FB),
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(
+                          color: _submissionAlertsEnabled ? const Color(0xFF10B981) : const Color(0xFFB8CEE5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _submissionAlertsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
+                            size: 15.0,
+                            color: _submissionAlertsEnabled ? const Color(0xFF059669) : const Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 6.0),
+                          Text(
+                            _submissionAlertsEnabled ? 'Alerts: ON' : 'Alerts: OFF',
+                            style: TextStyle(
+                              color: _submissionAlertsEnabled ? const Color(0xFF059669) : const Color(0xFF475569),
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

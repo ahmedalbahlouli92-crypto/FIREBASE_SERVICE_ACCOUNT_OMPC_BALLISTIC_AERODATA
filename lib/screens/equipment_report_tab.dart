@@ -7,11 +7,13 @@ import '../services/supabase_service.dart';
 class EquipmentReportTab extends StatefulWidget {
   final String loggedInUser;
   final bool isAdmin;
+  final Map<String, dynamic>? adminRules;
 
   const EquipmentReportTab({
     Key? key,
     required this.loggedInUser,
     this.isAdmin = false,
+    this.adminRules,
   }) : super(key: key);
 
   @override
@@ -32,12 +34,49 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
     'B180T HPI Closed Vessels',
     'Extraction Fore Tester',
     'Primer Sensitivity Tester',
-    'weapon repair',
+    'Weapon',
   ];
 
   String _selectedEquipment = equipmentList.first;
+  String _selectedWeapon = '';
   String _selectedSeverity = 'Operational Impact';
   String _selectedStatus = 'Open / Reported';
+
+  List<String> get registeredWeapons {
+    final wList = widget.adminRules?['weapons'];
+    final items = <String>[];
+    if (wList is List) {
+      for (final w in wList) {
+        if (w is Map) {
+          final m = (w['model'] ?? w['type'] ?? '').toString().trim();
+          final s = (w['serial'] ?? '').toString().trim();
+          final mfg = (w['manufacturer'] ?? '').toString().trim();
+          String title = m;
+          if (mfg.isNotEmpty && mfg != 'Other' && !title.toLowerCase().startsWith(mfg.toLowerCase())) {
+            title = '$mfg $title';
+          }
+          if (s.isNotEmpty) title = '$title (SN: $s)';
+          if (title.isNotEmpty && !items.contains(title)) items.add(title);
+        } else if (w != null && w.toString().trim().isNotEmpty) {
+          final str = w.toString().trim();
+          if (!items.contains(str)) items.add(str);
+        }
+      }
+    }
+    if (items.isEmpty) {
+      items.addAll([
+        'Steyr AUG A3 (SN: 193092)',
+        'Colt M16 A4 (SN: A0703155)',
+        'Colt M4 (SN: A0074162)',
+        'FN Herstal 7.62x51 MINIMI (SN: 130469-2)',
+        'FN Herstal 7.62x51 MAG240 (SN: 436-1)',
+        'FN Herstal 5.56x45 MINIMI (SN: 130447-1)',
+        'Glock 17 (SN: BPRH844)',
+        'Colt 1911 Luger (SN: GV003683)',
+      ]);
+    }
+    return items;
+  }
 
   final TextEditingController _reporterController = TextEditingController();
   final TextEditingController _issueTitleController = TextEditingController();
@@ -100,7 +139,9 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
       'id': 'EQ-${DateTime.now().millisecondsSinceEpoch}',
       'timestamp': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
       'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'equipment': _selectedEquipment,
+      'equipment': _selectedEquipment == 'Weapon'
+          ? (_selectedWeapon.isNotEmpty ? 'Weapon ($_selectedWeapon)' : (registeredWeapons.isNotEmpty ? 'Weapon (${registeredWeapons.first})' : 'Weapon'))
+          : _selectedEquipment,
       'title': title,
       'description': desc,
       'severity': _selectedSeverity,
@@ -121,7 +162,7 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Issue reported for $_selectedEquipment successfully.'),
+          content: Text('Issue reported for ${newIssue['equipment']} successfully.'),
           backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
         ),
@@ -131,7 +172,7 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
 
   Future<void> _updateIssueStatus(Map<String, dynamic> issue, String newStatus) async {
     final currentStatus = (issue['status'] ?? '').toString();
-    if (currentStatus == 'Resolved' || currentStatus == 'Calibrated' || currentStatus == 'Closed') {
+    if (!widget.isAdmin && (currentStatus == 'Resolved' || currentStatus == 'Calibrated' || currentStatus == 'Closed')) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Issue is $currentStatus and locked. No further modifications allowed.'),
@@ -454,7 +495,13 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
 
     final filteredList = _filterEquipment == 'All Equipment'
         ? _reportedIssues
-        : _reportedIssues.where((i) => i['equipment'] == _filterEquipment).toList();
+        : _reportedIssues.where((i) {
+            final eq = (i['equipment'] ?? '').toString();
+            if (_filterEquipment == 'Weapon') {
+              return eq.toLowerCase().startsWith('weapon') || eq.toLowerCase().contains('weapon repair');
+            }
+            return eq == _filterEquipment;
+          }).toList();
 
     return Container(
       color: const Color(0xFFC4D6EC),
@@ -574,11 +621,38 @@ class _EquipmentReportTabState extends State<EquipmentReportTab> {
                                       isExpanded: true,
                                       decoration: _inputDecoration(),
                                       items: equipmentList.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 12.5)))).toList(),
-                                      onChanged: (v) => setState(() => _selectedEquipment = v!),
+                                      onChanged: (v) {
+                                        setState(() {
+                                          _selectedEquipment = v!;
+                                          if (_selectedEquipment == 'Weapon' && _selectedWeapon.isEmpty && registeredWeapons.isNotEmpty) {
+                                            _selectedWeapon = registeredWeapons.first;
+                                          }
+                                        });
+                                      },
                                     ),
                                   ],
                                 ),
                               ),
+                              if (_selectedEquipment == 'Weapon')
+                                SizedBox(
+                                  width: isWide ? (constraints.maxWidth - 80) / 3 : constraints.maxWidth,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('REGISTERED WEAPON *', style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 6.0),
+                                      DropdownButtonFormField<String>(
+                                        value: registeredWeapons.contains(_selectedWeapon)
+                                            ? _selectedWeapon
+                                            : (registeredWeapons.isNotEmpty ? registeredWeapons.first : null),
+                                        isExpanded: true,
+                                        decoration: _inputDecoration(),
+                                        items: registeredWeapons.map((w) => DropdownMenuItem(value: w, child: Text(w, style: const TextStyle(fontSize: 12.0), overflow: TextOverflow.ellipsis))).toList(),
+                                        onChanged: (v) => setState(() => _selectedWeapon = v ?? ''),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               // Severity Level
                               SizedBox(
                                 width: isWide ? (constraints.maxWidth - 80) / 3 : constraints.maxWidth,

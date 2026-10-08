@@ -86,7 +86,7 @@ class EntryTab extends StatefulWidget {
 
   final VoidCallback? onOpenEpvatRulesInControl;
 
-  static const List<String> calibers = [
+  static const List<String> defaultCalibers = [
     '5.56x45 SS109',
     '5.56x45 M193',
     '5.56x45 .223 69 grains',
@@ -101,6 +101,8 @@ class EntryTab extends StatefulWidget {
     '9x19mm Match',
     '9x19mm 124 grains CMJ',
   ];
+
+  static List<String> calibers = List<String>.from(defaultCalibers);
 
   static const List<String> testNames = [
     'Waterproof Test',
@@ -167,13 +169,14 @@ class _EntryTabState extends State<EntryTab> {
   final _primerLotController = TextEditingController();
   final _propellantLotController = TextEditingController();
   final _propellantChargeController = TextEditingController();
-  final _propellantCodeController = TextEditingController(text: 'D-073.4');
-  String _primerSupplier = 'CBC';
-  String _propellantSupplier = 'Explosia';
-  late final _epvatAdminPropellantSupplierController = TextEditingController(text: _propellantSupplier);
-  late final _epvatAdminPrimerSupplierController = TextEditingController(text: _primerSupplier);
+  final _propellantCodeController = TextEditingController();
+  String _primerSupplier = '';
+  String _propellantSupplier = '';
+  late final _epvatAdminPropellantSupplierController = TextEditingController();
+  late final _epvatAdminPrimerSupplierController = TextEditingController();
   String? _selectedComponentPrimerLot;
   String? _selectedComponentPropellantLot;
+  List<String> _registeredTechnicians = ['Ballistics Technician', 'Component Technician'];
   final List<String> _propellantCodes = const [
     'D-073.4',
     'D-073.5',
@@ -990,6 +993,113 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  void _showAddCustomPrimerLotDialog() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C3351),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Text('Enter Custom Primer Lot', style: TextStyle(color: Colors.white, fontSize: 16.0)),
+        content: TextField(
+          controller: ctrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Primer Lot Number',
+            labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+            filled: true,
+            fillColor: Color(0xFF0E223D),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+            onPressed: () {
+              final val = ctrl.text.trim();
+              if (val.isEmpty) return;
+              setState(() {
+                _primerLotController.text = val;
+                _selectedComponentPrimerLot = val;
+              });
+              Navigator.pop(ctx);
+            },
+            child: const Text('Set Lot', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _getPrimerSuppliersForCaliber(String cal) {
+    final List<String> list = [];
+    for (final s in _primerSuppliers) {
+      if (!list.contains(s)) list.add(s);
+    }
+    for (final r in widget.componentPrimerRecords) {
+      if (cal.isEmpty || _isSameCaliberFamily(r.caliber, cal)) {
+        final s = r.primerSupplier.trim();
+        if (s.isNotEmpty && !list.contains(s)) list.add(s);
+      }
+    }
+    for (final r in widget.records) {
+      if (cal.isEmpty || _isSameCaliberFamily(r.caliber, cal)) {
+        final s = r.primerSupplier.trim();
+        if (s.isNotEmpty && !list.contains(s)) list.add(s);
+      }
+    }
+    return list;
+  }
+
+  List<String> _getPrimerLotsForCaliberAndSupplier(String cal, String supplier) {
+    final Set<String> lots = {};
+    for (final r in widget.componentPrimerRecords) {
+      final matchCal = cal.isEmpty || _isSameCaliberFamily(r.caliber, cal);
+      final matchSup = supplier.isEmpty || r.primerSupplier.trim().toLowerCase() == supplier.trim().toLowerCase();
+      if (matchCal && matchSup) {
+        final l = r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber;
+        if (l.trim().isNotEmpty) lots.add(l.trim());
+      }
+    }
+    for (final r in widget.records) {
+      final matchCal = cal.isEmpty || _isSameCaliberFamily(r.caliber, cal);
+      final matchSup = supplier.isEmpty || r.primerSupplier.trim().toLowerCase() == supplier.trim().toLowerCase();
+      if (matchCal && matchSup) {
+        final l = r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber;
+        if (l.trim().isNotEmpty) lots.add(l.trim());
+      }
+    }
+    if (_primerLotController.text.trim().isNotEmpty) {
+      lots.add(_primerLotController.text.trim());
+    }
+    return lots.toList()..sort();
+  }
+
+  Future<void> _loadTechnicians() async {
+    try {
+      final ops = await _storageService.loadOperators();
+      final techs = ops
+          .where((o) => (o['role'] ?? '').toLowerCase() == 'technician' || (o['name'] ?? '').toLowerCase().contains('technician'))
+          .map((o) => (o['name'] ?? o['email'] ?? '').trim())
+          .where((n) => n.isNotEmpty)
+          .toSet()
+          .toList();
+      if (mounted && techs.isNotEmpty) {
+        setState(() {
+          for (final t in techs) {
+            if (!_registeredTechnicians.contains(t)) {
+              _registeredTechnicians.add(t);
+            }
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
   void _showAddPropellantSupplierDialog() {
     final ctrl = TextEditingController();
     showDialog(
@@ -1039,33 +1149,95 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   bool _weaponMatchesCaliber(Map<String, String> w, String currentCaliber) {
-    final wCal = (w['caliber'] ?? '').trim().toLowerCase();
-    final c = currentCaliber.toLowerCase();
+    final c = currentCaliber.toLowerCase().trim();
+    if (c.isEmpty) return true;
 
+    final wCal = (w['caliber'] ?? '').trim().toLowerCase();
+    final model = (w['model'] ?? '').trim().toLowerCase();
+    final raw = (w['raw'] ?? '').trim().toLowerCase();
+    final type = (w['type'] ?? '').trim().toLowerCase();
+    final combined = '$wCal $model $raw $type';
+
+    // 1. Explicit weapon caliber matching
     if (wCal.isNotEmpty) {
-      if (wCal == c) return true;
-      if (c.contains('9mm') || c.contains('9x19')) {
-        return wCal.contains('9mm') || wCal.contains('9x19') || wCal.contains('9 mm');
-      }
-      if (c.contains('5.56')) {
+      if (c.contains('5.56') || c.contains('.223')) {
         return wCal.contains('5.56') || wCal.contains('.223');
       }
-      if (c.contains('7.62')) {
+      if (c.contains('7.62') || c.contains('.308')) {
         return wCal.contains('7.62') || wCal.contains('.308');
       }
-      if (c.contains('12.7')) {
+      if (c.contains('9mm') || c.contains('9x19')) {
+        return wCal.contains('9mm') || wCal.contains('9x19') || wCal.contains('9 mm') || wCal.contains('luger') || wCal.contains('para');
+      }
+      if (c.contains('12.7') || c.contains('.50')) {
         return wCal.contains('12.7') || wCal.contains('.50');
       }
-      return false;
+      return wCal == c;
     }
 
-    final cat = (w['category'] ?? '').trim().toLowerCase();
+    // 2. Strict model/name deduction when caliber property is unassigned
+    if (c.contains('5.56') || c.contains('.223')) {
+      final is556 = combined.contains('5.56') ||
+          combined.contains('223') ||
+          combined.contains('aug') ||
+          combined.contains('steyr') ||
+          combined.contains('m16') ||
+          combined.contains('m4') ||
+          combined.contains('scar-l') ||
+          combined.contains('m249') ||
+          combined.contains('saw') ||
+          combined.contains('ar-15') ||
+          combined.contains('ar15') ||
+          combined.contains('hk416') ||
+          combined.contains('g36') ||
+          (combined.contains('minimi') && !combined.contains('7.62'));
+      final is762or9 = combined.contains('7.62') || combined.contains('308') || combined.contains('m240') || combined.contains('g3') || combined.contains('mg3') || combined.contains('glock') || combined.contains('beretta') || combined.contains('9mm') || combined.contains('9x19');
+      return is556 && !is762or9;
+    }
+
+    if (c.contains('7.62') || c.contains('.308')) {
+      final is762 = combined.contains('7.62') ||
+          combined.contains('308') ||
+          combined.contains('g3') ||
+          combined.contains('scar-h') ||
+          combined.contains('m240') ||
+          combined.contains('mg3') ||
+          combined.contains('m60') ||
+          combined.contains('m14') ||
+          combined.contains('fal') ||
+          combined.contains('hk417') ||
+          combined.contains('mag') ||
+          combined.contains('ssg') ||
+          combined.contains('ak-47') ||
+          combined.contains('akm') ||
+          (combined.contains('minimi') && combined.contains('7.62'));
+      final is556or9 = combined.contains('5.56') || combined.contains('223') || combined.contains('m16') || combined.contains('m4') || combined.contains('aug') || combined.contains('m249') || combined.contains('glock') || combined.contains('beretta') || combined.contains('9mm');
+      return is762 && !is556or9;
+    }
+
     if (c.contains('9mm') || c.contains('9x19')) {
-      return cat == 'pistol';
+      final is9mm = combined.contains('9mm') ||
+          combined.contains('9x19') ||
+          combined.contains('luger') ||
+          combined.contains('para') ||
+          combined.contains('glock') ||
+          combined.contains('beretta') ||
+          combined.contains('92fs') ||
+          combined.contains('m9') ||
+          combined.contains('p226') ||
+          combined.contains('sig') ||
+          combined.contains('cz 75') ||
+          combined.contains('cz75') ||
+          combined.contains('mp9') ||
+          combined.contains('mp5') ||
+          combined.contains('browning');
+      return is9mm;
     }
-    if (c.contains('5.56') || c.contains('7.62') || c.contains('12.7')) {
-      return cat == 'rifle' || cat == 'machine gun' || cat == 'carbine';
+
+    if (c.contains('12.7') || c.contains('.50')) {
+      return combined.contains('12.7') || combined.contains('.50') || combined.contains('m82') || combined.contains('m200');
     }
+
     return true;
   }
 
@@ -1196,6 +1368,8 @@ class _EntryTabState extends State<EntryTab> {
       addWeaponItem(category: 'Rifle', model: 'M4A1 Carbine', serial: 'W-9012', raw: 'M4A1 Carbine (SN: W-9012)', caliber: '5.56x45 M193');
       addWeaponItem(category: 'Rifle', model: 'M16A4 Rifle', serial: 'W-9015', raw: 'M16A4 Rifle (SN: W-9015)', caliber: '5.56x45 SS109');
       addWeaponItem(category: 'Rifle', model: 'G3A3 Rifle', serial: 'W-7721', raw: 'G3A3 Rifle (SN: W-7721)', caliber: '7.62x51 M80');
+      addWeaponItem(category: 'Machine Gun', model: 'M240B', serial: 'W-2401', raw: 'M240B (SN: W-2401)', caliber: '7.62x51 M80');
+      addWeaponItem(category: 'Machine Gun', model: 'MG3 Machine Gun', serial: 'MG3-001', raw: 'MG3 Machine Gun (SN: MG3-001)', caliber: '7.62x51 M80');
       addWeaponItem(category: 'Machine Gun', model: 'M249 SAW', serial: 'W-4401', raw: 'M249 SAW (SN: W-4401)', caliber: '5.56x45 SS109');
       addWeaponItem(category: 'Pistol', model: 'Beretta M9 Pistol', serial: 'W-1102', raw: 'Beretta M9 Pistol (SN: W-1102)', caliber: '9x19mm Para');
       addWeaponItem(category: 'Pistol', model: 'Beretta 92FS', serial: 'B-9201', raw: 'Beretta 92FS (SN: B-9201)', caliber: '9x19mm Para');
@@ -2231,9 +2405,79 @@ class _EntryTabState extends State<EntryTab> {
     _scheduleAutoSave();
   }
 
+  void _clearTestSpecificParameters() {
+    _functionWeapon = '';
+    _functionSelectedCategory = '';
+    _functionSelectedModel = '';
+    _functionSelectedSerial = '';
+    _selectedFunctionWeapons = [];
+    _functionCustomModelController.clear();
+    _functionCustomSerialController.clear();
+    _funcDefectItemCounts.clear();
+    _functionLevel1Controller.text = '0';
+    _functionLevel2Controller.text = '0';
+    _functionLevel3Controller.text = '0';
+    _functionLevel4Controller.text = '0';
+    for (var c in _funcAllL1Controllers.values) c.text = '0';
+    for (var c in _funcAllL2Controllers.values) c.text = '0';
+    for (var c in _funcAllL3Controllers.values) c.text = '0';
+    for (var c in _funcAllL4Controllers.values) c.text = '0';
+    _defectsController.text = '0';
+
+    _mouthSlowController.text = '0';
+    _mouthFastController.text = '0';
+    _primerSlowController.text = '0';
+    _primerFastController.text = '0';
+    _pressureController.clear();
+
+    _meanXController.clear();
+    _maxXController.clear();
+    _minXController.clear();
+    _rangeXController.clear();
+    _sdXController.clear();
+    _meanYController.clear();
+    _maxYController.clear();
+    _minYController.clear();
+    _rangeYController.clear();
+    _sdYController.clear();
+    _meanRadiusController.clear();
+    _accLargestDistanceController.clear();
+
+    _primerHbarController.clear();
+    _primerSDController.clear();
+    _primerHbarPlus5SController.clear();
+    _primerHbarMinus2SController.clear();
+    _primerMisfiresCountController.text = '0';
+
+    _epvatMeanPressureController.clear();
+    _epvatMaxPressureController.clear();
+    _epvatMinPressureController.clear();
+    _epvatRangePressureController.clear();
+    _epvatSDPressureController.clear();
+    _epvatP2MeanPressureController.clear();
+    _epvatP2MaxPressureController.clear();
+    _epvatP2MinPressureController.clear();
+    _epvatP2RangePressureController.clear();
+    _epvatP2SDPressureController.clear();
+    _meanVelController.clear();
+    _maxVelController.clear();
+    _minVelController.clear();
+    _rangeVelController.clear();
+    _sdVelController.clear();
+
+    _actionTimeMeanController.clear();
+    _actionTimeMaxController.clear();
+    _actionTimeMinController.clear();
+    _actionTimeRangeController.clear();
+    _actionTimeSDController.clear();
+  }
+
+  String get _draftScope => '${widget.currentModule}_$_testName';
+
   void _onTestNameSelected(String newTest) {
     setState(() {
       _testName = newTest;
+      _clearTestSpecificParameters();
       _locationController.text = _getDefaultSamplingLocation(
         module: widget.currentModule,
         test: newTest,
@@ -2266,6 +2510,7 @@ class _EntryTabState extends State<EntryTab> {
       }
     });
     widget.onTestNameChanged(newTest);
+    _loadSavedDraft();
     _scheduleAutoSave();
   }
 
@@ -2398,7 +2643,7 @@ class _EntryTabState extends State<EntryTab> {
       }
       draft['overallEpvatRounds'] = overallRoundsData;
 
-      await _storageService.saveFormDraft(draft);
+      await _storageService.saveFormDraft(draft, scope: _draftScope);
       if (mounted) {
         setState(() {
           _lastAutoSaveTime = DateTime.now();
@@ -2411,8 +2656,9 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   Future<void> _loadSavedDraft() async {
+    if (_testName.isEmpty) return;
     try {
-      final draft = await _storageService.loadFormDraft();
+      final draft = await _storageService.loadFormDraft(scope: _draftScope);
       if (draft == null || draft.isEmpty || !mounted) return;
       
       setState(() {
@@ -2558,43 +2804,35 @@ class _EntryTabState extends State<EntryTab> {
     super.initState();
     _caliber = widget.initialCaliber;
     _testName = widget.initialTestName;
-    if (widget.currentModule == 'Component Test') {
+    if (widget.currentModule == 'Component Test' && _caliber.isNotEmpty) {
       if (!const ['5.56', '7.62', '9mm'].contains(_caliber)) {
         _caliber = '5.56';
       }
       if (_testName != 'Propellant Test' && _testName != 'Primer Sensitivity Test') {
         _testName = 'Primer Sensitivity Test';
       }
-    } else if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
+    } else if ((widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') && _testName.isNotEmpty) {
       if (_testName == 'Primer Sensitivity Test' || _testName == 'Propellant Test') {
         _testName = 'Waterproof Test';
       }
     }
     _operatorsController.text = widget.loggedInUser;
-    _locationController.text = _getDefaultSamplingLocation(
-      module: widget.currentModule,
-      test: _testName,
-    );
-    
-    if (_barrelSNController.text.isEmpty && _accuracyBarrels.isNotEmpty) {
-      _barrelSNController.text = _accuracyBarrels.first;
-    }
-    if (_gp6SerialController.text.isEmpty && _gp6Serials.isNotEmpty) {
-      _gp6SerialController.text = _gp6Serials.first;
-    }
-    if (_terminalBarrelSNController.text.isEmpty && _barrelSerialNumbers.isNotEmpty) {
-      _terminalBarrelSNController.text = _barrelSerialNumbers.first;
-    }
-    if (_epvatSensor1Controller.text.isEmpty && _gp1Transducers.isNotEmpty) {
-      _epvatSensor1Controller.text = _gp1Transducers.first;
-    }
-    if (_epvatSensor2Controller.text.isEmpty && _gp2Transducers.isNotEmpty) {
-      _epvatSensor2Controller.text = _gp2Transducers.first;
-    }
+    _locationController.text = '';
+    _barrelSNController.text = '';
+    _gp6SerialController.text = '';
+    _terminalBarrelSNController.text = '';
+    _epvatSensor1Controller.text = '';
+    _epvatSensor2Controller.text = '';
     _selectedRegisteredWeapon = '';
     _functionWeapon = '';
     _selectedFunctionWeapons = [];
     _syncFunctionWeaponState(resetSelections: true);
+
+    if (widget.userRole.toLowerCase() == 'technician') {
+      _technicianController.text = widget.loggedInUser.isNotEmpty ? widget.loggedInUser : 'Ballistics Technician';
+    } else {
+      _loadTechnicians();
+    }
     
     // Initialize test date and time locked to opening time (allows manual edit or defaults to submission time)
     _autoGenerateTime(force: true);
@@ -2732,6 +2970,7 @@ class _EntryTabState extends State<EntryTab> {
         final newTest = allowed.first;
         setState(() {
           _testName = newTest;
+          _clearTestSpecificParameters();
           _locationController.text = _getDefaultSamplingLocation(
             module: widget.currentModule,
             test: newTest,
@@ -4134,16 +4373,28 @@ class _EntryTabState extends State<EntryTab> {
                         validator: (v) => v == null || v.trim().isEmpty ? 'Inspectors required' : null,
                       ),
                     ),
-                    if (widget.currentModule == 'Component Test')
-                      _buildFlexibleField(
-                        flex: 3,
-                        label: 'Component Technician',
-                        isRequired: false,
-                        child: _buildTextField(
-                          controller: _technicianController,
-                          hint: 'Optional (leave blank if inspector is tech)',
-                        ),
-                      ),
+                    _buildFlexibleField(
+                      flex: 3,
+                      label: 'Technician (for Report Signature)',
+                      isRequired: false,
+                      child: widget.userRole.toLowerCase() == 'technician'
+                          ? _buildTextField(
+                              controller: _technicianController,
+                              readOnly: true,
+                              hint: widget.loggedInUser.isNotEmpty ? widget.loggedInUser : 'Ballistics Technician',
+                            )
+                          : _buildDropdownField(
+                              value: _technicianController.text,
+                              items: _registeredTechnicians,
+                              allowEmpty: true,
+                              hintText: 'Select Technician for Signature...',
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setState(() => _technicianController.text = v);
+                                }
+                              },
+                            ),
+                    ),
                     _buildFlexibleField(
                       key: _shiftFieldKey,
                       flex: 1,
@@ -4210,6 +4461,8 @@ class _EntryTabState extends State<EntryTab> {
                       child: _buildDropdownField(
                         value: _caliber,
                         items: calibers,
+                        allowEmpty: true,
+                        hintText: 'Select Caliber Specification...',
                         onChanged: (v) {
                           if (v != null) _onCaliberSelected(v);
                         },
@@ -4233,6 +4486,8 @@ class _EntryTabState extends State<EntryTab> {
                       child: _buildDropdownField(
                         value: _testName,
                         items: _allowedTestsForCaliber(_caliber),
+                        allowEmpty: true,
+                        hintText: 'Select Test Name...',
                         onChanged: (v) {
                           if (v != null) _onTestNameSelected(v);
                         },
@@ -4243,15 +4498,39 @@ class _EntryTabState extends State<EntryTab> {
                   _buildComponentAndPrimerFieldsCard(),
                   _buildAdminInstructionsCard(),
 
-                  // Function Test Specifications Sub-Card (Dynamic)
-                  if (_testName == 'Function Test') ...[
-                    _buildFunctionTestSpecsCard(),
-                    const SizedBox(height: 4.0),
-                  ],
+                  if (_testName.isEmpty) ...[
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 20.0),
+                      padding: const EdgeInsets.all(24.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F9FF),
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: const Color(0xFFBAE6FD)),
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: const [
+                            Icon(Icons.arrow_upward_rounded, color: Color(0xFF0284C7), size: 30.0),
+                            SizedBox(height: 10.0),
+                            Text(
+                              'Please select Caliber Specification and Test Name in the header above to begin test entry.',
+                              style: TextStyle(color: Color(0xFF0369A1), fontSize: 13.5, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Function Test Specifications Sub-Card (Dynamic)
+                    if (_testName == 'Function Test') ...[
+                      _buildFunctionTestSpecsCard(),
+                      const SizedBox(height: 4.0),
+                    ],
 
-                  // Consolidated Row 2 (Viscosity, Sampling Location, Quality Status, Quantity Tested, Barrel Number, Transducers in 1 or max 2 rows)
-                  _buildConsolidatedRow2(),
-                  const SizedBox(height: 4.0),
+                    // Consolidated Row 2 (Viscosity, Sampling Location, Quality Status, Quantity Tested, Barrel Number, Transducers in 1 or max 2 rows)
+                    _buildConsolidatedRow2(),
+                    const SizedBox(height: 4.0),
 
                   // Function Test 4-Level Defects Section (Dynamic)
                   if (_testName == 'Function Test') ...[
@@ -6194,6 +6473,7 @@ class _EntryTabState extends State<EntryTab> {
                     ],
                   ),
                 ],
+                ],
               ),
             ),
           ],
@@ -6284,7 +6564,7 @@ class _EntryTabState extends State<EntryTab> {
 
   Future<void> _showMultiWeaponSelectDialog() async {
     final allowedCats = _allowedWeaponCategoriesForCaliber;
-    final weaponsInCaliber = _fleetWeaponsDetailed
+    final weaponsInCaliber = _weaponsForCurrentCaliber
         .where((w) => allowedCats.contains(w['category']))
         .map((w) => w['raw']!)
         .toSet()
@@ -9785,10 +10065,10 @@ class _EntryTabState extends State<EntryTab> {
         children: [
           Expanded(
             child: _buildDropdownField(
-              value: _locationController.text.isNotEmpty && _allSampleLocations.contains(_locationController.text)
-                  ? _locationController.text
-                  : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : ''),
+              value: _locationController.text,
               items: _allSampleLocations,
+              allowEmpty: true,
+              hintText: 'Select Sampling Location...',
               onChanged: (v) {
                 if (v != null) {
                   setState(() => _locationController.text = v);
@@ -9893,10 +10173,10 @@ class _EntryTabState extends State<EntryTab> {
             children: [
               _buildDropdownField(
                 focusNode: _barrelFocusNode,
-                value: _accuracyBarrels.contains(_barrelSNController.text)
-                    ? _barrelSNController.text
-                    : (_accuracyBarrels.isNotEmpty ? _accuracyBarrels.first : ''),
+                value: _barrelSNController.text,
                 items: _accuracyBarrels,
+                allowEmpty: true,
+                hintText: 'Select Barrel S.N...',
                 onChanged: (v) {
                   if (v != null) {
                     setState(() => _barrelSNController.text = v);
@@ -9971,10 +10251,7 @@ class _EntryTabState extends State<EntryTab> {
 
 
 
-      if (_primerLotController.text.trim().isEmpty && primerLotOptions.isNotEmpty) {
-        _primerLotController.text = primerLotOptions.first;
-        _selectedComponentPrimerLot = primerLotOptions.first;
-      }
+
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -10138,86 +10415,67 @@ class _EntryTabState extends State<EntryTab> {
               flex: 2,
               label: 'Primer Supplier',
               isRequired: true,
-              child: _isAdmin
-                  ? _buildTextField(
-                      controller: _epvatAdminPrimerSupplierController,
-                      hint: 'Supplier',
-                      onChanged: (v) {
+              child: Builder(
+                builder: (context) {
+                  final suppliers = [
+                    ..._getPrimerSuppliersForCaliber(_caliber),
+                    '[+ Add Supplier]',
+                  ];
+                  return _buildDropdownField(
+                    value: _primerSupplier,
+                    items: suppliers,
+                    allowEmpty: true,
+                    hintText: 'Select Primer Supplier...',
+                    onChanged: (v) {
+                      if (v == null) return;
+                      if (v == '[+ Add Supplier]') {
+                        _showAddPrimerSupplierDialog();
+                        return;
+                      }
+                      setState(() {
                         _primerSupplier = v;
-                      },
-                    )
-                  : _buildDropdownField(
-                      value: _primerSuppliers.contains(_primerSupplier)
-                          ? _primerSupplier
-                          : (_primerSuppliers.isNotEmpty ? _primerSuppliers.first : ''),
-                      items: _primerSuppliers,
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() {
-                            _primerSupplier = v;
-                            _epvatAdminPrimerSupplierController.text = v;
-                            final subMatching = widget.componentPrimerRecords.where((r) {
-                              final matchesCaliber = _isSameCaliberFamily(r.caliber, _caliber);
-                              return matchesCaliber && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
-                            }).toList();
-                            final subLots = subMatching
-                                .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
-                                .where((l) => l.isNotEmpty)
-                                .toSet()
-                                .toList();
-                            if (subLots.isEmpty) {
-                              final fromHist = widget.records.where((r) {
-                                return _isSameCaliberFamily(r.caliber, _caliber) && r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase();
-                              }).map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber).where((l) => l.isNotEmpty).toSet().toList();
-                              subLots.addAll(fromHist);
-                            }
-                            if (subLots.isNotEmpty) {
-                              _selectedComponentPrimerLot = subLots.first;
-                              _primerLotController.text = subLots.first;
-                            } else {
-                              _selectedComponentPrimerLot = '';
-                              _primerLotController.clear();
-                            }
-                          });
+                        _epvatAdminPrimerSupplierController.text = v;
+                        final subLots = _getPrimerLotsForCaliberAndSupplier(_caliber, v);
+                        if (subLots.isNotEmpty) {
+                          _selectedComponentPrimerLot = subLots.first;
+                          _primerLotController.text = subLots.first;
+                        } else {
+                          _selectedComponentPrimerLot = '';
+                          _primerLotController.clear();
                         }
-                      },
-                    ),
+                      });
+                    },
+                  );
+                },
+              ),
             ),
             _buildFlexibleField(
               flex: 3,
               label: 'Primer Lot',
               isRequired: true,
-              child: (_isAdmin || primerLotOptions.isEmpty)
-                  ? _buildTextField(
-                      controller: _primerLotController,
-                      hint: 'e.g. P-2026',
-                      keyboardType: TextInputType.text,
-                    )
-                  : DropdownButtonFormField<String>(
-                      value: primerLotOptions.contains(_primerLotController.text.trim())
-                          ? _primerLotController.text.trim()
-                          : (primerLotOptions.isNotEmpty ? primerLotOptions.first : null),
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFFE0F2FE),
-                      style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        filled: true,
-                        fillColor: const Color(0xFFE0F2FE),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF7DD3FC))),
-                      ),
-                      items: primerLotOptions.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() {
-                            _selectedComponentPrimerLot = v;
-                            _primerLotController.text = v;
-                          });
-                        }
-                      },
-                    ),
+              child: Builder(
+                builder: (context) {
+                  final lots = _getPrimerLotsForCaliberAndSupplier(_caliber, _primerSupplier);
+                  final dropdownItems = [...lots, '[+ Add Custom Lot]'];
+                  return _buildDropdownField(
+                    value: _primerLotController.text.trim(),
+                    items: dropdownItems,
+                    allowEmpty: true,
+                    hintText: 'Select Primer Lot...',
+                    onChanged: (v) {
+                      if (v == null) return;
+                      if (v == '[+ Add Custom Lot]') {
+                        _showAddCustomPrimerLotDialog();
+                        return;
+                      }
+                      setState(() {
+                        _selectedComponentPrimerLot = v;
+                        _primerLotController.text = v;
+                      });
+                    },
+                  );
+                },
+              ),
             ),
           ], lockSingleRow: true),
           const SizedBox(height: 14.0),
@@ -10234,10 +10492,10 @@ class _EntryTabState extends State<EntryTab> {
                 children: [
                   _buildDropdownField(
                     focusNode: _barrelFocusNode,
-                    value: _epvatBarrels.contains(_barrelSNController.text)
-                        ? _barrelSNController.text
-                        : (_epvatBarrels.isNotEmpty ? _epvatBarrels.first : ''),
+                    value: _barrelSNController.text,
                     items: _epvatBarrels,
+                    allowEmpty: true,
+                    hintText: 'Select Barrel S.N...',
                     onChanged: (v) {
                       if (v != null) {
                         setState(() => _barrelSNController.text = v);
@@ -10268,10 +10526,10 @@ class _EntryTabState extends State<EntryTab> {
                                 hint: 'e.g., GP6-001 (PCB 119B)',
                               )
                             : _buildDropdownField(
-                                value: _gp1Transducers.contains(_epvatSensor1Controller.text)
-                                    ? _epvatSensor1Controller.text
-                                    : (_gp1Transducers.isNotEmpty ? _gp1Transducers.first : ''),
+                                value: _epvatSensor1Controller.text,
                                 items: _gp1Transducers,
+                                allowEmpty: true,
+                                hintText: 'Select GP6 (1)...',
                                 onChanged: (v) {
                                   if (v != null) {
                                     setState(() => _epvatSensor1Controller.text = v);
@@ -10308,10 +10566,10 @@ class _EntryTabState extends State<EntryTab> {
                   children: [
                     _buildDropdownField(
                       focusNode: _gp6FocusNode,
-                      value: _gp6Serials.contains(_gp6SerialController.text)
-                          ? _gp6SerialController.text
-                          : (_gp6Serials.isNotEmpty ? _gp6Serials.first : ''),
+                      value: _gp6SerialController.text,
                       items: _gp6Serials,
+                      allowEmpty: true,
+                      hintText: 'Select GP6 (2)...',
                       onChanged: (v) {
                         if (v != null) {
                           setState(() {

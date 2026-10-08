@@ -164,12 +164,14 @@ void saveWebRules(Map<String, dynamic> rules) {
   _setItem('admin_rules', jsonEncode(rules));
 }
 
-void saveWebFormDraft(Map<String, dynamic> draft) {
-  _setItem('ompc_form_draft', jsonEncode(draft));
+void saveWebFormDraft(Map<String, dynamic> draft, {String? scope}) {
+  final key = (scope != null && scope.isNotEmpty) ? 'ompc_form_draft_$scope' : 'ompc_form_draft';
+  _setItem(key, jsonEncode(draft));
 }
 
-Map<String, dynamic>? getWebFormDraft() {
-  final data = _getItem('ompc_form_draft');
+Map<String, dynamic>? getWebFormDraft({String? scope}) {
+  final key = (scope != null && scope.isNotEmpty) ? 'ompc_form_draft_$scope' : 'ompc_form_draft';
+  final data = _getItem(key);
   if (data == null || data.isEmpty) return null;
   try {
     return jsonDecode(data) as Map<String, dynamic>;
@@ -178,8 +180,9 @@ Map<String, dynamic>? getWebFormDraft() {
   }
 }
 
-void clearWebFormDraft() {
-  _setItem('ompc_form_draft', '');
+void clearWebFormDraft({String? scope}) {
+  final key = (scope != null && scope.isNotEmpty) ? 'ompc_form_draft_$scope' : 'ompc_form_draft';
+  _setItem(key, '');
 }
 
 List<Map<String, dynamic>> getWebConsumables() {

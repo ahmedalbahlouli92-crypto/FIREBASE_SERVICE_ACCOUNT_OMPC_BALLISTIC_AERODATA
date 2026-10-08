@@ -1129,14 +1129,15 @@ class StorageService {
   }
 
   // Save form draft locally (auto-save engine)
-  Future<void> saveFormDraft(Map<String, dynamic> draft) async {
+  Future<void> saveFormDraft(Map<String, dynamic> draft, {String? scope}) async {
     if (kIsWeb) {
-      saveWebFormDraft(draft);
+      saveWebFormDraft(draft, scope: scope);
       return;
     }
     try {
       final dirPath = await getDirectoryPath();
-      final file = File('$dirPath/form_draft.json');
+      final cleanScope = (scope != null && scope.isNotEmpty) ? '_${scope.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}' : '';
+      final file = File('$dirPath/form_draft$cleanScope.json');
       await file.writeAsString(jsonEncode(draft), mode: FileMode.write, flush: true);
     } catch (e) {
       print("Error saving form draft: $e");
@@ -1144,13 +1145,14 @@ class StorageService {
   }
 
   // Load form draft locally
-  Future<Map<String, dynamic>?> loadFormDraft() async {
+  Future<Map<String, dynamic>?> loadFormDraft({String? scope}) async {
     if (kIsWeb) {
-      return getWebFormDraft();
+      return getWebFormDraft(scope: scope);
     }
     try {
       final dirPath = await getDirectoryPath();
-      final file = File('$dirPath/form_draft.json');
+      final cleanScope = (scope != null && scope.isNotEmpty) ? '_${scope.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}' : '';
+      final file = File('$dirPath/form_draft$cleanScope.json');
       if (!await file.exists()) return null;
       final content = await file.readAsString();
       if (content.isEmpty) return null;
@@ -1162,14 +1164,15 @@ class StorageService {
   }
 
   // Clear form draft
-  Future<void> clearFormDraft() async {
+  Future<void> clearFormDraft({String? scope}) async {
     if (kIsWeb) {
-      clearWebFormDraft();
+      clearWebFormDraft(scope: scope);
       return;
     }
     try {
       final dirPath = await getDirectoryPath();
-      final file = File('$dirPath/form_draft.json');
+      final cleanScope = (scope != null && scope.isNotEmpty) ? '_${scope.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}' : '';
+      final file = File('$dirPath/form_draft$cleanScope.json');
       if (await file.exists()) {
         await file.delete();
       }
