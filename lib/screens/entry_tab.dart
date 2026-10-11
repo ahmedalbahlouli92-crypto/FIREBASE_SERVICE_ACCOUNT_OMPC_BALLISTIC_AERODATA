@@ -1295,10 +1295,16 @@ class _EntryTabState extends State<EntryTab> {
 
       if (checkCat == 'pistol' || checkText.contains('pistol') || checkText.contains('92fs') || checkText.contains('glock') || checkText.contains('browning hp') || checkText.contains('m9') || checkText.contains('beretta')) {
         cleanCat = 'Pistol';
-      } else if (checkCat == 'machine gun' || checkCat == 'linked' || checkText.contains('machine gun') || checkText.contains('saw') || checkText.contains('m249') || checkText.contains('m60') || checkText.contains('m240')) {
+      } else if (checkCat == 'machine gun' || checkCat == 'linked' || checkCat.contains('machine') || checkCat.contains('mg') || checkText.contains('machine gun') || checkText.contains('machinegun') || checkText.contains('saw') || checkText.contains('m249') || checkText.contains('m60') || checkText.contains('m240') || checkText.contains('mg3') || checkText.contains('mg-3') || checkText.contains('fn mag') || checkText.contains('mag 58') || checkText.contains('pkm') || checkText.contains('gpmg') || checkText.contains('minimi')) {
         cleanCat = 'Machine Gun';
-      } else {
+      } else if (checkCat == 'rifle' || checkText.contains('rifle') || checkText.contains('carbine') || checkText.contains('m4') || checkText.contains('m16') || checkText.contains('aug') || checkText.contains('steyr')) {
         cleanCat = 'Rifle';
+      } else {
+        if (caliber.toLowerCase().contains('m80') || caliber.toLowerCase().contains('7.62') || checkText.contains('7.62') || checkText.contains('m80') || checkText.contains('mg3')) {
+          cleanCat = 'Machine Gun';
+        } else {
+          cleanCat = 'Rifle';
+        }
       }
 
       final key = '$cleanCat|$cleanModel|$cleanSerial'.toLowerCase();
@@ -1367,7 +1373,6 @@ class _EntryTabState extends State<EntryTab> {
       addWeaponItem(category: 'Rifle', model: 'Steyr AUG A3', serial: 'ST-556-01', raw: 'Steyr AUG A3 (SN: ST-556-01)', caliber: '5.56x45 SS109');
       addWeaponItem(category: 'Rifle', model: 'M4A1 Carbine', serial: 'W-9012', raw: 'M4A1 Carbine (SN: W-9012)', caliber: '5.56x45 M193');
       addWeaponItem(category: 'Rifle', model: 'M16A4 Rifle', serial: 'W-9015', raw: 'M16A4 Rifle (SN: W-9015)', caliber: '5.56x45 SS109');
-      addWeaponItem(category: 'Rifle', model: 'G3A3 Rifle', serial: 'W-7721', raw: 'G3A3 Rifle (SN: W-7721)', caliber: '7.62x51 M80');
       addWeaponItem(category: 'Machine Gun', model: 'M240B', serial: 'W-2401', raw: 'M240B (SN: W-2401)', caliber: '7.62x51 M80');
       addWeaponItem(category: 'Machine Gun', model: 'MG3 Machine Gun', serial: 'MG3-001', raw: 'MG3 Machine Gun (SN: MG3-001)', caliber: '7.62x51 M80');
       addWeaponItem(category: 'Machine Gun', model: 'M249 SAW', serial: 'W-4401', raw: 'M249 SAW (SN: W-4401)', caliber: '5.56x45 SS109');
@@ -1385,6 +1390,10 @@ class _EntryTabState extends State<EntryTab> {
 
   List<String> _getModelsForCategory(String category) {
     if (category.isEmpty) return [];
+    if (category == 'Rifle' && (_caliber.toLowerCase().contains('m80') || _caliber.toLowerCase().contains('7.62x51'))) {
+      // Per instruction 9: there is no rifle under M80 caliber, show nothing in rifle model
+      return [];
+    }
     final models = _weaponsForCurrentCaliber
         .where((w) => w['category'] == category)
         .map((w) => w['model']!)
@@ -4036,7 +4045,12 @@ class _EntryTabState extends State<EntryTab> {
                       try {
                         final res = await getAttachmentHelper().pickFileAsBase64();
                         if (res != null && res['data'] != null) {
-                          final bytes = base64Decode(res['data']!);
+                          String rawData = res['data']!.toString().trim();
+                          if (rawData.contains(',')) {
+                            rawData = rawData.substring(rawData.indexOf(',') + 1);
+                          }
+                          rawData = rawData.replaceAll(RegExp(r'\s+'), '');
+                          final bytes = base64Decode(rawData);
                           final filename = res['name']?.toString() ?? '';
                           final isPdf = filename.toLowerCase().endsWith('.pdf') ||
                               (bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46);
@@ -4101,113 +4115,182 @@ class _EntryTabState extends State<EntryTab> {
   void _applyExtractedResults(String content) {
     final parsed = TestResultExtractor.extract(content: content, preferredTestName: _testName).fields;
     int count = 0;
+    dynamic getVal(String k1, [String? k2, String? k3]) => parsed[k1] ?? (k2 != null ? parsed[k2] : null) ?? (k3 != null ? parsed[k3] : null);
+
     setState(() {
-      if (parsed['produced'] != null) {
-        _producedController.text = parsed['produced'].toString();
+      final produced = getVal('produced', 'shot_count');
+      if (produced != null) {
+        _producedController.text = produced.toString();
         count++;
       }
-      if (parsed['defects'] != null) {
-        _defectsController.text = parsed['defects'].toString();
+      final defects = getVal('defects');
+      if (defects != null) {
+        _defectsController.text = defects.toString();
         count++;
       }
-      if (parsed['vel_mean'] != null) {
-        _meanVelController.text = parsed['vel_mean'].toString();
+      final velMean = getVal('vel_mean', 'velMean');
+      if (velMean != null) {
+        _meanVelController.text = velMean.toString();
         count++;
       }
-      if (parsed['vel_min'] != null) {
-        _minVelController.text = parsed['vel_min'].toString();
+      final velMin = getVal('vel_min', 'velMin');
+      if (velMin != null) {
+        _minVelController.text = velMin.toString();
         count++;
       }
-      if (parsed['vel_max'] != null) {
-        _maxVelController.text = parsed['vel_max'].toString();
+      final velMax = getVal('vel_max', 'velMax');
+      if (velMax != null) {
+        _maxVelController.text = velMax.toString();
         count++;
       }
-      if (parsed['vel_sd'] != null) {
-        _sdVelController.text = parsed['vel_sd'].toString();
+      final velSd = getVal('vel_sd', 'velSd');
+      if (velSd != null) {
+        _sdVelController.text = velSd.toString();
         count++;
       }
-      if (parsed['vel_range'] != null) {
-        _rangeVelController.text = parsed['vel_range'].toString();
+      final velRange = getVal('vel_range', 'velRange');
+      if (velRange != null) {
+        _rangeVelController.text = velRange.toString();
         count++;
       }
-      if (parsed['acc_mean_radius'] != null) {
-        _meanRadiusController.text = parsed['acc_mean_radius'].toString();
+      final meanRadius = getVal('acc_mean_radius', 'accMeanRadius');
+      if (meanRadius != null) {
+        _meanRadiusController.text = meanRadius.toString();
         count++;
       }
-      if (parsed['acc_sd_x'] != null) {
-        _sdXController.text = parsed['acc_sd_x'].toString();
+      final sdX = getVal('acc_sd_x', 'accSdX');
+      if (sdX != null) {
+        _sdXController.text = sdX.toString();
         count++;
       }
-      if (parsed['acc_sd_y'] != null) {
-        _sdYController.text = parsed['acc_sd_y'].toString();
+      final sdY = getVal('acc_sd_y', 'accSdY');
+      if (sdY != null) {
+        _sdYController.text = sdY.toString();
         count++;
       }
-      if (parsed['acc_range_x'] != null) {
-        _rangeXController.text = parsed['acc_range_x'].toString();
+      final rangeX = getVal('acc_range_x', 'accRangeX');
+      if (rangeX != null) {
+        _rangeXController.text = rangeX.toString();
         count++;
       }
-      if (parsed['acc_range_y'] != null) {
-        _rangeYController.text = parsed['acc_range_y'].toString();
+      final rangeY = getVal('acc_range_y', 'accRangeY');
+      if (rangeY != null) {
+        _rangeYController.text = rangeY.toString();
         count++;
       }
-      if (parsed['epvat_mean_pressure'] != null) {
-        _epvatMeanPressureController.text = parsed['epvat_mean_pressure'].toString();
+      final meanX = getVal('acc_mean_x', 'accMeanX');
+      if (meanX != null) {
+        _meanXController.text = meanX.toString();
         count++;
       }
-      if (parsed['epvat_max_pressure'] != null) {
-        _epvatMaxPressureController.text = parsed['epvat_max_pressure'].toString();
+      final minX = getVal('acc_min_x', 'accMinX');
+      if (minX != null) {
+        _minXController.text = minX.toString();
         count++;
       }
-      if (parsed['epvat_min_pressure'] != null) {
-        _epvatMinPressureController.text = parsed['epvat_min_pressure'].toString();
+      final maxX = getVal('acc_max_x', 'accMaxX');
+      if (maxX != null) {
+        _maxXController.text = maxX.toString();
         count++;
       }
-      if (parsed['epvat_sd_pressure'] != null) {
-        _epvatSDPressureController.text = parsed['epvat_sd_pressure'].toString();
+      final meanY = getVal('acc_mean_y', 'accMeanY');
+      if (meanY != null) {
+        _meanYController.text = meanY.toString();
         count++;
       }
-      if (parsed['epvat_p2_mean'] != null) {
-        _epvatP2MeanPressureController.text = parsed['epvat_p2_mean'].toString();
+      final minY = getVal('acc_min_y', 'accMinY');
+      if (minY != null) {
+        _minYController.text = minY.toString();
         count++;
       }
-      if (parsed['acc_mean_x'] != null) {
-        _meanXController.text = parsed['acc_mean_x'].toString();
+      final maxY = getVal('acc_max_y', 'accMaxY');
+      if (maxY != null) {
+        _maxYController.text = maxY.toString();
         count++;
       }
-      if (parsed['acc_min_x'] != null) {
-        _minXController.text = parsed['acc_min_x'].toString();
+      final epvatMean = getVal('epvat_mean_pressure', 'epvatMeanPressure');
+      if (epvatMean != null) {
+        _epvatMeanPressureController.text = epvatMean.toString();
         count++;
       }
-      if (parsed['acc_max_x'] != null) {
-        _maxXController.text = parsed['acc_max_x'].toString();
+      final epvatMax = getVal('epvat_max_pressure', 'epvatMaxPressure');
+      if (epvatMax != null) {
+        _epvatMaxPressureController.text = epvatMax.toString();
         count++;
       }
-      if (parsed['cyclic_rpm'] != null) {
-        _cyclicRateController.text = parsed['cyclic_rpm'].toString();
+      final epvatMin = getVal('epvat_min_pressure', 'epvatMinPressure');
+      if (epvatMin != null) {
+        _epvatMinPressureController.text = epvatMin.toString();
         count++;
       }
-      if (parsed['primer_hbar'] != null) {
-        _primerHbarController.text = parsed['primer_hbar'].toString();
+      final epvatSd = getVal('epvat_sd_pressure', 'epvatSDPressure');
+      if (epvatSd != null) {
+        _epvatSDPressureController.text = epvatSd.toString();
         count++;
       }
-      if (parsed['primer_sd'] != null) {
-        _primerSDController.text = parsed['primer_sd'].toString();
+      final epvatP2 = getVal('epvat_p2_mean', 'epvatP2Mean');
+      if (epvatP2 != null) {
+        _epvatP2MeanPressureController.text = epvatP2.toString();
         count++;
       }
-      if (parsed['primer_all_fire'] != null) {
-        _primerHbarPlus5SController.text = parsed['primer_all_fire'].toString();
+      final cyclicRpm = getVal('cyclic_rpm', 'cyclicRpm');
+      if (cyclicRpm != null) {
+        _cyclicRateController.text = cyclicRpm.toString();
         count++;
       }
-      if (parsed['primer_no_fire'] != null) {
-        _primerHbarMinus2SController.text = parsed['primer_no_fire'].toString();
+      final primerHbar = getVal('primer_hbar', 'primerHbar');
+      if (primerHbar != null) {
+        _primerHbarController.text = primerHbar.toString();
         count++;
       }
-      if (parsed['cartridge_temp'] != null) {
-        _cartridgeTempController.text = parsed['cartridge_temp'].toString();
+      final primerSd = getVal('primer_sd', 'primerSd');
+      if (primerSd != null) {
+        _primerSDController.text = primerSd.toString();
         count++;
       }
-      if (parsed['barrel_sn'] != null && _barrelSNController.text.isEmpty) {
-        _barrelSNController.text = parsed['barrel_sn'].toString();
+      final primerAllFire = getVal('primer_all_fire', 'primerAllFire');
+      if (primerAllFire != null) {
+        _primerHbarPlus5SController.text = primerAllFire.toString();
+        count++;
+      }
+      final primerNoFire = getVal('primer_no_fire', 'primerNoFire');
+      if (primerNoFire != null) {
+        _primerHbarMinus2SController.text = primerNoFire.toString();
+        count++;
+      }
+      final cartridgeTemp = getVal('cartridge_temp', 'cartridgeTemp');
+      if (cartridgeTemp != null) {
+        _cartridgeTempController.text = cartridgeTemp.toString();
+        count++;
+      }
+      final barrelSn = getVal('barrel_sn', 'barrelSn');
+      if (barrelSn != null && _barrelSNController.text.isEmpty) {
+        _barrelSNController.text = barrelSn.toString();
+        count++;
+      }
+      final lotVal = getVal('lot_number', 'lotNo', 'lot')?.toString().trim();
+      if (lotVal != null && lotVal.isNotEmpty) {
+        final lotReg = RegExp(r'(\d{1,4})\s*(?:OMPC/)?(\d{2})?', caseSensitive: false).firstMatch(lotVal);
+        if (lotReg != null) {
+          final digits = lotReg.group(1);
+          final yr = lotReg.group(2);
+          if (digits != null) {
+            _lotThreeDigitsController.text = digits.padLeft(3, '0');
+            _hopperThreeDigitsController.text = digits.padLeft(3, '0');
+            count++;
+          }
+          if (yr != null) {
+            _lotYearController.text = yr;
+            _hopperYearController.text = yr;
+          }
+        }
+        if (_lotController.text.isEmpty) {
+          _lotController.text = lotVal;
+        }
+      }
+      final opVal = getVal('operator_name', 'operators', 'operator')?.toString().trim();
+      if (opVal != null && opVal.isNotEmpty && _operatorsController.text.isEmpty) {
+        _operatorsController.text = opVal;
         count++;
       }
     });
@@ -6302,6 +6385,8 @@ class _EntryTabState extends State<EntryTab> {
                             TextFormField(
                               controller: _notesController,
                               maxLines: 2,
+                              autocorrect: true,
+                              spellCheckConfiguration: const SpellCheckConfiguration(),
                               style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0),
                               decoration: InputDecoration(
                                 hintText: 'Enter remarks, observations, or quality anomalies...',
@@ -6769,11 +6854,14 @@ class _EntryTabState extends State<EntryTab> {
         ? _functionSelectedCategory
         : '';
 
+    final bool isM80Rifle = currentCat == 'Rifle' && (_caliber.toLowerCase().contains('m80') || _caliber.toLowerCase().contains('7.62x51'));
     final modelsInCat = _getModelsForCategory(currentCat);
-    final modelDropdownItems = <String>[
-      ...modelsInCat,
-      '[+ Custom Model]',
-    ];
+    final modelDropdownItems = isM80Rifle && modelsInCat.isEmpty
+        ? <String>[]
+        : <String>[
+            ...modelsInCat,
+            '[+ Custom Model]',
+          ];
     final currentModel = currentCat.isNotEmpty && modelDropdownItems.contains(_functionSelectedModel)
         ? _functionSelectedModel
         : '';
@@ -6884,13 +6972,17 @@ class _EntryTabState extends State<EntryTab> {
             _buildFlexibleField(
               flex: 3,
               label: currentCat.isNotEmpty ? '$currentCat Model (Fleet)' : 'Weapon Model',
-              isRequired: true,
+              isRequired: !isM80Rifle,
               child: _buildDropdownField(
                 value: currentModel,
                 items: currentCat.isNotEmpty ? modelDropdownItems : const [],
                 allowEmpty: true,
-                hintText: currentCat.isEmpty ? '-- Select Type First --' : '-- Select Weapon Model --',
-                onChanged: currentCat.isEmpty ? null : (v) {
+                hintText: currentCat.isEmpty
+                    ? '-- Select Type First --'
+                    : (isM80Rifle && modelDropdownItems.isEmpty
+                        ? '-- No Rifle Registered for M80 --'
+                        : '-- Select Weapon Model --'),
+                onChanged: (currentCat.isEmpty || modelDropdownItems.isEmpty) ? null : (v) {
                   if (v != null) {
                     setState(() {
                       _functionSelectedModel = v;
@@ -8021,6 +8113,8 @@ class _EntryTabState extends State<EntryTab> {
       controller: controller,
       focusNode: focusNode,
       keyboardType: keyboardType,
+      autocorrect: true,
+      spellCheckConfiguration: const SpellCheckConfiguration(),
       inputFormatters: inputFormatters ?? (
         keyboardType == TextInputType.number
             ? [FilteringTextInputFormatter.digitsOnly]

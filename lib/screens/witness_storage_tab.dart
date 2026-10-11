@@ -341,43 +341,49 @@ class _WitnessStorageTabState extends State<WitnessStorageTab> {
           BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFECFEFF),
-              borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: const Color(0xFFA5F3FC)),
-            ),
-            child: const Icon(Icons.archive_outlined, color: Color(0xFF0891B2), size: 28.0),
-          ),
-          const SizedBox(width: 16.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Witness Storage Vault & Inventory Management',
-                  style: TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: 0.5,
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 950;
+          final titleRow = Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFEFF),
+                  borderRadius: BorderRadius.circular(10.0),
+                  border: Border.all(color: const Color(0xFFA5F3FC)),
                 ),
-                SizedBox(height: 4.0),
-                Text(
-                  'Register witness lots with powder & primer specifications. Log consumed rounds with reasons and monitor real-time balance countdown.',
-                  style: TextStyle(fontSize: 12.0, color: Color(0xFF475569)),
+                child: const Icon(Icons.archive_outlined, color: Color(0xFF0891B2), size: 28.0),
+              ),
+              const SizedBox(width: 16.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Witness Storage Vault & Inventory Management',
+                      style: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 4.0),
+                    Text(
+                      'Register witness lots with powder & primer specifications. Log consumed rounds with reasons and monitor real-time balance countdown.',
+                      style: TextStyle(fontSize: 12.0, color: Color(0xFF475569)),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12.0),
-          Wrap(
+              ),
+            ],
+          );
+
+          final actionButtons = Wrap(
             spacing: 10.0,
             runSpacing: 8.0,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               // Log Consumption Button (All users)
               ElevatedButton.icon(
@@ -430,8 +436,27 @@ class _WitnessStorageTabState extends State<WitnessStorageTab> {
                 ),
               ),
             ],
-          ),
-        ],
+          );
+
+          if (isNarrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                titleRow,
+                const SizedBox(height: 12.0),
+                actionButtons,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: titleRow),
+              const SizedBox(width: 12.0),
+              actionButtons,
+            ],
+          );
+        },
       ),
     );
   }

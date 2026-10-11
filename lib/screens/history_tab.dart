@@ -25,6 +25,7 @@ class HistoryTab extends StatefulWidget {
   final Map<String, dynamic> adminRules;
   final VoidCallback? onClearDailyTestLogs;
   final String loggedInUser;
+  final Future<void> Function(Map<String, dynamic> updatedRules)? onSaveRules;
 
   const HistoryTab({
     Key? key,
@@ -41,6 +42,7 @@ class HistoryTab extends StatefulWidget {
     this.adminRules = const {},
     this.onClearDailyTestLogs,
     this.loggedInUser = '',
+    this.onSaveRules,
   }) : super(key: key);
 
   @override
@@ -57,6 +59,205 @@ class _HistoryTabState extends State<HistoryTab> {
   String _lotFilter = 'All';
   String _hopperFilter = 'All';
   String _sortByFilter = 'Date of Inspection';
+  int _lotAcceptanceTab = 0; // 0 = Lots Under Process, 1 = Completed Lots
+
+  List<String> _getRequiredTestsForCaliber(String caliber) {
+    final reqMap = widget.adminRules['lot_acceptance_required_tests'];
+    if (reqMap is Map) {
+      for (final entry in reqMap.entries) {
+        if (caliber.toLowerCase().contains(entry.key.toString().toLowerCase())) {
+          final list = entry.value;
+          if (list is List && list.isNotEmpty) {
+            return list.map((e) => e.toString().trim()).toList();
+          }
+        }
+      }
+    }
+    return const [
+      'Waterproof Test',
+      'Extraction Force Test',
+      'Accuracy Test',
+      'EPVAT test',
+      'Function Test',
+      'Residual Stress Test',
+      'Primer Sensitivity Test',
+      'Terminal Effect Test',
+    ];
+  }
+
+  int _compareLotNumbers(String a, String b) {
+    final sA = a.trim();
+    final sB = b.trim();
+    if (sA == sB) return 0;
+    final regA = RegExp(r'(\d+)\s*(?:OMPC/)?(\d+)?', caseSensitive: false).firstMatch(sA);
+    final regB = RegExp(r'(\d+)\s*(?:OMPC/)?(\d+)?', caseSensitive: false).firstMatch(sB);
+
+    if (regA != null && regB != null) {
+      final yrA = int.tryParse(regA.group(2) ?? '') ?? 0;
+      final yrB = int.tryParse(regB.group(2) ?? '') ?? 0;
+      if (yrA != yrB) {
+        return yrB.compareTo(yrA);
+      }
+      final numA = int.tryParse(regA.group(1) ?? '') ?? 0;
+      final numB = int.tryParse(regB.group(1) ?? '') ?? 0;
+      if (numA != numB) {
+        return numB.compareTo(numA);
+      }
+    }
+    return sB.compareTo(sA);
+  }
+
+  bool _isLotCompleted(String caliber, String lotNo) {
+    final completed = widget.adminRules['completed_lots'];
+    if (completed is Map) {
+      final k1 = '${caliber.trim()}|${lotNo.trim()}';
+      final k2 = lotNo.trim();
+      return completed.containsKey(k1) || completed.containsKey(k2);
+    } else if (completed is List) {
+      final k1 = '${caliber.trim()}|${lotNo.trim()}';
+      final k2 = lotNo.trim();
+      return completed.contains(k1) || completed.contains(k2);
+    }
+    return false;
+  }
+
+  Future<void> _markLotCompleted(String caliber, String lotNo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF10B981), width: 1.5)),
+        title: Row(
+          children: const [
+            Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 24),
+            SizedBox(width: 8),
+            Text('Complete & Finalize Lot', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to finalize and transfer Lot $lotNo ($caliber) plus its certificate to "Completed Lots"?\n\nAll inspection reports will be sealed as reviewed and completed.',
+          style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.check_circle_outline, size: 16),
+            label: const Text('Confirm Completed'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final updatedRules = Map<String, dynamic>.from(widget.adminRules);
+      final completedMap = Map<String, dynamic>.from(updatedRules['completed_lots'] as Map? ?? {});
+      final lotKey = '${caliber.trim()}|${lotNo.trim()}';
+      completedMap[lotKey] = {
+        'completedAt': DateTime.now().toIso8601String(),
+        'completedBy': widget.loggedInUser.isNotEmpty ? widget.loggedInUser : 'Technical Reviewer',
+      };
+      updatedRules['completed_lots'] = completedMap;
+      if (widget.onSaveRules != null) {
+        await widget.onSaveRules!(updatedRules);
+      }
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lot $lotNo ($caliber) finalized and transferred to Completed Lots!'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    }
+  }
+
+  Future<void> _reopenLot(String caliber, String lotNo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5)),
+        title: Row(
+          children: const [
+            Icon(Icons.restart_alt_rounded, color: Color(0xFFF59E0B), size: 24),
+            SizedBox(width: 8),
+            Text('Reopen Lot', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Do you want to reopen Lot $lotNo ($caliber) and return it to "Lots Under Process" for additional testing or review?',
+          style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            child: const Text('Reopen Lot'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final updatedRules = Map<String, dynamic>.from(widget.adminRules);
+      final completedMap = Map<String, dynamic>.from(updatedRules['completed_lots'] as Map? ?? {});
+      final lotKey = '${caliber.trim()}|${lotNo.trim()}';
+      completedMap.remove(lotKey);
+      completedMap.remove(lotNo.trim());
+      updatedRules['completed_lots'] = completedMap;
+      if (widget.onSaveRules != null) {
+        await widget.onSaveRules!(updatedRules);
+      }
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lot $lotNo returned to Lots Under Process.'),
+          backgroundColor: const Color(0xFFF59E0B),
+        ),
+      );
+    }
+  }
+
+  Future<void> _generateDossierDirect(String caliber, String lotNo, {required bool isPdf}) async {
+    final lotRecords = widget.records.where((r) {
+      return r.caliber.trim() == caliber.trim() && r.lotNo.trim() == lotNo.trim();
+    }).toList();
+    if (lotRecords.isEmpty) return;
+
+    final cleanCal = caliber.replaceAll(';', ' ').trim();
+    final exportFilename = '${cleanCal}_Complete_Lot_Dossier_$lotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+    if (isPdf) {
+      final htmlContent = ReportGenerator.generateLotDossierHtml(
+        lotRecords,
+        widget.currentModule,
+        base64Logo: widget.base64Logo,
+        adminRules: widget.adminRules,
+        loggedInUser: widget.loggedInUser,
+      );
+      await ReportHelper.instance.printHtml(htmlContent: htmlContent, filename: exportFilename);
+    } else {
+      final docContent = ReportGenerator.generateLotDossierWord(
+        lotRecords,
+        widget.currentModule,
+        base64Logo: widget.base64Logo,
+        adminRules: widget.adminRules,
+        loggedInUser: widget.loggedInUser,
+      );
+      await ReportHelper.instance.downloadDoc(content: docContent, filename: '$exportFilename.doc');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Complete Dossier Word document downloaded: $exportFilename.doc'), backgroundColor: const Color(0xFF8B5CF6)),
+      );
+    }
+  }
 
   static const List<String> defaultCalibers = [
     '5.56x45 SS109',
@@ -2619,6 +2820,8 @@ class _HistoryTabState extends State<HistoryTab> {
       key: key ?? ObjectKey(controller),
       controller: controller,
       keyboardType: keyboardType,
+      autocorrect: true,
+      spellCheckConfiguration: const SpellCheckConfiguration(),
       maxLines: maxLines,
       onChanged: onChanged,
       style: const TextStyle(color: Colors.white, fontSize: 13.0),
@@ -3022,16 +3225,7 @@ class _HistoryTabState extends State<HistoryTab> {
       'yyyy-MM-dd h:mm:ss a',
       'yyyy-MM-dd h:mm a',
       'yyyy-MM-dd',
-      'M/d/yyyy h:mm:ss a',
-      'M/d/yyyy hh:mm:ss a',
-      'M/d/yyyy h:mm a',
-      'M/d/yyyy hh:mm a',
-      'M/d/yyyy HH:mm:ss',
-      'M/d/yyyy HH:mm',
-      'M/d/yyyy',
-      'MM/dd/yyyy HH:mm:ss',
-      'MM/dd/yyyy hh:mm:ss a',
-      'MM/dd/yyyy',
+      // Prioritize day-first formats (OMPC standard)
       'dd/MM/yyyy HH:mm:ss',
       'dd/MM/yyyy HH:mm',
       'dd/MM/yyyy hh:mm:ss a',
@@ -3039,15 +3233,38 @@ class _HistoryTabState extends State<HistoryTab> {
       'dd/MM/yyyy hh:mm a',
       'dd/MM/yyyy h:mm a',
       'dd/MM/yyyy',
+      'd/M/yyyy HH:mm:ss',
+      'd/M/yyyy hh:mm:ss a',
+      'd/M/yyyy h:mm:ss a',
+      'd/M/yyyy hh:mm a',
+      'd/M/yyyy h:mm a',
+      'd/M/yyyy',
+      'dd-MM-yyyy HH:mm:ss',
+      'dd-MM-yyyy HH:mm',
+      'dd-MM-yyyy hh:mm:ss a',
+      'dd-MM-yyyy h:mm:ss a',
+      'dd-MM-yyyy',
+      'd-M-yyyy HH:mm:ss',
+      'd-M-yyyy hh:mm:ss a',
+      'd-M-yyyy',
+      // US month-first formats
+      'MM/dd/yyyy HH:mm:ss',
+      'MM/dd/yyyy hh:mm:ss a',
+      'MM/dd/yyyy h:mm:ss a',
+      'MM/dd/yyyy hh:mm a',
+      'MM/dd/yyyy',
+      'M/d/yyyy h:mm:ss a',
+      'M/d/yyyy hh:mm:ss a',
+      'M/d/yyyy h:mm a',
+      'M/d/yyyy hh:mm a',
+      'M/d/yyyy HH:mm:ss',
+      'M/d/yyyy HH:mm',
+      'M/d/yyyy',
       'yyyy/MM/dd HH:mm:ss',
       'yyyy/MM/dd HH:mm',
       'yyyy/MM/dd hh:mm:ss a',
       'yyyy/MM/dd h:mm:ss a',
       'yyyy/MM/dd',
-      'dd-MM-yyyy HH:mm:ss',
-      'dd-MM-yyyy HH:mm',
-      'dd-MM-yyyy hh:mm:ss a',
-      'dd-MM-yyyy',
       'yyyy.MM.dd HH:mm:ss',
       'yyyy.MM.dd',
       'dd.MM.yyyy HH:mm:ss',
@@ -3059,6 +3276,12 @@ class _HistoryTabState extends State<HistoryTab> {
       'HH:mm:ss',
       'HH:mm',
     ];
+
+    for (final fmt in formats) {
+      try {
+        return DateFormat(fmt).parseStrict(s);
+      } catch (_) {}
+    }
 
     for (final fmt in formats) {
       try {
@@ -3093,9 +3316,29 @@ class _HistoryTabState extends State<HistoryTab> {
     if (!availableLots.contains(_lotFilter)) _lotFilter = 'All';
     if (!availableHoppers.contains(_hopperFilter)) _hopperFilter = 'All';
 
+    // Calculate lot counts for Lot Acceptance Two-Part workflow
+    final allLotKeys = isLotAcceptance
+        ? widget.records.where((r) => r.lotNo.trim().isNotEmpty).map((r) => '${r.caliber.trim()}|${r.lotNo.trim()}').toSet()
+        : <String>{};
+    final completedLotKeys = allLotKeys.where((k) {
+      final parts = k.split('|');
+      final cal = parts[0];
+      final lot = parts.length > 1 ? parts[1] : '';
+      return _isLotCompleted(cal, lot);
+    }).toSet();
+    final underProcessLotKeys = allLotKeys.where((k) => !completedLotKeys.contains(k)).toSet();
+    final int completedLotsCount = completedLotKeys.length;
+    final int underProcessLotsCount = underProcessLotKeys.length;
+
     // Apply filters
     final query = _searchController.text.toLowerCase().trim();
     final filtered = widget.records.where((r) {
+      if (isLotAcceptance) {
+        final bool isDone = _isLotCompleted(r.caliber, r.lotNo);
+        if (_lotAcceptanceTab == 0 && isDone) return false;
+        if (_lotAcceptanceTab == 1 && !isDone) return false;
+      }
+
       final matchesSearch = r.operators.toLowerCase().contains(query) ||
           r.lotNo.toLowerCase().contains(query) ||
           (!isLotAcceptance && r.hopperNo.toLowerCase().contains(query)) ||
@@ -3112,8 +3355,14 @@ class _HistoryTabState extends State<HistoryTab> {
     }).toList();
 
     // Show newest first (older dates/times manually entered strictly sort downwards)
+    // For Lot Acceptance: strictly sort by Lot Number (Instruction 4)
     final displayRecords = List<BallisticRecord>.from(filtered)
       ..sort((a, b) {
+        if (isLotAcceptance) {
+          final lotCmp = _compareLotNumbers(b.lotNo, a.lotNo);
+          if (lotCmp != 0) return lotCmp;
+        }
+
         final da = _parseRecordUserTime(a);
         final db = _parseRecordUserTime(b);
         final msA = da.millisecondsSinceEpoch;
@@ -3131,40 +3380,42 @@ class _HistoryTabState extends State<HistoryTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Daily Inspection Logs',
-                    style: TextStyle(
-                      fontSize: 26.0,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: -0.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+        // Header with responsive LayoutBuilder
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 850;
+            final titleColumn = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isLotAcceptance ? 'Lot Acceptance Inspection Logs' : 'Daily Inspection Logs',
+                  style: const TextStyle(
+                    fontSize: 26.0,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.5,
                   ),
-                  SizedBox(height: 4.0),
-                  Text(
-                    'Complete catalog of ballistic trials logged today',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      color: Color(0xFF475569),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 4.0),
+                Text(
+                  isLotAcceptance
+                      ? (_lotAcceptanceTab == 0
+                          ? 'Review lots under process, verify performed tests, and certify completion'
+                          : 'Archive of fully inspected and certified lots with complete dossiers')
+                      : 'Complete catalog of ballistic trials logged today',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    color: Color(0xFF475569),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16.0),
-            Wrap(
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ],
+            );
+
+            final buttonsWrap = Wrap(
               spacing: 12.0,
               runSpacing: 8.0,
               alignment: WrapAlignment.end,
@@ -3214,10 +3465,110 @@ class _HistoryTabState extends State<HistoryTab> {
                     ),
                   ),
               ],
-            ),
-          ],
+            );
+
+            if (isNarrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleColumn,
+                  const SizedBox(height: 12.0),
+                  buttonsWrap,
+                ],
+              );
+            }
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: titleColumn),
+                const SizedBox(width: 16.0),
+                buttonsWrap,
+              ],
+            );
+          },
         ),
-        const SizedBox(height: 20.0),
+        const SizedBox(height: 16.0),
+
+        // Lot Acceptance Two-Part Workflow Segmented Control (Instruction 3)
+        if (isLotAcceptance) ...[
+          Container(
+            padding: const EdgeInsets.all(4.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(10.0),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _lotAcceptanceTab = 0),
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      decoration: BoxDecoration(
+                        color: _lotAcceptanceTab == 0 ? const Color(0xFF0284C7) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8.0),
+                        boxShadow: _lotAcceptanceTab == 0 ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))] : null,
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.pending_actions_rounded, size: 18.0, color: _lotAcceptanceTab == 0 ? Colors.white : const Color(0xFF475569)),
+                            const SizedBox(width: 8.0),
+                            Text(
+                              'Lots Under Process ($underProcessLotsCount Lots)',
+                              style: TextStyle(
+                                color: _lotAcceptanceTab == 0 ? Colors.white : const Color(0xFF475569),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6.0),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _lotAcceptanceTab = 1),
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      decoration: BoxDecoration(
+                        color: _lotAcceptanceTab == 1 ? const Color(0xFF10B981) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8.0),
+                        boxShadow: _lotAcceptanceTab == 1 ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))] : null,
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified_rounded, size: 18.0, color: _lotAcceptanceTab == 1 ? Colors.white : const Color(0xFF475569)),
+                            const SizedBox(width: 8.0),
+                            Text(
+                              'Completed Lots ($completedLotsCount Lots)',
+                              style: TextStyle(
+                                color: _lotAcceptanceTab == 1 ? Colors.white : const Color(0xFF475569),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16.0),
+        ],
 
         // Filters card
         Builder(
@@ -3431,6 +3782,226 @@ class _HistoryTabState extends State<HistoryTab> {
   static const int _flexRemarks = 8;
   static const int _flexActions = 17;
 
+  Widget _buildLotGroupBanner(String caliber, String lotNo) {
+    final lotRecords = widget.records.where((rec) {
+      return rec.caliber.trim().toLowerCase() == caliber.toLowerCase() &&
+             rec.lotNo.trim().toLowerCase() == lotNo.toLowerCase();
+    }).toList();
+
+    final reqTests = _getRequiredTestsForCaliber(caliber);
+    final performedTests = <String>[];
+    final missingTests = <String>[];
+
+    for (final test in reqTests) {
+      final testLower = test.toLowerCase();
+      final matched = lotRecords.any((rec) {
+        final t = rec.testName.toLowerCase();
+        if (testLower.contains('waterproof') && t.contains('waterproof')) return true;
+        if (testLower.contains('extraction') && t.contains('extraction')) return true;
+        if (testLower.contains('accuracy') && t.contains('accuracy')) return true;
+        if ((testLower.contains('epvat') || testLower.contains('pressure') || testLower.contains('velocity')) &&
+            (t.contains('epvat') || t.contains('propellant'))) return true;
+        if (testLower.contains('function') && t.contains('function')) return true;
+        if ((testLower.contains('residual') || testLower.contains('stress')) &&
+            (t.contains('residual') || t.contains('stress'))) return true;
+        if (testLower.contains('primer') && t.contains('primer')) return true;
+        if (testLower.contains('terminal') && t.contains('terminal')) return true;
+        return t.contains(testLower) || testLower.contains(t);
+      });
+      if (matched) {
+        performedTests.add(test);
+      } else {
+        missingTests.add(test);
+      }
+    }
+
+    final bool isCompleted = _isLotCompleted(caliber, lotNo);
+    final bool allTestsDone = missingTests.isEmpty && reqTests.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10.0, bottom: 4.0, left: 4.0, right: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: isCompleted ? const Color(0xFFF0FDF4) : const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(
+          color: isCompleted ? const Color(0xFF86EFAC) : const Color(0xFFBAE6FD),
+          width: 1.5,
+        ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 750;
+
+          final lotInfo = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isCompleted ? Icons.verified_rounded : (allTestsDone ? Icons.task_alt_rounded : Icons.pending_actions_rounded),
+                size: 20.0,
+                color: isCompleted ? const Color(0xFF10B981) : (allTestsDone ? const Color(0xFF0284C7) : const Color(0xFFF59E0B)),
+              ),
+              const SizedBox(width: 8.0),
+              Text(
+                'LOT: $lotNo',
+                style: const TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+                child: Text(
+                  caliber,
+                  style: const TextStyle(
+                    fontSize: 11.0,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              Tooltip(
+                message: missingTests.isNotEmpty
+                    ? 'Missing tests: ${missingTests.join(", ")}'
+                    : 'All required tests completed (${performedTests.length}/${reqTests.length})',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? const Color(0xFFD1FAE5)
+                        : (allTestsDone ? const Color(0xFFE0F2FE) : const Color(0xFFFEF3C7)),
+                    borderRadius: BorderRadius.circular(4.0),
+                    border: Border.all(
+                      color: isCompleted
+                          ? const Color(0xFF10B981)
+                          : (allTestsDone ? const Color(0xFF0284C7) : const Color(0xFFF59E0B)),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isCompleted
+                            ? '✓ Certified (${performedTests.length}/${reqTests.length} Tests)'
+                            : (allTestsDone
+                                ? '✓ All ${reqTests.length} Tests Completed — Ready for Review'
+                                : '${performedTests.length}/${reqTests.length} Tests Logged (${missingTests.length} Pending)'),
+                        style: TextStyle(
+                          fontSize: 11.0,
+                          fontWeight: FontWeight.bold,
+                          color: isCompleted
+                              ? const Color(0xFF065F46)
+                              : (allTestsDone ? const Color(0xFF0369A1) : const Color(0xFF92400E)),
+                        ),
+                      ),
+                      if (!isCompleted && missingTests.isNotEmpty) ...[
+                        const SizedBox(width: 4.0),
+                        const Icon(Icons.info_outline, size: 12.0, color: Color(0xFF92400E)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+
+          final actions = Wrap(
+            spacing: 8.0,
+            runSpacing: 6.0,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.end,
+            children: [
+              if (!isCompleted)
+                ElevatedButton.icon(
+                  onPressed: () => _markLotCompleted(caliber, lotNo),
+                  icon: const Icon(Icons.check_circle_outline, size: 14.0),
+                  label: const Text('Mark Completed', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  ),
+                ),
+              ElevatedButton.icon(
+                onPressed: () => _generateDossierDirect(caliber, lotNo, isPdf: true),
+                icon: const Icon(Icons.collections_bookmark_outlined, size: 14.0),
+                label: const Text('Dossier (PDF)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF9333EA),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _generateDossierDirect(caliber, lotNo, isPdf: false),
+                icon: const Icon(Icons.auto_stories_outlined, size: 14.0),
+                label: const Text('Dossier (Word)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7C3AED),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                ),
+              ),
+              if (isCompleted)
+                OutlinedButton.icon(
+                  onPressed: () => _reopenLot(caliber, lotNo),
+                  icon: const Icon(Icons.restart_alt_rounded, size: 14.0, color: Color(0xFFF59E0B)),
+                  label: const Text('Reopen Lot', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFF59E0B)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  ),
+                ),
+            ],
+          );
+
+          if (isNarrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                lotInfo,
+                const SizedBox(height: 8.0),
+                actions,
+              ],
+            );
+          }
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: lotInfo),
+              const SizedBox(width: 12.0),
+              actions,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildInspectionLogTable(List<BallisticRecord> displayRecords) {
     return Column(
       children: [
@@ -3474,6 +4045,36 @@ class _HistoryTabState extends State<HistoryTab> {
               itemCount: displayRecords.length,
               itemBuilder: (context, index) {
                 final r = displayRecords[index];
+                final rowWidget = _buildTableRow(r, index);
+
+                // For Lot Acceptance Test, group visually by Lot Number (Instruction 3)
+                if (widget.currentModule == 'Lot Acceptance Test') {
+                  final String currLot = r.lotNo.trim();
+                  final String currCal = r.caliber.trim();
+                  final String currLotKey = '$currCal|$currLot';
+                  bool showLotBanner = false;
+                  if (index == 0) {
+                    showLotBanner = true;
+                  } else {
+                    final prev = displayRecords[index - 1];
+                    final String prevLotKey = '${prev.caliber.trim()}|${prev.lotNo.trim()}';
+                    if (currLotKey != prevLotKey) {
+                      showLotBanner = true;
+                    }
+                  }
+
+                  if (showLotBanner) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildLotGroupBanner(currCal, currLot),
+                        rowWidget,
+                      ],
+                    );
+                  }
+                  return rowWidget;
+                }
+
                 final String currDate = r.testTime.isNotEmpty && r.testTime.contains(' ')
                     ? r.testTime.split(' ').first
                     : (r.timestamp.contains(' ') ? r.timestamp.split(' ').first : r.timestamp);
@@ -3488,7 +4089,6 @@ class _HistoryTabState extends State<HistoryTab> {
                   }
                 }
 
-                final rowWidget = _buildTableRow(r, index);
                 if (showDateDivider) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4868,9 +5468,22 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
+                            List<BallisticRecord> getDossierRecords() {
+                              if (!isLotAcceptance) return reportRecords;
+                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
+                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
+                              if (repLot.isEmpty) return reportRecords;
+                              final matched = widget.records.where((r) {
+                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
+                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
+                                return matchCal && matchLot;
+                              }).toList();
+                              return matched.isNotEmpty ? matched : reportRecords;
+                            }
+                            final dossierList = getDossierRecords();
                             final docContent = (isLotAcceptance && selectedReportMode == 1 && certScopeOption == 1)
                                 ? ReportGenerator.generateLotDossierWord(
-                                    reportRecords,
+                                    dossierList,
                                     widget.currentModule,
                                     base64Logo: widget.base64Logo,
                                     adminRules: widget.adminRules,
@@ -4911,9 +5524,22 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
+                            List<BallisticRecord> getDossierRecords() {
+                              if (!isLotAcceptance) return reportRecords;
+                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
+                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
+                              if (repLot.isEmpty) return reportRecords;
+                              final matched = widget.records.where((r) {
+                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
+                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
+                                return matchCal && matchLot;
+                              }).toList();
+                              return matched.isNotEmpty ? matched : reportRecords;
+                            }
+                            final dossierList = getDossierRecords();
                             final htmlContent = (isLotAcceptance && selectedReportMode == 1 && certScopeOption == 1)
                                 ? ReportGenerator.generateLotDossierHtml(
-                                    reportRecords,
+                                    dossierList,
                                     widget.currentModule,
                                     base64Logo: widget.base64Logo,
                                     adminRules: widget.adminRules,
@@ -4947,9 +5573,23 @@ class _HistoryTabState extends State<HistoryTab> {
                         ),
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
+                            final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
+                            List<BallisticRecord> getDossierRecords() {
+                              if (!isLotAcceptance) return reportRecords;
+                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
+                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
+                              if (repLot.isEmpty) return reportRecords;
+                              final matched = widget.records.where((r) {
+                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
+                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
+                                return matchCal && matchLot;
+                              }).toList();
+                              return matched.isNotEmpty ? matched : reportRecords;
+                            }
+                            final dossierList = getDossierRecords();
                             final htmlContent = (isLotAcceptance && selectedReportMode == 1 && certScopeOption == 1)
                                 ? ReportGenerator.generateLotDossierHtml(
-                                    reportRecords,
+                                    dossierList,
                                     widget.currentModule,
                                     base64Logo: widget.base64Logo,
                                     adminRules: widget.adminRules,
@@ -4980,18 +5620,27 @@ class _HistoryTabState extends State<HistoryTab> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
                         ),
-                        if (selectedReportTest == 'All' && widget.currentModule == 'Lot Acceptance Test' && reportRecords.length > 1) ...[
+                        if (widget.currentModule == 'Lot Acceptance Test' && (reportRecords.isNotEmpty || singleRecord != null)) ...[
                           ElevatedButton.icon(
                             onPressed: () async {
+                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
+                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
+                              final matched = widget.records.where((r) {
+                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
+                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
+                                return matchCal && matchLot;
+                              }).toList();
+                              final dossierList = matched.isNotEmpty ? matched : reportRecords;
+
                               final docContent = ReportGenerator.generateLotDossierWord(
-                                reportRecords, 
+                                dossierList, 
                                 widget.currentModule,
                                 base64Logo: widget.base64Logo,
                                 adminRules: widget.adminRules,
                                 loggedInUser: widget.loggedInUser,
                               );
-                              final repCaliber = (isLotAcceptance ? selectedReportCaliber : (reportRecords.first.caliber)).replaceAll(';', ' ').trim();
-                              final repLotNo = isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : reportRecords.first.lotNo;
+                              final repCaliber = (selectedReportCaliber != 'All' ? selectedReportCaliber : (dossierList.isNotEmpty ? dossierList.first.caliber : repCal)).replaceAll(';', ' ').trim();
+                              final repLotNo = repLot.isNotEmpty ? repLot : (dossierList.isNotEmpty ? dossierList.first.lotNo : 'Batch');
                               final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                               await ReportHelper.instance.downloadDoc(
                                 content: docContent, 
@@ -5015,15 +5664,24 @@ class _HistoryTabState extends State<HistoryTab> {
                           ),
                           ElevatedButton.icon(
                             onPressed: () async {
+                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
+                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
+                              final matched = widget.records.where((r) {
+                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
+                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
+                                return matchCal && matchLot;
+                              }).toList();
+                              final dossierList = matched.isNotEmpty ? matched : reportRecords;
+
                               final htmlContent = ReportGenerator.generateLotDossierHtml(
-                                reportRecords, 
+                                dossierList, 
                                 widget.currentModule,
                                 base64Logo: widget.base64Logo,
                                 adminRules: widget.adminRules,
                                 loggedInUser: widget.loggedInUser,
                               );
-                              final repCaliber = (isLotAcceptance ? selectedReportCaliber : (reportRecords.first.caliber)).replaceAll(';', ' ').trim();
-                              final repLotNo = isLotAcceptance && selectedReportLot != 'All' ? selectedReportLot : reportRecords.first.lotNo;
+                              final repCaliber = (selectedReportCaliber != 'All' ? selectedReportCaliber : (dossierList.isNotEmpty ? dossierList.first.caliber : repCal)).replaceAll(';', ' ').trim();
+                              final repLotNo = repLot.isNotEmpty ? repLot : (dossierList.isNotEmpty ? dossierList.first.lotNo : 'Batch');
                               final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
                               await ReportHelper.instance.printHtml(
                                 htmlContent: htmlContent, 
@@ -5041,8 +5699,17 @@ class _HistoryTabState extends State<HistoryTab> {
                           ),
                           ElevatedButton.icon(
                             onPressed: () async {
+                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
+                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
+                              final matched = widget.records.where((r) {
+                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
+                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
+                                return matchCal && matchLot;
+                              }).toList();
+                              final dossierList = matched.isNotEmpty ? matched : reportRecords;
+
                               final htmlContent = ReportGenerator.generateLotDossierHtml(
-                                reportRecords, 
+                                dossierList, 
                                 widget.currentModule,
                                 base64Logo: widget.base64Logo,
                                 adminRules: widget.adminRules,

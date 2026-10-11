@@ -1823,6 +1823,8 @@ class _MainShellState extends State<MainShell> {
   bool _isEquipmentCardExpanded = false;
   bool _isCaliberCardExpanded = false;
   bool _isRulesCardExpanded = false; // Collapsed by default as requested; admin will open it
+  bool _isLotAcceptanceRequiredTestsCardExpanded = false;
+  String _selectedReqTestCaliber = '5.56x45 SS109';
 
   // Report submission real-time alerting & audio chime tracking
   final String _clientSessionId = DateTime.now().microsecondsSinceEpoch.toString();
@@ -4754,6 +4756,7 @@ class _MainShellState extends State<MainShell> {
                         _isEquipmentCardExpanded = false;
                         _isCaliberCardExpanded = false;
                         _isRulesCardExpanded = false;
+                        _isLotAcceptanceRequiredTestsCardExpanded = false;
                         _isCertTemplateCardExpanded = false;
                       });
                     },
@@ -4776,6 +4779,7 @@ class _MainShellState extends State<MainShell> {
                         _isEquipmentCardExpanded = true;
                         _isCaliberCardExpanded = true;
                         _isRulesCardExpanded = true;
+                        _isLotAcceptanceRequiredTestsCardExpanded = true;
                         _isCertTemplateCardExpanded = true;
                       });
                     },
@@ -4821,6 +4825,8 @@ class _MainShellState extends State<MainShell> {
                 _buildCaliberManagementCard(double.infinity),
                 const SizedBox(height: 12.0),
                 _buildRulesManagementCard(double.infinity),
+                const SizedBox(height: 12.0),
+                _buildLotAcceptanceRequiredTestsCard(double.infinity),
                 const SizedBox(height: 12.0),
                 _buildCertificateTemplateCard(double.infinity),
               ],
@@ -10447,6 +10453,240 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  Widget _buildLotAcceptanceRequiredTestsCard(double width) {
+    final List<String> registeredCalibers = (_adminRules['calibers_list'] is List)
+        ? List<String>.from(_adminRules['calibers_list'])
+        : List<String>.from(EntryTab.calibers);
+
+    if (!registeredCalibers.contains(_selectedReqTestCaliber) && registeredCalibers.isNotEmpty) {
+      _selectedReqTestCaliber = registeredCalibers.first;
+    }
+
+    final reqMap = Map<String, dynamic>.from(_adminRules['lot_acceptance_required_tests'] as Map? ?? {});
+    final currentReqTests = List<String>.from((reqMap[_selectedReqTestCaliber] as List?) ?? const [
+      'Waterproof Test',
+      'Extraction Force Test',
+      'Accuracy Test',
+      'EPVAT test',
+      'Function Test',
+      'Residual Stress Test',
+      'Primer Sensitivity Test',
+      'Terminal Effect Test',
+    ]);
+
+    const allPossibleTests = [
+      'Waterproof Test',
+      'Extraction Force Test',
+      'Accuracy Test',
+      'EPVAT test',
+      'Function Test',
+      'Residual Stress Test',
+      'Primer Sensitivity Test',
+      'Terminal Effect Test',
+      'Firing Rate Cycle Test',
+      'Propellant Test',
+    ];
+
+    return Container(
+      width: width,
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isLotAcceptanceRequiredTestsCardExpanded ? 20.0 : 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isLotAcceptanceRequiredTestsCardExpanded = !_isLotAcceptanceRequiredTestsCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D9488).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF0D9488)),
+                  ),
+                  child: const Icon(Icons.fact_check_rounded, color: Color(0xFF0D9488), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Lot Acceptance Required Tests per Caliber',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCCFBF1),
+                    borderRadius: BorderRadius.circular(6.0),
+                  ),
+                  child: Text(
+                    '${currentReqTests.length} Required for $_selectedReqTestCaliber',
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                Icon(
+                  _isLotAcceptanceRequiredTestsCardExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: const Color(0xFF0D9488),
+                  size: 24.0,
+                ),
+              ],
+            ),
+          ),
+          if (_isLotAcceptanceRequiredTestsCardExpanded) ...[
+            const SizedBox(height: 12.0),
+            const Text(
+              'Select which ballistic tests are mandatory for each ammunition caliber in the Lot Acceptance module. '
+              'The technician will inspect these tests in "Lots Under Process". Once completed, the lot plus certificate transfers to "Completed Lots".',
+              style: TextStyle(fontSize: 12.0, color: Color(0xFF64748B), height: 1.4),
+            ),
+            const SizedBox(height: 16.0),
+
+            // Caliber Selection Dropdown
+            Row(
+              children: [
+                const Text('Select Caliber: ', style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: DropdownButton<String>(
+                    value: registeredCalibers.contains(_selectedReqTestCaliber) ? _selectedReqTestCaliber : (registeredCalibers.isNotEmpty ? registeredCalibers.first : null),
+                    underline: const SizedBox(),
+                    dropdownColor: Colors.white,
+                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold),
+                    items: registeredCalibers.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedReqTestCaliber = val);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16.0),
+
+            // Checkboxes of tests
+            Container(
+              padding: const EdgeInsets.all(14.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Mandatory Tests for $_selectedReqTestCaliber (${currentReqTests.length}/${allPossibleTests.length} active):',
+                        style: const TextStyle(fontSize: 13.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      Wrap(
+                        spacing: 8.0,
+                        children: [
+                          TextButton(
+                            onPressed: () async {
+                              final updatedRules = Map<String, dynamic>.from(_adminRules);
+                              final m = Map<String, dynamic>.from(updatedRules['lot_acceptance_required_tests'] as Map? ?? {});
+                              m[_selectedReqTestCaliber] = List<String>.from(allPossibleTests);
+                              updatedRules['lot_acceptance_required_tests'] = m;
+                              setState(() => _adminRules = updatedRules);
+                              await _storageService.saveRules(updatedRules);
+                            },
+                            child: const Text('Select All', style: TextStyle(fontSize: 11.5)),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              final updatedRules = Map<String, dynamic>.from(_adminRules);
+                              final m = Map<String, dynamic>.from(updatedRules['lot_acceptance_required_tests'] as Map? ?? {});
+                              m[_selectedReqTestCaliber] = [
+                                'Waterproof Test',
+                                'Extraction Force Test',
+                                'Accuracy Test',
+                                'EPVAT test',
+                                'Function Test',
+                                'Residual Stress Test',
+                                'Primer Sensitivity Test',
+                                'Terminal Effect Test',
+                              ];
+                              updatedRules['lot_acceptance_required_tests'] = m;
+                              setState(() => _adminRules = updatedRules);
+                              await _storageService.saveRules(updatedRules);
+                            },
+                            child: const Text('Reset to Default (8 Tests)', style: TextStyle(fontSize: 11.5)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Color(0xFFE2E8F0), height: 16.0),
+                  Wrap(
+                    spacing: 12.0,
+                    runSpacing: 8.0,
+                    children: allPossibleTests.map((t) {
+                      final isChecked = currentReqTests.contains(t);
+                      return FilterChip(
+                        selected: isChecked,
+                        showCheckmark: true,
+                        label: Text(t),
+                        labelStyle: TextStyle(
+                          color: isChecked ? Colors.white : const Color(0xFF334155),
+                          fontWeight: isChecked ? FontWeight.bold : FontWeight.w500,
+                          fontSize: 12.0,
+                        ),
+                        selectedColor: const Color(0xFF0D9488),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          side: BorderSide(color: isChecked ? const Color(0xFF0D9488) : const Color(0xFFCBD5E1)),
+                        ),
+                        onSelected: (val) async {
+                          final updatedRules = Map<String, dynamic>.from(_adminRules);
+                          final m = Map<String, dynamic>.from(updatedRules['lot_acceptance_required_tests'] as Map? ?? {});
+                          final list = List<String>.from((m[_selectedReqTestCaliber] as List?) ?? currentReqTests);
+                          if (val) {
+                            if (!list.contains(t)) list.add(t);
+                          } else {
+                            list.remove(t);
+                          }
+                          m[_selectedReqTestCaliber] = list;
+                          updatedRules['lot_acceptance_required_tests'] = m;
+                          setState(() => _adminRules = updatedRules);
+                          await _storageService.saveRules(updatedRules);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildCertificateTemplateCard(double width) {
     return Container(
       width: width,
@@ -11242,6 +11482,10 @@ class _MainShellState extends State<MainShell> {
         adminRules: _adminRules,
         loggedInUser: _currentUserEmail.isNotEmpty ? _currentUserEmail : 'Operator',
         onClearDailyTestLogs: (_currentUserRole == UserRole.admin || _hasPermission('can_clear_logs')) ? _handleClearDailyTestLogs : null,
+        onSaveRules: (updatedRules) async {
+          setState(() => _adminRules = updatedRules);
+          await _storageService.saveRules(updatedRules);
+        },
       ),
       AnalysisRecommendationTab(
         currentModule: _currentModule,

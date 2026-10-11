@@ -388,44 +388,49 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
           BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 14, offset: Offset(0, 3)),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEDF4FC),
-              borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: const Color(0xFFB8CEE5)),
-            ),
-            child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF0284C7), size: 28.0),
-          ),
-          const SizedBox(width: 16.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Consumables & Inventory Management',
-                  style: TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: 0.5,
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 950;
+          final titleRow = Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDF4FC),
+                  borderRadius: BorderRadius.circular(10.0),
+                  border: Border.all(color: const Color(0xFFB8CEE5)),
                 ),
-                SizedBox(height: 4.0),
-                Text(
-                  'Select a category to view and log items. Monitor real-time daily, monthly, and yearly consumption statistics.',
-                  style: TextStyle(fontSize: 12.0, color: Color(0xFF475569)),
+                child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF0284C7), size: 28.0),
+              ),
+              const SizedBox(width: 16.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Consumables & Inventory Management',
+                      style: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 4.0),
+                    Text(
+                      'Select a category to view and log items. Monitor real-time daily, monthly, and yearly consumption statistics.',
+                      style: TextStyle(fontSize: 12.0, color: Color(0xFF475569)),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12.0),
-          // Action Buttons
-          Wrap(
+              ),
+            ],
+          );
+
+          final actionButtons = Wrap(
             spacing: 10.0,
             runSpacing: 8.0,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               ElevatedButton.icon(
                 onPressed: _openConsumeDialog,
@@ -501,8 +506,27 @@ class _ConsumablesTabState extends State<ConsumablesTab> {
                 },
               ),
             ],
-          ),
-        ],
+          );
+
+          if (isNarrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                titleRow,
+                const SizedBox(height: 12.0),
+                actionButtons,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: titleRow),
+              const SizedBox(width: 12.0),
+              actionButtons,
+            ],
+          );
+        },
       ),
     );
   }

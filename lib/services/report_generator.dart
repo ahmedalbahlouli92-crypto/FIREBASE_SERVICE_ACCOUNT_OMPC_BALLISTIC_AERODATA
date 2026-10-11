@@ -1612,76 +1612,25 @@ class ReportGenerator {
       (loggedInUser.toLowerCase().contains('technician') && techName.isEmpty) ||
       (techName.isNotEmpty && techName.toLowerCase() == inspectorName.toLowerCase());
 
-    String signaturesHtml;
-    if (!inspectorIsTech && techName.isNotEmpty) {
-      final techSig = _findSignatureBase64(techName, adminRules);
-      final techSigImg = techSig.isNotEmpty
-          ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-          : '<div style="height: 55px;"></div>';
-      signaturesHtml = '''
-      <div class="signatures">
-        <div style="width: 30%; text-align: center;">
-          $inspectorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
-            <div>${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
-          </div>
-        </div>
-        <div style="width: 30%; text-align: center;">
-          $techSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$techName</div>
-            <div>${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
-          </div>
-        </div>
-        <div style="width: 30%; text-align: center;">
-          $supervisorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
-            <div>Ballistic Supervisor Approval</div>
-          </div>
+    final String effectiveTechName = techName.isNotEmpty
+        ? techName
+        : (inspectorIsTech ? inspectorName : (loggedInUser.isNotEmpty ? loggedInUser : inspectorName));
+    final techSig = _findSignatureBase64(effectiveTechName, adminRules);
+    final techSigImg = techSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 50px;"></div>';
+
+    final signaturesHtml = '''
+    <div class="signatures" style="display: flex; justify-content: flex-end; margin-top: 15px;">
+      <div style="width: 250px; text-align: center;">
+        $techSigImg
+        <div class="sig-box" style="width: 100%;">
+          <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$effectiveTechName</div>
+          <div>${isComponent ? 'Component Technical Signature' : 'Ballistic Technical Signature'}</div>
         </div>
       </div>
-      ''';
-    } else if (inspectorIsTech) {
-      signaturesHtml = '''
-      <div class="signatures">
-        <div style="width: 42%; text-align: center;">
-          $inspectorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
-            <div>${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
-          </div>
-        </div>
-        <div style="width: 42%; text-align: center;">
-          $supervisorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
-            <div>Ballistic Supervisor Approval</div>
-          </div>
-        </div>
-      </div>
-      ''';
-    } else {
-      signaturesHtml = '''
-      <div class="signatures">
-        <div style="width: 42%; text-align: center;">
-          $inspectorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$inspectorName</div>
-            <div>${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
-          </div>
-        </div>
-        <div style="width: 42%; text-align: center;">
-          $supervisorSigImg
-          <div class="sig-box" style="width: 100%;">
-            <div style="font-weight: bold; color: #1e293b; margin-bottom: 2px;">$supervisorName</div>
-            <div>Ballistic Supervisor Approval</div>
-          </div>
-        </div>
-      </div>
-      ''';
-    }
+    </div>
+    ''';
 
     buffer.writeln('''
       </tbody>
@@ -2389,17 +2338,17 @@ class ReportGenerator {
   <style>
     @page Section1 {
       size: 595.3pt 841.9pt;
-      margin: 36.0pt 36.0pt 36.0pt 36.0pt;
-      mso-header-margin: 35.4pt;
-      mso-footer-margin: 35.4pt;
+      margin: 20.0pt 25.0pt 20.0pt 25.0pt;
+      mso-header-margin: 0pt;
+      mso-footer-margin: 0pt;
     }
     div.Section1 { page: Section1; }
-    body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; }
+    body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 8.5pt; }
     .header-table {
       width: 100%;
       border-bottom: 2px solid #e2e8f0;
-      margin-bottom: 25px;
-      padding-bottom: 10px;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
     }
     .header-table td {
       border: none !important;
@@ -2408,12 +2357,12 @@ class ReportGenerator {
     }
     .title-section {
       text-align: center;
-      margin-top: 5px;
-      margin-bottom: 10px;
+      margin-top: 3px;
+      margin-bottom: 6px;
     }
     .title-section h2 {
       margin: 0;
-      font-size: 16px;
+      font-size: 13pt;
       font-weight: bold;
       color: #0f172a;
       text-align: center;
@@ -2423,49 +2372,50 @@ class ReportGenerator {
       height: 2px;
       width: 100%;
       background-color: #06b6d4;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     .summary-table {
       width: 100%;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .summary-card {
       background-color: #f8fafc;
       border: 1px solid #e2e8f0;
-      padding: 8px 10px;
+      padding: 4px 6px;
       text-align: center;
     }
     .summary-card .label {
-      font-size: 9px;
+      font-size: 7.5pt;
       font-weight: bold;
       color: #64748b;
       text-transform: uppercase;
     }
     .summary-card .val {
-      font-size: 14px;
+      font-size: 11pt;
       font-weight: bold;
       color: #0f172a;
-      margin-top: 2px;
+      margin-top: 1px;
     }
     .section-title {
-      font-size: 12px;
+      font-size: 9.5pt;
       font-weight: bold;
       color: #0f172a;
-      border-bottom: 2px solid #cbd5e1;
-      padding-bottom: 4px;
-      margin-top: 14px;
+      border-bottom: 1.5px solid #cbd5e1;
+      padding-bottom: 2px;
+      margin-top: 8px;
+      margin-bottom: 4px;
       text-transform: uppercase;
     }
-    table.details-table { width: 100%; margin-bottom: 12px; }
-    table.details-table td { padding: 4px 8px; font-size: 11px; border: none !important; background: none !important; }
-    table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    table.data-table th { background-color: #f1f5f9; color: #475569; text-align: left; font-size: 10px; font-weight: bold; padding: 6px 8px; border-bottom: 2px solid #cbd5e1; }
-    table.data-table td { padding: 6px 8px; font-size: 10px; border-bottom: 1px solid #e2e8f0; color: #334155; }
-    .sentence-box { padding: 10px; border: 1px solid #cbd5e1; background-color: #f8fafc; font-size: 11px; font-weight: bold; color: #1e293b; white-space: pre-wrap; }
-    .signatures { margin-top: 25px; width: 100%; }
-    .signatures td { width: 50%; text-align: center; font-size: 11px; color: #475569; padding-top: 20px; border-top: 1px solid #cbd5e1; }
-    .report-content { min-height: 3.5in; box-sizing: border-box; }
-    @media print { @page { margin: 0; } body { margin: 12mm 15mm; -webkit-print-color-adjust: exact; } }
+    table.details-table { width: 100%; margin-bottom: 8px; }
+    table.details-table td { padding: 2px 4px; font-size: 8pt; border: none !important; background: none !important; }
+    table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    table.data-table th { background-color: #f1f5f9; color: #475569; text-align: left; font-size: 7.5pt; font-weight: bold; padding: 3px 5px; border-bottom: 1.5px solid #cbd5e1; }
+    table.data-table td { padding: 3px 5px; font-size: 7.5pt; border-bottom: 1px solid #e2e8f0; color: #334155; }
+    .sentence-box { padding: 5px 8px; border: 1px solid #cbd5e1; background-color: #f8fafc; font-size: 8.5pt; font-weight: bold; color: #1e293b; white-space: pre-wrap; }
+    .signatures { margin-top: 10px; width: 100%; }
+    .signatures td { width: 50%; text-align: center; font-size: 8pt; color: #475569; padding-top: 8px; border-top: 1px solid #cbd5e1; }
+    .report-content { min-height: 2.5in; box-sizing: border-box; }
+    @media print { @page { margin: 0; } body { margin: 8mm 10mm; -webkit-print-color-adjust: exact; } }
   </style>
 </head>
 <body>
@@ -2857,70 +2807,26 @@ class ReportGenerator {
       (loggedInUser.toLowerCase().contains('technician') && techName.isEmpty) ||
       (techName.isNotEmpty && techName.toLowerCase() == inspectorName.toLowerCase());
 
-    String wordSignaturesHtml;
-    if (!inspectorIsTech && techName.isNotEmpty) {
-      final techSig = _findSignatureBase64(techName, adminRules);
-      final techSigImg = techSig.isNotEmpty
-          ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-          : '<div style="height: 55px;"></div>';
-      wordSignaturesHtml = '''
+    final String effectiveTechName = techName.isNotEmpty
+        ? techName
+        : (inspectorIsTech ? inspectorName : (loggedInUser.isNotEmpty ? loggedInUser : inspectorName));
+    final techSig = _findSignatureBase64(effectiveTechName, adminRules);
+    final techSigImg = techSig.isNotEmpty
+        ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
+        : '<div style="height: 50px;"></div>';
+
+    final wordSignaturesHtml = '''
     <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
       <tr>
-        <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $inspectorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
-          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
-        </td>
-        <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+        <td style="width: 60%; border: none;"></td>
+        <td style="border: none; width: 40%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $techSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$techName</div>
-          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
-        </td>
-        <td style="border: none; width: 32%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $supervisorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Supervisor Approval</div>
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$effectiveTechName</div>
+          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Technical Signature' : 'Ballistic Technical Signature'}</div>
         </td>
       </tr>
     </table>
-      ''';
-    } else if (inspectorIsTech) {
-      wordSignaturesHtml = '''
-    <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
-      <tr>
-        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $inspectorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
-          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Technician Signature' : 'Ballistic Technician Signature'}</div>
-        </td>
-        <td style="width: 10%; border: none;"></td>
-        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $supervisorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Supervisor Approval</div>
-        </td>
-      </tr>
-    </table>
-      ''';
-    } else {
-      wordSignaturesHtml = '''
-    <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
-      <tr>
-        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $inspectorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$inspectorName</div>
-          <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Inspector Signature' : 'Ballistic Inspector Signature'}</div>
-        </td>
-        <td style="width: 10%; border: none;"></td>
-        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
-          $supervisorSigImg
-          <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$supervisorName</div>
-          <div style="font-size: 9pt; color: #475569;">Ballistic Supervisor Approval</div>
-        </td>
-      </tr>
-    </table>
-      ''';
-    }
+    ''';
 
     buffer.writeln('''
     </tbody>
@@ -3008,22 +2914,38 @@ class ReportGenerator {
       'Primer Sensitivity Test',
     ];
 
+    final Set<String> processedRecordIds = {};
+    bool isTestMatch(String rName, String target) {
+      final rn = rName.toLowerCase().replaceAll('tests', 'test').trim();
+      final tn = target.toLowerCase().replaceAll('tests', 'test').trim();
+      if (rn == tn) return true;
+      if (tn.contains('waterproof') && rn.contains('waterproof')) return true;
+      if (tn.contains('extraction') && rn.contains('extraction')) return true;
+      if (tn.contains('accuracy') && rn.contains('accuracy')) return true;
+      if (tn.contains('epvat') && (rn.contains('epvat') || rn.contains('propellant'))) return true;
+      if (tn.contains('function') && rn.contains('function')) return true;
+      if ((tn.contains('residual') || tn.contains('stress')) && (rn.contains('residual') || rn.contains('stress'))) return true;
+      if (tn.contains('terminal') && rn.contains('terminal')) return true;
+      if (tn.contains('primer') && rn.contains('primer')) return true;
+      return false;
+    }
+
     for (final test in testSequence) {
-      final subRecords = records.where((r) => r.testName.toLowerCase() == test.toLowerCase()).toList();
+      final subRecords = records.where((r) => isTestMatch(r.testName, test)).toList();
       if (subRecords.isNotEmpty) {
+        for (final r in subRecords) {
+          processedRecordIds.add('${r.timestamp}|${r.testName}|${r.lotNo}');
+        }
         final subHtml = generateHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subHtml));
       }
     }
 
-    // Any remaining tests not in the standard sequence (e.g. Firing Rate, Terminal Effect, Propellant)
-    final otherTests = records
-        .map((r) => r.testName)
-        .where((t) => !testSequence.any((s) => s.toLowerCase() == t.toLowerCase()) && t != 'All')
-        .toSet()
-        .toList();
-    for (final test in otherTests) {
-      final subRecords = records.where((r) => r.testName == test).toList();
+    // Any remaining tests not in the standard sequence (e.g. Firing Rate, or custom named tests)
+    final remainingRecords = records.where((r) => !processedRecordIds.contains('${r.timestamp}|${r.testName}|${r.lotNo}') && r.testName != 'All').toList();
+    final remainingTestNames = remainingRecords.map((r) => r.testName).toSet().toList();
+    for (final test in remainingTestNames) {
+      final subRecords = remainingRecords.where((r) => r.testName == test).toList();
       if (subRecords.isNotEmpty) {
         final subHtml = generateHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subHtml));
@@ -3150,21 +3072,37 @@ class ReportGenerator {
       'Primer Sensitivity Test',
     ];
 
+    final Set<String> processedRecordIds = {};
+    bool isTestMatch(String rName, String target) {
+      final rn = rName.toLowerCase().replaceAll('tests', 'test').trim();
+      final tn = target.toLowerCase().replaceAll('tests', 'test').trim();
+      if (rn == tn) return true;
+      if (tn.contains('waterproof') && rn.contains('waterproof')) return true;
+      if (tn.contains('extraction') && rn.contains('extraction')) return true;
+      if (tn.contains('accuracy') && rn.contains('accuracy')) return true;
+      if (tn.contains('epvat') && (rn.contains('epvat') || rn.contains('propellant'))) return true;
+      if (tn.contains('function') && rn.contains('function')) return true;
+      if ((tn.contains('residual') || tn.contains('stress')) && (rn.contains('residual') || rn.contains('stress'))) return true;
+      if (tn.contains('terminal') && rn.contains('terminal')) return true;
+      if (tn.contains('primer') && rn.contains('primer')) return true;
+      return false;
+    }
+
     for (final test in testSequence) {
-      final subRecords = records.where((r) => r.testName.toLowerCase() == test.toLowerCase()).toList();
+      final subRecords = records.where((r) => isTestMatch(r.testName, test)).toList();
       if (subRecords.isNotEmpty) {
+        for (final r in subRecords) {
+          processedRecordIds.add('${r.timestamp}|${r.testName}|${r.lotNo}');
+        }
         final subWord = generateWordHtml(subRecords, subRecords.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subWord));
       }
     }
 
-    final otherTests = records
-        .map((r) => r.testName)
-        .where((t) => !testSequence.any((s) => s.toLowerCase() == t.toLowerCase()) && t != 'All')
-        .toSet()
-        .toList();
-    for (final test in otherTests) {
-      final subRecords = records.where((r) => r.testName == test).toList();
+    final remainingRecords = records.where((r) => !processedRecordIds.contains('${r.timestamp}|${r.testName}|${r.lotNo}') && r.testName != 'All').toList();
+    final remainingTestNames = remainingRecords.map((r) => r.testName).toSet().toList();
+    for (final test in remainingTestNames) {
+      final subRecords = remainingRecords.where((r) => r.testName == test).toList();
       if (subRecords.isNotEmpty) {
         final subWord = generateWordHtml(subRecords, test, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
         sections.add(_extractReportBody(subWord));
@@ -4123,34 +4061,34 @@ ${certRowsBuffer.toString()}        </tbody>
   <style>
     @page Section1 {
       size: 595.3pt 841.9pt;
-      margin: 36.0pt 36.0pt 36.0pt 36.0pt;
-      mso-header-margin: 35.4pt;
-      mso-footer-margin: 35.4pt;
+      margin: 20.0pt 25.0pt 20.0pt 25.0pt;
+      mso-header-margin: 0pt;
+      mso-footer-margin: 0pt;
     }
     div.Section1 { page: Section1; }
-    body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000000; }
+    body { font-family: Arial, sans-serif; font-size: 8pt; color: #000000; margin: 0; padding: 0; }
     .cert-wrapper { width: 100%; margin: 0; }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10pt; }
+    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; }
     .header-table td { border: none !important; }
-    .title-section { text-align: center; margin-bottom: 10pt; }
-    .title-section h1 { font-size: 14pt; font-weight: bold; color: #000000; margin: 0 0 3pt 0; text-transform: uppercase; }
-    .caliber-subtitle { font-size: 11pt; font-weight: bold; color: #000000; margin-bottom: 2pt; text-align: center; }
-    .lot-subtitle { font-size: 10.5pt; font-weight: bold; color: #475569; text-align: center; }
-    .title-line { height: 2px; width: 100%; background-color: #06b6d4; margin-top: 4pt; margin-bottom: 8pt; border-bottom: 2px solid #06b6d4; }
-    .section-title { font-size: 10pt; font-weight: bold; color: #0f172a; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 2pt; margin-top: 6pt; margin-bottom: 4pt; text-transform: uppercase; }
-    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; }
-    .details-table td { border: none !important; padding: 2pt 4pt; font-size: 8.5pt; }
+    .title-section { text-align: center; margin-bottom: 6pt; }
+    .title-section h1 { font-size: 13pt; font-weight: bold; color: #000000; margin: 0 0 2pt 0; text-transform: uppercase; }
+    .caliber-subtitle { font-size: 10.5pt; font-weight: bold; color: #000000; margin-bottom: 2pt; text-align: center; }
+    .lot-subtitle { font-size: 9.5pt; font-weight: bold; color: #475569; text-align: center; }
+    .title-line { height: 2px; width: 100%; background-color: #06b6d4; margin-top: 3pt; margin-bottom: 6pt; border-bottom: 2px solid #06b6d4; }
+    .section-title { font-size: 9.5pt; font-weight: bold; color: #0f172a; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 2pt; margin-top: 5pt; margin-bottom: 3pt; text-transform: uppercase; }
+    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; }
+    .details-table td { border: none !important; padding: 1.5pt 3pt; font-size: 8pt; }
     table { border-collapse: collapse; width: 100%; }
-    table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 10pt; }
-    table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 4pt 3pt; font-size: 8pt; text-transform: uppercase; }
-    table.results-table td { border: 1px solid #cbd5e1; padding: 4pt 4pt; font-size: 8pt; vertical-align: middle; }
-    .test-name-cell { color: #0284c7; font-weight: bold; font-size: 8.5pt; text-align: center; }
-    .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 8pt; }
-    .status-cell { text-align: center; font-size: 8pt; }
-    .sentence-box { padding: 5pt 8pt; border: 1px solid #cbd5e1; border-radius: 4px; background-color: #f8fafc; font-size: 9pt; font-weight: bold; color: #1e293b; }
-    .signatures-table { border: none !important; margin-top: 6pt; width: 100%; }
-    .signatures-table td { border: none !important; padding: 3pt 6pt; vertical-align: bottom; text-align: center; }
-    .ref-footer { margin-top: 8pt; font-size: 8.5pt; font-weight: bold; color: #475569; text-align: left; }
+    table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 6pt; }
+    table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 3pt 2pt; font-size: 7.5pt; text-transform: uppercase; }
+    table.results-table td { border: 1px solid #cbd5e1; padding: 2.5pt 3pt; font-size: 7.5pt; vertical-align: middle; }
+    .test-name-cell { color: #0284c7; font-weight: bold; font-size: 8pt; text-align: center; }
+    .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 7.5pt; }
+    .status-cell { text-align: center; font-size: 7.5pt; }
+    .sentence-box { padding: 4pt 6pt; border: 1px solid #cbd5e1; border-radius: 4px; background-color: #f8fafc; font-size: 8.5pt; font-weight: bold; color: #1e293b; }
+    .signatures-table { border: none !important; margin-top: 4pt; width: 100%; }
+    .signatures-table td { border: none !important; padding: 2pt 4pt; vertical-align: bottom; text-align: center; }
+    .ref-footer { margin-top: 5pt; font-size: 8pt; font-weight: bold; color: #475569; text-align: left; }
   </style>
 </head>
 <body>

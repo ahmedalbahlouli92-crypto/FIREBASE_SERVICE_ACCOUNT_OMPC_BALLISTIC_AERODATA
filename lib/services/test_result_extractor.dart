@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:archive/archive.dart';
 
 /// Data extraction engine for automatic ballistic machine file parsing
 class ExtractedResults {
@@ -93,6 +94,22 @@ class TestResultExtractor {
         }
       }
 
+      // Check whitespace-separated table rows (machine reports)
+      final wsParts = line.split(RegExp(r'\s{2,}|\t')).where((t) => t.trim().isNotEmpty).toList();
+      if (wsParts.length >= 2) {
+        tableData.add(wsParts);
+        if (wsParts.length == 2 && wsParts[0].isNotEmpty && wsParts[1].isNotEmpty) {
+          kvMap.putIfAbsent(wsParts[0].toLowerCase(), () => wsParts[1]);
+        }
+      }
+      final spaceTokens = line.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+      if (spaceTokens.length >= 2) {
+        final firstUpper = spaceTokens[0].toUpperCase();
+        if (firstUpper == 'MEAN' || firstUpper == 'MAX' || firstUpper == 'MIN' || firstUpper == 'RANGE' || firstUpper == 'STDEV' || firstUpper == 'STD' || int.tryParse(firstUpper) != null) {
+          tableData.add(spaceTokens);
+        }
+      }
+
       // Check colon or equals key:value
       final colonIdx = line.indexOf(':');
       final equalsIdx = line.indexOf('=');
@@ -126,6 +143,36 @@ class TestResultExtractor {
       _extractCyclic(kvMap, fields, summary);
     }
 
+    // Mirror both camelCase and snake_case versions
+    final mirror = <String, dynamic>{};
+    fields.forEach((k, v) {
+      if (k == 'accMeanX') mirror['acc_mean_x'] = v;
+      if (k == 'accMeanY') mirror['acc_mean_y'] = v;
+      if (k == 'accMaxX') mirror['acc_max_x'] = v;
+      if (k == 'accMaxY') mirror['acc_max_y'] = v;
+      if (k == 'accMinX') mirror['acc_min_x'] = v;
+      if (k == 'accMinY') mirror['acc_min_y'] = v;
+      if (k == 'accRangeX') mirror['acc_range_x'] = v;
+      if (k == 'accRangeY') mirror['acc_range_y'] = v;
+      if (k == 'accSDX') mirror['acc_sd_x'] = v;
+      if (k == 'accSDY') mirror['acc_sd_y'] = v;
+      if (k == 'accMeanRadius') mirror['acc_mean_radius'] = v;
+      if (k == 'velMean') mirror['vel_mean'] = v;
+      if (k == 'velMax') mirror['vel_max'] = v;
+      if (k == 'velMin') mirror['vel_min'] = v;
+      if (k == 'velRange') mirror['vel_range'] = v;
+      if (k == 'velSD') mirror['vel_sd'] = v;
+      if (k == 'lotNo') mirror['lot_no'] = v;
+      if (k == 'hopperNo') mirror['hopper_no'] = v;
+      if (k == 'testTime') mirror['test_time'] = v;
+      if (k == 'barrelSN') mirror['barrel_sn'] = v;
+      if (k == 'cartridgeTemp') mirror['cartridge_temp'] = v;
+      if (k == 'cyclicRateValue') mirror['cyclic_rpm'] = v;
+      if (k == 'primerHbar') mirror['primer_hbar'] = v;
+      if (k == 'primerSD') mirror['primer_sd'] = v;
+    });
+    fields.addAll(mirror);
+
     return ExtractedResults(
       fields: fields,
       summaryLines: summary,
@@ -143,10 +190,15 @@ class TestResultExtractor {
       return null;
     }
 
-    final lot = find(['lot no', 'lot number', 'lot #', 'lot_no', 'lot']);
+    final lot = find(['lot no', 'lot number', 'lot #', 'lot_no', 'lot', 'name']);
     if (lot != null && lot.isNotEmpty) {
-      f['lotNo'] = lot;
-      s.add('Lot Number: $lot');
+      String cleanLot = lot.trim();
+      final lotMatch = RegExp(r'(?:lot|lot\s*no\.?)\s*[:#\-]?\s*([A-Za-z0-9\/\s\-]+)', caseSensitive: false).firstMatch(cleanLot);
+      if (lotMatch != null) {
+        cleanLot = lotMatch.group(1)!.trim();
+      }
+      f['lotNo'] = cleanLot;
+      s.add('Lot Number: $cleanLot');
     }
 
     final hopper = find(['hopper no', 'hopper number', 'hopper #', 'hopper']);
@@ -155,16 +207,32 @@ class TestResultExtractor {
       s.add('Hopper No: $hopper');
     }
 
-    final caliber = find(['caliber', 'calibre', 'specification', 'ammo']);
+    final caliber = find(['calibre', 'caliber', 'specification', 'ammo']);
     if (caliber != null && caliber.isNotEmpty) {
-      f['caliber'] = caliber;
-      s.add('Caliber: $caliber');
+      String cleanCal = caliber.trim();
+      if (cleanCal.toLowerCase().contains('ss109')) {
+        cleanCal = '5.56x45 SS109';
+      } else if (cleanCal.toLowerCase().contains('m193')) {
+        cleanCal = '5.56x45 M193';
+      } else if (cleanCal.toLowerCase().contains('m80')) {
+        cleanCal = '7.62x51 M80';
+      } else if (cleanCal.toLowerCase().contains('9mm') || cleanCal.toLowerCase().contains('9x19')) {
+        cleanCal = '9x19mm Para';
+      }
+      f['caliber'] = cleanCal;
+      s.add('Caliber: $cleanCal');
     }
 
-    final inspector = find(['inspector', 'operator', 'technician', 'tested by']);
+    final inspector = find(['operator name', 'operator', 'inspector', 'technician', 'tested by']);
     if (inspector != null && inspector.isNotEmpty) {
-      f['operators'] = inspector;
-      s.add('Inspector: $inspector');
+      f['operators'] = inspector.trim();
+      s.add('Inspector: ${f['operators']}');
+    }
+
+    final dateStr = find(['date', 'time', 'test time']);
+    if (dateStr != null && dateStr.isNotEmpty) {
+      f['testTime'] = dateStr.trim();
+      s.add('Date/Time: ${f['testTime']}');
     }
 
     final barrel = find(['barrel', 'barrel s.n', 'barrel sn', 'barrel_sn', 'weapon sn']);
@@ -188,6 +256,51 @@ class TestResultExtractor {
       if (val == null) return null;
       final match = RegExp(r'[-+]?\d*\.?\d+').firstMatch(val);
       return match != null ? double.tryParse(match.group(0)!) : null;
+    }
+
+    // 1. Dedicated parser for ballistic measuring reports (Attachment 3: Statistic table with MEAN, MAX, MIN, RANGE, STDEV)
+    for (final row in table) {
+      if (row.isEmpty) continue;
+      final label = row[0].toUpperCase().trim();
+      final nums = row.skip(1).map((x) => parseNum(x)).where((n) => n != null).cast<double>().toList();
+      if (label == 'MEAN' && nums.length >= 3) {
+        f['accMeanX'] = nums[0].toStringAsFixed(2);
+        f['accMeanY'] = nums[1].toStringAsFixed(2);
+        f['velMean'] = nums[2].toStringAsFixed(2);
+        s.add('Mean X: ${f['accMeanX']} mm, Mean Y: ${f['accMeanY']} mm, Mean Vel: ${f['velMean']} m/s');
+      } else if (label == 'MAX' && nums.length >= 3) {
+        f['accMaxX'] = nums[0].toStringAsFixed(2);
+        f['accMaxY'] = nums[1].toStringAsFixed(2);
+        f['velMax'] = nums[2].toStringAsFixed(2);
+      } else if (label == 'MIN' && nums.length >= 3) {
+        f['accMinX'] = nums[0].toStringAsFixed(2);
+        f['accMinY'] = nums[1].toStringAsFixed(2);
+        f['velMin'] = nums[2].toStringAsFixed(2);
+      } else if (label == 'RANGE' && nums.length >= 3) {
+        f['accRangeX'] = nums[0].toStringAsFixed(2);
+        f['accRangeY'] = nums[1].toStringAsFixed(2);
+        f['velRange'] = nums[2].toStringAsFixed(2);
+      } else if ((label == 'STDEV' || label == 'STD' || label == 'SD') && nums.length >= 3) {
+        f['accSDX'] = nums[0].toStringAsFixed(2);
+        f['accSDY'] = nums[1].toStringAsFixed(2);
+        f['velSD'] = nums[2].toStringAsFixed(2);
+        s.add('SD X: ${f['accSDX']} mm, SD Y: ${f['accSDY']} mm, SD Vel: ${f['velSD']} m/s');
+      }
+    }
+
+    // 2. Count tested shots from Round Table if present
+    int maxRoundNo = 0;
+    for (final row in table) {
+      if (row.length >= 3) {
+        final rNo = int.tryParse(row[0].trim());
+        if (rNo != null && rNo > maxRoundNo && rNo <= 100) {
+          maxRoundNo = rNo;
+        }
+      }
+    }
+    if (maxRoundNo > 0 && f['produced'] == null) {
+      f['produced'] = '$maxRoundNo';
+      s.add('Tested Rounds: $maxRoundNo');
     }
 
     // Try finding explicit statistics
@@ -604,20 +717,109 @@ class PdfTextExtractor {
   static String extractText(List<int> bytes) {
     if (bytes.isEmpty) return '';
 
-    // Convert bytes to Latin-1 string so that byte offsets match character indexes
-    final raw = latin1.decode(bytes, allowInvalid: true);
     final buffer = StringBuffer();
 
-    // 1. Search for text objects BT ... ET
-    final btEtPattern = RegExp(r'BT\b([\s\S]*?)\bET', caseSensitive: false);
-    final btMatches = btEtPattern.allMatches(raw);
+    // 1. Search for and decompress PDF stream objects (FlateDecode)
+    final zlibDecoder = ZLibDecoder();
+    int searchIdx = 0;
+    while (searchIdx < bytes.length) {
+      // Find "stream"
+      int streamStart = -1;
+      for (int i = searchIdx; i < bytes.length - 6; i++) {
+        if (bytes[i] == 0x73 && // 's'
+            bytes[i + 1] == 0x74 && // 't'
+            bytes[i + 2] == 0x72 && // 'r'
+            bytes[i + 3] == 0x65 && // 'e'
+            bytes[i + 4] == 0x61 && // 'a'
+            bytes[i + 5] == 0x6D) { // 'm'
+          int offset = i + 6;
+          if (offset < bytes.length && (bytes[offset] == 0x0D || bytes[offset] == 0x0A)) {
+            if (bytes[offset] == 0x0D && offset + 1 < bytes.length && bytes[offset + 1] == 0x0A) {
+              offset += 2;
+            } else {
+              offset += 1;
+            }
+            streamStart = offset;
+            break;
+          }
+        }
+      }
 
-    if (btMatches.isNotEmpty) {
-      for (final match in btMatches) {
-        final textBlock = match.group(1) ?? '';
-        final blockText = _parsePdfTextBlock(textBlock);
-        if (blockText.trim().isNotEmpty) {
-          buffer.writeln(blockText.trim());
+      if (streamStart == -1) break;
+
+      // Find "endstream"
+      int streamEnd = -1;
+      for (int i = streamStart; i < bytes.length - 9; i++) {
+        if (bytes[i] == 0x65 && // 'e'
+            bytes[i + 1] == 0x6E && // 'n'
+            bytes[i + 2] == 0x64 && // 'd'
+            bytes[i + 3] == 0x73 && // 's'
+            bytes[i + 4] == 0x74 && // 't'
+            bytes[i + 5] == 0x72 && // 'r'
+            bytes[i + 6] == 0x65 && // 'e'
+            bytes[i + 7] == 0x61 && // 'a'
+            bytes[i + 8] == 0x6D) { // 'm'
+          int end = i;
+          if (end > streamStart && (bytes[end - 1] == 0x0A || bytes[end - 1] == 0x0D)) {
+            end--;
+            if (end > streamStart && bytes[end - 1] == 0x0D) {
+              end--;
+            }
+          }
+          streamEnd = end;
+          searchIdx = i + 9;
+          break;
+        }
+      }
+
+      if (streamEnd == -1 || streamEnd <= streamStart) {
+        searchIdx = streamStart;
+        continue;
+      }
+
+      final streamSlice = bytes.sublist(streamStart, streamEnd);
+      List<int>? decompressed;
+      try {
+        decompressed = zlibDecoder.decodeBytes(streamSlice, verify: false);
+      } catch (_) {}
+
+      final streamTextBytes = decompressed ?? streamSlice;
+      final streamStr = latin1.decode(streamTextBytes, allowInvalid: true);
+
+      // Search BT ... ET in stream
+      final btMatches = RegExp(r'BT\b([\s\S]*?)\bET', caseSensitive: false).allMatches(streamStr);
+      for (final m in btMatches) {
+        final parsedBlock = _parsePdfTextBlock(m.group(1) ?? '');
+        if (parsedBlock.trim().isNotEmpty) {
+          buffer.writeln(parsedBlock.trim());
+        }
+      }
+
+      // Also search Tj and TJ in stream
+      if (btMatches.isEmpty && decompressed != null) {
+        final tjMatches = RegExp(r'\(([^)]+)\)\s*(?:Tj|\x27|\x22)', caseSensitive: false).allMatches(streamStr);
+        for (final m in tjMatches) {
+          final s = _unescapePdfString(m.group(1) ?? '').trim();
+          if (s.isNotEmpty) buffer.writeln(s);
+        }
+      }
+    }
+
+    // Convert bytes to Latin-1 string as fallback
+    final raw = latin1.decode(bytes, allowInvalid: true);
+
+    // 2. Search for text objects BT ... ET in full file if buffer is still short
+    if (buffer.length < 20) {
+      final btEtPattern = RegExp(r'BT\b([\s\S]*?)\bET', caseSensitive: false);
+      final btMatches = btEtPattern.allMatches(raw);
+
+      if (btMatches.isNotEmpty) {
+        for (final match in btMatches) {
+          final textBlock = match.group(1) ?? '';
+          final blockText = _parsePdfTextBlock(textBlock);
+          if (blockText.trim().isNotEmpty) {
+            buffer.writeln(blockText.trim());
+          }
         }
       }
     }

@@ -19,29 +19,24 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v2.0.0';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.0 (Comprehensive Ballistic & Inspection Suite Update)';
-const BODY = `## OMPC Ballistic AeroData v2.0.0
+const TAG_NAME = 'v2.0.1';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.1 (Lot Acceptance Workflow, Complete Dossier & Ballistic Suite Update)';
+const BODY = `## OMPC Ballistic AeroData v2.0.1
 
-Comprehensive ballistic and quality control suite release featuring cascading primer selections, caliber weapon filtering, administrator caliber controls, dashboard sectional filters, desktop split-screen responsive optimizations, APK in-app update launcher, and verified NATO report generation:
+Comprehensive ballistic quality and lot acceptance update:
 
 ### Key Enhancements & Features:
-1. **Primer Cascading**: Selecting a caliber filters registered primer suppliers; selecting a primer supplier cascades to registered primer lots.
-2. **Caliber Weapon Filtering**: Strict caliber-based weapon selection (5.56 rifles & machine guns, 7.62 weapons, 9mm pistols).
-3. **Admin Caliber Specification**: Added administrative controls to create and edit/rename registered calibers in Control.
-4. **Module Parameter Switching Reset**: Switching between modules resets test selection to the module's first test and clears previous test parameters.
-5. **Inspection Log Chronological Sorting**: Strictly ordered chronologically descending by user-inserted test date and time.
-6. **Dashboard Independent Sectional Filters**: SPC charts, Ballistics/Fleet Volume, and Defects trend charts feature independent section-level filters in addition to global controls.
-7. **Split-Screen / Snapping Responsiveness**: Header and action button responsive wrapping prevents UI scattering when snapped/split on Windows PC.
-8. **Equipment Module Weapon Field**: Renamed "Weapon Repair" to "Weapon" and hooked into registered weapon selections.
-9. **Equipment Report Status Reopening**: Administrators can reopen closed/resolved equipment maintenance reports.
-10. **Lot 002 OMPC/25 Single-Temperature Record**: Restored original single-temperature (+21°C) EPVAT readings without leakage into other temperatures.
-11. **EPVAT Test Signatures & Kinetic Energy**: Display names and signatures populated on Page 2 alongside kinetic energy computations.
-12. **Technician Signature Selection**: Operator creators select technician from dropdown; technician creators automatically populate their own name.
-13. **Empty Field Defaults**: Caliber, test name, primer lot, primer supplier, propellant code, barrel SN, GP6 (1) & (2), weapon, and sampling location initialize empty.
-14. **Log Entry Test Switching Stability**: Retain selected test without bouncing back to previous test.
-15. **APK Direct In-App Update**: Automatic APK update downloader triggers direct install/download flow via external application launcher.
-16. **Full Multi-Platform Deployment**: Synchronized across Firebase Hosting web application, Windows Desktop portable zip and setup, and Android release APK.
+1. **Two-Part Lot Acceptance Workflow**: Partitioned Lot Acceptance into Part 1 (Lots Under Process) and Part 2 (Completed Lots). Admin configures mandatory tests per caliber (e.g., SS109: Waterproof, Extraction Force, Accuracy, EPVAT, Function, Residual Stress, Primer Sensitivity, Terminal Effect). Technician reviews all logged tests and finalizes with "Mark Completed" to transfer the lot and certificate to Completed Lots.
+2. **Complete Lot Acceptance Dossier Compilation**: Generating Complete Dossier (PDF / Word) compiles all individual test reports for that lot together with the Acceptance Certificate into a unified multi-page dossier.
+3. **Natural Alphanumeric Lot Sorting**: Lot Acceptance Inspection Logs are ordered strictly by Lot Number.
+4. **Chronological Day Sorting for Daily Inspections**: Date parsing updated with day-first priority (\`dd/MM/yyyy\`, \`d/M/yyyy\`) to ensure historical accuracy.
+5. **Signatures Standardization**: Individual test reports feature strictly the Technical Signature only. Final Lot Acceptance Certificate retains all 3 signatures (Technical, Supervisor, Manager).
+6. **1-Page per Test Word (.doc) Exports**: Word reports and certificates format to fit 1 page per test sheet with standardized margins.
+7. **Split-Screen Desktop Responsiveness**: Responsive wrapping and layout breakpoints prevent header and action button scattering when resizing windows.
+8. **Ballistic Machine Results Extractor Fix & Table Parsing**: Resolves data URI base64 decoding issues, FlateDecode decompression, and parses ballistic machine summary tables (Mean, Max, Min, Range, SD, Round Table, shot counts, lot number, and operators).
+9. **Caliber M80 Weapon Classification**: Caliber M80 correctly classifies machine guns under Machine Gun, showing no registered rifle models.
+10. **Native Spellcheck**: Enabled red squiggly spellcheck underline and correction suggestions across text input and notes fields.
+11. **Multi-Platform Deployment**: Synchronized across Firebase Web, Windows Desktop portable package, and Android release APK.
 `;
 
 function request(options, postData) {
