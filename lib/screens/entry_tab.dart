@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/ballistic_record.dart';
@@ -176,7 +177,7 @@ class _EntryTabState extends State<EntryTab> {
   late final _epvatAdminPrimerSupplierController = TextEditingController();
   String? _selectedComponentPrimerLot;
   String? _selectedComponentPropellantLot;
-  List<String> _registeredTechnicians = ['Ballistics Technician', 'Component Technician'];
+  List<String> _registeredTechnicians = ['Ahmed Al Bahlouli', 'Said Al Siyabi'];
   final List<String> _propellantCodes = const [
     'D-073.4',
     'D-073.5',
@@ -568,6 +569,19 @@ class _EntryTabState extends State<EntryTab> {
     final lvlMap = rules['level$level'] ?? {};
     final desc = (lvlMap['description'] ?? '').toString();
     final items = desc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+    // Also load defects configured by Admin in adminRules
+    final adminCustom = widget.adminRules['function_custom_defects'];
+    if (adminCustom is Map) {
+      final list = adminCustom['level$level'] ?? adminCustom['$level'];
+      if (list is List) {
+        for (final it in list) {
+          final s = it.toString().trim();
+          if (s.isNotEmpty && !items.contains(s)) items.add(s);
+        }
+      }
+    }
+
     final customList = _customLevelDefects[level] ?? [];
     for (final c in customList) {
       if (!items.contains(c)) items.add(c);
@@ -616,6 +630,15 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   void _promptAddCustomDefect(int level, TextEditingController controller, String tempKey) {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access restricted: Only Admin can add new defect types.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
     final textCtrl = TextEditingController();
     showDialog(
       context: context,
@@ -629,7 +652,7 @@ class _EntryTabState extends State<EntryTab> {
           children: [
             const Icon(Icons.add_circle_outline, color: Color(0xFF38BDF8), size: 20),
             const SizedBox(width: 8),
-            Text('Add Custom Defect (Level $level)', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+            Text('Admin: Add Defect Type (Level $level)', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -637,7 +660,7 @@ class _EntryTabState extends State<EntryTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter the specific defect type name to add to this level classification:',
+              'Enter the defect type name. Once added by Admin, users will select it directly from the list:',
               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
             ),
             const SizedBox(height: 10),
@@ -661,7 +684,7 @@ class _EntryTabState extends State<EntryTab> {
             child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final name = textCtrl.text.trim();
               if (name.isNotEmpty) {
                 Navigator.of(ctx).pop();
@@ -669,6 +692,19 @@ class _EntryTabState extends State<EntryTab> {
                   _customLevelDefects.putIfAbsent(level, () => []).add(name);
                   _incrementDefect(name, tempKey, level, controller);
                 });
+
+                // Persist new defect type to adminRules
+                try {
+                  final updatedRules = Map<String, dynamic>.from(widget.adminRules);
+                  final customMap = Map<String, dynamic>.from(updatedRules['function_custom_defects'] as Map? ?? {});
+                  final lvlList = List<String>.from((customMap['level$level'] as List? ?? []).map((e) => e.toString()));
+                  if (!lvlList.contains(name)) {
+                    lvlList.add(name);
+                    customMap['level$level'] = lvlList;
+                    updatedRules['function_custom_defects'] = customMap;
+                    await _storageService.saveRules(updatedRules);
+                  }
+                } catch (_) {}
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF38BDF8), foregroundColor: Colors.black),
@@ -1088,15 +1124,8 @@ class _EntryTabState extends State<EntryTab> {
           .where((n) => n.isNotEmpty)
           .toSet()
           .toList();
-      if (mounted && techs.isNotEmpty) {
-        setState(() {
-          for (final t in techs) {
-            if (!_registeredTechnicians.contains(t)) {
-              _registeredTechnicians.add(t);
-            }
-          }
-        });
-      }
+      // Strictly maintain registered technicians: Ahmed Al Bahlouli & Said Al Siyabi
+      _registeredTechnicians = ['Ahmed Al Bahlouli', 'Said Al Siyabi'];
     } catch (_) {}
   }
 
@@ -1542,6 +1571,15 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   void _showAddLocationDialog() {
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access restricted: Only Admin can add new sampling locations.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
     final addCtrl = TextEditingController();
     showDialog(
       context: context,
@@ -2589,6 +2627,7 @@ class _EntryTabState extends State<EntryTab> {
         'rangeY': _rangeYController.text,
         'sdY': _sdYController.text,
         'meanRadius': _meanRadiusController.text,
+        'accLargestDistance': _accLargestDistanceController.text,
         'meanVel': _meanVelController.text,
         'minVel': _minVelController.text,
         'maxVel': _maxVelController.text,
@@ -2719,6 +2758,7 @@ class _EntryTabState extends State<EntryTab> {
         if (draft['rangeY'] != null) _rangeYController.text = draft['rangeY'];
         if (draft['sdY'] != null) _sdYController.text = draft['sdY'];
         if (draft['meanRadius'] != null) _meanRadiusController.text = draft['meanRadius'];
+        if (draft['accLargestDistance'] != null) _accLargestDistanceController.text = draft['accLargestDistance'];
         if (draft['meanVel'] != null) _meanVelController.text = draft['meanVel'];
         if (draft['minVel'] != null) _minVelController.text = draft['minVel'];
         if (draft['maxVel'] != null) _maxVelController.text = draft['maxVel'];
@@ -2837,7 +2877,10 @@ class _EntryTabState extends State<EntryTab> {
     _selectedFunctionWeapons = [];
     _syncFunctionWeaponState(resetSelections: true);
 
-    if (widget.userRole.toLowerCase() == 'technician') {
+    final adminTech = (widget.adminRules['technician_name'] ?? widget.adminRules['cert_technician_name'] ?? '').toString().trim();
+    if (adminTech.isNotEmpty) {
+      _technicianController.text = adminTech;
+    } else if (widget.userRole.toLowerCase() == 'technician') {
       _technicianController.text = widget.loggedInUser.isNotEmpty ? widget.loggedInUser : 'Ballistics Technician';
     } else {
       _loadTechnicians();
@@ -2989,6 +3032,10 @@ class _EntryTabState extends State<EntryTab> {
       }
     }
     if (oldWidget.adminRules != widget.adminRules) {
+      final adminTech = (widget.adminRules['technician_name'] ?? widget.adminRules['cert_technician_name'] ?? '').toString().trim();
+      if (adminTech.isNotEmpty && _technicianController.text != adminTech) {
+        _technicianController.text = adminTech;
+      }
       _syncFunctionWeaponState();
       if (_accuracyBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_accuracyBarrels.contains(_barrelSNController.text))) {
         if (_testName == 'Accuracy Test') _barrelSNController.text = _accuracyBarrels.first;
@@ -3378,7 +3425,10 @@ class _EntryTabState extends State<EntryTab> {
         final baseActSD = _overallEpvatControllers[baselineTemp]!['action_time_sd']?.text.trim() ?? '';
 
         final customNotes = _notesController.text.trim();
-        final combinedNotes = customNotes;
+        final tempsStr = tempDetails.isNotEmpty ? 'Temps: ${tempDetails.join('; ')}' : '';
+        final combinedNotes = customNotes.isNotEmpty
+            ? (tempsStr.isNotEmpty ? '$customNotes | $tempsStr' : customNotes)
+            : tempsStr;
 
         String getOverallP1Rounds(String t) {
           final rds = (_overallEpvatP1RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',');
@@ -3678,7 +3728,8 @@ class _EntryTabState extends State<EntryTab> {
           velMax: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _maxVelController.text.trim() : '',
           velRange: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _rangeVelController.text.trim() : '',
           velSD: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _sdVelController.text.trim() : '',
-          accMeanRadius: _testName == 'Accuracy Test' && _caliber == '5.56x45 M193' ? _meanRadiusController.text.trim() : '',
+          accMeanRadius: _testName == 'Accuracy Test' ? _meanRadiusController.text.trim() : '',
+          accLargestDistance: _testName == 'Accuracy Test' ? _accLargestDistanceController.text.trim() : '',
           extractionForceType: _testName == 'Extraction Force Test' ? _extractionForceType : '',
           extractionForceRounds: _testName == 'Extraction Force Test' ? _extractionRoundsControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',') : '',
           cartridgeTemp: (_testName == 'EPVAT test' || _testName == 'Propellant Test')
@@ -3805,6 +3856,18 @@ class _EntryTabState extends State<EntryTab> {
         ),
       );
       return;
+    }
+
+    if (widget.userRole.toLowerCase() != 'technician') {
+      if (_technicianController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Validation Error: Please select a registered Technician (Ahmed Al Bahlouli or Said Al Siyabi) for report signature.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+        return;
+      }
     }
 
     setState(() {
@@ -4013,8 +4076,8 @@ class _EntryTabState extends State<EntryTab> {
     }
   }
 
-  void _showAutoExtractModal() {
-    final textController = TextEditingController();
+  void _showAutoExtractModal([String? initialText]) {
+    final textController = TextEditingController(text: initialText ?? '');
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -4113,13 +4176,74 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   void _applyExtractedResults(String content) {
-    final parsed = TestResultExtractor.extract(content: content, preferredTestName: _testName).fields;
+    final extractionRes = TestResultExtractor.extract(
+      content: content,
+      preferredTestName: (_testName.isNotEmpty && _testName != 'Ballistic Tests') ? _testName : null,
+    );
+    final parsed = extractionRes.fields;
+    dynamic getVal(String k1, [String? k2, String? k3, String? k4, String? k5, String? k6]) {
+      for (final k in [k1, k2, k3, k4, k5, k6]) {
+        if (k != null && parsed.containsKey(k) && parsed[k] != null) return parsed[k];
+      }
+      return null;
+    }
     int count = 0;
-    dynamic getVal(String k1, [String? k2, String? k3]) => parsed[k1] ?? (k2 != null ? parsed[k2] : null) ?? (k3 != null ? parsed[k3] : null);
 
     setState(() {
-      final produced = getVal('produced', 'shot_count');
-      if (produced != null) {
+      if (extractionRes.detectedTest.isNotEmpty) {
+        if (_testName != extractionRes.detectedTest) {
+          if (testNames.contains(extractionRes.detectedTest) || _testName.isEmpty || _testName == 'Ballistic Tests') {
+            _testName = extractionRes.detectedTest;
+          }
+        }
+      }
+      // 1. Caliber Specification
+      final calVal = getVal('caliber', 'calibre')?.toString().trim();
+      if (calVal != null && calVal.isNotEmpty) {
+        final availableCalibers = calibers;
+        final match = availableCalibers.firstWhere(
+          (c) {
+            final cLower = c.toLowerCase();
+            final valLower = calVal.toLowerCase();
+            if (cLower == valLower) return true;
+            if (valLower.contains('5.56') && (cLower == '5.56' || cLower.contains('5.56x45 ss109') || cLower.contains('5.56'))) return true;
+            if (valLower.contains('7.62') && (cLower == '7.62' || cLower.contains('7.62x51 m80') || cLower.contains('7.62'))) return true;
+            if (valLower.contains('9mm') && (cLower == '9mm' || cLower.contains('9x19mm para') || cLower.contains('9mm'))) return true;
+            if (valLower.contains('ss109') && cLower.contains('ss109')) return true;
+            if (valLower.contains('m193') && cLower.contains('m193')) return true;
+            return false;
+          },
+          orElse: () => availableCalibers.firstWhere(
+            (c) => calVal.toLowerCase().contains(c.toLowerCase()),
+            orElse: () => '',
+          ),
+        );
+        if (match.isNotEmpty) {
+          _caliber = match;
+          count++;
+        }
+      }
+
+      // 2. Extraction Force Test: Individual Rounds & Type
+      if (_testName == 'Extraction Force Test') {
+        final roundForcesStr = getVal('roundForces', 'round_forces', 'extractionForceRounds')?.toString();
+        if (roundForcesStr != null && roundForcesStr.isNotEmpty) {
+          final forcesList = roundForcesStr.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+          if (forcesList.isNotEmpty) {
+            _extractionForceType = 'Individual';
+            _extractionRoundsControllers.clear();
+            for (final f in forcesList) {
+              _extractionRoundsControllers.add(TextEditingController(text: f));
+            }
+            _extractionRoundsControllers.add(TextEditingController());
+            _producedController.text = '${forcesList.length}';
+            count++;
+          }
+        }
+      }
+
+      final produced = getVal('produced', 'shot_count', 'primer_total_tested', 'primerTotalTested', 'primer_total_rounds', 'primerTotalRounds');
+      if (produced != null && _testName != 'Extraction Force Test') {
         _producedController.text = produced.toString();
         count++;
       }
@@ -4152,6 +4276,13 @@ class _EntryTabState extends State<EntryTab> {
       if (velRange != null) {
         _rangeVelController.text = velRange.toString();
         count++;
+      } else if (velMin != null && velMax != null) {
+        final minD = double.tryParse(velMin.toString());
+        final maxD = double.tryParse(velMax.toString());
+        if (minD != null && maxD != null) {
+          _rangeVelController.text = (maxD - minD).toStringAsFixed(2);
+          count++;
+        }
       }
       final meanRadius = getVal('acc_mean_radius', 'accMeanRadius');
       if (meanRadius != null) {
@@ -4168,21 +4299,6 @@ class _EntryTabState extends State<EntryTab> {
         _sdYController.text = sdY.toString();
         count++;
       }
-      final rangeX = getVal('acc_range_x', 'accRangeX');
-      if (rangeX != null) {
-        _rangeXController.text = rangeX.toString();
-        count++;
-      }
-      final rangeY = getVal('acc_range_y', 'accRangeY');
-      if (rangeY != null) {
-        _rangeYController.text = rangeY.toString();
-        count++;
-      }
-      final meanX = getVal('acc_mean_x', 'accMeanX');
-      if (meanX != null) {
-        _meanXController.text = meanX.toString();
-        count++;
-      }
       final minX = getVal('acc_min_x', 'accMinX');
       if (minX != null) {
         _minXController.text = minX.toString();
@@ -4192,6 +4308,23 @@ class _EntryTabState extends State<EntryTab> {
       if (maxX != null) {
         _maxXController.text = maxX.toString();
         count++;
+      }
+      final meanX = getVal('acc_mean_x', 'accMeanX');
+      if (meanX != null) {
+        _meanXController.text = meanX.toString();
+        count++;
+      }
+      final rangeX = getVal('acc_range_x', 'accRangeX');
+      if (rangeX != null) {
+        _rangeXController.text = rangeX.toString();
+        count++;
+      } else if (minX != null && maxX != null) {
+        final minD = double.tryParse(minX.toString());
+        final maxD = double.tryParse(maxX.toString());
+        if (minD != null && maxD != null) {
+          _rangeXController.text = (maxD - minD).toStringAsFixed(1);
+          count++;
+        }
       }
       final meanY = getVal('acc_mean_y', 'accMeanY');
       if (meanY != null) {
@@ -4208,6 +4341,30 @@ class _EntryTabState extends State<EntryTab> {
         _maxYController.text = maxY.toString();
         count++;
       }
+      final rangeY = getVal('acc_range_y', 'accRangeY');
+      if (rangeY != null) {
+        _rangeYController.text = rangeY.toString();
+        count++;
+      } else if (minY != null && maxY != null) {
+        final minD = double.tryParse(minY.toString());
+        final maxD = double.tryParse(maxY.toString());
+        if (minD != null && maxD != null) {
+          _rangeYController.text = (maxD - minD).toStringAsFixed(1);
+          count++;
+        }
+      }
+      final accLargestDist = getVal('acc_largest_distance', 'accLargestDistance', 'largest_distance') ??
+          getVal('acc_extreme_spread', 'accExtremeSpread');
+      if (accLargestDist != null) {
+        _accLargestDistanceController.text = accLargestDist.toString();
+        count++;
+      }
+      final distVal = getVal('distance', 'dist');
+      if (distVal != null) {
+        _distanceController.text = distVal.toString();
+        count++;
+      }
+      // EPVAT Pressure & Velocity extraction
       final epvatMean = getVal('epvat_mean_pressure', 'epvatMeanPressure');
       if (epvatMean != null) {
         _epvatMeanPressureController.text = epvatMean.toString();
@@ -4223,19 +4380,201 @@ class _EntryTabState extends State<EntryTab> {
         _epvatMinPressureController.text = epvatMin.toString();
         count++;
       }
+      final epvatRange = getVal('epvat_range_pressure', 'epvatRangePressure');
+      if (epvatRange != null) {
+        _epvatRangePressureController.text = epvatRange.toString();
+        count++;
+      }
       final epvatSd = getVal('epvat_sd_pressure', 'epvatSDPressure');
       if (epvatSd != null) {
         _epvatSDPressureController.text = epvatSd.toString();
         count++;
       }
-      final epvatP2 = getVal('epvat_p2_mean', 'epvatP2Mean');
+
+      final epvatP2 = getVal('epvat_p2_mean', 'epvatP2MeanPressure', 'epvatP2Mean');
       if (epvatP2 != null) {
         _epvatP2MeanPressureController.text = epvatP2.toString();
         count++;
       }
+      final epvatP2Max = getVal('epvat_p2_max', 'epvatP2MaxPressure', 'epvatP2Max');
+      if (epvatP2Max != null) {
+        _epvatP2MaxPressureController.text = epvatP2Max.toString();
+        count++;
+      }
+      final epvatP2Min = getVal('epvat_p2_min', 'epvatP2MinPressure', 'epvatP2Min');
+      if (epvatP2Min != null) {
+        _epvatP2MinPressureController.text = epvatP2Min.toString();
+        count++;
+      }
+      final epvatP2Range = getVal('epvat_p2_range', 'epvatP2RangePressure', 'epvatP2Range');
+      if (epvatP2Range != null) {
+        _epvatP2RangePressureController.text = epvatP2Range.toString();
+        count++;
+      }
+      final epvatP2Sd = getVal('epvat_p2_sd', 'epvatP2SDPressure', 'epvatP2SD');
+      if (epvatP2Sd != null) {
+        _epvatP2SDPressureController.text = epvatP2Sd.toString();
+        count++;
+      }
+
+      final actMean = getVal('action_time_mean', 'actionTimeMean');
+      if (actMean != null) {
+        _actionTimeMeanController.text = actMean.toString();
+        count++;
+      }
+      final actMax = getVal('action_time_max', 'actionTimeMax');
+      if (actMax != null) {
+        _actionTimeMaxController.text = actMax.toString();
+        count++;
+      }
+      final actMin = getVal('action_time_min', 'actionTimeMin');
+      if (actMin != null) {
+        _actionTimeMinController.text = actMin.toString();
+        count++;
+      }
+      final actRange = getVal('action_time_range', 'actionTimeRange');
+      if (actRange != null) {
+        _actionTimeRangeController.text = actRange.toString();
+        count++;
+      }
+      final actSd = getVal('action_time_sd', 'actionTimeSD');
+      if (actSd != null) {
+        _actionTimeSDController.text = actSd.toString();
+        count++;
+      }
+
+      final sensor1 = getVal('epvat_sensor1', 'epvatSensor1', 'transducer1', 'transducer_1')?.toString().trim();
+      if (sensor1 != null && sensor1.isNotEmpty) {
+        _epvatSensor1Controller.text = sensor1;
+        count++;
+      }
+      final sensor2 = getVal('epvat_sensor2', 'epvatSensor2', 'transducer2', 'transducer_2')?.toString().trim();
+      if (sensor2 != null && sensor2.isNotEmpty) {
+        _epvatSensor2Controller.text = sensor2;
+        count++;
+      }
+
+      final unitVal = getVal('epvat_pressure_unit', 'epvatPressureUnit')?.toString().trim();
+      if (unitVal != null && unitVal.isNotEmpty) {
+        if (unitVal.contains('kg/cm')) {
+          _epvatPressureUnit = 'kg/cm²';
+          count++;
+        } else if (unitVal.toLowerCase() == 'bar') {
+          _epvatPressureUnit = 'bar';
+          count++;
+        } else if (unitVal.toLowerCase() == 'mpa') {
+          _epvatPressureUnit = 'MPa';
+          count++;
+        } else if (unitVal.toUpperCase() == 'PSI') {
+          _epvatPressureUnit = 'PSI';
+          count++;
+        }
+      }
+
+      // Populate active temperature's controllers if in EPVAT Overall mode
+      if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
+        final cartridgeTemp = getVal('cartridge_temp', 'cartridgeTemp')?.toString().trim();
+        if (cartridgeTemp != null && cartridgeTemp.isNotEmpty) {
+          _cartridgeTempController.text = cartridgeTemp;
+          if (cartridgeTemp.contains('21')) {
+            _activeEpvatTempTabIndex = 0;
+          } else if (cartridgeTemp.contains('52')) {
+            _activeEpvatTempTabIndex = 1;
+          } else if (cartridgeTemp.contains('54')) {
+            _activeEpvatTempTabIndex = 2;
+          }
+          count++;
+        }
+
+        final currentTemp = ['+21', '+52', '-54'][_activeEpvatTempTabIndex];
+        final tempCtrlMap = _overallEpvatControllers[currentTemp];
+        if (tempCtrlMap != null) {
+          if (epvatMean != null) tempCtrlMap['p1_mean']?.text = epvatMean.toString();
+          if (epvatMax != null) tempCtrlMap['p1_max']?.text = epvatMax.toString();
+          if (epvatMin != null) tempCtrlMap['p1_min']?.text = epvatMin.toString();
+          if (epvatSd != null) tempCtrlMap['p1_sd']?.text = epvatSd.toString();
+          if (epvatRange != null) tempCtrlMap['p1_range']?.text = epvatRange.toString();
+
+          if (epvatP2 != null) tempCtrlMap['p2_mean']?.text = epvatP2.toString();
+          if (epvatP2Max != null) tempCtrlMap['p2_max']?.text = epvatP2Max.toString();
+          if (epvatP2Min != null) tempCtrlMap['p2_min']?.text = epvatP2Min.toString();
+          if (epvatP2Sd != null) tempCtrlMap['p2_sd']?.text = epvatP2Sd.toString();
+          if (epvatP2Range != null) tempCtrlMap['p2_range']?.text = epvatP2Range.toString();
+
+          if (velMean != null) tempCtrlMap['vel_mean']?.text = velMean.toString();
+          if (velMax != null) tempCtrlMap['vel_max']?.text = velMax.toString();
+          if (velMin != null) tempCtrlMap['vel_min']?.text = velMin.toString();
+          if (velSd != null) tempCtrlMap['vel_sd']?.text = velSd.toString();
+          if (velRange != null) tempCtrlMap['vel_range']?.text = velRange.toString();
+
+          if (actMean != null) tempCtrlMap['action_time_mean']?.text = actMean.toString();
+          if (actMax != null) tempCtrlMap['action_time_max']?.text = actMax.toString();
+          if (actMin != null) tempCtrlMap['action_time_min']?.text = actMin.toString();
+          if (actSd != null) tempCtrlMap['action_time_sd']?.text = actSd.toString();
+          if (actRange != null) tempCtrlMap['action_time_range']?.text = actRange.toString();
+        }
+
+        // Individual Rounds Population
+        final p1RoundsRaw = getVal('epvat_pressure_rounds', 'epvatPressureRounds')?.toString();
+        final p2RoundsRaw = getVal('epvat_p2_pressure_rounds', 'epvatP2PressureRounds')?.toString();
+        final taRoundsRaw = getVal('action_time_rounds', 'actionTimeRounds')?.toString();
+        final velRoundsRaw = getVal('epvat_vel_rounds', 'epvatVelRounds')?.toString();
+
+        final p1List = p1RoundsRaw != null ? p1RoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
+        final p2List = p2RoundsRaw != null ? p2RoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
+        final taList = taRoundsRaw != null ? taRoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
+        final velList = velRoundsRaw != null ? velRoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
+
+        if (p1List.isNotEmpty) {
+          final shotCount = p1List.length;
+          _syncIndividualRoundsControllers(shotCount);
+          for (int i = 0; i < shotCount; i++) {
+            if (i < _epvatRoundsControllers.length) _epvatRoundsControllers[i].text = p1List[i];
+            if (i < p2List.length && i < _epvatP2RoundsControllers.length) _epvatP2RoundsControllers[i].text = p2List[i];
+            if (i < taList.length && i < _actionTimeRoundsControllers.length) _actionTimeRoundsControllers[i].text = taList[i];
+            if (i < velList.length && i < _epvatVelRoundsControllers.length) _epvatVelRoundsControllers[i].text = velList[i];
+          }
+
+          _epvatOverallRoundCount[currentTemp] = shotCount;
+          _epvatOverallSubMode[currentTemp] = 'Individual Rounds';
+
+          final p1CtrlList = _overallEpvatP1RoundsControllers[currentTemp];
+          final p2CtrlList = _overallEpvatP2RoundsControllers[currentTemp];
+          final taCtrlList = _overallEpvatActionTimeRoundsControllers[currentTemp];
+          final velCtrlList = _overallEpvatVelRoundsControllers[currentTemp];
+
+          if (p1CtrlList != null) {
+            for (int i = 0; i < p1List.length && i < p1CtrlList.length; i++) {
+              p1CtrlList[i].text = p1List[i];
+            }
+          }
+          if (p2CtrlList != null) {
+            for (int i = 0; i < p2List.length && i < p2CtrlList.length; i++) {
+              p2CtrlList[i].text = p2List[i];
+            }
+          }
+          if (taCtrlList != null) {
+            for (int i = 0; i < taList.length && i < taCtrlList.length; i++) {
+              taCtrlList[i].text = taList[i];
+            }
+          }
+          if (velCtrlList != null) {
+            for (int i = 0; i < velList.length && i < velCtrlList.length; i++) {
+              velCtrlList[i].text = velList[i];
+            }
+          }
+          _producedController.text = '$shotCount';
+          count += shotCount;
+        }
+      }
       final cyclicRpm = getVal('cyclic_rpm', 'cyclicRpm');
       if (cyclicRpm != null) {
         _cyclicRateController.text = cyclicRpm.toString();
+        count++;
+      }
+      final primerTotalRounds = getVal('primer_total_rounds', 'primerTotalRounds', 'primer_total_tested', 'primerTotalTested');
+      if (primerTotalRounds != null) {
+        _producedController.text = primerTotalRounds.toString();
         count++;
       }
       final primerHbar = getVal('primer_hbar', 'primerHbar');
@@ -4258,6 +4597,81 @@ class _EntryTabState extends State<EntryTab> {
         _primerHbarMinus2SController.text = primerNoFire.toString();
         count++;
       }
+      if (_primerHbarController.text.isNotEmpty && _primerSDController.text.isNotEmpty) {
+        final h = double.tryParse(_primerHbarController.text.trim());
+        final s = double.tryParse(_primerSDController.text.trim());
+        if (h != null && s != null) {
+          if (_primerHbarPlus5SController.text.isEmpty) {
+            _primerHbarPlus5SController.text = (h + 5 * s).toStringAsFixed(2);
+          }
+          if (_primerHbarMinus2SController.text.isEmpty) {
+            _primerHbarMinus2SController.text = (h - 2 * s).toStringAsFixed(2);
+          }
+        }
+      }
+
+      final primerSup = getVal('primer_supplier', 'primerSupplier', 'supplier')?.toString().trim();
+      if (primerSup != null && primerSup.isNotEmpty) {
+        String effectiveSup = primerSup;
+        if (primerSup.toLowerCase() == 'ug') {
+          final ugMatch = _primerSuppliers.firstWhere(
+            (s) => s.toLowerCase().contains('unis') || s.toLowerCase().contains('ginix'),
+            orElse: () => '',
+          );
+          if (ugMatch.isNotEmpty) {
+            effectiveSup = ugMatch;
+          }
+        }
+        final existing = _primerSuppliers.firstWhere(
+          (s) => s.toLowerCase() == effectiveSup.toLowerCase(),
+          orElse: () => '',
+        );
+        if (existing.isNotEmpty) {
+          _primerSupplier = existing;
+        } else {
+          if (!_localAddedPrimerSuppliers.contains(effectiveSup)) {
+            _localAddedPrimerSuppliers.add(effectiveSup);
+          }
+          _primerSupplier = effectiveSup;
+        }
+        count++;
+      }
+
+      final pDepth = getVal('primer_insertion_depth', 'primerInsertionDepth')?.toString().trim();
+      if (pDepth != null && pDepth.isNotEmpty) {
+        _primerInsertionDepthController.text = pDepth;
+        count++;
+      }
+
+      final pLot = getVal('primer_lot', 'primerLot', 'component_primer_lot')?.toString().trim();
+      if (pLot != null && pLot.isNotEmpty) {
+        _primerLotController.text = pLot;
+        if (_lotController.text.isEmpty || _testName == 'Primer Sensitivity Test') {
+          _lotController.text = pLot;
+        }
+        count++;
+      }
+
+      final pMisfires = getVal('primer_total_misfires', 'primerTotalMisfires', 'misfires');
+      if (pMisfires != null) {
+        _primerMisfiresCountController.text = pMisfires.toString();
+        _defectsController.text = pMisfires.toString();
+        count++;
+      }
+
+      final roomTemp = getVal('room_temp', 'roomTemp', 'cartridge_temp', 'cartridgeTemp')?.toString().trim();
+      if (roomTemp != null && roomTemp.isNotEmpty) {
+        _roomTempController.text = roomTemp;
+        _cartridgeTempController.text = roomTemp;
+        count++;
+      }
+
+      final testTimeVal = getVal('testTime', 'test_time', 'testDate', 'test_date')?.toString().trim();
+      if (testTimeVal != null && testTimeVal.isNotEmpty) {
+        _testTimeController.text = testTimeVal;
+        count++;
+      }
+
       final cartridgeTemp = getVal('cartridge_temp', 'cartridgeTemp');
       if (cartridgeTemp != null) {
         _cartridgeTempController.text = cartridgeTemp.toString();
@@ -4268,9 +4682,22 @@ class _EntryTabState extends State<EntryTab> {
         _barrelSNController.text = barrelSn.toString();
         count++;
       }
+      final lotDigits = getVal('lotDigits', 'lot_digits')?.toString().trim();
+      final lotYear = getVal('lotYear', 'lot_year')?.toString().trim();
       final lotVal = getVal('lot_number', 'lotNo', 'lot')?.toString().trim();
-      if (lotVal != null && lotVal.isNotEmpty) {
-        final lotReg = RegExp(r'(\d{1,4})\s*(?:OMPC/)?(\d{2})?', caseSensitive: false).firstMatch(lotVal);
+      if (lotDigits != null && lotDigits.isNotEmpty) {
+        _lotThreeDigitsController.text = lotDigits.padLeft(3, '0');
+        _hopperThreeDigitsController.text = lotDigits.padLeft(3, '0');
+        count++;
+        if (lotYear != null && lotYear.isNotEmpty) {
+          _lotYearController.text = lotYear;
+          _hopperYearController.text = lotYear;
+        }
+        if (lotVal != null && lotVal.isNotEmpty) {
+          _lotController.text = lotVal;
+        }
+      } else if (lotVal != null && lotVal.isNotEmpty) {
+        final lotReg = RegExp(r'(?:Lot\s*)?(\d{1,4})\s*(?:OMPC[/\s]*)?(\d{2})?', caseSensitive: false).firstMatch(lotVal);
         if (lotReg != null) {
           final digits = lotReg.group(1);
           final yr = lotReg.group(2);
@@ -4289,18 +4716,75 @@ class _EntryTabState extends State<EntryTab> {
         }
       }
       final opVal = getVal('operator_name', 'operators', 'operator')?.toString().trim();
-      if (opVal != null && opVal.isNotEmpty && _operatorsController.text.isEmpty) {
+      if (opVal != null && opVal.isNotEmpty) {
         _operatorsController.text = opVal;
         count++;
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Auto-extracted $count parameters for $_testName!'),
-        backgroundColor: const Color(0xFF10B981),
-      ),
-    );
+    if (count > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Auto-extracted $count parameters for $_testName!'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No matching parameters could be detected automatically. Opening paste dialog to inspect text.'),
+          backgroundColor: Color(0xFFF59E0B),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      _showAutoExtractModal(content);
+    }
+  }
+
+  void _autoExtractFromAttachment(String filename, String rawBase64) {
+    try {
+      if (rawBase64.isEmpty) return;
+      String cleanBase64 = rawBase64.trim();
+      if (cleanBase64.contains(',')) {
+        cleanBase64 = cleanBase64.substring(cleanBase64.indexOf(',') + 1);
+      }
+      cleanBase64 = cleanBase64.replaceAll(RegExp(r'\s+'), '');
+      final bytes = base64Decode(cleanBase64);
+      final isPdf = filename.toLowerCase().endsWith('.pdf') ||
+          (bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46);
+
+      String content = '';
+      if (isPdf) {
+        content = PdfTextExtractor.extractText(bytes);
+      } else if (filename.toLowerCase().endsWith('.csv') ||
+          filename.toLowerCase().endsWith('.tsv') ||
+          filename.toLowerCase().endsWith('.txt') ||
+          filename.toLowerCase().endsWith('.json') ||
+          filename.toLowerCase().endsWith('.log')) {
+        content = utf8.decode(bytes, allowMalformed: true);
+      }
+
+      if (content.trim().isNotEmpty) {
+        _applyExtractedResults(content);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not extract text automatically from this file. Opening paste dialog...'),
+            backgroundColor: Color(0xFFF59E0B),
+            duration: Duration(seconds: 4),
+          ),
+        );
+        _showAutoExtractModal();
+      }
+    } catch (e) {
+      debugPrint('Error auto-extracting from attachment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error auto-extracting from attachment: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
   }
 
   @override
@@ -4456,27 +4940,38 @@ class _EntryTabState extends State<EntryTab> {
                         validator: (v) => v == null || v.trim().isEmpty ? 'Inspectors required' : null,
                       ),
                     ),
-                    _buildFlexibleField(
-                      flex: 3,
-                      label: 'Technician (for Report Signature)',
-                      isRequired: false,
-                      child: widget.userRole.toLowerCase() == 'technician'
-                          ? _buildTextField(
-                              controller: _technicianController,
-                              readOnly: true,
-                              hint: widget.loggedInUser.isNotEmpty ? widget.loggedInUser : 'Ballistics Technician',
-                            )
-                          : _buildDropdownField(
-                              value: _technicianController.text,
-                              items: _registeredTechnicians,
-                              allowEmpty: true,
-                              hintText: 'Select Technician for Signature...',
-                              onChanged: (v) {
-                                if (v != null) {
-                                  setState(() => _technicianController.text = v);
-                                }
-                              },
-                            ),
+                    Builder(
+                      builder: (context) {
+                        final adminTech = (widget.adminRules['technician_name'] ?? widget.adminRules['cert_technician_name'] ?? '').toString().trim();
+                        return _buildFlexibleField(
+                          flex: 3,
+                          label: 'Technician (for Report Signature)',
+                          isRequired: false,
+                          child: adminTech.isNotEmpty
+                              ? _buildTextField(
+                                  controller: _technicianController,
+                                  readOnly: true,
+                                  hint: adminTech,
+                                )
+                              : (widget.userRole.toLowerCase() == 'technician'
+                                  ? _buildTextField(
+                                      controller: _technicianController,
+                                      readOnly: true,
+                                      hint: widget.loggedInUser.isNotEmpty ? widget.loggedInUser : 'Ballistics Technician',
+                                    )
+                                  : _buildDropdownField(
+                                      value: _technicianController.text,
+                                      items: _registeredTechnicians,
+                                      allowEmpty: true,
+                                      hintText: 'Select Technician for Signature...',
+                                      onChanged: (v) {
+                                        if (v != null) {
+                                          setState(() => _technicianController.text = v);
+                                        }
+                                      },
+                                    )),
+                        );
+                      },
                     ),
                     _buildFlexibleField(
                       key: _shiftFieldKey,
@@ -4877,21 +5372,23 @@ class _EntryTabState extends State<EntryTab> {
                                       },
                                     ),
                                   ),
-                                  const SizedBox(width: 6.0),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0284C7).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6.0),
-                                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                                  if (_isAdmin) ...[
+                                    const SizedBox(width: 6.0),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0284C7).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6.0),
+                                        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 16),
+                                        tooltip: 'Admin: Add new sample location',
+                                        padding: const EdgeInsets.all(6),
+                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                        onPressed: _showAddLocationDialog,
+                                      ),
                                     ),
-                                    child: IconButton(
-                                      icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 16),
-                                      tooltip: 'Admin: Add new sample location',
-                                      padding: const EdgeInsets.all(6),
-                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                      onPressed: _showAddLocationDialog,
-                                    ),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -5482,12 +5979,40 @@ class _EntryTabState extends State<EntryTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.gps_fixed_outlined, color: Color(0xFF0284C7), size: 16.0),
-                              SizedBox(width: 6.0),
-                              Text(
+                            children: [
+                              const Icon(Icons.gps_fixed_outlined, color: Color(0xFF0284C7), size: 16.0),
+                              const SizedBox(width: 6.0),
+                              const Text(
                                 'Accuracy Test Specifications',
                                 style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                              ),
+                              const Spacer(),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  if (_attachmentBase64.isNotEmpty && _attachmentName.toLowerCase().endsWith('.pdf')) {
+                                    _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                                  } else {
+                                    final res = await getAttachmentHelper().pickFileAsBase64();
+                                    if (res != null && res['name'] != null && res['data'] != null) {
+                                      setState(() {
+                                        _attachmentName = res['name']!;
+                                        _attachmentBase64 = res['data']!;
+                                      });
+                                      _autoExtractFromAttachment(res['name']!, res['data']!);
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                                label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0284C7),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                                  elevation: 1,
+                                ),
                               ),
                             ],
                           ),
@@ -5534,185 +6059,113 @@ class _EntryTabState extends State<EntryTab> {
                               ),
                             ]),
                           ] else ...[
-                            const SizedBox(height: 4.0),
-                            const Text(
-                              'X-Coordinate Target Deviation (mm)',
-                              style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
+                            const SizedBox(height: 6.0),
+                            Builder(
+                              builder: (ctx) {
+                                final distRaw = _distanceController.text.trim();
+                                final distNum = double.tryParse(distRaw);
+                                final distStr = distNum != null ? distNum.toStringAsFixed(2) : (distRaw.isNotEmpty ? distRaw : '24.00');
+                                final vHeader = 'V${distStr}_1 [m/s]';
+                                return Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Table Header
+                                      Row(
+                                        children: [
+                                          const Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              'Statistic',
+                                              style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6.0),
+                                          const Expanded(
+                                            flex: 3,
+                                            child: Text(
+                                              'x_1 [mm]',
+                                              style: TextStyle(color: Color(0xFF0F172A), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6.0),
+                                          const Expanded(
+                                            flex: 3,
+                                            child: Text(
+                                              'y_1 [mm]',
+                                              style: TextStyle(color: Color(0xFF0F172A), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6.0),
+                                          Expanded(
+                                            flex: 3,
+                                            child: Text(
+                                              vHeader,
+                                              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.0, fontWeight: FontWeight.bold),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Divider(height: 10.0, thickness: 1.0, color: Color(0xFFE2E8F0)),
+                                      // MEAN Row
+                                      _buildAccuracyMatrixRow(
+                                        label: 'MEAN',
+                                        ctrlX: _meanXController,
+                                        ctrlY: _meanYController,
+                                        ctrlVel: _meanVelController,
+                                        readOnly: false,
+                                      ),
+                                      const SizedBox(height: 3.0),
+                                      // MAX Row
+                                      _buildAccuracyMatrixRow(
+                                        label: 'MAX',
+                                        ctrlX: _maxXController,
+                                        ctrlY: _maxYController,
+                                        ctrlVel: _maxVelController,
+                                        readOnly: false,
+                                      ),
+                                      const SizedBox(height: 3.0),
+                                      // MIN Row
+                                      _buildAccuracyMatrixRow(
+                                        label: 'MIN',
+                                        ctrlX: _minXController,
+                                        ctrlY: _minYController,
+                                        ctrlVel: _minVelController,
+                                        readOnly: false,
+                                      ),
+                                      const SizedBox(height: 3.0),
+                                      // RANGE Row (strictly auto-calculated and read-only)
+                                      _buildAccuracyMatrixRow(
+                                        label: 'RANGE',
+                                        ctrlX: _rangeXController,
+                                        ctrlY: _rangeYController,
+                                        ctrlVel: _rangeVelController,
+                                        readOnly: true,
+                                      ),
+                                      const SizedBox(height: 3.0),
+                                      // STDEV Row
+                                      _buildAccuracyMatrixRow(
+                                        label: 'STDEV',
+                                        ctrlX: _sdXController,
+                                        ctrlY: _sdYController,
+                                        ctrlVel: _sdVelController,
+                                        readOnly: false,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
-                            const SizedBox(height: 2.0),
-                            _buildFormRow([
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Mean of X',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _meanXController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Max of X',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _maxXController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Min of X',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _minXController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Range of X',
-                                child: _buildTextField(
-                                  controller: _rangeXController,
-                                  hint: '0.0',
-                                  readOnly: true,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'SD of X',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _sdXController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                  onChanged: (val) => setState(() {}),
-                                ),
-                              ),
-                            ]),
-                            const SizedBox(height: 4.0),
-                            const Text(
-                              'Y-Coordinate Target Deviation (mm)',
-                              style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 2.0),
-                            _buildFormRow([
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Mean of Y',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _meanYController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Max of Y',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _maxYController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Min of Y',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _minYController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'Range of Y',
-                                child: _buildTextField(
-                                  controller: _rangeYController,
-                                  hint: '0.0',
-                                  readOnly: true,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                ),
-                              ),
-                              _buildFlexibleField(
-                                flex: 1,
-                                label: 'SD of Y',
-                                isRequired: true,
-                                child: _buildTextField(
-                                  controller: _sdYController,
-                                  hint: '0.0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                  onChanged: (val) => setState(() {}),
-                                ),
-                              ),
-                            ]),
                           ],
-                          const SizedBox(height: 4.0),
-                          const Text(
-                            'Velocity Parameters (m/s)',
-                            style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 2.0),
-                          _buildFormRow([
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Mean Vel',
-                              isRequired: true,
-                              child: _buildTextField(
-                                controller: _meanVelController,
-                                hint: '0.0',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                onChanged: (val) => setState(() {}),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Max Vel',
-                              isRequired: true,
-                              child: _buildTextField(
-                                controller: _maxVelController,
-                                hint: '0.0',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Min Vel',
-                              isRequired: true,
-                              child: _buildTextField(
-                                controller: _minVelController,
-                                hint: '0.0',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Range Vel',
-                              child: _buildTextField(
-                                controller: _rangeVelController,
-                                hint: '0.0',
-                                readOnly: true,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'SD Vel',
-                              isRequired: true,
-                              child: _buildTextField(
-                                controller: _sdVelController,
-                                hint: '0.0',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
-                              ),
-                            ),
-                          ]),
                           const SizedBox(height: 4.0),
                           _buildFormRow([
                             _buildFlexibleField(
@@ -5720,6 +6173,17 @@ class _EntryTabState extends State<EntryTab> {
                               label: 'Largest Distance / Dispersion (mm)',
                               child: _buildTextField(
                                 controller: _accLargestDistanceController,
+                                hint: '0.0',
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
+                                onChanged: (val) => setState(() {}),
+                              ),
+                            ),
+                            _buildFlexibleField(
+                              flex: 1,
+                              label: 'Mean Radius (mm)',
+                              child: _buildTextField(
+                                controller: _meanRadiusController,
                                 hint: '0.0',
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
@@ -5745,12 +6209,37 @@ class _EntryTabState extends State<EntryTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.layers_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              SizedBox(width: 8.0),
-                              Text(
+                            children: [
+                              const Icon(Icons.layers_outlined, color: Color(0xFF06B6D4), size: 18.0),
+                              const SizedBox(width: 8.0),
+                              const Text(
                                 'Extraction Force Test Specifications',
                                 style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                              ),
+                              const Spacer(),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  if (_attachmentBase64.isNotEmpty && _attachmentName.toLowerCase().endsWith('.pdf')) {
+                                    _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                                  } else {
+                                    final res = await getAttachmentHelper().pickFileAsBase64();
+                                    if (res != null && res['name'] != null && res['data'] != null) {
+                                      setState(() {
+                                        _attachmentName = res['name']!;
+                                        _attachmentBase64 = res['data']!;
+                                      });
+                                      _autoExtractFromAttachment(res['name']!, res['data']!);
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                                label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF06B6D4),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                  minimumSize: const Size(0, 28),
+                                ),
                               ),
                             ],
                           ),
@@ -5892,6 +6381,34 @@ class _EntryTabState extends State<EntryTab> {
                               const Text(
                                 'EPVAT Pressure & Velocity Specifications',
                                 style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                              ),
+                              const SizedBox(width: 8.0),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  if (_attachmentBase64.isNotEmpty && _attachmentName.toLowerCase().endsWith('.pdf')) {
+                                    _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                                  } else {
+                                    final res = await getAttachmentHelper().pickFileAsBase64();
+                                    if (res != null && res['name'] != null && res['data'] != null) {
+                                      setState(() {
+                                        _attachmentName = res['name']!;
+                                        _attachmentBase64 = res['data']!;
+                                      });
+                                      _autoExtractFromAttachment(res['name']!, res['data']!);
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                                label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF06B6D4),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                                  elevation: 1,
+                                ),
                               ),
                               const Spacer(),
                               RichText(
@@ -6386,7 +6903,7 @@ class _EntryTabState extends State<EntryTab> {
                               controller: _notesController,
                               maxLines: 2,
                               autocorrect: true,
-                              spellCheckConfiguration: const SpellCheckConfiguration(),
+                              spellCheckConfiguration: kIsWeb ? const SpellCheckConfiguration() : const SpellCheckConfiguration.disabled(),
                               style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.0),
                               decoration: InputDecoration(
                                 hintText: 'Enter remarks, observations, or quality anomalies...',
@@ -7240,6 +7757,7 @@ class _EntryTabState extends State<EntryTab> {
                     _attachmentName = res['name']!;
                     _attachmentBase64 = res['data']!;
                   });
+                  _autoExtractFromAttachment(res['name']!, res['data']!);
                 }
               },
               icon: const Icon(Icons.upload_file, size: 16.0, color: Color(0xFF06B6D4)),
@@ -7297,9 +7815,23 @@ class _EntryTabState extends State<EntryTab> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4.0),
-                        const Text(
-                          'Ready to submit with record',
-                          style: TextStyle(color: Color(0xFF10B981), fontSize: 11.5),
+                        Row(
+                          children: [
+                            const Text(
+                              'Ready to submit with record',
+                              style: TextStyle(color: Color(0xFF10B981), fontSize: 11.5),
+                            ),
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: () => _autoExtractFromAttachment(_attachmentName, _attachmentBase64),
+                              icon: const Icon(Icons.auto_awesome, size: 14.0, color: Color(0xFF06B6D4)),
+                              label: const Text('Re-Extract Data', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5)),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                                minimumSize: const Size(0, 24),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -7885,29 +8417,30 @@ class _EntryTabState extends State<EntryTab> {
                   ),
                 );
               }),
-              InkWell(
-                borderRadius: BorderRadius.circular(6.0),
-                onTap: () => _promptAddCustomDefect(level, controller, tempKey),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF38BDF8).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(6.0),
-                    border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4)),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, size: 13.0, color: Color(0xFF38BDF8)),
-                      SizedBox(width: 4.0),
-                      Text(
-                        '+ Add Defect',
-                        style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold),
-                      ),
-                    ],
+              if (_isAdmin)
+                InkWell(
+                  borderRadius: BorderRadius.circular(6.0),
+                  onTap: () => _promptAddCustomDefect(level, controller, tempKey),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF38BDF8).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6.0),
+                      border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 13.0, color: Color(0xFF38BDF8)),
+                        SizedBox(width: 4.0),
+                        Text(
+                          '+ Add Defect',
+                          style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -8114,7 +8647,7 @@ class _EntryTabState extends State<EntryTab> {
       focusNode: focusNode,
       keyboardType: keyboardType,
       autocorrect: true,
-      spellCheckConfiguration: const SpellCheckConfiguration(),
+      spellCheckConfiguration: kIsWeb ? const SpellCheckConfiguration() : const SpellCheckConfiguration.disabled(),
       inputFormatters: inputFormatters ?? (
         keyboardType == TextInputType.number
             ? [FilteringTextInputFormatter.digitsOnly]
@@ -8585,7 +9118,7 @@ class _EntryTabState extends State<EntryTab> {
             child: _buildTextField(
               controller: rangeCtrl,
               hint: '0.0',
-              readOnly: readOnly,
+              readOnly: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: inputFormatters,
               onChanged: (_) {
@@ -8611,6 +9144,75 @@ class _EntryTabState extends State<EntryTab> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAccuracyMatrixRow({
+    required String label,
+    required TextEditingController ctrlX,
+    required TextEditingController ctrlY,
+    required TextEditingController ctrlVel,
+    required bool readOnly,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 11.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6.0),
+        Expanded(
+          flex: 3,
+          child: _buildTextField(
+            controller: ctrlX,
+            hint: '0.0',
+            readOnly: readOnly,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (_) {
+              _calculateRange(_maxXController, _minXController, _rangeXController);
+              _scheduleAutoSave();
+              setState(() {});
+            },
+          ),
+        ),
+        const SizedBox(width: 6.0),
+        Expanded(
+          flex: 3,
+          child: _buildTextField(
+            controller: ctrlY,
+            hint: '0.0',
+            readOnly: readOnly,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            onChanged: (_) {
+              _calculateRange(_maxYController, _minYController, _rangeYController);
+              _scheduleAutoSave();
+              setState(() {});
+            },
+          ),
+        ),
+        const SizedBox(width: 6.0),
+        Expanded(
+          flex: 3,
+          child: _buildTextField(
+            controller: ctrlVel,
+            hint: '0.0',
+            readOnly: readOnly,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) {
+              _calculateRange(_maxVelController, _minVelController, _rangeVelController);
+              _scheduleAutoSave();
+              setState(() {});
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -9804,6 +10406,32 @@ class _EntryTabState extends State<EntryTab> {
                   ),
                 ],
               ),
+              if (!isLotPrimerLocked)
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final res = await getAttachmentHelper().pickFileAsBase64();
+                    if (res != null && res['name'] != null && res['data'] != null) {
+                      setState(() {
+                        _attachmentName = res['name']!;
+                        _attachmentBase64 = res['data']!;
+                      });
+                      _autoExtractFromAttachment(res['name']!, res['data']!);
+                    } else if (_attachmentBase64.isNotEmpty) {
+                      _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                    }
+                  },
+                  icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                  label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF06B6D4),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    elevation: 1,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 4.0),
@@ -9837,9 +10465,24 @@ class _EntryTabState extends State<EntryTab> {
               child: _buildTextField(
                 controller: _producedController,
                 readOnly: isLotPrimerLocked,
-                hint: '50',
+                hint: '150',
                 keyboardType: TextInputType.number,
                 onChanged: (val) {
+                  _scheduleAutoSave();
+                  setState(() {});
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Total Misfires (M)',
+              child: _buildTextField(
+                controller: _primerMisfiresCountController,
+                readOnly: isLotPrimerLocked,
+                hint: '0',
+                keyboardType: TextInputType.number,
+                onChanged: (val) {
+                  _defectsController.text = val;
                   _scheduleAutoSave();
                   setState(() {});
                 },
@@ -9851,7 +10494,7 @@ class _EntryTabState extends State<EntryTab> {
               isRequired: true,
               child: _buildTextField(
                 controller: _primerHbarController,
-                hint: 'e.g. 350.0',
+                hint: 'e.g. 205.5',
                 readOnly: isLotPrimerLocked,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (_) {
@@ -9872,7 +10515,7 @@ class _EntryTabState extends State<EntryTab> {
               isRequired: true,
               child: _buildTextField(
                 controller: _primerSDController,
-                hint: 'e.g. 30.0',
+                hint: 'e.g. 30.1',
                 readOnly: isLotPrimerLocked,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (_) {
@@ -10170,21 +10813,23 @@ class _EntryTabState extends State<EntryTab> {
               },
             ),
           ),
-          const SizedBox(width: 6.0),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0284C7).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6.0),
-              border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+          if (_isAdmin) ...[
+            const SizedBox(width: 6.0),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0284C7).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
+                tooltip: 'Admin: Add new sample location',
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                onPressed: _showAddLocationDialog,
+              ),
             ),
-            child: IconButton(
-              icon: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 18),
-              tooltip: 'Admin: Add new sample location',
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
-              onPressed: _showAddLocationDialog,
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -10894,6 +11539,32 @@ class _EntryTabState extends State<EntryTab> {
                   style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final res = await getAttachmentHelper().pickFileAsBase64();
+                    if (res != null && res['name'] != null && res['data'] != null) {
+                      setState(() {
+                        _attachmentName = res['name']!;
+                        _attachmentBase64 = res['data']!;
+                      });
+                      _autoExtractFromAttachment(res['name']!, res['data']!);
+                    } else if (_attachmentBase64.isNotEmpty) {
+                      _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                    }
+                  },
+                  icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                  label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    elevation: 1,
+                  ),
+                ),
+                if (isOutOfSpec || isInSpec) const SizedBox(width: 8.0),
                 if (isOutOfSpec)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),

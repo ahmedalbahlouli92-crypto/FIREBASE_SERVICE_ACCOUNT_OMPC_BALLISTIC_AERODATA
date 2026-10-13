@@ -16,6 +16,7 @@ class HistoryTab extends StatefulWidget {
   final List<BallisticRecord> records;
   final VoidCallback onOpenFolder;
   final bool isAdmin;
+  final String userRole;
   final bool canEditRecords;
   final bool canDeleteRecords;
   final bool canExportReports;
@@ -33,6 +34,7 @@ class HistoryTab extends StatefulWidget {
     required this.records,
     required this.onOpenFolder,
     required this.isAdmin,
+    this.userRole = 'operator',
     this.canEditRecords = false,
     this.canDeleteRecords = false,
     this.canExportReports = true,
@@ -50,6 +52,10 @@ class HistoryTab extends StatefulWidget {
 }
 
 class _HistoryTabState extends State<HistoryTab> {
+  bool get _isAdmin => widget.isAdmin || widget.userRole.toLowerCase() == 'admin';
+  bool get _isTechnician => widget.userRole.toLowerCase() == 'technician';
+  bool get _isOperator => !_isAdmin && !_isTechnician;
+  final Set<String> _expandedCalibers = {};
   final _searchController = TextEditingController();
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalScrollController = ScrollController();
@@ -122,21 +128,97 @@ class _HistoryTabState extends State<HistoryTab> {
   }
 
   Future<void> _markLotCompleted(String caliber, String lotNo) async {
+    if (_isOperator) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access restricted: Operators cannot mark lots completed. Only Ballistic Technicians can finalize lots.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final lotRecords = widget.records.where((rec) {
+      return rec.caliber.trim().toLowerCase() == caliber.toLowerCase().trim() &&
+             rec.lotNo.trim().toLowerCase() == lotNo.toLowerCase().trim();
+    }).toList();
+    final reqTests = _getRequiredTestsForCaliber(caliber);
+    final missingTests = <String>[];
+    for (final test in reqTests) {
+      final testLower = test.toLowerCase();
+      final matched = lotRecords.any((rec) {
+        final t = rec.testName.toLowerCase();
+        if (testLower.contains('waterproof') && t.contains('waterproof')) return true;
+        if (testLower.contains('extraction') && t.contains('extraction')) return true;
+        if (testLower.contains('accuracy') && t.contains('accuracy')) return true;
+        if ((testLower.contains('epvat') || testLower.contains('pressure') || testLower.contains('velocity')) &&
+            (t.contains('epvat') || t.contains('propellant'))) return true;
+        if (testLower.contains('function') && t.contains('function')) return true;
+        if ((testLower.contains('residual') || testLower.contains('stress')) &&
+            (t.contains('residual') || t.contains('stress'))) return true;
+        if (testLower.contains('primer') && t.contains('primer')) return true;
+        if (testLower.contains('terminal') && t.contains('terminal')) return true;
+        return t.contains(testLower) || testLower.contains(t);
+      });
+      if (!matched) {
+        missingTests.add(test);
+      }
+    }
+
+    if (missingTests.isNotEmpty && !_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot mark completed: Tests are missing (${missingTests.join(", ")}). Only Admin can override and mark completed.'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF10B981), width: 1.5)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: missingTests.isNotEmpty ? const Color(0xFFF59E0B) : const Color(0xFF10B981), width: 1.5)),
         title: Row(
-          children: const [
-            Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 24),
-            SizedBox(width: 8),
-            Text('Complete & Finalize Lot', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          children: [
+            Icon(missingTests.isNotEmpty ? Icons.warning_amber_rounded : Icons.verified_rounded, color: missingTests.isNotEmpty ? const Color(0xFFF59E0B) : const Color(0xFF10B981), size: 24),
+            const SizedBox(width: 8),
+            Text(missingTests.isNotEmpty ? 'Admin Override: Finalize Lot' : 'Complete & Finalize Lot', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text(
-          'Are you sure you want to finalize and transfer Lot $lotNo ($caliber) plus its certificate to "Completed Lots"?\n\nAll inspection reports will be sealed as reviewed and completed.',
-          style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.5, height: 1.4),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to finalize and transfer Lot $lotNo ($caliber) plus its certificate to "Completed Lots"?\n\nAll inspection reports will be sealed as reviewed and completed.',
+              style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.5, height: 1.4),
+            ),
+            if (missingTests.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFFF59E0B), size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Admin Note: Missing tests: ${missingTests.join(", ")}. Overriding as Admin.',
+                        style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11.5, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
@@ -146,8 +228,8 @@ class _HistoryTabState extends State<HistoryTab> {
           ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
             icon: const Icon(Icons.check_circle_outline, size: 16),
-            label: const Text('Confirm Completed'),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            label: Text(missingTests.isNotEmpty ? 'Confirm Admin Override' : 'Confirm Completed'),
+            style: ElevatedButton.styleFrom(backgroundColor: missingTests.isNotEmpty ? const Color(0xFFF59E0B) : const Color(0xFF10B981)),
           ),
         ],
       ),
@@ -226,9 +308,66 @@ class _HistoryTabState extends State<HistoryTab> {
     }
   }
 
-  Future<void> _generateDossierDirect(String caliber, String lotNo, {required bool isPdf}) async {
+  Future<void> _generateCertificateDirect(String caliber, String lotNo, {required bool isPdf}) async {
+    if (_isOperator) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access restricted: Only Ballistic Technicians or Admins can generate final lot certificates.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
     final lotRecords = widget.records.where((r) {
-      return r.caliber.trim() == caliber.trim() && r.lotNo.trim() == lotNo.trim();
+      return r.caliber.trim().toLowerCase() == caliber.trim().toLowerCase() &&
+             r.lotNo.trim().toLowerCase() == lotNo.trim().toLowerCase();
+    }).toList();
+    if (lotRecords.isEmpty) return;
+
+    final cleanCal = caliber.replaceAll(';', ' ').trim();
+    final exportFilename = '${cleanCal}_Final_Lot_Acceptance_Certificate_$lotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+    if (isPdf) {
+      final htmlContent = ReportGenerator.generateHtml(
+        lotRecords,
+        'All',
+        widget.currentModule,
+        base64Logo: widget.base64Logo,
+        adminRules: widget.adminRules,
+        loggedInUser: widget.loggedInUser,
+      );
+      await ReportHelper.instance.printHtml(htmlContent: htmlContent, filename: exportFilename);
+    } else {
+      final docContent = ReportGenerator.generateWordHtml(
+        lotRecords,
+        'All',
+        widget.currentModule,
+        base64Logo: widget.base64Logo,
+        adminRules: widget.adminRules,
+        loggedInUser: widget.loggedInUser,
+      );
+      await ReportHelper.instance.downloadDoc(content: docContent, filename: '$exportFilename.doc');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Final Acceptance Certificate Word document downloaded: $exportFilename.doc'), backgroundColor: const Color(0xFF0284C7)),
+      );
+    }
+  }
+
+  Future<void> _generateDossierDirect(String caliber, String lotNo, {required bool isPdf}) async {
+    if (_isOperator) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access restricted: Only Ballistic Technicians or Admins can generate complete dossiers.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final lotRecords = widget.records.where((r) {
+      return r.caliber.trim().toLowerCase() == caliber.trim().toLowerCase() &&
+             r.lotNo.trim().toLowerCase() == lotNo.trim().toLowerCase();
     }).toList();
     if (lotRecords.isEmpty) return;
 
@@ -2821,7 +2960,7 @@ class _HistoryTabState extends State<HistoryTab> {
       controller: controller,
       keyboardType: keyboardType,
       autocorrect: true,
-      spellCheckConfiguration: const SpellCheckConfiguration(),
+      spellCheckConfiguration: kIsWeb ? const SpellCheckConfiguration() : const SpellCheckConfiguration.disabled(),
       maxLines: maxLines,
       onChanged: onChanged,
       style: const TextStyle(color: Colors.white, fontSize: 13.0),
@@ -3748,6 +3887,9 @@ class _HistoryTabState extends State<HistoryTab> {
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       final availableWidth = constraints.maxWidth;
+                      if (isLotAcceptance && _lotAcceptanceTab == 1) {
+                        return _buildCompletedLotsCaliberGroupedView(displayRecords);
+                      }
                       if (availableWidth < 768.0) {
                         return Scrollbar(
                           controller: _horizontalScrollController,
@@ -3922,47 +4064,120 @@ class _HistoryTabState extends State<HistoryTab> {
             crossAxisAlignment: WrapCrossAlignment.center,
             alignment: WrapAlignment.end,
             children: [
-              if (!isCompleted)
-                ElevatedButton.icon(
-                  onPressed: () => _markLotCompleted(caliber, lotNo),
-                  icon: const Icon(Icons.check_circle_outline, size: 14.0),
-                  label: const Text('Mark Completed', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+              if (!isCompleted) ...[
+                // IN LOTS UNDER PROCESS: Only Mark Completed button (no dossier or certificate)
+                Tooltip(
+                  message: _isOperator
+                      ? 'Operators cannot mark lots completed. Only Ballistic Technicians can certify completed lots.'
+                      : (missingTests.isNotEmpty && !_isAdmin
+                          ? 'Cannot mark completed: Tests are missing (${missingTests.join(", ")}). Only Admin can override.'
+                          : (missingTests.isNotEmpty
+                              ? 'Admin Override: Missing tests (${missingTests.join(", ")})'
+                              : 'All ${reqTests.length} tests completed. Click to certify lot.')),
+                  child: ElevatedButton.icon(
+                    onPressed: (_isOperator || (missingTests.isNotEmpty && !_isAdmin))
+                        ? null
+                        : () => _markLotCompleted(caliber, lotNo),
+                    icon: Icon(missingTests.isNotEmpty ? Icons.warning_amber_rounded : Icons.check_circle_outline, size: 14.0),
+                    label: Text(
+                      missingTests.isNotEmpty && _isAdmin ? 'Admin Override Complete' : 'Mark Completed',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: missingTests.isNotEmpty ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF94A3B8),
+                      disabledForegroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
                   ),
                 ),
-              ElevatedButton.icon(
-                onPressed: () => _generateDossierDirect(caliber, lotNo, isPdf: true),
-                icon: const Icon(Icons.collections_bookmark_outlined, size: 14.0),
-                label: const Text('Dossier (PDF)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF9333EA),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+              ],
+              if (isCompleted) ...[
+                // IN COMPLETED LOTS: Only Technician or Admin can generate final certificate or dossier
+                Tooltip(
+                  message: _isOperator
+                      ? 'Only Ballistic Technicians or Admins can generate final lot acceptance certificates.'
+                      : 'Generate 1-Page Official Final Lot Acceptance Certificate (PDF)',
+                  child: ElevatedButton.icon(
+                    onPressed: _isOperator ? null : () => _generateCertificateDirect(caliber, lotNo, isPdf: true),
+                    icon: const Icon(Icons.verified_outlined, size: 14.0),
+                    label: const Text('Certificate (PDF)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0284C7),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF94A3B8),
+                      disabledForegroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
+                  ),
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _generateDossierDirect(caliber, lotNo, isPdf: false),
-                icon: const Icon(Icons.auto_stories_outlined, size: 14.0),
-                label: const Text('Dossier (Word)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C3AED),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                Tooltip(
+                  message: _isOperator
+                      ? 'Only Ballistic Technicians or Admins can generate final lot acceptance certificates.'
+                      : 'Generate 1-Page Official Final Lot Acceptance Certificate (Word)',
+                  child: ElevatedButton.icon(
+                    onPressed: _isOperator ? null : () => _generateCertificateDirect(caliber, lotNo, isPdf: false),
+                    icon: const Icon(Icons.description_outlined, size: 14.0),
+                    label: const Text('Certificate (Word)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0EA5E9),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF94A3B8),
+                      disabledForegroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
+                  ),
                 ),
-              ),
-              if (isCompleted)
+                Tooltip(
+                  message: _isOperator
+                      ? 'Only Ballistic Technicians or Admins can generate complete dossiers.'
+                      : 'Generate Complete Lot Dossier (Certificate + All Test Reports in sequence) in PDF',
+                  child: ElevatedButton.icon(
+                    onPressed: _isOperator ? null : () => _generateDossierDirect(caliber, lotNo, isPdf: true),
+                    icon: const Icon(Icons.collections_bookmark_outlined, size: 14.0),
+                    label: const Text('Dossier (PDF)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF9333EA),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF94A3B8),
+                      disabledForegroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
+                  ),
+                ),
+                Tooltip(
+                  message: _isOperator
+                      ? 'Only Ballistic Technicians or Admins can generate complete dossiers.'
+                      : 'Generate Complete Lot Dossier (Certificate + All Test Reports in sequence) in Word',
+                  child: ElevatedButton.icon(
+                    onPressed: _isOperator ? null : () => _generateDossierDirect(caliber, lotNo, isPdf: false),
+                    icon: const Icon(Icons.auto_stories_outlined, size: 14.0),
+                    label: const Text('Dossier (Word)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF94A3B8),
+                      disabledForegroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
+                  ),
+                ),
                 OutlinedButton.icon(
                   onPressed: () => _reopenLot(caliber, lotNo),
                   icon: const Icon(Icons.restart_alt_rounded, size: 14.0, color: Color(0xFFF59E0B)),
@@ -3975,6 +4190,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
                   ),
                 ),
+              ],
             ],
           );
 
@@ -3998,6 +4214,228 @@ class _HistoryTabState extends State<HistoryTab> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildLotTestRecordsTable(List<BallisticRecord> lotRecords) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          height: 38.0,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1F6FB),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8.0)),
+            border: Border(bottom: BorderSide(color: Color(0xFFCBD5E1), width: 1.0)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14.0),
+          child: Row(
+            children: [
+              _buildHeaderCell('TIME', flex: _flexTime),
+              _buildHeaderCell('INSPECTOR', flex: _flexInspector),
+              _buildHeaderCell('TEST NAME', flex: _flexTestName),
+              _buildHeaderCell('CALIBER', flex: _flexCaliber),
+              _buildHeaderCell('LOT NO.', flex: _flexLot),
+              _buildHeaderCell('STATUS', flex: _flexStatus),
+              _buildHeaderCell('QTY', flex: _flexSample),
+              _buildHeaderCell('RESULTS', flex: _flexResults),
+              _buildHeaderCell('REMARKS', flex: _flexRemarks),
+              _buildHeaderCell('ACTIONS', flex: _flexActions, align: TextAlign.end),
+            ],
+          ),
+        ),
+        ...lotRecords.asMap().entries.map((entry) => _buildTableRow(entry.value, entry.key)),
+      ],
+    );
+  }
+
+  Widget _buildCompletedLotsCaliberGroupedView(List<BallisticRecord> records) {
+    if (records.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 48, color: Color(0xFF94A3B8)),
+              SizedBox(height: 12),
+              Text(
+                'No completed lots found for the selected filter.',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 14.5, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Group records by caliber specification
+    final Map<String, List<BallisticRecord>> caliberGroups = {};
+    for (final r in records) {
+      final cal = r.caliber.trim().isNotEmpty ? r.caliber.trim() : 'Unspecified Caliber';
+      caliberGroups.putIfAbsent(cal, () => []).add(r);
+    }
+
+    return Scrollbar(
+      controller: _verticalScrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      child: ListView(
+        controller: _verticalScrollController,
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0),
+        children: caliberGroups.entries.map((entry) {
+          final cal = entry.key;
+          final calRecords = entry.value;
+          final isExpanded = _expandedCalibers.contains(cal);
+
+          // Group lots under this caliber
+          final Map<String, List<BallisticRecord>> lotMap = {};
+          for (final r in calRecords) {
+            lotMap.putIfAbsent(r.lotNo.trim(), () => []).add(r);
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.0),
+              border: Border.all(color: isExpanded ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1), width: isExpanded ? 1.5 : 1.0),
+              boxShadow: const [
+                BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Caliber Accordion Header (Collapsed by default)
+                InkWell(
+                  borderRadius: BorderRadius.circular(9.0),
+                  onTap: () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedCalibers.remove(cal);
+                      } else {
+                        _expandedCalibers.add(cal);
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    decoration: BoxDecoration(
+                      color: isExpanded ? const Color(0xFFF0F9FF) : const Color(0xFFF8FAFC),
+                      borderRadius: isExpanded ? const BorderRadius.vertical(top: Radius.circular(9.0)) : BorderRadius.circular(9.0),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0284C7).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          child: const Icon(Icons.military_tech_rounded, color: Color(0xFF0284C7), size: 20),
+                        ),
+                        const SizedBox(width: 12.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                cal,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2.0),
+                              Text(
+                                '${lotMap.length} Completed Lot${lotMap.length == 1 ? '' : 's'} • ${calRecords.length} Total Inspection Tests',
+                                style: const TextStyle(fontSize: 12.0, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12.0),
+                            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.check_circle_rounded, size: 13.0, color: Color(0xFF10B981)),
+                              const SizedBox(width: 5.0),
+                              Text(
+                                '${lotMap.length} Certified',
+                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10.0),
+                        Icon(
+                          isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                          color: const Color(0xFF64748B),
+                          size: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Expanded Section: Displays each completed lot with banner and test records table
+                if (isExpanded) ...[
+                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Column(
+                      children: lotMap.entries.map((lotEntry) {
+                        final lotNo = lotEntry.key;
+                        final lotRecords = lotEntry.value;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFAFAFA),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildLotGroupBanner(cal, lotNo),
+                              Padding(
+                                padding: const EdgeInsets.all(6.0),
+                                child: LayoutBuilder(
+                                  builder: (ctx, constraints) {
+                                    if (constraints.maxWidth < 768.0) {
+                                      return SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: SizedBox(
+                                          width: 768.0,
+                                          child: _buildLotTestRecordsTable(lotRecords),
+                                        ),
+                                      );
+                                    }
+                                    return _buildLotTestRecordsTable(lotRecords);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -4696,7 +5134,7 @@ class _HistoryTabState extends State<HistoryTab> {
         ? singleRecord.testName
         : (_testNameFilter != 'All' ? _testNameFilter : 'All');
 
-    int selectedReportMode = isLotAcceptance ? 1 : 0; // 0 = General Log Report, 1 = Lot Acceptance Certificate / Dossier
+    int selectedReportMode = (isLotAcceptance && _lotAcceptanceTab == 1) ? 1 : 0; // 0 = General Log Report, 1 = Lot Acceptance Certificate / Dossier
     int certScopeOption = 0; // 0 = Certificate Only (1 Page), 1 = Certificate + Complete Dossier (1 Page each)
 
     if (singleRecord == null && selectedReportLot == 'All') {
@@ -4894,34 +5332,51 @@ class _HistoryTabState extends State<HistoryTab> {
                             ),
                             const SizedBox(width: 6.0),
                             Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  setStateDialog(() {
-                                    selectedReportMode = 1;
-                                    selectedReportTest = 'All';
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(8.0),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                  decoration: BoxDecoration(
-                                    color: selectedReportMode == 1 ? const Color(0xFF0284C7) : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8.0),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.verified_rounded, size: 16.0, color: selectedReportMode == 1 ? Colors.white : const Color(0xFF94A3B8)),
-                                      const SizedBox(width: 8.0),
-                                      Text(
-                                        '2. Lot Acceptance Certificate & Dossier',
-                                        style: TextStyle(
-                                          color: selectedReportMode == 1 ? Colors.white : const Color(0xFF94A3B8),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12.0,
-                                        ),
+                              child: Tooltip(
+                                message: _lotAcceptanceTab == 0
+                                    ? 'Lots Under Process only generate individual test reports. Final Certificates and Dossiers are generated in "Completed Lots".'
+                                    : 'Generate Final Acceptance Certificate & Dossier',
+                                child: InkWell(
+                                  onTap: _lotAcceptanceTab == 0
+                                      ? () {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Lots under process can only generate individual test reports. Certificates and Complete Dossiers are generated in "Completed Lots".'),
+                                              backgroundColor: Color(0xFFF59E0B),
+                                            ),
+                                          );
+                                        }
+                                      : () {
+                                          setStateDialog(() {
+                                            selectedReportMode = 1;
+                                            selectedReportTest = 'All';
+                                          });
+                                        },
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  child: Opacity(
+                                    opacity: _lotAcceptanceTab == 0 ? 0.45 : 1.0,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                      decoration: BoxDecoration(
+                                        color: selectedReportMode == 1 ? const Color(0xFF0284C7) : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(8.0),
                                       ),
-                                    ],
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.verified_rounded, size: 16.0, color: selectedReportMode == 1 ? Colors.white : const Color(0xFF94A3B8)),
+                                          const SizedBox(width: 8.0),
+                                          Text(
+                                            '2. Lot Acceptance Certificate & Dossier',
+                                            style: TextStyle(
+                                              color: selectedReportMode == 1 ? Colors.white : const Color(0xFF94A3B8),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12.0,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -5468,6 +5923,17 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
+                            if (isLotAcceptance && selectedReportMode == 1) {
+                              if (_isOperator) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Access restricted: Only Ballistic Technicians or Admins can generate Final Acceptance Certificates or Complete Dossiers.'),
+                                    backgroundColor: Color(0xFFEF4444),
+                                  ),
+                                );
+                                return;
+                              }
+                            }
                             List<BallisticRecord> getDossierRecords() {
                               if (!isLotAcceptance) return reportRecords;
                               final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
@@ -5524,6 +5990,17 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
+                            if (isLotAcceptance && selectedReportMode == 1) {
+                              if (_isOperator) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Access restricted: Only Ballistic Technicians or Admins can generate Final Acceptance Certificates or Complete Dossiers.'),
+                                    backgroundColor: Color(0xFFEF4444),
+                                  ),
+                                );
+                                return;
+                              }
+                            }
                             List<BallisticRecord> getDossierRecords() {
                               if (!isLotAcceptance) return reportRecords;
                               final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
@@ -5574,6 +6051,17 @@ class _HistoryTabState extends State<HistoryTab> {
                         ElevatedButton.icon(
                           onPressed: reportRecords.isEmpty ? null : () async {
                             final isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
+                            if (isLotAcceptance && selectedReportMode == 1) {
+                              if (_isOperator) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Access restricted: Only Ballistic Technicians or Admins can open Final Acceptance Certificates or Complete Dossiers.'),
+                                    backgroundColor: Color(0xFFEF4444),
+                                  ),
+                                );
+                                return;
+                              }
+                            }
                             List<BallisticRecord> getDossierRecords() {
                               if (!isLotAcceptance) return reportRecords;
                               final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
@@ -5612,7 +6100,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             );
                           },
                           icon: const Icon(Icons.open_in_new_rounded, size: 16.0),
-                          label: const Text('Open Report (No Save)'),
+                          label: const Text('Open Report'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF10B981),
                             foregroundColor: Colors.white,
@@ -5620,116 +6108,6 @@ class _HistoryTabState extends State<HistoryTab> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                           ),
                         ),
-                        if (widget.currentModule == 'Lot Acceptance Test' && (reportRecords.isNotEmpty || singleRecord != null)) ...[
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
-                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
-                              final matched = widget.records.where((r) {
-                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
-                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
-                                return matchCal && matchLot;
-                              }).toList();
-                              final dossierList = matched.isNotEmpty ? matched : reportRecords;
-
-                              final docContent = ReportGenerator.generateLotDossierWord(
-                                dossierList, 
-                                widget.currentModule,
-                                base64Logo: widget.base64Logo,
-                                adminRules: widget.adminRules,
-                                loggedInUser: widget.loggedInUser,
-                              );
-                              final repCaliber = (selectedReportCaliber != 'All' ? selectedReportCaliber : (dossierList.isNotEmpty ? dossierList.first.caliber : repCal)).replaceAll(';', ' ').trim();
-                              final repLotNo = repLot.isNotEmpty ? repLot : (dossierList.isNotEmpty ? dossierList.first.lotNo : 'Batch');
-                              final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-                              await ReportHelper.instance.downloadDoc(
-                                content: docContent, 
-                                filename: '$exportFilename.doc'
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Complete Lot Dossier Word document downloaded: $exportFilename.doc'),
-                                  backgroundColor: const Color(0xFF8B5CF6),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.auto_stories_outlined, size: 16.0),
-                            label: const Text('Complete Dossier (Word)'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF7C3AED),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
-                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
-                              final matched = widget.records.where((r) {
-                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
-                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
-                                return matchCal && matchLot;
-                              }).toList();
-                              final dossierList = matched.isNotEmpty ? matched : reportRecords;
-
-                              final htmlContent = ReportGenerator.generateLotDossierHtml(
-                                dossierList, 
-                                widget.currentModule,
-                                base64Logo: widget.base64Logo,
-                                adminRules: widget.adminRules,
-                                loggedInUser: widget.loggedInUser,
-                              );
-                              final repCaliber = (selectedReportCaliber != 'All' ? selectedReportCaliber : (dossierList.isNotEmpty ? dossierList.first.caliber : repCal)).replaceAll(';', ' ').trim();
-                              final repLotNo = repLot.isNotEmpty ? repLot : (dossierList.isNotEmpty ? dossierList.first.lotNo : 'Batch');
-                              final exportFilename = '${repCaliber}_Complete_Lot_Dossier_$repLotNo'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-                              await ReportHelper.instance.printHtml(
-                                htmlContent: htmlContent, 
-                                filename: exportFilename,
-                              );
-                            },
-                            icon: const Icon(Icons.collections_bookmark_outlined, size: 16.0),
-                            label: const Text('Complete Dossier (PDF)'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF9333EA),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              final repCal = (singleRecord?.caliber ?? (selectedReportCaliber != 'All' ? selectedReportCaliber : (reportRecords.isNotEmpty ? reportRecords.first.caliber : ''))).replaceAll(';', ' ').trim();
-                              final repLot = (singleRecord?.lotNo ?? (selectedReportLot != 'All' ? selectedReportLot : (reportRecords.isNotEmpty ? reportRecords.first.lotNo : ''))).trim();
-                              final matched = widget.records.where((r) {
-                                final matchCal = repCal.isEmpty || r.caliber.replaceAll(';', ' ').trim().toLowerCase() == repCal.toLowerCase();
-                                final matchLot = r.lotNo.trim().toLowerCase() == repLot.toLowerCase();
-                                return matchCal && matchLot;
-                              }).toList();
-                              final dossierList = matched.isNotEmpty ? matched : reportRecords;
-
-                              final htmlContent = ReportGenerator.generateLotDossierHtml(
-                                dossierList, 
-                                widget.currentModule,
-                                base64Logo: widget.base64Logo,
-                                adminRules: widget.adminRules,
-                                loggedInUser: widget.loggedInUser,
-                              );
-                              await ReportHelper.instance.openReport(
-                                htmlContent: htmlContent,
-                                title: 'Complete_Lot_Dossier',
-                              );
-                            },
-                            icon: const Icon(Icons.open_in_new_rounded, size: 16.0),
-                            label: const Text('Open Dossier (No Save)'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF059669),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ],

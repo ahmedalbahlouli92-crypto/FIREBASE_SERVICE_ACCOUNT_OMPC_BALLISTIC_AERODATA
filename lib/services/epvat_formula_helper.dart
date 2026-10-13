@@ -72,7 +72,8 @@ class EpvatFormulaHelper {
     }
 
     for (final r in records) {
-      if (r.testName != 'EPVAT test' && r.testName != 'Propellant Test') continue;
+      final tName = r.testName.toLowerCase();
+      if (!tName.contains('epvat') && !tName.contains('propellant')) continue;
       final String t = r.cartridgeTemp.trim();
 
       // Determine baseline temperature suffix for record's primary fields.
@@ -138,6 +139,21 @@ class EpvatFormulaHelper {
       vars['action_time_range_$sfx'] = actRange;
       vars['action_time_sd_$sfx'] = actSd;
 
+      // Extract sample size / round count for this record
+      int roundCount = 0;
+      if (r.epvatPressureRounds.isNotEmpty) {
+        roundCount = r.epvatPressureRounds.split(',').where((s) => s.trim().isNotEmpty).length;
+      } else if (r.epvatVelRounds.isNotEmpty) {
+        roundCount = r.epvatVelRounds.split(',').where((s) => s.trim().isNotEmpty).length;
+      }
+      final double sampleSizeVal = roundCount > 0 ? roundCount.toDouble() : (r.produced > 0 ? r.produced.toDouble() : 20.0);
+
+      vars['n_$sfx'] = sampleSizeVal;
+      vars['count_$sfx'] = sampleSizeVal;
+      vars['sample_size_$sfx'] = sampleSizeVal;
+      vars['samplesize_$sfx'] = sampleSizeVal;
+      vars['size_$sfx'] = sampleSizeVal;
+
       // Also set default un-suffixed variables
       vars.putIfAbsent('p1_mean', () => p1Mean);
       vars.putIfAbsent('p1_max', () => p1Max);
@@ -160,6 +176,12 @@ class EpvatFormulaHelper {
       vars.putIfAbsent('action_time_min', () => actMin);
       vars.putIfAbsent('action_time_range', () => actRange);
       vars.putIfAbsent('action_time_sd', () => actSd);
+
+      vars.putIfAbsent('n', () => sampleSizeVal);
+      vars.putIfAbsent('count', () => sampleSizeVal);
+      vars.putIfAbsent('sample_size', () => sampleSizeVal);
+      vars.putIfAbsent('samplesize', () => sampleSizeVal);
+      vars.putIfAbsent('size', () => sampleSizeVal);
 
       // If semicolon-separated rounds exist for multiple temperatures, compute per-temp variables
       if (r.epvatPressureRounds.contains(';') || r.epvatVelRounds.contains(';') || r.actionTimeRounds.contains(';') || r.epvatP2PressureRounds.contains(';')) {
@@ -186,6 +208,7 @@ class EpvatFormulaHelper {
 
         for (int i = 0; i < tempKeys.length; i++) {
           final curSfx = tempKeys[i];
+          int tempRounds = 0;
           if (i < p1Secs.length && p1Secs[i].trim().isNotEmpty) {
             final st = computeStats(p1Secs[i]);
             if (st['mean']! > 0 || st['sd']! > 0 || st['max']! > 0) {
@@ -196,6 +219,7 @@ class EpvatFormulaHelper {
               vars['p1_range_$curSfx'] = st['range']!;
               vars['p1_sd_$curSfx'] = st['sd']!;
             }
+            tempRounds = p1Secs[i].split(',').where((s) => s.trim().isNotEmpty).length;
           }
           if (i < p2Secs.length && p2Secs[i].trim().isNotEmpty) {
             final st = computeStats(p2Secs[i]);
@@ -216,6 +240,9 @@ class EpvatFormulaHelper {
               vars['vel_range_$curSfx'] = st['range']!;
               vars['vel_sd_$curSfx'] = st['sd']!;
             }
+            if (tempRounds == 0) {
+              tempRounds = velSecs[i].split(',').where((s) => s.trim().isNotEmpty).length;
+            }
           }
           if (i < actSecs.length && actSecs[i].trim().isNotEmpty) {
             final st = computeStats(actSecs[i]);
@@ -227,6 +254,13 @@ class EpvatFormulaHelper {
               vars['action_time_sd_$curSfx'] = st['sd']!;
             }
           }
+
+          final double curSize = tempRounds > 0 ? tempRounds.toDouble() : sampleSizeVal;
+          vars['n_$curSfx'] = curSize;
+          vars['count_$curSfx'] = curSize;
+          vars['sample_size_$curSfx'] = curSize;
+          vars['samplesize_$curSfx'] = curSize;
+          vars['size_$curSfx'] = curSize;
         }
       }
 
@@ -272,11 +306,35 @@ class EpvatFormulaHelper {
           extractMetric(r'\b(?:ATMax|ActionTimeMax)=([\d.]+)', ['action_time_max']);
           extractMetric(r'\b(?:ATMin|ActionTimeMin)=([\d.]+)', ['action_time_min']);
           extractMetric(r'\b(?:ATSD|ActionTimeSD)=([\d.]+)', ['action_time_sd']);
+
+          // Sample size defaults for notes
+          vars.putIfAbsent('n_$tRaw', () => sampleSizeVal);
+          vars.putIfAbsent('count_$tRaw', () => sampleSizeVal);
+          vars.putIfAbsent('sample_size_$tRaw', () => sampleSizeVal);
         }
       }
     }
 
+    final double defaultN = vars['n'] ?? 20.0;
+    vars.putIfAbsent('n_21', () => defaultN);
+    vars.putIfAbsent('count_21', () => defaultN);
+    vars.putIfAbsent('sample_size_21', () => defaultN);
+    vars.putIfAbsent('n_52', () => vars['n_21'] ?? defaultN);
+    vars.putIfAbsent('count_52', () => vars['count_21'] ?? defaultN);
+    vars.putIfAbsent('sample_size_52', () => vars['sample_size_21'] ?? defaultN);
+    vars.putIfAbsent('n_54', () => vars['n_21'] ?? defaultN);
+    vars.putIfAbsent('count_54', () => vars['count_21'] ?? defaultN);
+    vars.putIfAbsent('sample_size_54', () => vars['sample_size_21'] ?? defaultN);
+
     return vars;
+  }
+
+  /// Splits multi-statement formula strings into individual expressions / assignments.
+  /// Supports separators like ';', '\n', 'then', and ',' between assignments (e.g., 'r=x*y, t=a*b, s=r*t').
+  static List<String> _splitStatements(String expr) {
+    final cleaned = expr.replaceAll(RegExp(r'\bthen\b', caseSensitive: false), ';');
+    final rawStmts = cleaned.split(RegExp(r'[;\n]|,(?=\s*[a-zA-Z_][a-zA-Z0-9_]*\s*=)'));
+    return rawStmts.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
   }
 
   /// Normalizes natural language formula into machine-parsable expression.
@@ -288,6 +346,9 @@ class EpvatFormulaHelper {
   /// - `SD Action Time @-54` -> `action_time_sd_54`
   /// - `P1 Mean` (without temp) -> `p1_mean_$defaultTemp`
   /// - `|expr|` -> `abs(expr)`
+  /// - `√(expr)` or `√expr` -> `sqrt(expr)`
+  /// - `Sample Size @ 21` -> `sample_size_21`
+  /// - `n @ 21` -> `n_21`
   static String normalizeFormula(String input, {String defaultTemp = '21'}) {
     String expr = input.trim();
     // Clean degree symbols and notations (e.g. °C, °c, degC, °)
@@ -295,16 +356,30 @@ class EpvatFormulaHelper {
     final match = RegExp(r'\d+').firstMatch(defaultTemp);
     final cleanDefaultTemp = match != null ? match.group(0)! : '21';
 
-    // 1. Convert pipe absolute syntax |A - B| into abs(A - B)
+    // 1. Convert unicode square root symbol: √(expr) or √expr into sqrt(...)
+    expr = expr.replaceAllMapped(
+      RegExp(r'√\s*\(([^)]+)\)'),
+      (m) => 'sqrt(${m[1]})',
+    );
+    expr = expr.replaceAllMapped(
+      RegExp(r'√\s*([a-zA-Z0-9_\.]+)'),
+      (m) => 'sqrt(${m[1]})',
+    );
+    expr = expr.replaceAllMapped(
+      RegExp(r'\bsqrt\s*\(', caseSensitive: false),
+      (m) => 'sqrt(',
+    );
+
+    // 2. Convert pipe absolute syntax |A - B| into abs(A - B)
     expr = expr.replaceAllMapped(RegExp(r'\|([^|]+)\|'), (m) => 'abs(${m[1]})');
 
-    // 2. Pre-normalize NATO individual max expressions
+    // 3. Pre-normalize NATO individual max expressions
     expr = expr.replaceAllMapped(
       RegExp(r'\b(p1|p2)[\s_]+max[\s_]+individual\b', caseSensitive: false),
       (m) => '${m[1]}_max',
     );
 
-    // 3. Handle implicit multiplication specifically for standalone numbers before SD, Sigma, or parenthesis:
+    // 4. Handle implicit multiplication specifically for standalone numbers before SD, Sigma, or parenthesis:
     // e.g. "3SD" or "3 SD" or "3sd" -> "3 * sd"
     expr = expr.replaceAllMapped(
       RegExp(r'(?<![a-zA-Z0-9_])(\d+)\s*(sd|sigma)\b', caseSensitive: false),
@@ -338,7 +413,23 @@ class EpvatFormulaHelper {
       return digits.isNotEmpty ? digits : cleanDefaultTemp;
     }
 
-    // 4. Inverted order: "Mean P1 @ 21", "Mean Action Time @-54", "SD Action Time @-54", "SD P2 @52"
+    // 5. Sample size natural language: "Sample Size @ 21", "Count @ 52", "n @ 54", "Sample Size"
+    expr = expr.replaceAllMapped(
+      RegExp(r'\b(sample[\s_]*size|samplesize|sample[\s_]*count|count)[\s_]*(?:@|at)?[\s_]*([+-]?\d+)?\b', caseSensitive: false),
+      (m) {
+        final temp = cleanTemp(m[2]);
+        return 'sample_size_$temp';
+      },
+    );
+    expr = expr.replaceAllMapped(
+      RegExp(r'\bn[\s_]*(?:@|at)[\s_]*([+-]?\d+)\b', caseSensitive: false),
+      (m) {
+        final temp = cleanTemp(m[1]);
+        return 'n_$temp';
+      },
+    );
+
+    // 6. Inverted order: "Mean P1 @ 21", "Mean Action Time @-54", "SD Action Time @-54", "SD P2 @52"
     expr = expr.replaceAllMapped(
       RegExp(r'\b(mean|avg|average|sd|sigma|std|max|peak|min|range)[\s_]+(chamber[\s_]*pressure|p1|port[\s_]*pressure|p2|vel(?:ocity)?|speed|v|action[\s_]*time|actiontime|at)(?:[\s_]*(?:@|at)?[\s_]*([+-]?\d+))?\b', caseSensitive: false),
       (m) {
@@ -349,7 +440,7 @@ class EpvatFormulaHelper {
       },
     );
 
-    // 5. Standard order: "P1 Mean @ 21", "Action Time Mean @-54", "Vel Mean @ 52"
+    // 7. Standard order: "P1 Mean @ 21", "Action Time Mean @-54", "Vel Mean @ 52"
     expr = expr.replaceAllMapped(
       RegExp(r'\b(chamber[\s_]*pressure|p1|port[\s_]*pressure|p2|vel(?:ocity)?|speed|v|action[\s_]*time|actiontime|at)[\s_]+(mean|avg|average|sd|sigma|std|max|peak|min|range)(?:[\s_]*(?:@|at)?[\s_]*([+-]?\d+))?\b', caseSensitive: false),
       (m) {
@@ -360,7 +451,7 @@ class EpvatFormulaHelper {
       },
     );
 
-    // 6. Standalone Parameter mentions with optional @temp: e.g. "P1 @ 52", "Action Time @ -54", "P2 @ 54", "P1"
+    // 8. Standalone Parameter mentions with optional @temp: e.g. "P1 @ 52", "Action Time @ -54", "P2 @ 54", "P1"
     expr = expr.replaceAllMapped(
       RegExp(r'(?<![a-z0-9_])(chamber[\s_]*pressure|p1|port[\s_]*pressure|p2|vel(?:ocity)?|speed|action[\s_]*time|actiontime|at)(?!\s*_[a-z0-9_])(?:[\s_]*(?:@|at)[\s_]*([+-]?\d+))?(?![a-z0-9_])', caseSensitive: false),
       (m) {
@@ -370,7 +461,7 @@ class EpvatFormulaHelper {
       },
     );
 
-    // 7. Standalone Metric without parameter: e.g. "3 * SD" -> "3 * p1_sd_21", "5*SD"
+    // 9. Standalone Metric without parameter: e.g. "3 * SD" -> "3 * p1_sd_21", "5*SD"
     expr = expr.replaceAllMapped(
       RegExp(r'(?<![a-z0-9_])(sd|sigma|mean)(?:[\s_]*(?:@|at)[\s_]*([+-]?\d+))?(?![a-z0-9_])', caseSensitive: false),
       (m) {
@@ -383,17 +474,75 @@ class EpvatFormulaHelper {
     return expr.trim();
   }
 
-  /// Evaluates an expression string using variables.
+  /// Evaluates an expression or multi-statement formula string using variables.
+  /// Supports combined multi-step formulas: e.g., 'r = x * y; t = a * b; s = r * t'
   static double evaluate(String expression, Map<String, double> variables, {String defaultTemp = '21'}) {
     final match = RegExp(r'\d+').firstMatch(defaultTemp);
     final cleanDefaultTemp = match != null ? match.group(0)! : '21';
-    final normalized = normalizeFormula(expression, defaultTemp: cleanDefaultTemp);
-    return _parseAndCompute(normalized, variables);
+    
+    final stmts = _splitStatements(expression);
+    if (stmts.length <= 1) {
+      final normalized = normalizeFormula(expression, defaultTemp: cleanDefaultTemp);
+      return _parseAndCompute(normalized, variables);
+    }
+
+    final localVars = Map<String, double>.from(variables);
+    double lastVal = 0.0;
+    for (final stmt in stmts) {
+      final assignMatch = RegExp(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$').firstMatch(stmt);
+      if (assignMatch != null) {
+        final varName = assignMatch.group(1)!.trim().toLowerCase();
+        final rhs = assignMatch.group(2)!.trim();
+        final normalizedRhs = normalizeFormula(rhs, defaultTemp: cleanDefaultTemp);
+        lastVal = _parseAndCompute(normalizedRhs, localVars);
+        localVars[varName] = lastVal;
+        localVars['${varName}_21'] = lastVal;
+        localVars['${varName}_$cleanDefaultTemp'] = lastVal;
+      } else {
+        final normalized = normalizeFormula(stmt, defaultTemp: cleanDefaultTemp);
+        lastVal = _parseAndCompute(normalized, localVars);
+      }
+    }
+    return lastVal;
   }
 
-  /// Builds a human-readable arithmetic substitution string:
-  /// e.g. "3500 + 3 * 100 = 3800.00 bar"
+  /// Builds a human-readable arithmetic substitution string.
+  /// Supports both single formulas and multi-statement combined formulas.
   static String buildSubstitutedArithmetic(
+    String originalFormula,
+    Map<String, double> variables, {
+    String defaultTemp = '21',
+  }) {
+    final match = RegExp(r'\d+').firstMatch(defaultTemp);
+    final cleanDefaultTemp = match != null ? match.group(0)! : '21';
+    
+    final stmts = _splitStatements(originalFormula);
+    if (stmts.length <= 1) {
+      return _buildSingleSubstitutedArithmetic(originalFormula, variables, defaultTemp: cleanDefaultTemp);
+    }
+
+    final List<String> subParts = [];
+    final localVars = Map<String, double>.from(variables);
+    for (final stmt in stmts) {
+      final assignMatch = RegExp(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$').firstMatch(stmt);
+      if (assignMatch != null) {
+        final varName = assignMatch.group(1)!.trim();
+        final rhs = assignMatch.group(2)!.trim();
+        final sub = _buildSingleSubstitutedArithmetic(rhs, localVars, defaultTemp: cleanDefaultTemp);
+        final val = _parseAndCompute(normalizeFormula(rhs, defaultTemp: cleanDefaultTemp), localVars);
+        localVars[varName.toLowerCase()] = val;
+        localVars['${varName.toLowerCase()}_21'] = val;
+        localVars['${varName.toLowerCase()}_$cleanDefaultTemp'] = val;
+        subParts.add('$varName: $sub');
+      } else {
+        final sub = _buildSingleSubstitutedArithmetic(stmt, localVars, defaultTemp: cleanDefaultTemp);
+        subParts.add(sub);
+      }
+    }
+    return subParts.join('; ');
+  }
+
+  static String _buildSingleSubstitutedArithmetic(
     String originalFormula,
     Map<String, double> variables, {
     String defaultTemp = '21',
@@ -482,7 +631,7 @@ class EpvatFormulaHelper {
         final valStr = val == val.roundToDouble() && !val.isNaN && !val.isInfinite
             ? val.toInt().toString()
             : val.toStringAsFixed(2);
-        substituted = substituted.replaceAll(RegExp(RegExp.escape(k), caseSensitive: false), valStr);
+        substituted = substituted.replaceAll(RegExp(r'\b' + RegExp.escape(k) + r'\b', caseSensitive: false), valStr);
       }
     }
 
@@ -638,6 +787,14 @@ class EpvatFormulaHelper {
 
     double calculated = evaluate(formula, variables, defaultTemp: defaultTemp);
     final String substitutedText = buildSubstitutedArithmetic(formula, variables, defaultTemp: defaultTemp);
+
+    // Register calculated value so chained formulas in this evaluation cycle can reference it
+    final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toLowerCase().trim();
+    if (safeName.isNotEmpty) {
+      variables[safeName] = calculated;
+      variables['${safeName}_21'] = calculated;
+      variables['${safeName}_$cleanDefaultTemp'] = calculated;
+    }
 
     double limitVal = 0.0;
     bool passed = true;
@@ -874,6 +1031,7 @@ class EpvatFormulaHelper {
 
     late double Function() parseExpression;
     late double Function() parseTerm;
+    late double Function() parsePower;
     late double Function() parseFactor;
 
     parseFactor = () {
@@ -981,15 +1139,25 @@ class EpvatFormulaHelper {
       return sign * varVal;
     };
 
+    parsePower = () {
+      double base = parseFactor();
+      while (index < expr.length && expr[index] == '^') {
+        index++;
+        double exponent = parseFactor();
+        base = math.pow(base, exponent).toDouble();
+      }
+      return base;
+    };
+
     parseTerm = () {
-      double val = parseFactor();
+      double val = parsePower();
       while (index < expr.length) {
         if (expr[index] == '*') {
           index++;
-          val *= parseFactor();
+          val *= parsePower();
         } else if (expr[index] == '/') {
           index++;
-          double denom = parseFactor();
+          double denom = parsePower();
           val = denom != 0 ? val / denom : 0.0;
         } else {
           break;

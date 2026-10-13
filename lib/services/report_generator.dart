@@ -174,7 +174,50 @@ class ReportGenerator {
     if (cleanName.contains('manager') && adminRules['manager_signature_base64'] != null) {
       return (adminRules['manager_signature_base64'] as String).trim();
     }
+    if ((cleanName.contains('technician') ||
+            cleanName.contains('ahmed') ||
+            cleanName.contains('said') ||
+            cleanName.contains('bahlouli') ||
+            cleanName.contains('siyabi') ||
+            cleanName == (adminRules['technician_name'] ?? '').toString().trim().toLowerCase() ||
+            cleanName == (adminRules['cert_technician_name'] ?? '').toString().trim().toLowerCase()) &&
+        (adminRules['technician_signature_base64'] != null || adminRules['cert_technician_signature_base64'] != null)) {
+      return ((adminRules['technician_signature_base64'] ?? adminRules['cert_technician_signature_base64']) as String).trim();
+    }
     return '';
+  }
+
+  static bool _isRegisteredTechnician(String name) {
+    final n = name.trim().toLowerCase();
+    if (n.isEmpty) return false;
+    return n.contains('ahmed') || n.contains('bahlouli') || n.contains('said') || n.contains('siyabi') || n.contains('tech');
+  }
+
+  static String _resolveTechnicianName({
+    required String loggedInUser,
+    required List<BallisticRecord> records,
+    required Map<String, dynamic>? adminRules,
+  }) {
+    if (records.isNotEmpty && records[0].technicianName.trim().isNotEmpty) {
+      final t = records[0].technicianName.trim();
+      if (_isRegisteredTechnician(t)) return t;
+    }
+    if (_isRegisteredTechnician(loggedInUser)) {
+      return loggedInUser.trim();
+    }
+    final adminTech = (adminRules?['technician_name'] ?? adminRules?['cert_technician_name'] ?? '').toString().trim();
+    if (adminTech.isNotEmpty && _isRegisteredTechnician(adminTech)) {
+      return adminTech;
+    }
+    for (final r in records) {
+      if (_isRegisteredTechnician(r.operators)) {
+        return r.operators.trim();
+      }
+    }
+    if (adminTech.isNotEmpty) {
+      return adminTech;
+    }
+    return 'Ahmed Al Bahlouli';
   }
 
   static String _getRecordMetricsSummary(BallisticRecord r) {
@@ -265,10 +308,22 @@ class ReportGenerator {
       }
       return '${r.cyclicRateValue} RPM (${r.cyclicRateWeaponType})';
     } else if (r.testName == 'Terminal Effect Test') {
+      final holeList = r.terminalHoleDiameter.split(',');
+      final steelList = r.terminalSteelPenetration.split(',');
+      final alumList = r.terminalAluminumPenetration.split(',');
+      final hasFail = holeList.any((s) => s.trim().toLowerCase() == 'no') ||
+          steelList.any((s) => s.trim().toLowerCase() == 'no') ||
+          alumList.any((s) => s.trim().toLowerCase() == 'no');
       if (r.isRetest) {
-        return 'Test Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}<br/>Retest Hole: ${m['terminalHoleDiameter']?.toString() ?? "-"}';
+        final retHole = m['terminalHoleDiameter']?.toString() ?? '';
+        final retSteel = m['terminalSteelPenetration']?.toString() ?? '';
+        final retAlum = m['terminalAluminumPenetration']?.toString() ?? '';
+        final retFail = retHole.split(',').any((s) => s.trim().toLowerCase() == 'no') ||
+            retSteel.split(',').any((s) => s.trim().toLowerCase() == 'no') ||
+            retAlum.split(',').any((s) => s.trim().toLowerCase() == 'no');
+        return 'Test: ${hasFail ? "Not Comply" : "Comply"}<br/>Retest: ${retFail ? "Not Comply" : "Comply"}';
       }
-      return 'Hole: ${r.terminalHoleDiameter}, Vel: ${r.terminalVelocity} m/s';
+      return hasFail ? 'Not Comply' : 'Comply';
     } else if (r.testName == 'Primer Sensitivity Test') {
       if (r.isRetest) {
         final retH = m['primerHbar']?.toString() ?? '';
@@ -327,11 +382,13 @@ class ReportGenerator {
         buffer.writeln(row);
       }
     } else if (testName == 'EPVAT test') {
-      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Barrel S.N.,Distance (m),Cartridge Temp,Pressure Type,Pressure Unit,Mean P1,Max P1,Min P1,Range P1,SD P1,Mean P2,Max P2,Min P2,Range P2,SD P2,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,P1 Rounds,P2 Rounds,Vel Rounds,Remarks');
+      buffer.writeln('Time,Inspector,Shift Time,Caliber,$lotHeader,Result,Qty,Barrel S.N.,Distance (m),Cartridge Temp,Primer Supplier,Primer Lot,Powder Supplier,Powder Lot,Powder Code,Powder Charge (g),Pressure Type,Pressure Unit,Mean P1,Max P1,Min P1,Range P1,SD P1,Mean P2,Max P2,Min P2,Range P2,SD P2,Mean Vel,Min Vel,Max Vel,Range Vel,SD Vel,P1 Rounds,P2 Rounds,Vel Rounds,Remarks');
       for (var r in records) {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
-          r.barrelSN, r.velocityDistance, r.cartridgeTemp, r.epvatPressureType, r.epvatPressureUnit,
+          r.barrelSN, r.velocityDistance, r.cartridgeTemp,
+          r.primerSupplier, r.primerLot, r.propellantSupplier, r.propellantLot, r.propellantCode, r.propellantCharge,
+          r.epvatPressureType, r.epvatPressureUnit,
           r.epvatMeanPressure, r.epvatMaxPressure, r.epvatMinPressure, r.epvatRangePressure, r.epvatSDPressure,
           r.epvatP2MeanPressure, r.epvatP2MaxPressure, r.epvatP2MinPressure, r.epvatP2RangePressure, r.epvatP2SDPressure,
           r.velMean, r.velMin, r.velMax, r.velRange, r.velSD,
@@ -525,7 +582,7 @@ class ReportGenerator {
 
     return '''
     <div style="margin-top: 8px; margin-bottom: 8px;">
-      <h3 class="section-title" style="border-bottom: 2px solid #cbd5e1; padding-bottom: 3px; font-size: 11.5px; font-weight: bold; text-transform: uppercase;">EPVAT BALLISTIC ANALYSIS</h3>
+      <h3 class="section-title" style="border-bottom: 2px solid #cbd5e1; padding-bottom: 3px; font-size: 11.5px; font-weight: bold; text-transform: uppercase;">EPVAT BALLISTIC ANALYSIS &amp; CALCULATIONS</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
         <thead>
           <tr style="background-color: #f1f5f9; color: #475569; font-size: 10px; font-weight: bold; text-align: left; text-transform: uppercase;">
@@ -586,15 +643,6 @@ class ReportGenerator {
     final inspectorName = (records.isNotEmpty && records[0].operators.trim().isNotEmpty)
         ? records[0].operators.trim()
         : (loggedInUser.trim().isNotEmpty ? loggedInUser.trim() : 'N/A');
-    final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
-    final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
-    final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
-    final inspectorSigImg = inspectorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 55px;"></div>';
-    final supervisorSigImg = supervisorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 55px;"></div>';
 
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final bool isDaily = moduleName.trim().contains('Daily') || (records.isNotEmpty && records[0].module.contains('Daily'));
@@ -840,17 +888,52 @@ class ReportGenerator {
     }
 
     final epvatRows = StringBuffer();
-    if (testName == 'EPVAT test') {
+    if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      final barrelSN = r0?.barrelSN ?? '';
+      final velDist = r0 != null && r0.velocityDistance.isNotEmpty ? '${r0.velocityDistance} m' : '';
+      final cartTemp = r0 != null && r0.cartridgeTemp.isNotEmpty ? formatCartridgeTemp(r0.cartridgeTemp) : '';
+      final primerSupplier = r0?.primerSupplier.trim() ?? '';
+      final primerLot = r0?.primerLot.trim() ?? '';
+      final powderSupplier = r0?.propellantSupplier.trim() ?? '';
+      final powderLot = r0?.propellantLot.trim() ?? '';
+      final powderCode = r0?.propellantCode.trim() ?? '';
+      final powderCharge = r0 != null && r0.propellantCharge.trim().isNotEmpty ? '${r0.propellantCharge.trim()} g' : '';
+
       epvatRows.write('<tr>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Barrel S.N:</td>');
-      epvatRows.write('<td>${records.isNotEmpty ? records[0].barrelSN : ''}</td>');
+      epvatRows.write('<td>$barrelSN</td>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Distance of Velocity:</td>');
-      epvatRows.write('<td>${records.isNotEmpty && records[0].velocityDistance.isNotEmpty ? '${records[0].velocityDistance} m' : ''}</td>');
+      epvatRows.write('<td>$velDist</td>');
       epvatRows.write('</tr>');
+
+      if (cartTemp.isNotEmpty) {
+        epvatRows.write('<tr>');
+        epvatRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
+        epvatRows.write('<td>$cartTemp</td>');
+        epvatRows.write('<td></td><td></td>');
+        epvatRows.write('</tr>');
+      }
+
       epvatRows.write('<tr>');
-      epvatRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
-      epvatRows.write('<td>${records.isNotEmpty ? formatCartridgeTemp(records[0].cartridgeTemp) : ''}</td>');
-      epvatRows.write('<td></td><td></td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Primer Supplier:</td>');
+      epvatRows.write('<td>${primerSupplier.isNotEmpty ? primerSupplier : "-"}</td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Primer Lot:</td>');
+      epvatRows.write('<td>${primerLot.isNotEmpty ? primerLot : "-"}</td>');
+      epvatRows.write('</tr>');
+
+      epvatRows.write('<tr>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Supplier:</td>');
+      epvatRows.write('<td>${powderSupplier.isNotEmpty ? powderSupplier : "-"}</td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Lot:</td>');
+      epvatRows.write('<td>${powderLot.isNotEmpty ? powderLot : "-"}</td>');
+      epvatRows.write('</tr>');
+
+      epvatRows.write('<tr>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Code:</td>');
+      epvatRows.write('<td>${powderCode.isNotEmpty ? powderCode : "-"}</td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Charge:</td>');
+      epvatRows.write('<td>${powderCharge.isNotEmpty ? powderCharge : "-"}</td>');
       epvatRows.write('</tr>');
     }
 
@@ -1174,6 +1257,7 @@ class ReportGenerator {
   <!-- Title section with horizontal line -->
   <div class="title-section">
     <h2>$displayTestTitle</h2>
+    ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '<div style="font-size: 11px; font-weight: bold; color: #475569; margin-top: 2px;">Caliber: $caliber | Lot: $lotNo</div>' : ''}
     <div class="title-line"></div>
   </div>
 
@@ -1187,12 +1271,14 @@ class ReportGenerator {
         <td style="width: 25%; font-weight: bold; color: #475569;">Date &amp; Time:</td>
         <td>$now</td>
       </tr>
+      ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '' : '''
       <tr>
         <td style="font-weight: bold; color: #475569;">Caliber Specification:</td>
         <td>$caliber</td>
         <td style="font-weight: bold; color: #475569;">${moduleName == 'Daily Test' ? 'Hopper No. / Production Date:' : 'Lot Number:'}</td>
         <td>$lotNo</td>
       </tr>
+      '''}
       <tr>
         <td style="font-weight: bold; color: #475569;">Quantity Tested:</td>
         <td>$totalQty rounds</td>
@@ -1232,9 +1318,20 @@ class ReportGenerator {
         <th>Head Splits (Min/Maj)</th>
         <th>Total Splits</th>
       ''');
-    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test') {
+    } else if (testName == 'Accuracy Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      final distRaw = r0?.velocityDistance.trim() ?? '';
+      final distNum = double.tryParse(distRaw);
+      final distStr = distNum != null ? distNum.toStringAsFixed(2) : (distRaw.isNotEmpty ? distRaw : '24.00');
       buffer.writeln('''
-        <th>Coordinate / Parameter</th>
+        <th style="width: 25%;"></th>
+        <th style="width: 25%;">x_1 [mm]</th>
+        <th style="width: 25%;">y_1 [mm]</th>
+        <th style="width: 25%;">V${distStr}_1 [m/s]</th>
+      ''');
+    } else if (testName == 'Extraction Force Test') {
+      buffer.writeln('''
+        <th>Parameter</th>
         <th>Mean</th>
         <th>Max</th>
         <th>Min</th>
@@ -1315,75 +1412,54 @@ class ReportGenerator {
         buffer.writeln('</tr>');
       } else if (testName == 'Accuracy Test') {
         if (records.length > 1) {
-          buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
+          buffer.writeln('<tr><td colspan="4" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
         }
-        if (r.caliber == '5.56x45 M193') {
+        buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold; text-align: left;">MEAN</td>
+            <td>${r.accMeanX.isNotEmpty ? r.accMeanX : "-"}</td>
+            <td>${r.accMeanY.isNotEmpty ? r.accMeanY : "-"}</td>
+            <td>${r.velMean.isNotEmpty ? r.velMean : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">MAX</td>
+            <td>${r.accMaxX.isNotEmpty ? r.accMaxX : "-"}</td>
+            <td>${r.accMaxY.isNotEmpty ? r.accMaxY : "-"}</td>
+            <td>${r.velMax.isNotEmpty ? r.velMax : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">MIN</td>
+            <td>${r.accMinX.isNotEmpty ? r.accMinX : "-"}</td>
+            <td>${r.accMinY.isNotEmpty ? r.accMinY : "-"}</td>
+            <td>${r.velMin.isNotEmpty ? r.velMin : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">RANGE</td>
+            <td>${r.accRangeX.isNotEmpty ? r.accRangeX : "-"}</td>
+            <td>${r.accRangeY.isNotEmpty ? r.accRangeY : "-"}</td>
+            <td>${r.velRange.isNotEmpty ? r.velRange : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">STDEV</td>
+            <td style="font-weight: bold; color: ${getSdColor(r.accSDX, r.caliber)};">${r.accSDX.isNotEmpty ? r.accSDX : "-"}</td>
+            <td style="font-weight: bold; color: ${getSdColor(r.accSDY, r.caliber)};">${r.accSDY.isNotEmpty ? r.accSDY : "-"}</td>
+            <td style="font-weight: bold;">${r.velSD.isNotEmpty ? r.velSD : "-"}</td>
+          </tr>
+        ''');
+        if ((double.tryParse(r.accLargestDistance) ?? 0) > 0) {
           buffer.writeln('''
-            <tr>
-              <td style="font-weight: bold;">SD at X (mm)</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDX, r.caliber)};">${r.accSDX}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">SD at Y (mm)</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDY, r.caliber)};">${r.accSDY}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Mean Radius (mm)</td>
-              <td style="font-weight: bold; color: ${getMeanRadiusColor(r.accMeanRadius)};">${r.accMeanRadius}</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Velocity (m/s)</td>
-              <td>${r.velMean}</td>
-              <td>${r.velMax}</td>
-              <td>${r.velMin}</td>
-              <td>${r.velRange}</td>
-              <td>${r.velSD}</td>
-            </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">Largest Distance / Dispersion</td>
+            <td colspan="3" style="font-weight: bold; color: #0284c7; text-align: center;">${r.accLargestDistance} mm</td>
+          </tr>
           ''');
-        } else {
+        }
+        if (r.accMeanRadius.isNotEmpty && (double.tryParse(r.accMeanRadius) ?? 0) > 0) {
           buffer.writeln('''
-            <tr>
-              <td style="font-weight: bold;">X-Coordinate Deviation (mm)</td>
-              <td>${r.accMeanX}</td>
-              <td>${r.accMaxX}</td>
-              <td>${r.accMinX}</td>
-              <td>${r.accRangeX}</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDX, r.caliber)};">${r.accSDX}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Y-Coordinate Deviation (mm)</td>
-              <td>${r.accMeanY}</td>
-              <td>${r.accMaxY}</td>
-              <td>${r.accMinY}</td>
-              <td>${r.accRangeY}</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDY, r.caliber)};">${r.accSDY}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Velocity (m/s)</td>
-              <td>${r.velMean}</td>
-              <td>${r.velMax}</td>
-              <td>${r.velMin}</td>
-              <td>${r.velRange}</td>
-              <td>${r.velSD}</td>
-            </tr>
-            ${(double.tryParse(r.accLargestDistance) ?? 0) > 0 ? '''
-            <tr>
-              <td style="font-weight: bold;">Largest Distance (mm)</td>
-              <td colspan="5" style="font-weight: bold; color: #0284c7;">${r.accLargestDistance} mm</td>
-            </tr>''' : ''}
+          <tr>
+            <td style="font-weight: bold; text-align: left;">Mean Radius</td>
+            <td colspan="3" style="font-weight: bold; color: ${getMeanRadiusColor(r.accMeanRadius)}; text-align: center;">${r.accMeanRadius} mm</td>
+          </tr>
           ''');
         }
       } else if (testName == 'Extraction Force Test') {
@@ -1605,16 +1681,12 @@ class ReportGenerator {
       }
     }
 
-    final String techName = records.isNotEmpty ? records[0].technicianName.trim() : '';
     final bool isComponent = moduleName == 'Component Test';
-    final bool inspectorIsTech = (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
-      (records.isNotEmpty && records[0].operators.toLowerCase().contains('technician')) ||
-      (loggedInUser.toLowerCase().contains('technician') && techName.isEmpty) ||
-      (techName.isNotEmpty && techName.toLowerCase() == inspectorName.toLowerCase());
-
-    final String effectiveTechName = techName.isNotEmpty
-        ? techName
-        : (inspectorIsTech ? inspectorName : (loggedInUser.isNotEmpty ? loggedInUser : inspectorName));
+    final String effectiveTechName = _resolveTechnicianName(
+      loggedInUser: loggedInUser,
+      records: records,
+      adminRules: adminRules,
+    );
     final techSig = _findSignatureBase64(effectiveTechName, adminRules);
     final techSigImg = techSig.isNotEmpty
         ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
@@ -1637,12 +1709,12 @@ class ReportGenerator {
     </table>
   </div>
 
-  ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '<div class="page-break" style="page-break-before: always; break-before: page; margin-top: 15px;"></div><div style="font-size: 12px; font-weight: bold; color: #0f172a; border-bottom: 2px solid #06b6d4; padding-bottom: 4px; margin-bottom: 10px; display: flex; justify-content: space-between;"><span>EPVAT BALLISTIC ANALYSIS &amp; CALCULATIONS (Page 2)</span><span>Caliber: $cleanCaliber | Lot: $cleanLotNo</span></div>' : ''}
   $epvatCombinedSection
   ${_buildRetestSectionHtml(records, testName, isWord: false)}
     </div> <!-- end report-content -->
 
     <div class="report-footer">
+      ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '' : '<div style="height: 1.85in;"></div>'}
       $remarksAndDiagramSection
 
       <!-- Recommendation -->
@@ -1930,8 +2002,14 @@ class ReportGenerator {
       return '<th>Mouth Leaks (S/F)</th><th>Primer Leaks (S/F)</th>';
     } else if (testName == 'Residual Stress Test') {
       return '<th>Neck Splits (Min/Maj)</th><th>Shoulder Splits (Min/Maj)</th><th>Body Splits (Min/Maj)</th><th>Head Splits (Min/Maj)</th><th>Total Splits</th>';
-    } else if (testName == 'Accuracy Test' || testName == 'Extraction Force Test') {
-      return '<th>Coordinate / Parameter</th><th>Mean</th><th>Max</th><th>Min</th><th>Range</th><th>SD</th>';
+    } else if (testName == 'Accuracy Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      final distRaw = r0?.velocityDistance.trim() ?? '';
+      final distNum = double.tryParse(distRaw);
+      final distStr = distNum != null ? distNum.toStringAsFixed(2) : (distRaw.isNotEmpty ? distRaw : '24.00');
+      return '<th></th><th>x_1 [mm]</th><th>y_1 [mm]</th><th>V${distStr}_1 [m/s]</th>';
+    } else if (testName == 'Extraction Force Test') {
+      return '<th>Parameter</th><th>Mean</th><th>Max</th><th>Min</th><th>Range</th><th>SD</th>';
     } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
       final bool is9mm = records.isNotEmpty && (records[0].caliber.toLowerCase().contains('9mm') || records[0].caliber.toLowerCase().startsWith('9x19'));
       final pUnit = records.isNotEmpty && records[0].epvatPressureUnit.isNotEmpty ? records[0].epvatPressureUnit : 'Bar';
@@ -2000,15 +2078,6 @@ class ReportGenerator {
     final inspectorName = (records.isNotEmpty && records[0].operators.trim().isNotEmpty)
         ? records[0].operators.trim()
         : (loggedInUser.trim().isNotEmpty ? loggedInUser.trim() : 'N/A');
-    final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
-    final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
-    final supervisorSig = _findSignatureBase64(supervisorName, adminRules);
-    final inspectorSigImg = inspectorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 55px;"></div>';
-    final supervisorSigImg = supervisorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
-        : '<div style="height: 55px;"></div>';
     final caliber = records.isNotEmpty ? records[0].caliber : 'N/A';
     final bool isDaily = moduleName.trim().contains('Daily') || (records.isNotEmpty && records[0].module.contains('Daily'));
     final lotNo = records.isNotEmpty
@@ -2236,16 +2305,51 @@ class ReportGenerator {
 
     final epvatRows = StringBuffer();
     if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+      final r0 = records.isNotEmpty ? records[0] : null;
+      final barrelSN = r0?.barrelSN ?? '';
+      final velDist = r0 != null && r0.velocityDistance.isNotEmpty ? '${r0.velocityDistance} m' : '';
+      final cartTemp = r0 != null && r0.cartridgeTemp.isNotEmpty ? formatCartridgeTemp(r0.cartridgeTemp) : '';
+      final primerSupplier = r0?.primerSupplier.trim() ?? '';
+      final primerLot = r0?.primerLot.trim() ?? '';
+      final powderSupplier = r0?.propellantSupplier.trim() ?? '';
+      final powderLot = r0?.propellantLot.trim() ?? '';
+      final powderCode = r0?.propellantCode.trim() ?? '';
+      final powderCharge = r0 != null && r0.propellantCharge.trim().isNotEmpty ? '${r0.propellantCharge.trim()} g' : '';
+
       epvatRows.write('<tr>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Barrel S.N:</td>');
-      epvatRows.write('<td>${records.isNotEmpty ? records[0].barrelSN : ''}</td>');
+      epvatRows.write('<td>$barrelSN</td>');
       epvatRows.write('<td style="font-weight: bold; color: #475569;">Distance of Velocity:</td>');
-      epvatRows.write('<td>${records.isNotEmpty && records[0].velocityDistance.isNotEmpty ? '${records[0].velocityDistance} m' : ''}</td>');
+      epvatRows.write('<td>$velDist</td>');
       epvatRows.write('</tr>');
+
+      if (cartTemp.isNotEmpty) {
+        epvatRows.write('<tr>');
+        epvatRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
+        epvatRows.write('<td>$cartTemp</td>');
+        epvatRows.write('<td></td><td></td>');
+        epvatRows.write('</tr>');
+      }
+
       epvatRows.write('<tr>');
-      epvatRows.write('<td style="font-weight: bold; color: #475569;">Cartridge Temp:</td>');
-      epvatRows.write('<td>${records.isNotEmpty ? formatCartridgeTemp(records[0].cartridgeTemp) : ''}</td>');
-      epvatRows.write('<td></td><td></td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Primer Supplier:</td>');
+      epvatRows.write('<td>${primerSupplier.isNotEmpty ? primerSupplier : "-"}</td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Primer Lot:</td>');
+      epvatRows.write('<td>${primerLot.isNotEmpty ? primerLot : "-"}</td>');
+      epvatRows.write('</tr>');
+
+      epvatRows.write('<tr>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Supplier:</td>');
+      epvatRows.write('<td>${powderSupplier.isNotEmpty ? powderSupplier : "-"}</td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Lot:</td>');
+      epvatRows.write('<td>${powderLot.isNotEmpty ? powderLot : "-"}</td>');
+      epvatRows.write('</tr>');
+
+      epvatRows.write('<tr>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Code:</td>');
+      epvatRows.write('<td>${powderCode.isNotEmpty ? powderCode : "-"}</td>');
+      epvatRows.write('<td style="font-weight: bold; color: #475569;">Powder Charge:</td>');
+      epvatRows.write('<td>${powderCharge.isNotEmpty ? powderCharge : "-"}</td>');
       epvatRows.write('</tr>');
     }
 
@@ -2450,6 +2554,7 @@ class ReportGenerator {
 
   <div class="title-section">
     <h2>$displayTestTitle</h2>
+    ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '<p style="font-size: 10pt; font-weight: bold; color: #475569; margin: 2px 0 0 0;">Caliber: $caliber | Lot: $lotNo</p>' : ''}
     <div class="title-line"></div>
   </div>
 
@@ -2461,12 +2566,14 @@ class ReportGenerator {
       <td style="width: 25%; font-weight: bold; color: #475569;">Date &amp; Time:</td>
       <td>$now</td>
     </tr>
+    ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '' : '''
     <tr>
       <td style="font-weight: bold; color: #475569;">Caliber Specification:</td>
       <td>$caliber</td>
       <td style="font-weight: bold; color: #475569;">${moduleName == 'Daily Test' ? 'Hopper No. / Production Date:' : 'Lot Number:'}</td>
       <td>$lotNo</td>
     </tr>
+    '''}
     <tr>
       <td style="font-weight: bold; color: #475569;">Quantity Tested:</td>
       <td>$totalQty rounds</td>
@@ -2511,74 +2618,54 @@ class ReportGenerator {
         buffer.writeln('</tr>');
       } else if (testName == 'Accuracy Test') {
         if (records.length > 1) {
-          buffer.writeln('<tr><td colspan="6" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
+          buffer.writeln('<tr><td colspan="4" style="font-weight: bold; background-color: #f1f5f9; text-transform: uppercase;">Record: ${r.timestamp}</td></tr>');
         }
-        if (r.caliber == '5.56x45 M193') {
+        buffer.writeln('''
+          <tr>
+            <td style="font-weight: bold; text-align: left;">MEAN</td>
+            <td>${r.accMeanX.isNotEmpty ? r.accMeanX : "-"}</td>
+            <td>${r.accMeanY.isNotEmpty ? r.accMeanY : "-"}</td>
+            <td>${r.velMean.isNotEmpty ? r.velMean : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">MAX</td>
+            <td>${r.accMaxX.isNotEmpty ? r.accMaxX : "-"}</td>
+            <td>${r.accMaxY.isNotEmpty ? r.accMaxY : "-"}</td>
+            <td>${r.velMax.isNotEmpty ? r.velMax : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">MIN</td>
+            <td>${r.accMinX.isNotEmpty ? r.accMinX : "-"}</td>
+            <td>${r.accMinY.isNotEmpty ? r.accMinY : "-"}</td>
+            <td>${r.velMin.isNotEmpty ? r.velMin : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">RANGE</td>
+            <td>${r.accRangeX.isNotEmpty ? r.accRangeX : "-"}</td>
+            <td>${r.accRangeY.isNotEmpty ? r.accRangeY : "-"}</td>
+            <td>${r.velRange.isNotEmpty ? r.velRange : "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">STDEV</td>
+            <td style="font-weight: bold; color: ${getSdColor(r.accSDX, r.caliber)};">${r.accSDX.isNotEmpty ? r.accSDX : "-"}</td>
+            <td style="font-weight: bold; color: ${getSdColor(r.accSDY, r.caliber)};">${r.accSDY.isNotEmpty ? r.accSDY : "-"}</td>
+            <td style="font-weight: bold;">${r.velSD.isNotEmpty ? r.velSD : "-"}</td>
+          </tr>
+        ''');
+        if ((double.tryParse(r.accLargestDistance) ?? 0) > 0) {
           buffer.writeln('''
-            <tr>
-              <td style="font-weight: bold;">SD at X (mm)</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDX, r.caliber)};">${r.accSDX}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">SD at Y (mm)</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDY, r.caliber)};">${r.accSDY}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Mean Radius (mm)</td>
-              <td style="font-weight: bold; color: ${getMeanRadiusColor(r.accMeanRadius)};">${r.accMeanRadius}</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-              <td>-</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Velocity (m/s)</td>
-              <td>${r.velMean}</td>
-              <td>${r.velMax}</td>
-              <td>${r.velMin}</td>
-              <td>${r.velRange}</td>
-              <td>${r.velSD}</td>
-            </tr>
+          <tr>
+            <td style="font-weight: bold; text-align: left;">Largest Distance / Dispersion</td>
+            <td colspan="3" style="font-weight: bold; color: #0284c7; text-align: center;">${r.accLargestDistance} mm</td>
+          </tr>
           ''');
-        } else {
+        }
+        if (r.accMeanRadius.isNotEmpty && (double.tryParse(r.accMeanRadius) ?? 0) > 0) {
           buffer.writeln('''
-            <tr>
-              <td style="font-weight: bold;">X-Coordinate Deviation (mm)</td>
-              <td>${r.accMeanX}</td>
-              <td>${r.accMaxX}</td>
-              <td>${r.accMinX}</td>
-              <td>${r.accRangeX}</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDX, r.caliber)};">${r.accSDX}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Y-Coordinate Deviation (mm)</td>
-              <td>${r.accMeanY}</td>
-              <td>${r.accMaxY}</td>
-              <td>${r.accMinY}</td>
-              <td>${r.accRangeY}</td>
-              <td style="font-weight: bold; color: ${getSdColor(r.accSDY, r.caliber)};">${r.accSDY}</td>
-            </tr>
-            <tr>
-              <td style="font-weight: bold;">Velocity (m/s)</td>
-              <td>${r.velMean}</td>
-              <td>${r.velMax}</td>
-              <td>${r.velMin}</td>
-              <td>${r.velRange}</td>
-              <td>${r.velSD}</td>
-            </tr>
-            ${(double.tryParse(r.accLargestDistance) ?? 0) > 0 ? '''
-            <tr>
-              <td style="font-weight: bold;">Largest Distance (mm)</td>
-              <td colspan="5" style="font-weight: bold; color: #0284c7;">${r.accLargestDistance} mm</td>
-            </tr>''' : ''}
+          <tr>
+            <td style="font-weight: bold; text-align: left;">Mean Radius</td>
+            <td colspan="3" style="font-weight: bold; color: ${getMeanRadiusColor(r.accMeanRadius)}; text-align: center;">${r.accMeanRadius} mm</td>
+          </tr>
           ''');
         }
       } else if (testName == 'Extraction Force Test') {
@@ -2800,16 +2887,12 @@ class ReportGenerator {
       }
     }
 
-    final String techName = records.isNotEmpty ? records[0].technicianName.trim() : '';
     final bool isComponent = moduleName == 'Component Test';
-    final bool inspectorIsTech = (records.isNotEmpty && records[0].userRole.toLowerCase().contains('technician')) ||
-      (records.isNotEmpty && records[0].operators.toLowerCase().contains('technician')) ||
-      (loggedInUser.toLowerCase().contains('technician') && techName.isEmpty) ||
-      (techName.isNotEmpty && techName.toLowerCase() == inspectorName.toLowerCase());
-
-    final String effectiveTechName = techName.isNotEmpty
-        ? techName
-        : (inspectorIsTech ? inspectorName : (loggedInUser.isNotEmpty ? loggedInUser : inspectorName));
+    final String effectiveTechName = _resolveTechnicianName(
+      loggedInUser: loggedInUser,
+      records: records,
+      adminRules: adminRules,
+    );
     final techSig = _findSignatureBase64(effectiveTechName, adminRules);
     final techSigImg = techSig.isNotEmpty
         ? '<img src="${_formatImageSrc(techSig)}" style="max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 4px auto;" />'
@@ -2818,8 +2901,8 @@ class ReportGenerator {
     final wordSignaturesHtml = '''
     <table class="signatures" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
       <tr>
-        <td style="width: 60%; border: none;"></td>
-        <td style="border: none; width: 40%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
+        <td style="width: 55%; border: none;"></td>
+        <td style="border: none; width: 45%; vertical-align: bottom; text-align: center; padding-bottom: 4px;">
           $techSigImg
           <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; font-weight: bold; color: #1e293b;">$effectiveTechName</div>
           <div style="font-size: 9pt; color: #475569;">${isComponent ? 'Component Technical Signature' : 'Ballistic Technical Signature'}</div>
@@ -2832,12 +2915,12 @@ class ReportGenerator {
     </tbody>
   </table>
 
-  ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '<br clear="all" style="page-break-before:always; mso-break-type:section-break" /><div style="font-size: 12px; font-weight: bold; color: #0f172a; border-bottom: 2px solid #06b6d4; padding-bottom: 4px; margin-bottom: 10px;">EPVAT BALLISTIC ANALYSIS &amp; CALCULATIONS (Page 2) — Caliber: $caliber | Lot: $lotNo</div>' : ''}
   $epvatCombinedSection
   ${_buildRetestSectionHtml(records, testName, isWord: true)}
   </div> <!-- end report-content -->
 
   <div class="word-report-footer" style="margin-top: 15px;">
+    ${(testName.toLowerCase().contains('epvat') || testName.toLowerCase().contains('propellant')) ? '' : '<p style="margin: 0; font-size: 1pt; height: 1.85in; line-height: 1.85in;">&nbsp;</p>'}
     $remarksAndDiagramSection
 
     <h2 class="section-title">Recommendation</h2>
@@ -2895,9 +2978,20 @@ class ReportGenerator {
     // Extract <head> from certHtml
     final headStart = certHtml.indexOf('<head>');
     final headEnd = certHtml.indexOf('</head>');
-    String headContent = '';
+    String certHeadContent = '';
     if (headStart != -1 && headEnd != -1) {
-      headContent = certHtml.substring(headStart + 6, headEnd);
+      certHeadContent = certHtml.substring(headStart + 6, headEnd);
+    }
+
+    // Also extract standard test report head/styles so individual test reports retain full styling
+    String testHeadContent = '';
+    if (records.isNotEmpty) {
+      final sampleTestHtml = generateHtml([records.first], records.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
+      final testHeadStart = sampleTestHtml.indexOf('<head>');
+      final testHeadEnd = sampleTestHtml.indexOf('</head>');
+      if (testHeadStart != -1 && testHeadEnd != -1) {
+        testHeadContent = sampleTestHtml.substring(testHeadStart + 6, testHeadEnd);
+      }
     }
 
     final sections = <String>[];
@@ -2959,37 +3053,50 @@ class ReportGenerator {
 <head>
   <meta charset="utf-8">
   <title>$title</title>
-  $headContent
+  $testHeadContent
+  $certHeadContent
   <style>
     @page {
       size: A4 portrait;
       margin: 5mm 7mm !important;
+    }
+    html, body {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
     @media print {
       @page {
         size: A4 portrait;
         margin: 5mm 7mm !important;
       }
-      body {
+      html, body {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
         margin: 0 !important;
         padding: 0 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
+      .cert-wrapper {
+        max-height: none !important;
+        overflow: visible !important;
+      }
       .dossier-page {
-        page-break-before: always !important;
-        break-before: page !important;
         page-break-after: always !important;
         break-after: page !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        max-height: 282mm !important;
-        overflow: hidden !important;
         box-sizing: border-box !important;
+        max-height: none !important;
+        overflow: visible !important;
       }
-      .dossier-page:first-child {
-        page-break-before: avoid !important;
-        break-before: avoid !important;
+      .dossier-page:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
       }
       .dossier-divider {
         display: none !important;
@@ -3053,9 +3160,19 @@ class ReportGenerator {
 
     final headStart = certWord.indexOf('<head>');
     final headEnd = certWord.indexOf('</head>');
-    String headContent = '';
+    String certHeadContent = '';
     if (headStart != -1 && headEnd != -1) {
-      headContent = certWord.substring(headStart + 6, headEnd);
+      certHeadContent = certWord.substring(headStart + 6, headEnd);
+    }
+
+    String testHeadContent = '';
+    if (records.isNotEmpty) {
+      final sampleWord = generateWordHtml([records.first], records.first.testName, moduleName, base64Logo: base64Logo, adminRules: adminRules, loggedInUser: loggedInUser);
+      final testHeadStart = sampleWord.indexOf('<head>');
+      final testHeadEnd = sampleWord.indexOf('</head>');
+      if (testHeadStart != -1 && testHeadEnd != -1) {
+        testHeadContent = sampleWord.substring(testHeadStart + 6, testHeadEnd);
+      }
     }
 
     final sections = <String>[];
@@ -3115,7 +3232,8 @@ class ReportGenerator {
 <head>
   <meta charset="utf-8">
   <title>$title</title>
-  $headContent
+  $testHeadContent
+  $certHeadContent
 </head>
 <body>
 ''');
@@ -3160,9 +3278,11 @@ class ReportGenerator {
     final refList = scopedRecords.map((r) => r.referenceNo.trim()).where((s) => s.isNotEmpty).map((s) => formatReportRefNumber(s)).toSet().toList();
     final String reportRefNo = refList.isNotEmpty ? refList.first : 'REF 1';
 
-    final inspectorName = loggedInUser.trim().isNotEmpty
-        ? loggedInUser.trim()
-        : (scopedRecords.isNotEmpty && scopedRecords.first.operators.isNotEmpty ? scopedRecords.first.operators : 'user name');
+    final inspectorName = _resolveTechnicianName(
+      loggedInUser: loggedInUser,
+      records: scopedRecords,
+      adminRules: adminRules,
+    );
     final supervisorName = (adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
     final managerName = (adminRules['manager_name'] as String? ?? 'Acting QC & Engineering Manager').trim();
 
@@ -3180,7 +3300,6 @@ class ReportGenerator {
 
     final bool is762M80 = cleanCaliber.toUpperCase().contains('M80') || cleanCaliber.contains('7.62');
     final bool is9mm = cleanCaliber.contains('9x19') || cleanCaliber.contains('9mm');
-    final bool isBlank = cleanCaliber.contains('Blank') || cleanCaliber.contains('M200') || cleanCaliber.contains('M82');
 
     final String defWpReq = is762M80 ? 'No. of Leaks ≤ 3 Leaks' : (is9mm ? 'No. of Leaks ≤ 6 Leaks' : 'No. of Leaks ≤ 6 Leaks');
     final String defExtReq = is762M80 ? 'Min Force ≥ 265 N (NATO STANAG 2310)' : (is9mm ? 'Min Force ≥ 200 N' : 'Min Force ≥ 200 N');
@@ -3386,22 +3505,29 @@ class ReportGenerator {
         if (resList.isNotEmpty) return resList.join('');
       }
 
-      if (rec != null) {
-        final p1 = rec.epvatMeanPressure.isNotEmpty ? rec.epvatMeanPressure : '';
-        final p2 = rec.epvatP2MeanPressure.isNotEmpty ? rec.epvatP2MeanPressure : '';
-        final parts = <String>[];
-        if (p1.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>');
-        if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
-        if (rec.velMean.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Velocity: <span style="font-weight: normal;">${rec.velMean} m/s</span></div>');
-        if (parts.isNotEmpty) return parts.join('');
-      } else if (epvVars['p1_mean_$temp'] != null && epvVars['p1_mean_$temp']! > 0) {
+      if (epvVars['p1_mean_$temp'] != null && epvVars['p1_mean_$temp']! > 0) {
         final p1 = epvVars['p1_mean_$temp']!.toStringAsFixed(1);
         final p2 = (epvVars['p2_mean_$temp'] ?? 0.0) > 0 ? epvVars['p2_mean_$temp']!.toStringAsFixed(1) : '';
+        final vel = (epvVars['vel_mean_$temp'] ?? 0.0) > 0 ? epvVars['vel_mean_$temp']!.toStringAsFixed(1) : '';
         final parts = <String>[
           '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>'
         ];
         if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
+        if (vel.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Velocity: <span style="font-weight: normal;">$vel m/s</span></div>');
         return parts.join('');
+      }
+
+      if (rec != null) {
+        final isSingleTempMatch = rec.cartridgeTemp.contains(temp) && !rec.cartridgeTemp.contains(';');
+        if (isSingleTempMatch || temp == '21') {
+          final p1 = rec.epvatMeanPressure.isNotEmpty ? rec.epvatMeanPressure : '';
+          final p2 = rec.epvatP2MeanPressure.isNotEmpty ? rec.epvatP2MeanPressure : '';
+          final parts = <String>[];
+          if (p1.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>');
+          if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
+          if (rec.velMean.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Velocity: <span style="font-weight: normal;">${rec.velMean} m/s</span></div>');
+          if (parts.isNotEmpty) return parts.join('');
+        }
       }
 
       return '<span style="color: #94a3b8; font-style: italic;">-</span>';
@@ -3511,14 +3637,13 @@ class ReportGenerator {
             : (calConfig['terminal_sample'] as String? ?? '10 rounds'));
     final String termResult;
     if (termRec != null) {
-      final parts = <String>[];
-      if (termRec.terminalHoleDiameter.isNotEmpty) parts.add('Hole: ${termRec.terminalHoleDiameter} mm');
-      if (termRec.terminalSteelPenetration.isNotEmpty) parts.add('Steel Pen: ${termRec.terminalSteelPenetration} mm');
-      if (termRec.terminalAluminumPenetration.isNotEmpty) parts.add('Alum Pen: ${termRec.terminalAluminumPenetration} mm');
-      if (termRec.terminalVelocity.isNotEmpty) parts.add('Vel: ${termRec.terminalVelocity} m/s');
-      termResult = parts.isNotEmpty
-          ? parts.map((p) => '<div style="font-weight: bold; color: #1e293b;">$p</div>').join('')
-          : 'Complete penetration';
+      final holeList = termRec.terminalHoleDiameter.split(',');
+      final steelList = termRec.terminalSteelPenetration.split(',');
+      final alumList = termRec.terminalAluminumPenetration.split(',');
+      final hasFail = holeList.any((s) => s.trim().toLowerCase() == 'no') ||
+          steelList.any((s) => s.trim().toLowerCase() == 'no') ||
+          alumList.any((s) => s.trim().toLowerCase() == 'no');
+      termResult = hasFail ? 'Not Comply' : 'Comply';
     } else {
       termResult = '-';
     }
@@ -3572,7 +3697,31 @@ class ReportGenerator {
             ? 'The inspected lot fails to satisfy quality and ballistic specification criteria. The lot is officially REJECTED and quarantined.'
             : 'The lot meets all quality and ballistic specifications and is approved for final packaging and shipment.');
 
-    final String now = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    String completedDateStr = '';
+    final completedLots = adminRules['completed_lots'];
+    if (completedLots is Map) {
+      final k1 = '${cleanCaliber.trim()}|${cleanLotNo.trim()}';
+      final k2 = cleanLotNo.trim();
+      final compInfo = completedLots[k1] ?? completedLots[k2];
+      if (compInfo is Map && compInfo['completedAt'] != null) {
+        try {
+          final dt = DateTime.parse(compInfo['completedAt'].toString());
+          completedDateStr = DateFormat('dd/MM/yyyy').format(dt);
+        } catch (_) {}
+      } else if (compInfo is String) {
+        try {
+          final dt = DateTime.parse(compInfo);
+          completedDateStr = DateFormat('dd/MM/yyyy').format(dt);
+        } catch (_) {}
+      }
+    }
+    if (completedDateStr.isEmpty) {
+      if (scopedRecords.isNotEmpty) {
+        completedDateStr = scopedRecords.last.timestamp.split(' ').first;
+      } else {
+        completedDateStr = DateFormat('dd/MM/yyyy').format(DateTime.now());
+      }
+    }
     final totalQty = scopedRecords.fold<int>(0, (sum, r) => sum + r.produced + (r.isRetest ? r.retestProduced : 0));
     final logoHtml = base64Logo.isNotEmpty
         ? '<img src="data:image/png;base64,$base64Logo" width="140" height="85" style="object-fit: contain;" />'
@@ -3583,14 +3732,14 @@ class ReportGenerator {
     final managerSig = _findSignatureBase64(managerName, adminRules);
 
     final inspectorSigImg = inspectorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 44px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
-        : '<div style="height: 34px;"></div>';
+        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 32px; max-width: 130px; object-fit: contain; display: block; margin: 0 auto 2px auto;" />'
+        : '<div style="height: 24px;"></div>';
     final supervisorSigImg = supervisorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 44px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
-        : '<div style="height: 34px;"></div>';
+        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 32px; max-width: 130px; object-fit: contain; display: block; margin: 0 auto 2px auto;" />'
+        : '<div style="height: 24px;"></div>';
     final managerSigImg = managerSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(managerSig)}" style="max-height: 44px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
-        : '<div style="height: 34px;"></div>';
+        ? '<img src="${_formatImageSrc(managerSig)}" style="max-height: 32px; max-width: 130px; object-fit: contain; display: block; margin: 0 auto 2px auto;" />'
+        : '<div style="height: 24px;"></div>';
 
     String formatStatusBadge(String status) {
       final s = status.trim().isEmpty ? '-' : status.trim();
@@ -3644,11 +3793,10 @@ class ReportGenerator {
     ''');
 
     // 4. EPVAT test (+21 °C, +52 °C, -54 °C)
-    final coldLabel = epvRec54?.cartridgeTemp.isNotEmpty == true ? epvRec54!.cartridgeTemp : '-54 &deg;C';
     certRowsBuffer.writeln('''
           <tr>
             <td rowspan="3" style="color: #0284c7; font-weight: bold; vertical-align: middle; text-align: center; width: 13%;">EPVAT test</td>
-            <td class="temp-cell" style="width: 7%;">+21 &deg;C</td>
+            <td class="temp-cell" style="width: 7%;">21 &deg;C</td>
             <td rowspan="3" style="text-align: center; vertical-align: middle;">$epvSample21</td>
             <td style="text-align: center;">$epvResult21</td>
             <td style="text-align: center;">$epvReq21</td>
@@ -3663,7 +3811,7 @@ class ReportGenerator {
             <td style="text-align: center;">$epvRemarks52</td>
           </tr>
           <tr>
-            <td class="temp-cell" style="width: 7%;">$coldLabel</td>
+            <td class="temp-cell" style="width: 7%;">-54 &deg;C</td>
             <td style="text-align: center;">$epvResult54</td>
             <td style="text-align: center;">$epvReq54</td>
             <td class="status-cell">${formatStatusBadge(epvStatus54)}</td>
@@ -3729,18 +3877,18 @@ class ReportGenerator {
   <style>
     @page {
       size: A4 portrait;
-      margin: 5mm 7mm !important;
+      margin: 4mm 6mm !important;
     }
     @media print {
       @page {
         size: A4 portrait;
-        margin: 5mm 7mm !important;
+        margin: 4mm 6mm !important;
       }
       html, body {
         margin: 0 !important;
         padding: 0 !important;
         height: 100% !important;
-        max-height: 282mm !important;
+        max-height: 278mm !important;
         overflow: hidden !important;
         page-break-after: avoid !important;
         break-after: avoid !important;
@@ -3750,7 +3898,7 @@ class ReportGenerator {
       .cert-wrapper {
         width: 100% !important;
         max-width: 100% !important;
-        max-height: 280mm !important;
+        max-height: 276mm !important;
         overflow: hidden !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -3761,7 +3909,7 @@ class ReportGenerator {
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       margin: 0;
-      padding: 8px 12px;
+      padding: 4px 8px;
       color: #0f172a;
       background-color: #ffffff;
       -webkit-print-color-adjust: exact;
@@ -3775,9 +3923,9 @@ class ReportGenerator {
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      border-bottom: 2px solid #e2e8f0;
-      margin-bottom: 12px;
-      padding-bottom: 6px;
+      border-bottom: 1.5px solid #e2e8f0;
+      margin-bottom: 6px;
+      padding-bottom: 3px;
     }
     .header-table td {
       border: none !important;
@@ -3786,25 +3934,25 @@ class ReportGenerator {
     }
     .title-section {
       text-align: center;
-      margin-top: 4px;
-      margin-bottom: 10px;
+      margin-top: 2px;
+      margin-bottom: 6px;
     }
     .title-section h1 {
-      font-size: 15pt;
+      font-size: 13pt;
       font-weight: 800;
       color: #000000;
       letter-spacing: 0.5px;
-      margin: 0 0 3px 0;
+      margin: 0 0 2px 0;
       text-transform: uppercase;
     }
     .caliber-subtitle {
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: bold;
       color: #000000;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .lot-subtitle {
-      font-size: 10.5pt;
+      font-size: 9.5pt;
       font-weight: bold;
       color: #000000;
     }
@@ -3812,28 +3960,28 @@ class ReportGenerator {
       height: 2px;
       width: 100%;
       background-color: #06b6d4;
-      margin-top: 6px;
-      margin-bottom: 8px;
+      margin-top: 3px;
+      margin-bottom: 5px;
     }
     .section-title {
-      font-size: 10.5pt;
+      font-size: 9pt;
       font-weight: 700;
       color: #0f172a;
       border-bottom: 1.5px solid #cbd5e1;
-      padding-bottom: 2px;
-      margin-top: 6px;
-      margin-bottom: 5px;
+      padding-bottom: 1px;
+      margin-top: 4px;
+      margin-bottom: 3px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
     }
     .details-table {
       width: 100%;
-      margin-bottom: 8px;
+      margin-bottom: 5px;
       border-collapse: collapse;
     }
     .details-table td {
-      padding: 1.5px 4px;
-      font-size: 8.5pt;
+      padding: 1px 3px;
+      font-size: 7.5pt;
       border: none !important;
       background: none !important;
     }
@@ -3841,8 +3989,8 @@ class ReportGenerator {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid #cbd5e1;
-      margin-bottom: 10px;
-      font-size: 8pt;
+      margin-bottom: 6px;
+      font-size: 7pt;
     }
     .results-table th {
       background-color: #f1f5f9;
@@ -3850,56 +3998,56 @@ class ReportGenerator {
       font-weight: bold;
       text-align: center;
       vertical-align: middle;
-      padding: 3.5px 4px;
+      padding: 2.5px 3px;
       border: 1px solid #cbd5e1;
-      font-size: 7.5pt;
+      font-size: 6.8pt;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.2px;
     }
     .results-table td {
       border: 1px solid #cbd5e1;
-      padding: 2.5px 5px;
+      padding: 1.5px 3px;
       vertical-align: middle;
-      font-size: 7.5pt;
-      line-height: 1.25;
+      font-size: 6.8pt;
+      line-height: 1.15;
     }
     .test-name-cell {
       color: #0284c7;
       font-weight: bold;
-      font-size: 8.5pt;
+      font-size: 7.5pt;
       text-align: center;
     }
     .temp-cell {
       color: #0284c7;
       font-weight: bold;
       text-align: center;
-      font-size: 8pt;
+      font-size: 7pt;
     }
     .status-cell {
       text-align: center;
       vertical-align: middle;
     }
     .sentence-box {
-      padding: 6px 10px;
+      padding: 4px 8px;
       border: 1px solid #cbd5e1;
-      border-radius: 5px;
+      border-radius: 4px;
       background-color: #f8fafc;
-      font-size: 9.5pt;
+      font-size: 8pt;
       font-weight: bold;
-      line-height: 1.35;
+      line-height: 1.25;
       color: #1e293b;
       white-space: pre-wrap;
     }
     .signatures-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 8px;
+      margin-top: 4px;
       border: none;
       page-break-inside: avoid;
     }
     .ref-footer {
-      margin-top: 8px;
-      font-size: 8.5pt;
+      margin-top: 4px;
+      font-size: 7.5pt;
       font-weight: bold;
       color: #475569;
       text-align: left;
@@ -3912,14 +4060,14 @@ class ReportGenerator {
     <table class="header-table">
       <tr>
         <td style="width: 65%; text-align: left; vertical-align: middle;">
-          <div style="font-size: 16px; font-weight: bold; color: #0f172a; font-family: Arial, sans-serif;">Oman Munition Production Company</div>
-          <div style="font-size: 12px; font-weight: bold; color: #475569; margin-top: 2px;">QC And Engineering Department</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 1px;">Ballistic Lab Section</div>
-          <div style="font-size: 11px; font-style: italic; color: #64748b; margin-top: 1px; margin-bottom: 4px;">Final Lot Acceptance Certificate</div>
+          <div style="font-size: 14px; font-weight: bold; color: #0f172a; font-family: Arial, sans-serif;">Oman Munition Production Company</div>
+          <div style="font-size: 11px; font-weight: bold; color: #475569; margin-top: 1px;">QC And Engineering Department</div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 1px;">Ballistic Lab Section</div>
+          <div style="font-size: 10px; font-style: italic; color: #64748b; margin-top: 1px; margin-bottom: 2px;">Final Lot Acceptance Certificate</div>
         </td>
         <td style="width: 35%; text-align: right; vertical-align: middle;">
           $logoHtml
-          <div style="margin-top: 6px; font-size: 11px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">$reportRefNo</div>
+          <div style="margin-top: 4px; font-size: 10px; font-weight: bold; color: #0284c7; letter-spacing: 0.5px;">$reportRefNo</div>
         </td>
       </tr>
     </table>
@@ -3937,22 +4085,10 @@ class ReportGenerator {
       <h3 class="section-title">Details</h3>
       <table class="details-table">
         <tr>
-          <td style="width: 25%; font-weight: bold; color: #475569;">Inspector Name:</td>
-          <td>$inspectorName</td>
-          <td style="width: 25%; font-weight: bold; color: #475569;">Date:</td>
-          <td>$now</td>
-        </tr>
-        <tr>
-          <td style="font-weight: bold; color: #475569;">Caliber Specification:</td>
-          <td style="font-weight: bold; color: #0f172a;">${cleanCaliber.toUpperCase()}</td>
-          <td style="font-weight: bold; color: #475569;">Lot Number:</td>
-          <td style="font-weight: bold; color: #0f172a;">Lot N.O: $cleanLotNo</td>
-        </tr>
-        <tr>
-          <td style="font-weight: bold; color: #475569;">Total Quantity Tested:</td>
-          <td>$totalQty rounds</td>
-          <td style="font-weight: bold; color: #475569;">Overall Status:</td>
-          <td style="font-weight: bold; color: $overallStatusColor;">$overallStatusText</td>
+          <td style="width: 25%; font-weight: bold; color: #475569;">Date Completed:</td>
+          <td style="font-weight: bold; color: #0f172a;">$completedDateStr</td>
+          <td style="width: 25%; font-weight: bold; color: #475569;">Total Quantity Tested:</td>
+          <td style="font-weight: bold; color: #0f172a;">$totalQty rounds</td>
         </tr>
       </table>
     </div>

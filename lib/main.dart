@@ -1975,6 +1975,7 @@ class _MainShellState extends State<MainShell> {
   // Final Lot Acceptance Certificate Template customization controllers
   bool _isCertTemplateCardExpanded = false;
   String _certSelectedCaliber = '5.56x45 SS109';
+  final TextEditingController _certTechnicianNameCtrl = TextEditingController();
   final TextEditingController _certSupervisorNameCtrl = TextEditingController();
   final TextEditingController _certManagerNameCtrl = TextEditingController();
   final TextEditingController _certWpSampleCtrl = TextEditingController();
@@ -2181,6 +2182,7 @@ class _MainShellState extends State<MainShell> {
     _ruleNewFormulaLimitCtrl.dispose();
     _ruleNewFormulaUnitCtrl.dispose();
 
+    _certTechnicianNameCtrl.dispose();
     _certSupervisorNameCtrl.dispose();
     _certManagerNameCtrl.dispose();
     _certWpSampleCtrl.dispose();
@@ -2355,6 +2357,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _loadCertTemplateForCaliber(String caliber) {
+    _certTechnicianNameCtrl.text = (_adminRules['technician_name'] ?? _adminRules['cert_technician_name'] ?? '').toString().trim();
     _certSupervisorNameCtrl.text = (_adminRules['supervisor_name'] as String? ?? 'Action Ballistic & Engineering Supervisor').trim();
     _certManagerNameCtrl.text = (_adminRules['manager_name'] as String? ?? 'Acting QC & Engineering Manager').trim();
 
@@ -2411,6 +2414,8 @@ class _MainShellState extends State<MainShell> {
   }
 
   Future<void> _handleSaveCertTemplate() async {
+    _adminRules['technician_name'] = _certTechnicianNameCtrl.text.trim();
+    _adminRules['cert_technician_name'] = _certTechnicianNameCtrl.text.trim();
     _adminRules['supervisor_name'] = _certSupervisorNameCtrl.text.trim();
     _adminRules['manager_name'] = _certManagerNameCtrl.text.trim();
 
@@ -8465,7 +8470,7 @@ class _MainShellState extends State<MainShell> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             const Text('Quick Tokens:', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 10.5)),
-                            ...['P1_MEAN', 'P1_SD', 'P1_MAX_INDIVIDUAL', 'P2_MEAN', 'P2_SD', 'VEL_MEAN', 'VEL_SD'].map((token) => InkWell(
+                            ...['P1_MEAN', 'P1_SD', 'P1_MAX_INDIVIDUAL', 'P2_MEAN', 'P2_SD', 'VEL_MEAN', 'VEL_SD', 'SAMPLE_SIZE', 'SQRT()'].map((token) => InkWell(
                               onTap: () {
                                 final current = _ruleNewFormulaExprCtrl.text;
                                 if (current.isEmpty) {
@@ -10834,6 +10839,14 @@ class _MainShellState extends State<MainShell> {
                     children: [
                       Expanded(
                         child: _buildCertInputField(
+                          label: 'Designated Technician (Column 1 / Report Signatures)',
+                          controller: _certTechnicianNameCtrl,
+                          hintText: 'Ballistics Technician',
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        child: _buildCertInputField(
                           label: 'Approved By (Column 2 Title / Name)',
                           controller: _certSupervisorNameCtrl,
                           hintText: 'Action Ballistic & Engineering Supervisor',
@@ -10850,7 +10863,7 @@ class _MainShellState extends State<MainShell> {
                     ],
                   ),
                   const Text(
-                    '* Note: Column 1 ("Prepared By / Ballistic Technician") automatically resolves to the technician who logged the test entries.',
+                    '* Note: The Designated Technician Name configured here will be locked and shown on the "Technician (for Report Signature)" field across all test logs, reports, and certificates.',
                     style: TextStyle(fontSize: 11.0, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
                   ),
                 ],
@@ -11473,6 +11486,7 @@ class _MainShellState extends State<MainShell> {
         records: _activeRecords,
         onOpenFolder: _openFolder,
         isAdmin: _currentUserRole == UserRole.admin,
+        userRole: _currentUserRole?.name ?? 'operator',
         canEditRecords: _hasPermission('can_edit_records'),
         canDeleteRecords: _hasPermission('can_delete_records'),
         canExportReports: _hasPermission('can_export_reports'),

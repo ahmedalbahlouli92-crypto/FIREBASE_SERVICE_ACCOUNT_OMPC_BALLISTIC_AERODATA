@@ -19,24 +19,19 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v2.0.1';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.1 (Lot Acceptance Workflow, Complete Dossier & Ballistic Suite Update)';
-const BODY = `## OMPC Ballistic AeroData v2.0.1
+const TAG_NAME = 'v2.0.2';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.2 (Primer Sensitivity Auto-Extraction & Ballistic Data Engine Update)';
+const BODY = `## OMPC Ballistic AeroData v2.0.2
 
-Comprehensive ballistic quality and lot acceptance update:
+Production ballistic intelligence suite update with drop table parsing and multi-platform enhancements:
 
 ### Key Enhancements & Features:
-1. **Two-Part Lot Acceptance Workflow**: Partitioned Lot Acceptance into Part 1 (Lots Under Process) and Part 2 (Completed Lots). Admin configures mandatory tests per caliber (e.g., SS109: Waterproof, Extraction Force, Accuracy, EPVAT, Function, Residual Stress, Primer Sensitivity, Terminal Effect). Technician reviews all logged tests and finalizes with "Mark Completed" to transfer the lot and certificate to Completed Lots.
-2. **Complete Lot Acceptance Dossier Compilation**: Generating Complete Dossier (PDF / Word) compiles all individual test reports for that lot together with the Acceptance Certificate into a unified multi-page dossier.
-3. **Natural Alphanumeric Lot Sorting**: Lot Acceptance Inspection Logs are ordered strictly by Lot Number.
-4. **Chronological Day Sorting for Daily Inspections**: Date parsing updated with day-first priority (\`dd/MM/yyyy\`, \`d/M/yyyy\`) to ensure historical accuracy.
-5. **Signatures Standardization**: Individual test reports feature strictly the Technical Signature only. Final Lot Acceptance Certificate retains all 3 signatures (Technical, Supervisor, Manager).
-6. **1-Page per Test Word (.doc) Exports**: Word reports and certificates format to fit 1 page per test sheet with standardized margins.
-7. **Split-Screen Desktop Responsiveness**: Responsive wrapping and layout breakpoints prevent header and action button scattering when resizing windows.
-8. **Ballistic Machine Results Extractor Fix & Table Parsing**: Resolves data URI base64 decoding issues, FlateDecode decompression, and parses ballistic machine summary tables (Mean, Max, Min, Range, SD, Round Table, shot counts, lot number, and operators).
-9. **Caliber M80 Weapon Classification**: Caliber M80 correctly classifies machine guns under Machine Gun, showing no registered rifle models.
-10. **Native Spellcheck**: Enabled red squiggly spellcheck underline and correction suggestions across text input and notes fields.
-11. **Multi-Platform Deployment**: Synchronized across Firebase Web, Windows Desktop portable package, and Android release APK.
+1. **Primer Sensitivity Total Rounds Summation**: Auto-extractor calculates Total Rounds (Sample Size) directly as the sum of all Fires ($F$) and Misfires ($M$) across all rows in the drop table ($\sum F + \sum M = 150$).
+2. **Primer Misfires Extractor**: Drop table total misfire count ($88$) correctly extracts and maps to Total Misfires (M).
+3. **Advanced Drop Table Layout Support**: Handles row-by-row, markdown/pipe-delimited (\`| H | F | M | PI |\`), vertical stream quadruplets, and column-oriented PDF streams.
+4. **CMap TrueType Stream Decompression Fix**: Resolved \`/ToUnicode\` stream extraction and character code normalization for ballistic report PDFs.
+5. **Consecutive Multi-line Metric Pairing**: Flawlessly pairs metric names and statistical values across separate lines (\`HM \\n 205.5\`, \`SD \\n 30.1\`, \`Alpha3 \\n -6.331\`, \`Emax \\n 0.390\`, \`Emin \\n 0.159\`).
+6. **Multi-Platform Deployment**: Synchronized across Web (GitHub Pages / Firebase Hosting), Windows Desktop (.exe standalone & 1-click Setup installer), and Android APK.
 `;
 
 function request(options, postData) {
@@ -146,7 +141,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v2.0.1.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.1.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v2.0.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.2.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

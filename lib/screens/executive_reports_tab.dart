@@ -1284,13 +1284,13 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     buffer.writeln('');
 
     buffer.writeln('SECTION 1: BALLISTIC INSPECTIONS');
-    buffer.writeln('Module,Timestamp,Inspector,Test Name,Caliber,Lot/Hopper,Quantity Tested,Defects,Status,Remarks');
+    buffer.writeln('Module,Timestamp,Test Name,Caliber,Lot/Hopper,Quantity Tested,Defects,Status,Remarks');
     for (var entry in inspections) {
       final m = entry['module'] as String;
       final r = entry['record'] as BallisticRecord;
       final lotOrHopper = m == 'Daily Test' ? r.hopperNo : r.lotNo;
       final cleanNotes = ReportGenerator.cleanRemarks(r.notes);
-      buffer.writeln('"$m","${r.timestamp}","${r.operators}","${r.testName}","${r.caliber}","$lotOrHopper","${r.produced}","${r.defects}","${r.status}","${cleanNotes.replaceAll('"', '""')}"');
+      buffer.writeln('"$m","${r.timestamp}","${r.testName}","${r.caliber}","$lotOrHopper","${r.produced}","${r.defects}","${r.status}","${cleanNotes.replaceAll('"', '""')}"');
     }
     buffer.writeln('');
 
@@ -1437,7 +1437,6 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             <thead>
               <tr>
                 <th>Date &amp; Time</th>
-                <th>Inspector</th>
                 <th>Test Name</th>
                 <th>$idColName</th>
                 <th>Qty Tested</th>
@@ -1452,7 +1451,6 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                 final idVal = idColName.contains('Hopper') ? (r.hopperNo.isNotEmpty ? r.hopperNo : r.lotNo) : r.lotNo;
                 return '<tr>'
                     '<td>${r.testTime.isNotEmpty ? r.testTime : r.timestamp}</td>'
-                    '<td>${r.operators}</td>'
                     '<td><strong>${r.testName}</strong></td>'
                     '<td>$idVal</td>'
                     '<td>${r.produced} rds</td>'
@@ -1577,6 +1575,47 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         <div class="kpi-val" style="color: #8b5cf6;">${equipmentIssues.length}</div>
       </div>
     </div>
+
+    <!-- Ballistic Inspection Logs Table (as shown on executive dashboard, excluding Inspector) -->
+    <h3 style="margin-top: 24px; margin-bottom: 12px; color: #0f172a; font-size: 15px;">Ballistic Inspection Logs (${inspections.length} Records)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Date &amp; Time</th>
+          <th>Test Name</th>
+          <th>Caliber</th>
+          <th>Lot / Hopper</th>
+          <th>Qty Tested</th>
+          <th>Defects</th>
+          <th>Status</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${inspections.isEmpty ? '<tr><td colspan="9" style="text-align: center; color: #64748b;">No inspection records registered for this period.</td></tr>' : inspections.map((entry) {
+          final m = entry['module'] as String;
+          final r = entry['record'] as BallisticRecord;
+          final lotOrHopper = m == 'Daily Test' ? (r.hopperNo.isNotEmpty ? r.hopperNo : 'N/A') : (r.lotNo.isNotEmpty ? r.lotNo : 'N/A');
+          final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
+          final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
+          final badgeClass = isApp ? 'badge-approved' : (isRej ? 'badge-rejected' : 'badge-retest');
+          final cleanNotes = ReportGenerator.cleanRemarks(r.notes);
+          final displayTime = r.testTime.isNotEmpty ? r.testTime : r.timestamp;
+          return '<tr>'
+              '<td><strong style="color: #0284c7;">$m</strong></td>'
+              '<td>$displayTime</td>'
+              '<td><strong>${r.testName}</strong></td>'
+              '<td>${r.caliber}</td>'
+              '<td>$lotOrHopper</td>'
+              '<td>${r.produced} rds</td>'
+              '<td>${r.defects}</td>'
+              '<td><span class="$badgeClass">${r.status.toUpperCase()}</span></td>'
+              '<td>${cleanNotes.isNotEmpty ? cleanNotes : '-'}</td>'
+              '</tr>';
+        }).join('')}
+      </tbody>
+    </table>
   </div>
 
   <!-- MODULE 1: LOT ACCEPTANCE TEST (EACH CALIBER ALONE WITH CHARTS) -->
@@ -1757,7 +1796,6 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             <th>Test Name</th>
             <th>Sample</th>
             <th>Status</th>
-            <th>Inspector</th>
             <th>Remarks</th>
           </tr>
         </thead>
@@ -1768,7 +1806,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
             final badgeColor = isApp ? '#10b981' : (isRej ? '#ef4444' : '#f59e0b');
             final recDate = r.timestamp.split(' ').first;
-            final recNotes = r.notes.isNotEmpty ? r.notes : '-';
+            final recNotes = ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-';
             return '<tr>'
                 '<td>$recDate</td>'
                 '<td><strong>${r.lotNumber}</strong></td>'
@@ -1776,7 +1814,6 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                 '<td>${r.testName}</td>'
                 '<td>${r.produced}</td>'
                 '<td><span style="color: $badgeColor; font-weight: bold;">${r.status}</span></td>'
-                '<td>${r.operators.isNotEmpty ? r.operators : (r.technicianName.isNotEmpty ? r.technicianName : "QA Inspector")}</td>'
                 '<td>$recNotes</td>'
                 '</tr>';
           }).join('')}
