@@ -4723,12 +4723,30 @@ class _EntryTabState extends State<EntryTab> {
     });
 
     if (count > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Auto-extracted $count parameters for $_testName!'),
-          backgroundColor: const Color(0xFF10B981),
-        ),
-      );
+      if (extractionRes.detectedTest == 'Primer Sensitivity Test' && widget.currentModule == 'Lot Acceptance Test') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Auto-extracted $count parameters from Primer Sensitivity report! Note: Primer sensitivity tests are recorded in the "Component Test" module. Switch tabs above to view or submit this component lot.'),
+            backgroundColor: const Color(0xFF0284C7),
+            duration: const Duration(seconds: 7),
+          ),
+        );
+      } else if (extractionRes.detectedTest.isNotEmpty && extractionRes.detectedTest != 'Primer Sensitivity Test' && extractionRes.detectedTest != 'Propellant Test' && widget.currentModule == 'Component Test') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Auto-extracted $count parameters from ${extractionRes.detectedTest} report! Note: Ballistic tests are recorded in the "Lot Acceptance Test" module. Switch tabs above to view or submit this ballistic lot.'),
+            backgroundColor: const Color(0xFF0284C7),
+            duration: const Duration(seconds: 7),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Auto-extracted $count parameters for $_testName!'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
