@@ -237,6 +237,16 @@ ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_mean_5
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_sd_52 NUMERIC DEFAULT NULL;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_mean_54 NUMERIC DEFAULT NULL;
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS action_time_sd_54 NUMERIC DEFAULT NULL;
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS t4_mean TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS t4_max TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS t4_min TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS t4_range TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS t4_sd TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS t4_rounds TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_alpha3 TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_emax TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_emin TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_drop_table TEXT DEFAULT '';
 
 -- 2. Create the 20 Dedicated Tables across Daily Report, Lot Acceptance, and Component Test
 DO $$
@@ -409,6 +419,16 @@ BEGIN
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_defects INTEGER DEFAULT 0;
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_metrics TEXT DEFAULT '{}';
             ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_mean TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_max TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_min TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_range TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_sd TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_rounds TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_alpha3 TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_emax TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_emin TEXT DEFAULT '';
+            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_drop_table TEXT DEFAULT '';
 
             -- Enable Row Level Security (RLS)
             ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;

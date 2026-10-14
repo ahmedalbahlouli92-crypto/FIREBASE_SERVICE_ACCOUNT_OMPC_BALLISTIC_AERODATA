@@ -130,6 +130,14 @@ class BallisticRecord {
   final String actionTimeSD;
   final String actionTimeRounds;
 
+  // Fields for EPVAT t4 Time
+  final String t4Mean;
+  final String t4Min;
+  final String t4Max;
+  final String t4Range;
+  final String t4SD;
+  final String t4Rounds;
+
   // Fields for Primer Sensitivity Test
   final String primerDropHeights;
   final String primerFireResults;
@@ -137,6 +145,10 @@ class BallisticRecord {
   final String primerSD;
   final String primerAllFireH;
   final String primerNoFireH;
+  final String primerAlpha3;
+  final String primerEmax;
+  final String primerEmin;
+  final String primerDropTable;
 
   // Selected defect items detail string
   final String functionDefectDetails;
@@ -268,6 +280,16 @@ class BallisticRecord {
     this.primerSD = '',
     this.primerAllFireH = '',
     this.primerNoFireH = '',
+    this.t4Mean = '',
+    this.t4Min = '',
+    this.t4Max = '',
+    this.t4Range = '',
+    this.t4SD = '',
+    this.t4Rounds = '',
+    this.primerAlpha3 = '',
+    this.primerEmax = '',
+    this.primerEmin = '',
+    this.primerDropTable = '',
     this.gp6Serial = '',
     this.userRole = 'Operator',
     this.module = 'Lot Acceptance Test',
@@ -438,8 +460,18 @@ class BallisticRecord {
     final cleanRetestMetrics = retestMetrics.replaceAll('"', '""').replaceAll('\n', ' ');
     final cleanRefNo = referenceNo.replaceAll('"', '""').replaceAll(',', ' ');
     final cleanTechName = technicianName.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanT4Mean = t4Mean.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanT4Min = t4Min.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanT4Max = t4Max.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanT4Range = t4Range.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanT4SD = t4SD.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanT4Rounds = t4Rounds.replaceAll('"', '""');
+    final cleanPrimerA3 = primerAlpha3.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPrimerEmax = primerEmax.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPrimerEmin = primerEmin.replaceAll('"', '""').replaceAll(',', ' ');
+    final cleanPrimerDropTable = primerDropTable.replaceAll('"', '""');
 
-    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge","$cleanIsRetest","$cleanRetestTs","$cleanRetestOp","$cleanRetestNotes","$cleanRetestStatus","$cleanOrigStatus","$cleanId",$retestProduced,$retestDefects,"$cleanRetestMetrics","$cleanRefNo","$cleanTechName"\n';
+    return '"$timestamp","$cleanOps","$cleanShiftTime","$caliber","$cleanLot",$produced,$defects,"$cleanNotes","$status","$cleanTestName","$cleanPressure","$cleanViscosity","$cleanTestTime","$cleanLoc",$mouthSlow,$mouthFast,$primerSlow,$primerFast,"$cleanHopper","$cleanBox","$cleanRequirement","$cleanBarrelSN","$cleanBarrelType","$cleanVelDist","$cleanMeanX","$cleanMaxX","$cleanMinX","$cleanRangeX","$cleanSDX","$cleanMeanY","$cleanMaxY","$cleanMinY","$cleanRangeY","$cleanSDY","$cleanVelMean","$cleanVelMin","$cleanVelMax","$cleanVelRange","$cleanVelSD","$cleanMeanRadius","$cleanExtType","$cleanExtRounds","$cleanCartTemp","$cleanEpvType","$cleanEpvUnit","$cleanEpvRounds","$cleanMeanP","$cleanMaxP","$cleanMinP","$cleanRangeP","$cleanSDP","$cleanP2Mean","$cleanP2Max","$cleanP2Min","$cleanP2Range","$cleanP2SD","$cleanP2Rounds","$cleanVelRounds",$neckSlow,$neckFast,$shoulderSlow,$shoulderFast,$bodySlow,$bodyFast,$headSlow,$headFast,"$cleanRoomTemp","$cleanSensor1","$cleanSensor2","$cleanCyclicWeapon","$cleanCyclicAmmo","$cleanCyclicVal","$cleanCyclicMin","$cleanCyclicMax","$cleanTermHole","$cleanTermSteel","$cleanTermAlum","$cleanTermVel",$functionLevel1,$functionLevel2,$functionLevel3,$functionLevel4,"$cleanAttName","$cleanAttBase64","$cleanFuncDefects","$cleanActionTimeMean","$cleanActionTimeMin","$cleanActionTimeMax","$cleanActionTimeRange","$cleanActionTimeSD","$cleanActionTimeRounds","$cleanPrimerHeights","$cleanPrimerResults","$cleanPrimerHbar","$cleanPrimerSD","$cleanPrimerAllFire","$cleanPrimerNoFire","$cleanGp6Serial","$cleanUserRole","$cleanModule","$cleanAccLargestDist","$cleanPrimerLot","$cleanPrimerSupplier","$cleanPrimerDepth","$cleanPropSupplier","$cleanPropCode","$cleanPropLot","$cleanPropCharge","$cleanIsRetest","$cleanRetestTs","$cleanRetestOp","$cleanRetestNotes","$cleanRetestStatus","$cleanOrigStatus","$cleanId",$retestProduced,$retestDefects,"$cleanRetestMetrics","$cleanRefNo","$cleanTechName","$cleanT4Mean","$cleanT4Min","$cleanT4Max","$cleanT4Range","$cleanT4SD","$cleanT4Rounds","$cleanPrimerA3","$cleanPrimerEmax","$cleanPrimerEmin","$cleanPrimerDropTable"\n';
   }
 
   // Helper getter to clean commas from shift time
@@ -615,6 +647,16 @@ class BallisticRecord {
     final String retestMetrics = fields.length > 117 ? fields[117].replaceAll('"', '').trim() : '';
     final String referenceNo = fields.length > 118 ? fields[118].replaceAll('"', '').trim() : '';
     final String technicianName = fields.length > 119 ? fields[119].replaceAll('"', '').trim() : '';
+    final String t4Mean = fields.length > 120 ? fields[120].replaceAll('"', '').trim() : '';
+    final String t4Min = fields.length > 121 ? fields[121].replaceAll('"', '').trim() : '';
+    final String t4Max = fields.length > 122 ? fields[122].replaceAll('"', '').trim() : '';
+    final String t4Range = fields.length > 123 ? fields[123].replaceAll('"', '').trim() : '';
+    final String t4SD = fields.length > 124 ? fields[124].replaceAll('"', '').trim() : '';
+    final String t4Rounds = fields.length > 125 ? fields[125].replaceAll('"', '').trim() : '';
+    final String primerAlpha3 = fields.length > 126 ? fields[126].replaceAll('"', '').trim() : '';
+    final String primerEmax = fields.length > 127 ? fields[127].replaceAll('"', '').trim() : '';
+    final String primerEmin = fields.length > 128 ? fields[128].replaceAll('"', '').trim() : '';
+    final String primerDropTable = fields.length > 129 ? fields[129].replaceAll('"', '').trim() : '';
  
     return BallisticRecord(
       id: rowId.isNotEmpty ? rowId : null,
@@ -737,6 +779,16 @@ class BallisticRecord {
       retestMetrics: retestMetrics,
       referenceNo: referenceNo,
       technicianName: technicianName,
+      t4Mean: t4Mean,
+      t4Min: t4Min,
+      t4Max: t4Max,
+      t4Range: t4Range,
+      t4SD: t4SD,
+      t4Rounds: t4Rounds,
+      primerAlpha3: primerAlpha3,
+      primerEmax: primerEmax,
+      primerEmin: primerEmin,
+      primerDropTable: primerDropTable,
     );
   }
 
@@ -840,6 +892,16 @@ class BallisticRecord {
       'primer_sd': primerSD,
       'primer_all_fire_h': primerAllFireH,
       'primer_no_fire_h': primerNoFireH,
+      'primer_alpha3': primerAlpha3,
+      'primer_emax': primerEmax,
+      'primer_emin': primerEmin,
+      'primer_drop_table': primerDropTable,
+      't4_mean': t4Mean,
+      't4_min': t4Min,
+      't4_max': t4Max,
+      't4_range': t4Range,
+      't4_sd': t4SD,
+      't4_rounds': t4Rounds,
       'gp6_serial': gp6Serial,
       'user_role': userRole,
       'module': module,
@@ -1040,6 +1102,16 @@ class BallisticRecord {
       primerSD: toStr(map['primer_sd']),
       primerAllFireH: toStr(map['primer_all_fire_h']),
       primerNoFireH: toStr(map['primer_no_fire_h']),
+      primerAlpha3: toStr(map['primer_alpha3']),
+      primerEmax: toStr(map['primer_emax']),
+      primerEmin: toStr(map['primer_emin']),
+      primerDropTable: toStr(map['primer_drop_table']),
+      t4Mean: toStr(map['t4_mean']),
+      t4Min: toStr(map['t4_min']),
+      t4Max: toStr(map['t4_max']),
+      t4Range: toStr(map['t4_range']),
+      t4SD: toStr(map['t4_sd']),
+      t4Rounds: toStr(map['t4_rounds']),
       gp6Serial: toStr(map['gp6_serial']),
       userRole: toStr(map['user_role']).isEmpty ? 'Operator' : toStr(map['user_role']),
       module: toStr(map['module']).isEmpty ? 'Lot Acceptance Test' : toStr(map['module']),
@@ -1165,6 +1237,16 @@ class BallisticRecord {
     String? primerSD,
     String? primerAllFireH,
     String? primerNoFireH,
+    String? primerAlpha3,
+    String? primerEmax,
+    String? primerEmin,
+    String? primerDropTable,
+    String? t4Mean,
+    String? t4Min,
+    String? t4Max,
+    String? t4Range,
+    String? t4SD,
+    String? t4Rounds,
     String? gp6Serial,
     String? userRole,
     String? module,
@@ -1287,6 +1369,16 @@ class BallisticRecord {
       primerSD: primerSD ?? this.primerSD,
       primerAllFireH: primerAllFireH ?? this.primerAllFireH,
       primerNoFireH: primerNoFireH ?? this.primerNoFireH,
+      primerAlpha3: primerAlpha3 ?? this.primerAlpha3,
+      primerEmax: primerEmax ?? this.primerEmax,
+      primerEmin: primerEmin ?? this.primerEmin,
+      primerDropTable: primerDropTable ?? this.primerDropTable,
+      t4Mean: t4Mean ?? this.t4Mean,
+      t4Min: t4Min ?? this.t4Min,
+      t4Max: t4Max ?? this.t4Max,
+      t4Range: t4Range ?? this.t4Range,
+      t4SD: t4SD ?? this.t4SD,
+      t4Rounds: t4Rounds ?? this.t4Rounds,
       gp6Serial: gp6Serial ?? this.gp6Serial,
       userRole: userRole ?? this.userRole,
       module: module ?? this.module,

@@ -19,19 +19,19 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v2.0.2';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.2 (Primer Sensitivity Auto-Extraction & Ballistic Data Engine Update)';
-const BODY = `## OMPC Ballistic AeroData v2.0.2
+const TAG_NAME = 'v2.0.3';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.3 (EPVAT Matrix Display, Extraction Force & Primer Sensitivity Upgrades)';
+const BODY = `## OMPC Ballistic AeroData v2.0.3
 
-Production ballistic intelligence suite update with drop table parsing and multi-platform enhancements:
+Major ballistic intelligence suite update with upgraded test specifications, dynamic velocity distance formatting, and laboratory report alignment:
 
 ### Key Enhancements & Features:
-1. **Primer Sensitivity Total Rounds Summation**: Auto-extractor calculates Total Rounds (Sample Size) directly as the sum of all Fires ($F$) and Misfires ($M$) across all rows in the drop table ($\sum F + \sum M = 150$).
-2. **Primer Misfires Extractor**: Drop table total misfire count ($88$) correctly extracts and maps to Total Misfires (M).
-3. **Advanced Drop Table Layout Support**: Handles row-by-row, markdown/pipe-delimited (\`| H | F | M | PI |\`), vertical stream quadruplets, and column-oriented PDF streams.
-4. **CMap TrueType Stream Decompression Fix**: Resolved \`/ToUnicode\` stream extraction and character code normalization for ballistic report PDFs.
-5. **Consecutive Multi-line Metric Pairing**: Flawlessly pairs metric names and statistical values across separate lines (\`HM \\n 205.5\`, \`SD \\n 30.1\`, \`Alpha3 \\n -6.331\`, \`Emax \\n 0.390\`, \`Emin \\n 0.159\`).
-6. **Multi-Platform Deployment**: Synchronized across Web (GitHub Pages / Firebase Hosting), Windows Desktop (.exe standalone & 1-click Setup installer), and Android APK.
+1. **EPVAT 5x5 Transposed Specification Matrix Table**: Transposed specification matrix layout displaying parameters horizontally (\`P max_1\`, \`P max_2\`, \`t4 [ms]\`, \`ta [ms]\`, \`V[distance]_2\`) and statistics vertically (\`MEAN\`, \`MAX\`, \`MIN\`, \`RANGE\`, \`STDEV\`) across Overall and Individual modes.
+2. **Dynamic Velocity Distance Field**: The velocity distance in the header dynamically reflects the configured test distance (e.g., \`V24.00_2 [m/s]\` or customized value).
+3. **Extraction Force Test Specification Alignment**: Full laboratory report alignment featuring a 2-column 20-sample calculation table (\`Calculation\`, \`Extraction Force (N)\`, \`Overall result\` with dynamic \`PASS\` / \`FAIL\` badges based on caliber limit), paired with standard summary statistics (\`Minimum\`, \`Maximum\`, \`Mean\`, \`SD\`, \`Units: N\`).
+4. **Primer Sensitivity Test Specification Alignment**: Comprehensive laboratory report layout with interactive Drop Table (\`H [mm]\`, \`F [Fires]\`, \`M [Misfires]\`, \`PI [Probability]\`) with automatic Total Tested & Misfire computation, accompanied by complete Statistics Table (\`HM\`, \`SD\`, \`Alpha3\`, \`Emax\`, \`Emin\`, \`HM+5SD\`, \`HM-2SD\`).
+5. **Supabase Schema Migrations**: Added all 10 new test specification columns (\`t4_mean\`, \`t4_max\`, \`t4_min\`, \`t4_range\`, \`t4_sd\`, \`t4_rounds\`, \`primer_alpha3\`, \`primer_emax\`, \`primer_emin\`, \`primer_drop_table\`) to \`ballistic_records\` and all 20 dedicated tables.
+6. **Multi-Platform Deployment**: Published synchronously across Web (Firebase Hosting / GitHub Pages), Windows Desktop (.exe standalone, portable zip, and Setup installer), and Android APK.
 `;
 
 function request(options, postData) {
@@ -141,7 +141,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v2.0.2.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.2.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v2.0.3.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.3.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

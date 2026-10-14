@@ -407,6 +407,22 @@ class TestResultExtractor {
       if (k == 'actionTimeSD') mirror['action_time_sd'] = v;
       if (k == 'action_time_sd') mirror['actionTimeSD'] = v;
 
+      if (k == 't4Mean') mirror['t4_mean'] = v;
+      if (k == 't4_mean') mirror['t4Mean'] = v;
+      if (k == 't4Max') mirror['t4_max'] = v;
+      if (k == 't4_max') mirror['t4Max'] = v;
+      if (k == 't4Min') mirror['t4_min'] = v;
+      if (k == 't4_min') mirror['t4Min'] = v;
+      if (k == 't4Range') mirror['t4_range'] = v;
+      if (k == 't4_range') mirror['t4Range'] = v;
+      if (k == 't4SD') mirror['t4_sd'] = v;
+      if (k == 't4_sd') mirror['t4SD'] = v;
+      if (k == 't4Rounds') mirror['t4_rounds'] = v;
+      if (k == 't4_rounds') mirror['t4Rounds'] = v;
+
+      if (k == 'primerDropTable') mirror['primer_drop_table'] = v;
+      if (k == 'primer_drop_table') mirror['primerDropTable'] = v;
+
       if (k == 'epvatPressureUnit') mirror['epvat_pressure_unit'] = v;
       if (k == 'epvat_pressure_unit') mirror['epvatPressureUnit'] = v;
       if (k == 'epvatSensor1') {
@@ -1171,11 +1187,13 @@ class TestResultExtractor {
       final sortedKeys = p1Shots.keys.toList()..sort();
       final p1List = sortedKeys.map((k) => p1Shots[k]!.toStringAsFixed(1)).toList();
       final p2List = sortedKeys.where((k) => p2Shots.containsKey(k)).map((k) => p2Shots[k]!.toStringAsFixed(1)).toList();
+      final t4List = sortedKeys.where((k) => t4Shots.containsKey(k)).map((k) => t4Shots[k]!.toStringAsFixed(3)).toList();
       final taList = sortedKeys.where((k) => taShots.containsKey(k)).map((k) => taShots[k]!.toStringAsFixed(3)).toList();
       final velList = sortedKeys.where((k) => velShots.containsKey(k)).map((k) => velShots[k]!.toStringAsFixed(2)).toList();
 
       f['epvatPressureRounds'] = p1List.join(', ');
       if (p2List.isNotEmpty) f['epvatP2PressureRounds'] = p2List.join(', ');
+      if (t4List.isNotEmpty) f['t4Rounds'] = t4List.join(', ');
       if (taList.isNotEmpty) f['actionTimeRounds'] = taList.join(', ');
       if (velList.isNotEmpty) f['epvatVelRounds'] = velList.join(', ');
       f['produced'] ??= sortedKeys.length.toString();
@@ -1189,31 +1207,37 @@ class TestResultExtractor {
       if (nums.length >= 5) {
         final p1 = nums[0];
         final p2 = nums[1];
+        final t4 = nums[2];
         final ta = nums[3];
         final vel = nums[4];
         if (sUpper == 'MEAN') {
           f['epvatMeanPressure'] ??= p1.toStringAsFixed(1);
           f['epvatP2MeanPressure'] ??= p2.toStringAsFixed(1);
+          f['t4Mean'] ??= t4.toStringAsFixed(3);
           f['actionTimeMean'] ??= ta.toStringAsFixed(3);
           f['velMean'] ??= vel.toStringAsFixed(2);
         } else if (sUpper == 'MAX') {
           f['epvatMaxPressure'] ??= p1.toStringAsFixed(1);
           f['epvatP2MaxPressure'] ??= p2.toStringAsFixed(1);
+          f['t4Max'] ??= t4.toStringAsFixed(3);
           f['actionTimeMax'] ??= ta.toStringAsFixed(3);
           f['velMax'] ??= vel.toStringAsFixed(2);
         } else if (sUpper == 'MIN') {
           f['epvatMinPressure'] ??= p1.toStringAsFixed(1);
           f['epvatP2MinPressure'] ??= p2.toStringAsFixed(1);
+          f['t4Min'] ??= t4.toStringAsFixed(3);
           f['actionTimeMin'] ??= ta.toStringAsFixed(3);
           f['velMin'] ??= vel.toStringAsFixed(2);
         } else if (sUpper == 'RANGE') {
           f['epvatRangePressure'] ??= p1.toStringAsFixed(1);
           f['epvatP2RangePressure'] ??= p2.toStringAsFixed(1);
+          f['t4Range'] ??= t4.toStringAsFixed(3);
           f['actionTimeRange'] ??= ta.toStringAsFixed(3);
           f['velRange'] ??= vel.toStringAsFixed(2);
         } else if (sUpper == 'STDEV' || sUpper == 'STD' || sUpper == 'SD') {
           f['epvatSDPressure'] ??= p1.toStringAsFixed(1);
           f['epvatP2SDPressure'] ??= p2.toStringAsFixed(1);
+          f['t4SD'] ??= t4.toStringAsFixed(3);
           f['actionTimeSD'] ??= ta.toStringAsFixed(3);
           f['velSD'] ??= vel.toStringAsFixed(2);
         }
@@ -1533,7 +1557,27 @@ class TestResultExtractor {
 
     final sampleMap = <int, double>{};
 
-    // 1. Extract Sample / Round forces directly from content
+    // 1. Extract BatchID and Notes directly from content if present
+    if (content.isNotEmpty) {
+      final batchMatch = RegExp(r'(?:BatchID|Batch\s*ID)\s*[:=\t\s]*\r?\n?\s*([^\r\n,;]+)', caseSensitive: false).firstMatch(content);
+      if (batchMatch != null && (f['lotNo'] == null || f['lotNo'].toString().isEmpty)) {
+        final bVal = batchMatch.group(1)!.trim();
+        if (bVal.isNotEmpty) {
+          f['lotNo'] = bVal;
+          s.add('BatchID: $bVal');
+        }
+      }
+      final notesMatch = RegExp(r'(?:Notes|Comments|Remarks)\s*[:=\t\s]*\r?\n?\s*([^\r\n]+(?:\r?\n[^\r\n]+)*?)(?=\b(?:Calculation|Units|Sample|Overall\s*result|Minimum|Maximum|\Z))', caseSensitive: false).firstMatch(content);
+      if (notesMatch != null && (f['notes'] == null || f['notes'].toString().isEmpty)) {
+        final nVal = notesMatch.group(1)!.trim();
+        if (nVal.isNotEmpty) {
+          f['notes'] = nVal;
+          s.add('Notes: $nVal');
+        }
+      }
+    }
+
+    // 2. Extract Sample / Round forces directly from content
     if (content.isNotEmpty) {
       final sampleMatches = RegExp(
         r'(?:Sample|Round|No\.?)\s*(\d+)[\s:\t,;]+([0-9]+(?:\.[0-9]+)?)',
@@ -1787,6 +1831,7 @@ class TestResultExtractor {
     int totalFires = 0;
     int totalMisfires = 0;
     bool foundDropTable = false;
+    final dropTableRows = <Map<String, dynamic>>[];
 
     if (content.isNotEmpty) {
       final lines = content.split(RegExp(r'\r?\n'));
@@ -1812,6 +1857,8 @@ class TestResultExtractor {
               totalFires += fVal;
               totalMisfires += mVal;
               foundDropTable = true;
+              final pi = (fVal + mVal > 0) ? (mVal / (fVal + mVal)) : 0.0;
+              dropTableRows.add({'h': h, 'f': fVal, 'm': mVal, 'pi': double.parse(pi.toStringAsFixed(3))});
               continue;
             }
           }
@@ -1841,12 +1888,16 @@ class TestResultExtractor {
                 totalMisfires += mVal;
                 foundDropTable = true;
                 cur += 3;
+                double? parsedPi;
                 if (cur < lines.length) {
                   final piVal = double.tryParse(lines[cur].trim());
                   if (piVal != null && piVal >= 0.0 && piVal <= 1.0) {
+                    parsedPi = piVal;
                     cur++;
                   }
                 }
+                final pi = parsedPi ?? ((fVal + mVal > 0) ? (mVal / (fVal + mVal)) : 0.0);
+                dropTableRows.add({'h': hVal, 'f': fVal, 'm': mVal, 'pi': double.parse(pi.toStringAsFixed(3))});
               } else {
                 break;
               }
@@ -1868,6 +1919,8 @@ class TestResultExtractor {
               totalFires += fVal;
               totalMisfires += mVal;
               foundDropTable = true;
+              final pi = (fVal + mVal > 0) ? (mVal / (fVal + mVal)) : 0.0;
+              dropTableRows.add({'h': h, 'f': fVal, 'm': mVal, 'pi': double.parse(pi.toStringAsFixed(3))});
             }
           }
         }
@@ -1904,6 +1957,8 @@ class TestResultExtractor {
             totalFires += fVal;
             totalMisfires += mVal;
             foundDropTable = true;
+            final pi = (fVal + mVal > 0) ? (mVal / (fVal + mVal)) : 0.0;
+            dropTableRows.add({'h': h, 'f': fVal, 'm': mVal, 'pi': double.parse(pi.toStringAsFixed(3))});
           }
         }
       }
@@ -1921,7 +1976,25 @@ class TestResultExtractor {
       f['primerTotalMisfires'] = '$totalMisfires';
       f['misfires'] = '$totalMisfires';
       f['defects'] = '$totalMisfires';
+      if (dropTableRows.isNotEmpty) {
+        f['primerDropTable'] = jsonEncode(dropTableRows);
+      }
       s.add('Total Rounds (Sample Size): $totalTested (Fires: $totalFires, Misfires: $totalMisfires)');
+    }
+
+    // Extract Comments/Notes if present
+    if (content.isNotEmpty) {
+      final commMatch = RegExp(
+        r'(?:Comments|Notes|Remarks)\s*[:=\t\s]*\r?\n?\s*([^\r\n]+(?:\r?\n[^\r\n]+)*?)(?=\b(?:HM\s*\+\s*5\s*SD|HM\s*-\s*2\s*SD|Approved|Rejected|H\b|\Z))',
+        caseSensitive: false,
+      ).firstMatch(content);
+      if (commMatch != null && (f['notes'] == null || f['notes'].toString().isEmpty)) {
+        final cVal = commMatch.group(1)!.trim();
+        if (cVal.isNotEmpty) {
+          f['notes'] = cVal;
+          s.add('Comments: $cVal');
+        }
+      }
     }
 
     // 3. Statistical Metrics: HM, SD, HM+5SD, HM-2SD, Alpha3, Emax, Emin

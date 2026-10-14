@@ -52,6 +52,31 @@ class SignedDecimalInputFormatter extends TextInputFormatter {
   }
 }
 
+/// Model representing a single row in the Primer Sensitivity drop table (H, F, M, PI)
+class _PrimerDropTableRow {
+  final TextEditingController h;
+  final TextEditingController f;
+  final TextEditingController m;
+  final TextEditingController pi;
+
+  _PrimerDropTableRow({
+    required String hVal,
+    required String fVal,
+    required String mVal,
+    required String piVal,
+  })  : h = TextEditingController(text: hVal),
+        f = TextEditingController(text: fVal),
+        m = TextEditingController(text: mVal),
+        pi = TextEditingController(text: piVal);
+
+  void dispose() {
+    h.dispose();
+    f.dispose();
+    m.dispose();
+    pi.dispose();
+  }
+}
+
 class EntryTab extends StatefulWidget {
   final String currentModule;
   final Future<void> Function(BallisticRecord) onSubmit;
@@ -408,6 +433,22 @@ class _EntryTabState extends State<EntryTab> {
   final _actionTimeSDController = TextEditingController();
   final List<TextEditingController> _actionTimeRoundsControllers = [];
 
+  // t4 state controllers for EPVAT
+  final _t4MeanController = TextEditingController();
+  final _t4MaxController = TextEditingController();
+  final _t4MinController = TextEditingController();
+  final _t4RangeController = TextEditingController();
+  final _t4SDController = TextEditingController();
+  final List<TextEditingController> _t4RoundsControllers = [];
+  final Map<String, List<TextEditingController>> _overallEpvatT4RoundsControllers = {};
+
+  String get _formattedVelocityDistance {
+    final raw = _distanceController.text.trim();
+    final d = double.tryParse(raw);
+    if (d != null) return d.toStringAsFixed(2);
+    return raw.isNotEmpty ? raw : '24.00';
+  }
+
   // Primer Sensitivity Test state
   final _primerDropWeightController = TextEditingController(text: '55');
   final List<TextEditingController> _primerDropHeightControllers = [];
@@ -417,6 +458,10 @@ class _EntryTabState extends State<EntryTab> {
   final _primerHbarPlus5SController = TextEditingController();
   final _primerHbarMinus2SController = TextEditingController();
   final _primerMisfiresCountController = TextEditingController(text: '0');
+  final _primerAlpha3Controller = TextEditingController();
+  final _primerEmaxController = TextEditingController();
+  final _primerEminController = TextEditingController();
+  final List<_PrimerDropTableRow> _primerDropTableRows = [];
 
   // Local storage auto-save state
   final StorageService _storageService = StorageService();
@@ -2517,6 +2562,24 @@ class _EntryTabState extends State<EntryTab> {
     _actionTimeMinController.clear();
     _actionTimeRangeController.clear();
     _actionTimeSDController.clear();
+
+    _t4MeanController.clear();
+    _t4MaxController.clear();
+    _t4MinController.clear();
+    _t4RangeController.clear();
+    _t4SDController.clear();
+    for (var c in _t4RoundsControllers) {
+      c.clear();
+    }
+
+    _primerAlpha3Controller.clear();
+    _primerEmaxController.clear();
+    _primerEminController.clear();
+    for (var row in _primerDropTableRows) {
+      row.f.clear();
+      row.m.clear();
+      row.pi.clear();
+    }
   }
 
   String get _draftScope => '${widget.currentModule}_$_testName';
@@ -2657,6 +2720,16 @@ class _EntryTabState extends State<EntryTab> {
         'actionTimeRange': _actionTimeRangeController.text,
         'actionTimeSD': _actionTimeSDController.text,
         'actionTimeRounds': _actionTimeRoundsControllers.map((c) => c.text).toList(),
+        't4Mean': _t4MeanController.text,
+        't4Max': _t4MaxController.text,
+        't4Min': _t4MinController.text,
+        't4Range': _t4RangeController.text,
+        't4SD': _t4SDController.text,
+        't4Rounds': _t4RoundsControllers.map((c) => c.text).toList(),
+        'primerAlpha3': _primerAlpha3Controller.text,
+        'primerEmax': _primerEmaxController.text,
+        'primerEmin': _primerEminController.text,
+        'primerDropTable': _serializePrimerDropTable(),
         'primerDropWeight': _primerDropWeightController.text,
         'primerDropHeights': _primerDropHeightControllers.map((c) => c.text).toList(),
         'primerResults': _primerFireResults,
@@ -2685,6 +2758,7 @@ class _EntryTabState extends State<EntryTab> {
         overallRoundsData[t] = {
           'vel': (_overallEpvatVelRoundsControllers[t] ?? []).map((c) => c.text).toList(),
           'action_time': (_overallEpvatActionTimeRoundsControllers[t] ?? []).map((c) => c.text).toList(),
+          't4': (_overallEpvatT4RoundsControllers[t] ?? []).map((c) => c.text).toList(),
           'p1': (_overallEpvatP1RoundsControllers[t] ?? []).map((c) => c.text).toList(),
           'p2': (_overallEpvatP2RoundsControllers[t] ?? []).map((c) => c.text).toList(),
         };
@@ -2810,6 +2884,26 @@ class _EntryTabState extends State<EntryTab> {
           }
         }
 
+        if (draft['t4Mean'] != null) _t4MeanController.text = draft['t4Mean'];
+        if (draft['t4Max'] != null) _t4MaxController.text = draft['t4Max'];
+        if (draft['t4Min'] != null) _t4MinController.text = draft['t4Min'];
+        if (draft['t4Range'] != null) _t4RangeController.text = draft['t4Range'];
+        if (draft['t4SD'] != null) _t4SDController.text = draft['t4SD'];
+        if (draft['t4Rounds'] is List && (draft['t4Rounds'] as List).isNotEmpty) {
+          final list = draft['t4Rounds'] as List;
+          _t4RoundsControllers.clear();
+          for (var item in list) {
+            _t4RoundsControllers.add(TextEditingController(text: item.toString()));
+          }
+        }
+
+        if (draft['primerAlpha3'] != null) _primerAlpha3Controller.text = draft['primerAlpha3'];
+        if (draft['primerEmax'] != null) _primerEmaxController.text = draft['primerEmax'];
+        if (draft['primerEmin'] != null) _primerEminController.text = draft['primerEmin'];
+        if (draft['primerDropTable'] != null && draft['primerDropTable'].toString().isNotEmpty) {
+          _loadPrimerDropTableFromJson(draft['primerDropTable'].toString());
+        }
+
         if (draft['overallEpvat'] is Map) {
           final ov = draft['overallEpvat'] as Map;
           ov.forEach((t, metricsMap) {
@@ -2889,8 +2983,15 @@ class _EntryTabState extends State<EntryTab> {
     // Initialize test date and time locked to opening time (allows manual edit or defaults to submission time)
     _autoGenerateTime(force: true);
     
-    // Initialize one round controller for Extraction Force Test
-    _extractionRoundsControllers.add(TextEditingController());
+    // Initialize 20 round controllers for Extraction Force Test
+    for (int i = 0; i < 20; i++) {
+      final ctrl = TextEditingController();
+      ctrl.addListener(() {
+        _recalculateExtractionStats();
+        _scheduleAutoSave();
+      });
+      _extractionRoundsControllers.add(ctrl);
+    }
     if (_testName == 'Waterproof Test') {
       if (_caliber.contains('M82') || _caliber.contains('M200')) {
         _pressureController.text = '0.14';
@@ -2913,11 +3014,12 @@ class _EntryTabState extends State<EntryTab> {
 
     _updateDefaultDistance();
 
-    // Initialize round controllers for EPVAT Test & Action Time
+    // Initialize round controllers for EPVAT Test & Action Time & t4
     _epvatRoundsControllers.add(TextEditingController());
     _epvatP2RoundsControllers.add(TextEditingController());
     _epvatVelRoundsControllers.add(TextEditingController());
     _actionTimeRoundsControllers.add(TextEditingController());
+    _t4RoundsControllers.add(TextEditingController());
 
     _epvatMaxPressureController.addListener(() => _calculateRange(_epvatMaxPressureController, _epvatMinPressureController, _epvatRangePressureController));
     _epvatMinPressureController.addListener(() => _calculateRange(_epvatMaxPressureController, _epvatMinPressureController, _epvatRangePressureController));
@@ -2928,16 +3030,19 @@ class _EntryTabState extends State<EntryTab> {
     _actionTimeMaxController.addListener(() => _calculateRange(_actionTimeMaxController, _actionTimeMinController, _actionTimeRangeController));
     _actionTimeMinController.addListener(() => _calculateRange(_actionTimeMaxController, _actionTimeMinController, _actionTimeRangeController));
 
-    // Initialize Primer Sensitivity Test round
+    _t4MaxController.addListener(() => _calculateRange(_t4MaxController, _t4MinController, _t4RangeController));
+    _t4MinController.addListener(() => _calculateRange(_t4MaxController, _t4MinController, _t4RangeController));
+
+    // Initialize Primer Sensitivity Test round & drop table
     _primerDropHeightControllers.add(TextEditingController());
     _primerFireResults.add('Fire');
     _primerHbarController.addListener(_onManualPrimerHbarOrSDChanged);
     _primerSDController.addListener(_onManualPrimerHbarOrSDChanged);
-
+    _initPrimerDropTable();
 
     // Initialize overall EPVAT controllers map for three temperatures (+21, +52, -54)
     final temps = ['+21', '+52', '-54'];
-    final metrics = ['vel', 'action_time', 'p1', 'p2'];
+    final metrics = ['vel', 'action_time', 'p1', 'p2', 't4'];
     final subMetrics = ['mean', 'max', 'min', 'range', 'sd'];
     for (var t in temps) {
       _overallEpvatControllers[t] = {};
@@ -2964,6 +3069,7 @@ class _EntryTabState extends State<EntryTab> {
     for (var t in temps) {
       _overallEpvatVelRoundsControllers[t] = List.generate(50, (_) => TextEditingController());
       _overallEpvatActionTimeRoundsControllers[t] = List.generate(50, (_) => TextEditingController());
+      _overallEpvatT4RoundsControllers[t] = List.generate(50, (_) => TextEditingController());
       _overallEpvatP1RoundsControllers[t] = List.generate(50, (_) => TextEditingController());
       _overallEpvatP2RoundsControllers[t] = List.generate(50, (_) => TextEditingController());
       
@@ -2973,6 +3079,10 @@ class _EntryTabState extends State<EntryTab> {
           _scheduleAutoSave();
         });
         _overallEpvatActionTimeRoundsControllers[t]![i].addListener(() {
+          _calculateOverallTempStats(t);
+          _scheduleAutoSave();
+        });
+        _overallEpvatT4RoundsControllers[t]![i].addListener(() {
           _calculateOverallTempStats(t);
           _scheduleAutoSave();
         });
@@ -3229,6 +3339,21 @@ class _EntryTabState extends State<EntryTab> {
     for (var ctrl in _actionTimeRoundsControllers) {
       ctrl.dispose();
     }
+
+    _t4MeanController.dispose();
+    _t4MaxController.dispose();
+    _t4MinController.dispose();
+    _t4RangeController.dispose();
+    _t4SDController.dispose();
+    for (var ctrl in _t4RoundsControllers) {
+      ctrl.dispose();
+    }
+    _overallEpvatT4RoundsControllers.forEach((_, list) {
+      for (var ctrl in list) {
+        ctrl.dispose();
+      }
+    });
+
     _primerDropWeightController.dispose();
     for (var ctrl in _primerDropHeightControllers) {
       ctrl.dispose();
@@ -3240,6 +3365,12 @@ class _EntryTabState extends State<EntryTab> {
     _primerHbarPlus5SController.dispose();
     _primerHbarMinus2SController.dispose();
     _primerMisfiresCountController.dispose();
+    _primerAlpha3Controller.dispose();
+    _primerEmaxController.dispose();
+    _primerEminController.dispose();
+    for (var row in _primerDropTableRows) {
+      row.dispose();
+    }
     _overallEpvatActionTimeRoundsControllers.forEach((_, list) {
       for (var ctrl in list) {
         ctrl.dispose();
@@ -3316,8 +3447,81 @@ class _EntryTabState extends State<EntryTab> {
     
     calcMetrics(_overallEpvatVelRoundsControllers[temp] ?? [], 'vel');
     calcMetrics(_overallEpvatActionTimeRoundsControllers[temp] ?? [], 'action_time');
+    calcMetrics(_overallEpvatT4RoundsControllers[temp] ?? [], 't4');
     calcMetrics(_overallEpvatP1RoundsControllers[temp] ?? [], 'p1');
     calcMetrics(_overallEpvatP2RoundsControllers[temp] ?? [], 'p2');
+  }
+
+  _PrimerDropTableRow _createPrimerDropRow(String h, String f, String m, String pi) {
+    final row = _PrimerDropTableRow(hVal: h, fVal: f, mVal: m, piVal: pi);
+    row.f.addListener(_recalculatePrimerDropStats);
+    row.m.addListener(_recalculatePrimerDropStats);
+    return row;
+  }
+
+  void _initPrimerDropTable() {
+    if (_primerDropTableRows.isNotEmpty) return;
+    final defaultHeights = ['130.0', '155.0', '180.0', '205.0', '230.0', '255.0'];
+    for (final h in defaultHeights) {
+      _primerDropTableRows.add(_createPrimerDropRow(h, '', '', ''));
+    }
+  }
+
+  void _recalculatePrimerDropStats() {
+    int totalF = 0;
+    int totalM = 0;
+    for (final row in _primerDropTableRows) {
+      final f = int.tryParse(row.f.text.trim()) ?? 0;
+      final m = int.tryParse(row.m.text.trim()) ?? 0;
+      totalF += f;
+      totalM += m;
+      if (f + m > 0) {
+        final piVal = m / (f + m);
+        row.pi.text = piVal.toStringAsFixed(3);
+      } else if (row.f.text.trim().isNotEmpty || row.m.text.trim().isNotEmpty) {
+        row.pi.text = '0.000';
+      }
+    }
+    if (totalF > 0 || totalM > 0) {
+      _producedController.text = '${totalF + totalM}';
+      _primerMisfiresCountController.text = '$totalM';
+      _defectsController.text = '$totalM';
+    }
+  }
+
+  String _serializePrimerDropTable() {
+    final list = _primerDropTableRows.map((r) => {
+      'h': double.tryParse(r.h.text.trim()) ?? r.h.text.trim(),
+      'f': int.tryParse(r.f.text.trim()) ?? r.f.text.trim(),
+      'm': int.tryParse(r.m.text.trim()) ?? r.m.text.trim(),
+      'pi': double.tryParse(r.pi.text.trim()) ?? r.pi.text.trim(),
+    }).toList();
+    return jsonEncode(list);
+  }
+
+  void _loadPrimerDropTableFromJson(String jsonStr) {
+    if (jsonStr.isEmpty) return;
+    try {
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is List && decoded.isNotEmpty) {
+        for (var r in _primerDropTableRows) {
+          r.dispose();
+        }
+        _primerDropTableRows.clear();
+        for (final item in decoded) {
+          if (item is Map) {
+            final hVal = item['h']?.toString() ?? '';
+            final fVal = item['f']?.toString() ?? '';
+            final mVal = item['m']?.toString() ?? '';
+            final piVal = item['pi']?.toString() ?? '';
+            _primerDropTableRows.add(_createPrimerDropRow(hVal, fVal, mVal, piVal));
+          }
+        }
+        _recalculatePrimerDropStats();
+      }
+    } catch (e) {
+      debugPrint('Error loading primer drop table: $e');
+    }
   }
 
   BallisticRecord _buildCurrentRecord({String refNo = 'PREVIEW'}) {
@@ -3424,6 +3628,12 @@ class _EntryTabState extends State<EntryTab> {
         final baseActRange = _overallEpvatControllers[baselineTemp]!['action_time_range']?.text.trim() ?? '';
         final baseActSD = _overallEpvatControllers[baselineTemp]!['action_time_sd']?.text.trim() ?? '';
 
+        final baseT4Mean = _overallEpvatControllers[baselineTemp]!['t4_mean']?.text.trim() ?? '';
+        final baseT4Max = _overallEpvatControllers[baselineTemp]!['t4_max']?.text.trim() ?? '';
+        final baseT4Min = _overallEpvatControllers[baselineTemp]!['t4_min']?.text.trim() ?? '';
+        final baseT4Range = _overallEpvatControllers[baselineTemp]!['t4_range']?.text.trim() ?? '';
+        final baseT4SD = _overallEpvatControllers[baselineTemp]!['t4_sd']?.text.trim() ?? '';
+
         final customNotes = _notesController.text.trim();
         final tempsStr = tempDetails.isNotEmpty ? 'Temps: ${tempDetails.join('; ')}' : '';
         final combinedNotes = customNotes.isNotEmpty
@@ -3490,10 +3700,26 @@ class _EntryTabState extends State<EntryTab> {
           return '';
         }
 
+        String getOverallT4Rounds(String t) {
+          final rds = (_overallEpvatT4RoundsControllers[t] ?? []).map((c) => c.text.trim()).where((s) => s.isNotEmpty).join(',');
+          if (rds.isNotEmpty) return rds;
+          if (tempsToSave.length > 1) {
+            final m = _overallEpvatControllers[t]?['t4_mean']?.text.trim() ?? '';
+            final max = _overallEpvatControllers[t]?['t4_max']?.text.trim() ?? '';
+            final min = _overallEpvatControllers[t]?['t4_min']?.text.trim() ?? '';
+            final sd = _overallEpvatControllers[t]?['t4_sd']?.text.trim() ?? '';
+            if (m.isNotEmpty || max.isNotEmpty || min.isNotEmpty || sd.isNotEmpty) {
+              return 'STAT:T4=$m,Max=$max,Min=$min,SD=$sd';
+            }
+          }
+          return '';
+        }
+
         final p1Joined = tempsToSave.map(getOverallP1Rounds).join(';');
         final p2Joined = tempsToSave.map(getOverallP2Rounds).join(';');
         final velJoined = tempsToSave.map(getOverallVelRounds).join(';');
         final actJoined = tempsToSave.map(getOverallActRounds).join(';');
+        final t4Joined = tempsToSave.map(getOverallT4Rounds).join(';');
 
         final record = BallisticRecord(
           module: widget.currentModule,
@@ -3535,6 +3761,11 @@ class _EntryTabState extends State<EntryTab> {
           actionTimeMin: baseActMin,
           actionTimeRange: baseActRange,
           actionTimeSD: baseActSD,
+          t4Mean: baseT4Mean,
+          t4Max: baseT4Max,
+          t4Min: baseT4Min,
+          t4Range: baseT4Range,
+          t4SD: baseT4SD,
           cartridgeTemp: tempsToSave.map((t) => '$t°C').join(', '),
           epvatPressureType: 'Overall',
           epvatPressureUnit: _epvatPressureUnit,
@@ -3552,6 +3783,7 @@ class _EntryTabState extends State<EntryTab> {
           epvatP2PressureRounds: p2Joined.replaceAll(';', '').trim().isNotEmpty ? p2Joined : '',
           epvatVelRounds: velJoined.replaceAll(';', '').trim().isNotEmpty ? velJoined : '',
           actionTimeRounds: actJoined.replaceAll(';', '').trim().isNotEmpty ? actJoined : '',
+          t4Rounds: t4Joined.replaceAll(';', '').trim().isNotEmpty ? t4Joined : '',
           roomTemp: '',
           neckSlow: 0,
           neckFast: 0,
@@ -3756,12 +3988,22 @@ class _EntryTabState extends State<EntryTab> {
           actionTimeRange: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _actionTimeRangeController.text.trim() : '',
           actionTimeSD: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _actionTimeSDController.text.trim() : '',
           actionTimeRounds: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _actionTimeRoundsControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',') : '',
+          t4Mean: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _t4MeanController.text.trim() : '',
+          t4Max: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _t4MaxController.text.trim() : '',
+          t4Min: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _t4MinController.text.trim() : '',
+          t4Range: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _t4RangeController.text.trim() : '',
+          t4SD: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _t4SDController.text.trim() : '',
+          t4Rounds: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _t4RoundsControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',') : '',
           primerDropHeights: _testName == 'Primer Sensitivity Test' ? _primerDropHeightControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',') : '',
           primerFireResults: _testName == 'Primer Sensitivity Test' ? _primerFireResults.take(_primerDropHeightControllers.length).join(',') : '',
           primerHbar: _testName == 'Primer Sensitivity Test' ? _primerHbarController.text.trim() : '',
           primerSD: _testName == 'Primer Sensitivity Test' ? _primerSDController.text.trim() : '',
           primerAllFireH: _testName == 'Primer Sensitivity Test' ? _primerHbarPlus5SController.text.trim() : '',
           primerNoFireH: _testName == 'Primer Sensitivity Test' ? _primerHbarMinus2SController.text.trim() : '',
+          primerAlpha3: _testName == 'Primer Sensitivity Test' ? _primerAlpha3Controller.text.trim() : '',
+          primerEmax: _testName == 'Primer Sensitivity Test' ? _primerEmaxController.text.trim() : '',
+          primerEmin: _testName == 'Primer Sensitivity Test' ? _primerEminController.text.trim() : '',
+          primerDropTable: _testName == 'Primer Sensitivity Test' ? _serializePrimerDropTable() : '',
           epvatSensor1: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _epvatSensor1Controller.text.trim() : '',
           epvatSensor2: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _epvatSensor2Controller.text.trim() : '',
           cyclicRateWeaponType: _testName == 'Firing Rate Cycle Test'
@@ -4233,10 +4475,23 @@ class _EntryTabState extends State<EntryTab> {
             _extractionForceType = 'Individual';
             _extractionRoundsControllers.clear();
             for (final f in forcesList) {
-              _extractionRoundsControllers.add(TextEditingController(text: f));
+              final ctrl = TextEditingController(text: f);
+              ctrl.addListener(() {
+                _recalculateExtractionStats();
+                _scheduleAutoSave();
+              });
+              _extractionRoundsControllers.add(ctrl);
             }
-            _extractionRoundsControllers.add(TextEditingController());
+            while (_extractionRoundsControllers.length < 20) {
+              final ctrl = TextEditingController();
+              ctrl.addListener(() {
+                _recalculateExtractionStats();
+                _scheduleAutoSave();
+              });
+              _extractionRoundsControllers.add(ctrl);
+            }
             _producedController.text = '${forcesList.length}';
+            _recalculateExtractionStats();
             count++;
           }
         }
@@ -4443,6 +4698,32 @@ class _EntryTabState extends State<EntryTab> {
         count++;
       }
 
+      final t4MeanVal = getVal('t4_mean', 't4Mean');
+      if (t4MeanVal != null) {
+        _t4MeanController.text = t4MeanVal.toString();
+        count++;
+      }
+      final t4MaxVal = getVal('t4_max', 't4Max');
+      if (t4MaxVal != null) {
+        _t4MaxController.text = t4MaxVal.toString();
+        count++;
+      }
+      final t4MinVal = getVal('t4_min', 't4Min');
+      if (t4MinVal != null) {
+        _t4MinController.text = t4MinVal.toString();
+        count++;
+      }
+      final t4RangeVal = getVal('t4_range', 't4Range');
+      if (t4RangeVal != null) {
+        _t4RangeController.text = t4RangeVal.toString();
+        count++;
+      }
+      final t4SdVal = getVal('t4_sd', 't4SD');
+      if (t4SdVal != null) {
+        _t4SDController.text = t4SdVal.toString();
+        count++;
+      }
+
       final sensor1 = getVal('epvat_sensor1', 'epvatSensor1', 'transducer1', 'transducer_1')?.toString().trim();
       if (sensor1 != null && sensor1.isNotEmpty) {
         _epvatSensor1Controller.text = sensor1;
@@ -4512,6 +4793,12 @@ class _EntryTabState extends State<EntryTab> {
           if (actMin != null) tempCtrlMap['action_time_min']?.text = actMin.toString();
           if (actSd != null) tempCtrlMap['action_time_sd']?.text = actSd.toString();
           if (actRange != null) tempCtrlMap['action_time_range']?.text = actRange.toString();
+
+          if (t4MeanVal != null) tempCtrlMap['t4_mean']?.text = t4MeanVal.toString();
+          if (t4MaxVal != null) tempCtrlMap['t4_max']?.text = t4MaxVal.toString();
+          if (t4MinVal != null) tempCtrlMap['t4_min']?.text = t4MinVal.toString();
+          if (t4SdVal != null) tempCtrlMap['t4_sd']?.text = t4SdVal.toString();
+          if (t4RangeVal != null) tempCtrlMap['t4_range']?.text = t4RangeVal.toString();
         }
 
         // Individual Rounds Population
@@ -4519,20 +4806,26 @@ class _EntryTabState extends State<EntryTab> {
         final p2RoundsRaw = getVal('epvat_p2_pressure_rounds', 'epvatP2PressureRounds')?.toString();
         final taRoundsRaw = getVal('action_time_rounds', 'actionTimeRounds')?.toString();
         final velRoundsRaw = getVal('epvat_vel_rounds', 'epvatVelRounds')?.toString();
+        final t4RoundsRaw = getVal('t4_rounds', 't4Rounds')?.toString();
 
         final p1List = p1RoundsRaw != null ? p1RoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
         final p2List = p2RoundsRaw != null ? p2RoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
         final taList = taRoundsRaw != null ? taRoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
         final velList = velRoundsRaw != null ? velRoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
+        final t4List = t4RoundsRaw != null ? t4RoundsRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
 
         if (p1List.isNotEmpty) {
           final shotCount = p1List.length;
           _syncIndividualRoundsControllers(shotCount);
+          while (_t4RoundsControllers.length < shotCount) {
+            _t4RoundsControllers.add(TextEditingController());
+          }
           for (int i = 0; i < shotCount; i++) {
             if (i < _epvatRoundsControllers.length) _epvatRoundsControllers[i].text = p1List[i];
             if (i < p2List.length && i < _epvatP2RoundsControllers.length) _epvatP2RoundsControllers[i].text = p2List[i];
             if (i < taList.length && i < _actionTimeRoundsControllers.length) _actionTimeRoundsControllers[i].text = taList[i];
             if (i < velList.length && i < _epvatVelRoundsControllers.length) _epvatVelRoundsControllers[i].text = velList[i];
+            if (i < t4List.length && i < _t4RoundsControllers.length) _t4RoundsControllers[i].text = t4List[i];
           }
 
           _epvatOverallRoundCount[currentTemp] = shotCount;
@@ -4542,6 +4835,7 @@ class _EntryTabState extends State<EntryTab> {
           final p2CtrlList = _overallEpvatP2RoundsControllers[currentTemp];
           final taCtrlList = _overallEpvatActionTimeRoundsControllers[currentTemp];
           final velCtrlList = _overallEpvatVelRoundsControllers[currentTemp];
+          final t4CtrlList = _overallEpvatT4RoundsControllers[currentTemp];
 
           if (p1CtrlList != null) {
             for (int i = 0; i < p1List.length && i < p1CtrlList.length; i++) {
@@ -4561,6 +4855,11 @@ class _EntryTabState extends State<EntryTab> {
           if (velCtrlList != null) {
             for (int i = 0; i < velList.length && i < velCtrlList.length; i++) {
               velCtrlList[i].text = velList[i];
+            }
+          }
+          if (t4CtrlList != null) {
+            for (int i = 0; i < t4List.length && i < t4CtrlList.length; i++) {
+              t4CtrlList[i].text = t4List[i];
             }
           }
           _producedController.text = '$shotCount';
@@ -4608,6 +4907,27 @@ class _EntryTabState extends State<EntryTab> {
             _primerHbarMinus2SController.text = (h - 2 * s).toStringAsFixed(2);
           }
         }
+      }
+
+      final dropTableRaw = getVal('primer_drop_table', 'primerDropTable');
+      if (dropTableRaw != null && dropTableRaw.toString().isNotEmpty) {
+        _loadPrimerDropTableFromJson(dropTableRaw.toString());
+        count++;
+      }
+      final alpha3 = getVal('primer_alpha3', 'primerAlpha3', 'alpha3');
+      if (alpha3 != null) {
+        _primerAlpha3Controller.text = alpha3.toString();
+        count++;
+      }
+      final emax = getVal('primer_emax', 'primerEmax', 'emax');
+      if (emax != null) {
+        _primerEmaxController.text = emax.toString();
+        count++;
+      }
+      final emin = getVal('primer_emin', 'primerEmin', 'emin');
+      if (emin != null) {
+        _primerEminController.text = emin.toString();
+        count++;
       }
 
       final primerSup = getVal('primer_supplier', 'primerSupplier', 'supplier')?.toString().trim();
@@ -4718,6 +5038,11 @@ class _EntryTabState extends State<EntryTab> {
       final opVal = getVal('operator_name', 'operators', 'operator')?.toString().trim();
       if (opVal != null && opVal.isNotEmpty) {
         _operatorsController.text = opVal;
+        count++;
+      }
+      final extractedNotes = getVal('notes', 'comments', 'comment');
+      if (extractedNotes != null && extractedNotes.toString().isNotEmpty && _notesController.text.isEmpty) {
+        _notesController.text = extractedNotes.toString();
         count++;
       }
     });
@@ -6216,168 +6541,7 @@ class _EntryTabState extends State<EntryTab> {
                   ],
 
                   if (_testName == 'Extraction Force Test') ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F6FB),
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: const Color(0xFFD6E4F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.layers_outlined, color: Color(0xFF06B6D4), size: 18.0),
-                              const SizedBox(width: 8.0),
-                              const Text(
-                                'Extraction Force Test Specifications',
-                                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold, letterSpacing: 0.3),
-                              ),
-                              const Spacer(),
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  if (_attachmentBase64.isNotEmpty && _attachmentName.toLowerCase().endsWith('.pdf')) {
-                                    _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
-                                  } else {
-                                    final res = await getAttachmentHelper().pickFileAsBase64();
-                                    if (res != null && res['name'] != null && res['data'] != null) {
-                                      setState(() {
-                                        _attachmentName = res['name']!;
-                                        _attachmentBase64 = res['data']!;
-                                      });
-                                      _autoExtractFromAttachment(res['name']!, res['data']!);
-                                    }
-                                  }
-                                },
-                                icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
-                                label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF06B6D4),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-                                  minimumSize: const Size(0, 28),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4.0),
-                          Row(
-                            children: [
-                              const Text('Result Input Mode: ', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 12.0)),
-                              const SizedBox(width: 8.0),
-                              _buildModeRadioButton('Overall', 'Overall Results'),
-                              const SizedBox(width: 12.0),
-                              _buildModeRadioButton('Individual', 'Individual Rounds'),
-                            ],
-                          ),
-                          const SizedBox(height: 4.0),
-                          if (_extractionForceType == 'Individual') ...[
-                            const Text(
-                              'Individual Round Inputs (Newtons)',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4.0),
-                            Wrap(
-                              spacing: 8.0,
-                              runSpacing: 4.0,
-                              children: List.generate(_extractionRoundsControllers.length, (index) {
-                                return SizedBox(
-                                  width: 85.0,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Round ${index + 1}',
-                                        style: const TextStyle(color: Color(0xFF475569), fontSize: 10.5, fontWeight: FontWeight.w500),
-                                      ),
-                                      const SizedBox(height: 2.0),
-                                      _buildTextField(
-                                        controller: _extractionRoundsControllers[index],
-                                        hint: '0.0',
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                        onChanged: (val) {
-                                          if (index == _extractionRoundsControllers.length - 1 && val.trim().isNotEmpty) {
-                                            setState(() {
-                                              _extractionRoundsControllers.add(TextEditingController());
-                                            });
-                                          }
-                                          _recalculateExtractionStats();
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ),
-                            const SizedBox(height: 4.0),
-                            const Text(
-                              'Auto-Calculated Statistics',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
-                            ),
-                          ] else ...[
-                            const Text(
-                              'Overall Extraction Force (Newtons)',
-                              style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11.5, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                          const SizedBox(height: 4.0),
-                          _buildFormRow([
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Min Force',
-                              isRequired: true,
-                              child: _buildTextField(
-                                controller: _minXController,
-                                hint: '0.0',
-                                readOnly: _extractionForceType == 'Individual',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Max Force',
-                              child: _buildTextField(
-                                controller: _maxXController,
-                                hint: '0.0',
-                                readOnly: _extractionForceType == 'Individual',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Mean Force',
-                              child: _buildTextField(
-                                controller: _meanXController,
-                                hint: '0.0',
-                                readOnly: _extractionForceType == 'Individual',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Force SD',
-                              child: _buildTextField(
-                                controller: _sdXController,
-                                hint: '0.0',
-                                readOnly: _extractionForceType == 'Individual',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                            _buildFlexibleField(
-                              flex: 1,
-                              label: 'Force Range',
-                              child: _buildTextField(
-                                controller: _rangeXController,
-                                hint: '0.0',
-                                readOnly: true,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                          ]),
-                        ],
-                      ),
-                    ),
+                    _buildExtractionForceCard(),
                     const SizedBox(height: 4.0),
                   ],
 
@@ -6666,44 +6830,37 @@ class _EntryTabState extends State<EntryTab> {
                                       const SizedBox(height: 6.0),
                                     ],
 
-                                    // Compact Table for Summary Statistics
-                                    _buildEpvatTableHeader(),
-                                    _buildEpvatMetricTableRow(
-                                      parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'GP6 (1) Chamber ($_epvatPressureUnit)',
-                                      meanCtrl: _overallEpvatControllers[t]!['p1_mean']!,
-                                      maxCtrl: _overallEpvatControllers[t]!['p1_max']!,
-                                      minCtrl: _overallEpvatControllers[t]!['p1_min']!,
-                                      rangeCtrl: _overallEpvatControllers[t]!['p1_range']!,
-                                      sdCtrl: _overallEpvatControllers[t]!['p1_sd']!,
-                                      readOnly: isIndividualMode,
-                                    ),
-                                    if (!_isCaliber9mm)
-                                      _buildEpvatMetricTableRow(
-                                        parameterName: 'GP6 (2) Port ($_epvatPressureUnit)',
-                                        meanCtrl: _overallEpvatControllers[t]!['p2_mean']!,
-                                        maxCtrl: _overallEpvatControllers[t]!['p2_max']!,
-                                        minCtrl: _overallEpvatControllers[t]!['p2_min']!,
-                                        rangeCtrl: _overallEpvatControllers[t]!['p2_range']!,
-                                        sdCtrl: _overallEpvatControllers[t]!['p2_sd']!,
-                                        readOnly: isIndividualMode,
-                                      ),
-                                    _buildEpvatMetricTableRow(
-                                      parameterName: 'Action Time (ms)',
-                                      meanCtrl: _overallEpvatControllers[t]!['action_time_mean']!,
-                                      maxCtrl: _overallEpvatControllers[t]!['action_time_max']!,
-                                      minCtrl: _overallEpvatControllers[t]!['action_time_min']!,
-                                      rangeCtrl: _overallEpvatControllers[t]!['action_time_range']!,
-                                      sdCtrl: _overallEpvatControllers[t]!['action_time_sd']!,
-                                      readOnly: isIndividualMode,
-                                      inputFormatters: [ActionTimeInputFormatter()],
-                                    ),
-                                    _buildEpvatMetricTableRow(
-                                      parameterName: 'Velocity (m/s)',
-                                      meanCtrl: _overallEpvatControllers[t]!['vel_mean']!,
-                                      maxCtrl: _overallEpvatControllers[t]!['vel_max']!,
-                                      minCtrl: _overallEpvatControllers[t]!['vel_min']!,
-                                      rangeCtrl: _overallEpvatControllers[t]!['vel_range']!,
-                                      sdCtrl: _overallEpvatControllers[t]!['vel_sd']!,
+                                    // 5x5 Transposed Specification Matrix Table
+                                    _buildEpvatTransposedMatrixTable(
+                                      meanP1Ctrl: _overallEpvatControllers[t]!['p1_mean']!,
+                                      maxP1Ctrl: _overallEpvatControllers[t]!['p1_max']!,
+                                      minP1Ctrl: _overallEpvatControllers[t]!['p1_min']!,
+                                      rangeP1Ctrl: _overallEpvatControllers[t]!['p1_range']!,
+                                      sdP1Ctrl: _overallEpvatControllers[t]!['p1_sd']!,
+
+                                      meanP2Ctrl: _overallEpvatControllers[t]!['p2_mean']!,
+                                      maxP2Ctrl: _overallEpvatControllers[t]!['p2_max']!,
+                                      minP2Ctrl: _overallEpvatControllers[t]!['p2_min']!,
+                                      rangeP2Ctrl: _overallEpvatControllers[t]!['p2_range']!,
+                                      sdP2Ctrl: _overallEpvatControllers[t]!['p2_sd']!,
+
+                                      meanT4Ctrl: _overallEpvatControllers[t]!['t4_mean']!,
+                                      maxT4Ctrl: _overallEpvatControllers[t]!['t4_max']!,
+                                      minT4Ctrl: _overallEpvatControllers[t]!['t4_min']!,
+                                      rangeT4Ctrl: _overallEpvatControllers[t]!['t4_range']!,
+                                      sdT4Ctrl: _overallEpvatControllers[t]!['t4_sd']!,
+
+                                      meanTaCtrl: _overallEpvatControllers[t]!['action_time_mean']!,
+                                      maxTaCtrl: _overallEpvatControllers[t]!['action_time_max']!,
+                                      minTaCtrl: _overallEpvatControllers[t]!['action_time_min']!,
+                                      rangeTaCtrl: _overallEpvatControllers[t]!['action_time_range']!,
+                                      sdTaCtrl: _overallEpvatControllers[t]!['action_time_sd']!,
+
+                                      meanVelCtrl: _overallEpvatControllers[t]!['vel_mean']!,
+                                      maxVelCtrl: _overallEpvatControllers[t]!['vel_max']!,
+                                      minVelCtrl: _overallEpvatControllers[t]!['vel_min']!,
+                                      rangeVelCtrl: _overallEpvatControllers[t]!['vel_range']!,
+                                      sdVelCtrl: _overallEpvatControllers[t]!['vel_sd']!,
                                       readOnly: isIndividualMode,
                                     ),
 
@@ -6772,15 +6929,20 @@ class _EntryTabState extends State<EntryTab> {
                                 Row(
                                   children: [
                                     const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text(_isCaliber9mm ? 'Chamber Pres.' : 'GP6 (1) Chamber', style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    const Expanded(flex: 2, child: Text('P max_1', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                     if (!_isCaliber9mm)
-                                      const Expanded(flex: 2, child: Text('GP6 (2) Port', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    const Expanded(flex: 2, child: Text('Action Time (ms)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    const Expanded(flex: 2, child: Text('Velocity (m/s)', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      const Expanded(flex: 2, child: Text('P max_2', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    const Expanded(flex: 2, child: Text('t4 [ms]', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    const Expanded(flex: 2, child: Text('ta [ms]', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Expanded(flex: 2, child: Text('V${_formattedVelocityDistance}_2', textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
                                   ],
                                 ),
                                 const SizedBox(height: 4.0),
                                 ...List.generate(_getIndividualEpvatVisibleRounds(), (index) {
+                                  // Ensure controller exists at index
+                                  while (_t4RoundsControllers.length <= index) {
+                                    _t4RoundsControllers.add(TextEditingController());
+                                  }
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 4.0),
                                     child: Row(
@@ -6795,7 +6957,7 @@ class _EntryTabState extends State<EntryTab> {
                                         Expanded(
                                           flex: 2,
                                           child: Padding(
-                                            padding: const EdgeInsets.only(right: 6.0),
+                                            padding: const EdgeInsets.only(right: 4.0),
                                             child: _buildTextField(
                                               controller: _epvatRoundsControllers[index],
                                               hint: '0.0',
@@ -6808,7 +6970,7 @@ class _EntryTabState extends State<EntryTab> {
                                           Expanded(
                                             flex: 2,
                                             child: Padding(
-                                              padding: const EdgeInsets.only(right: 6.0),
+                                              padding: const EdgeInsets.only(right: 4.0),
                                               child: _buildTextField(
                                                 controller: _epvatP2RoundsControllers[index],
                                                 hint: '0.0',
@@ -6820,7 +6982,19 @@ class _EntryTabState extends State<EntryTab> {
                                         Expanded(
                                           flex: 2,
                                           child: Padding(
-                                            padding: const EdgeInsets.only(right: 6.0),
+                                            padding: const EdgeInsets.only(right: 4.0),
+                                            child: _buildTextField(
+                                              controller: _t4RoundsControllers[index],
+                                              hint: '0.0',
+                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              onChanged: (val) => _recalculateEpvatStats(),
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(right: 4.0),
                                             child: _buildTextField(
                                               controller: _actionTimeRoundsControllers[index],
                                               hint: '0.0',
@@ -6844,44 +7018,42 @@ class _EntryTabState extends State<EntryTab> {
                                   );
                                 }),
                                 const SizedBox(height: 6.0),
-                                _buildEpvatTableHeader(),
-                                _buildEpvatMetricTableRow(
-                                  parameterName: _isCaliber9mm ? 'Chamber Pres. ($_epvatPressureUnit)' : 'GP6 (1) Chamber ($_epvatPressureUnit)',
-                                  meanCtrl: _epvatMeanPressureController,
-                                  maxCtrl: _epvatMaxPressureController,
-                                  minCtrl: _epvatMinPressureController,
-                                  rangeCtrl: _epvatRangePressureController,
-                                  sdCtrl: _epvatSDPressureController,
-                                  readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty),
-                                ),
-                                if (!_isCaliber9mm)
-                                  _buildEpvatMetricTableRow(
-                                    parameterName: 'GP6 (2) Port ($_epvatPressureUnit)',
-                                    meanCtrl: _epvatP2MeanPressureController,
-                                    maxCtrl: _epvatP2MaxPressureController,
-                                    minCtrl: _epvatP2MinPressureController,
-                                    rangeCtrl: _epvatP2RangePressureController,
-                                    sdCtrl: _epvatP2SDPressureController,
-                                    readOnly: _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty),
-                                  ),
-                                _buildEpvatMetricTableRow(
-                                  parameterName: 'Action Time (ms)',
-                                  meanCtrl: _actionTimeMeanController,
-                                  maxCtrl: _actionTimeMaxController,
-                                  minCtrl: _actionTimeMinController,
-                                  rangeCtrl: _actionTimeRangeController,
-                                  sdCtrl: _actionTimeSDController,
-                                  readOnly: _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty),
-                                  inputFormatters: [ActionTimeInputFormatter()],
-                                ),
-                                _buildEpvatMetricTableRow(
-                                  parameterName: 'Velocity (m/s)',
-                                  meanCtrl: _meanVelController,
-                                  maxCtrl: _maxVelController,
-                                  minCtrl: _minVelController,
-                                  rangeCtrl: _rangeVelController,
-                                  sdCtrl: _sdVelController,
-                                  readOnly: _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty),
+                                // 5x5 Transposed Specification Matrix Table
+                                _buildEpvatTransposedMatrixTable(
+                                  meanP1Ctrl: _epvatMeanPressureController,
+                                  maxP1Ctrl: _epvatMaxPressureController,
+                                  minP1Ctrl: _epvatMinPressureController,
+                                  rangeP1Ctrl: _epvatRangePressureController,
+                                  sdP1Ctrl: _epvatSDPressureController,
+
+                                  meanP2Ctrl: _epvatP2MeanPressureController,
+                                  maxP2Ctrl: _epvatP2MaxPressureController,
+                                  minP2Ctrl: _epvatP2MinPressureController,
+                                  rangeP2Ctrl: _epvatP2RangePressureController,
+                                  sdP2Ctrl: _epvatP2SDPressureController,
+
+                                  meanT4Ctrl: _t4MeanController,
+                                  maxT4Ctrl: _t4MaxController,
+                                  minT4Ctrl: _t4MinController,
+                                  rangeT4Ctrl: _t4RangeController,
+                                  sdT4Ctrl: _t4SDController,
+
+                                  meanTaCtrl: _actionTimeMeanController,
+                                  maxTaCtrl: _actionTimeMaxController,
+                                  minTaCtrl: _actionTimeMinController,
+                                  rangeTaCtrl: _actionTimeRangeController,
+                                  sdTaCtrl: _actionTimeSDController,
+
+                                  meanVelCtrl: _meanVelController,
+                                  maxVelCtrl: _maxVelController,
+                                  minVelCtrl: _minVelController,
+                                  rangeVelCtrl: _rangeVelController,
+                                  sdVelCtrl: _sdVelController,
+                                  readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
+                                            _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
+                                            _t4RoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
+                                            _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
+                                            _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty),
                                 ),
                               ],
                             ),
@@ -8610,8 +8782,9 @@ class _EntryTabState extends State<EntryTab> {
           _sdXController.clear();
           _meanXController.clear();
           if (mode == 'Individual') {
-            _extractionRoundsControllers.clear();
-            _extractionRoundsControllers.add(TextEditingController());
+            while (_extractionRoundsControllers.length < 20) {
+              _extractionRoundsControllers.add(TextEditingController());
+            }
           }
         });
       },
@@ -8623,16 +8796,18 @@ class _EntryTabState extends State<EntryTab> {
             groupValue: _extractionForceType,
             activeColor: const Color(0xFF06B6D4),
             onChanged: (val) {
+              if (val == null) return;
               setState(() {
-                _extractionForceType = val!;
+                _extractionForceType = val;
                 _minXController.clear();
                 _maxXController.clear();
                 _rangeXController.clear();
                 _sdXController.clear();
                 _meanXController.clear();
                 if (val == 'Individual') {
-                  _extractionRoundsControllers.clear();
-                  _extractionRoundsControllers.add(TextEditingController());
+                  while (_extractionRoundsControllers.length < 20) {
+                    _extractionRoundsControllers.add(TextEditingController());
+                  }
                 }
               });
             },
@@ -8640,13 +8815,312 @@ class _EntryTabState extends State<EntryTab> {
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : const Color(0xFF8E96A3),
-              fontSize: 13.0,
+              color: isSelected ? const Color(0xFF0284C7) : const Color(0xFF64748B),
+              fontSize: 12.0,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExtractionForceCard() {
+    final extRules = _getExtractionRulesForCaliber();
+    final double limit = (extRules['min_force'] ?? 200.0).toDouble();
+
+    // Ensure 20 controllers exist
+    while (_extractionRoundsControllers.length < 20) {
+      _extractionRoundsControllers.add(TextEditingController());
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F6FB),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFFD6E4F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.fitness_center_outlined, color: Color(0xFF06B6D4), size: 18.0),
+              const SizedBox(width: 8.0),
+              const Text(
+                'Extraction Force Test Specifications',
+                style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+              ),
+              const SizedBox(width: 8.0),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2FE),
+                  borderRadius: BorderRadius.circular(4.0),
+                  border: Border.all(color: const Color(0xFFBAE6FD)),
+                ),
+                child: Text(
+                  'Min Limit: ${limit.toStringAsFixed(1)} N',
+                  style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  if (_attachmentBase64.isNotEmpty && _attachmentName.toLowerCase().endsWith('.pdf')) {
+                    _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                  } else {
+                    final res = await getAttachmentHelper().pickFileAsBase64();
+                    if (res != null && res['name'] != null && res['data'] != null) {
+                      setState(() {
+                        _attachmentName = res['name']!;
+                        _attachmentBase64 = res['data']!;
+                      });
+                      _autoExtractFromAttachment(res['name']!, res['data']!);
+                    }
+                  }
+                },
+                icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF06B6D4),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                  minimumSize: const Size(0, 28),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6.0),
+          Row(
+            children: [
+              const Text('Result Input Mode: ', style: TextStyle(color: Color(0xFF64748B), fontSize: 12.0, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8.0),
+              _buildModeRadioButton('Individual', 'Individual Samples (20)'),
+              const SizedBox(width: 12.0),
+              _buildModeRadioButton('Overall', 'Overall Summary'),
+            ],
+          ),
+          const SizedBox(height: 8.0),
+          if (_extractionForceType == 'Individual') ...[
+            // 2-column side-by-side table matching the Test Report attachment (Samples 1-10 on Left, Samples 11-20 on Right)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Left Table: Samples 1 to 10
+                    Expanded(
+                      child: _buildExtractionSampleSubTable(
+                        startIndex: 0,
+                        endIndex: math.min(10, _extractionRoundsControllers.length),
+                        limit: limit,
+                      ),
+                    ),
+                    Container(width: 1, color: const Color(0xFFCBD5E1)),
+                    // Right Table: Samples 11 to 20
+                    Expanded(
+                      child: _buildExtractionSampleSubTable(
+                        startIndex: 10,
+                        endIndex: math.min(20, _extractionRoundsControllers.length),
+                        limit: limit,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8.0),
+          ],
+          // Summary Statistics Table matching the report (Minimum, Maximum, Mean, SD, Units: N)
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6.0),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Summary Statistics',
+                      style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.0, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 1.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(4.0),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: const Text('Units: N', style: TextStyle(color: Color(0xFF475569), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6.0),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatBox(label: 'Minimum', controller: _minXController, readOnly: _extractionForceType == 'Individual'),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(label: 'Maximum', controller: _maxXController, readOnly: _extractionForceType == 'Individual'),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(label: 'Mean', controller: _meanXController, readOnly: _extractionForceType == 'Individual'),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(label: 'SD', controller: _sdXController, readOnly: _extractionForceType == 'Individual'),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(label: 'Range', controller: _rangeXController, readOnly: true),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtractionSampleSubTable({required int startIndex, required int endIndex, required double limit}) {
+    return Column(
+      children: [
+        // Table Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F172A),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(5.0), topRight: Radius.circular(5.0)),
+          ),
+          child: Row(
+            children: const [
+              Expanded(flex: 3, child: Text('Calculation', style: TextStyle(color: Colors.white, fontSize: 11.0, fontWeight: FontWeight.bold))),
+              Expanded(flex: 4, child: Text('Extraction Force (N)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 11.0, fontWeight: FontWeight.bold))),
+              Expanded(flex: 3, child: Text('Overall result', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 11.0, fontWeight: FontWeight.bold))),
+            ],
+          ),
+        ),
+        for (int i = startIndex; i < endIndex; i++) ...[
+          Builder(builder: (context) {
+            final ctrl = _extractionRoundsControllers[i];
+            final val = double.tryParse(ctrl.text.trim());
+            final bool hasVal = ctrl.text.trim().isNotEmpty && val != null;
+            final bool isPass = hasVal && val >= limit;
+            final bool isFail = hasVal && val < limit;
+
+            return Container(
+              color: i.isEven ? Colors.white : const Color(0xFFF8FAFC),
+              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      'Sample ${i + 1}',
+                      style: const TextStyle(color: Color(0xFF334155), fontSize: 11.0, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: _buildTextField(
+                        controller: ctrl,
+                        hint: '0.0',
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) {
+                          _recalculateExtractionStats();
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: isPass
+                              ? const Color(0xFFDCFCE7)
+                              : isFail
+                                  ? const Color(0xFFFEE2E2)
+                                  : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(4.0),
+                          border: Border.all(
+                            color: isPass
+                                ? const Color(0xFF86EFAC)
+                                : isFail
+                                    ? const Color(0xFFFCA5A5)
+                                    : const Color(0xFFCBD5E1),
+                          ),
+                        ),
+                        child: Text(
+                          isPass
+                              ? 'PASS'
+                              : isFail
+                                  ? 'FAIL'
+                                  : '-',
+                          style: TextStyle(
+                            color: isPass
+                                ? const Color(0xFF16A34A)
+                                : isFail
+                                    ? const Color(0xFFDC2626)
+                                    : const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (i < endIndex - 1) const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStatBox({required String label, required TextEditingController controller, required bool readOnly}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 10.5, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 2.0),
+        _buildTextField(
+          controller: controller,
+          hint: '0.0',
+          readOnly: readOnly,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (_) {
+            _scheduleAutoSave();
+            setState(() {});
+          },
+        ),
+      ],
     );
   }
 
@@ -8996,6 +9470,284 @@ class _EntryTabState extends State<EntryTab> {
         _calculateOverallTempStats(t);
       }
     }
+  }
+
+  Widget _buildEpvatTransposedMatrixTable({
+    required TextEditingController meanP1Ctrl,
+    required TextEditingController maxP1Ctrl,
+    required TextEditingController minP1Ctrl,
+    required TextEditingController rangeP1Ctrl,
+    required TextEditingController sdP1Ctrl,
+
+    required TextEditingController meanP2Ctrl,
+    required TextEditingController maxP2Ctrl,
+    required TextEditingController minP2Ctrl,
+    required TextEditingController rangeP2Ctrl,
+    required TextEditingController sdP2Ctrl,
+
+    required TextEditingController meanT4Ctrl,
+    required TextEditingController maxT4Ctrl,
+    required TextEditingController minT4Ctrl,
+    required TextEditingController rangeT4Ctrl,
+    required TextEditingController sdT4Ctrl,
+
+    required TextEditingController meanTaCtrl,
+    required TextEditingController maxTaCtrl,
+    required TextEditingController minTaCtrl,
+    required TextEditingController rangeTaCtrl,
+    required TextEditingController sdTaCtrl,
+
+    required TextEditingController meanVelCtrl,
+    required TextEditingController maxVelCtrl,
+    required TextEditingController minVelCtrl,
+    required TextEditingController rangeVelCtrl,
+    required TextEditingController sdVelCtrl,
+    required bool readOnly,
+  }) {
+    final vHeader = 'V${_formattedVelocityDistance}_2';
+    final pUnit = _epvatPressureUnit.isNotEmpty ? _epvatPressureUnit : 'bar';
+
+    final headers = [
+      '',
+      'P max_1\n[$pUnit]',
+      _isCaliber9mm ? 'P max_2\n(N/A)' : 'P max_2\n[$pUnit]',
+      't4 [ms]',
+      'ta [ms]',
+      '$vHeader\n[m/s]',
+    ];
+
+    final rows = [
+      {
+        'label': 'MEAN',
+        'p1': meanP1Ctrl,
+        'p2': meanP2Ctrl,
+        't4': meanT4Ctrl,
+        'ta': meanTaCtrl,
+        'vel': meanVelCtrl,
+      },
+      {
+        'label': 'MAX',
+        'p1': maxP1Ctrl,
+        'p2': maxP2Ctrl,
+        't4': maxT4Ctrl,
+        'ta': maxTaCtrl,
+        'vel': maxVelCtrl,
+      },
+      {
+        'label': 'MIN',
+        'p1': minP1Ctrl,
+        'p2': minP2Ctrl,
+        't4': minT4Ctrl,
+        'ta': minTaCtrl,
+        'vel': minVelCtrl,
+      },
+      {
+        'label': 'RANGE',
+        'p1': rangeP1Ctrl,
+        'p2': rangeP2Ctrl,
+        't4': rangeT4Ctrl,
+        'ta': rangeTaCtrl,
+        'vel': rangeVelCtrl,
+      },
+      {
+        'label': 'STDEV',
+        'p1': sdP1Ctrl,
+        'p2': sdP2Ctrl,
+        't4': sdT4Ctrl,
+        'ta': sdTaCtrl,
+        'vel': sdVelCtrl,
+      },
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8.0),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 540),
+            child: SizedBox(
+              width: 620,
+              child: Column(
+                children: [
+                  // Header Row
+                  Container(
+                    color: const Color(0xFF0F172A),
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: const Text(
+                            'SPECIFICATION',
+                            style: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10.0,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        for (int i = 1; i < headers.length; i++)
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: Text(
+                                headers[i],
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: i == 5 ? const Color(0xFF38BDF8) : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.0,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Matrix Data Rows (MEAN, MAX, MIN, RANGE, STDEV)
+                  for (int rIdx = 0; rIdx < rows.length; rIdx++) ...[
+                    Container(
+                      color: rIdx.isEven ? Colors.white : const Color(0xFFF8FAFC),
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              rows[rIdx]['label'] as String,
+                              style: const TextStyle(
+                                color: Color(0xFF0284C7),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.5,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          // P max_1
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: _buildTextField(
+                                controller: rows[rIdx]['p1'] as TextEditingController,
+                                hint: '0.0',
+                                readOnly: readOnly,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                onChanged: (_) {
+                                  _scheduleAutoSave();
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ),
+                          // P max_2
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: _isCaliber9mm
+                                  ? Container(
+                                      height: 32,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE2E8F0),
+                                        borderRadius: BorderRadius.circular(4.0),
+                                      ),
+                                      child: const Text('-', style: TextStyle(color: Color(0xFF94A3B8))),
+                                    )
+                                  : _buildTextField(
+                                      controller: rows[rIdx]['p2'] as TextEditingController,
+                                      hint: '0.0',
+                                      readOnly: readOnly,
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      onChanged: (_) {
+                                        _scheduleAutoSave();
+                                        setState(() {});
+                                      },
+                                    ),
+                            ),
+                          ),
+                          // t4 [ms]
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: _buildTextField(
+                                controller: rows[rIdx]['t4'] as TextEditingController,
+                                hint: '0.0',
+                                readOnly: readOnly,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                onChanged: (_) {
+                                  _scheduleAutoSave();
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ),
+                          // ta [ms]
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: _buildTextField(
+                                controller: rows[rIdx]['ta'] as TextEditingController,
+                                hint: '0.0',
+                                readOnly: readOnly,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [ActionTimeInputFormatter()],
+                                onChanged: (_) {
+                                  _scheduleAutoSave();
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ),
+                          // V..._2 [m/s]
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                              child: _buildTextField(
+                                controller: rows[rIdx]['vel'] as TextEditingController,
+                                hint: '0.0',
+                                readOnly: readOnly,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                onChanged: (_) {
+                                  _scheduleAutoSave();
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (rIdx < rows.length - 1)
+                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildEpvatTableHeader() {
@@ -9427,8 +10179,23 @@ class _EntryTabState extends State<EntryTab> {
       _actionTimeSDController,
     );
 
+    // 5. t4 stats
+    final List<double> t4Values = [];
+    for (var ctrl in _t4RoundsControllers) {
+      final val = double.tryParse(ctrl.text.trim());
+      if (val != null) t4Values.add(val);
+    }
+    _calculateStatsForValues(
+      t4Values,
+      _t4MeanController,
+      _t4MaxController,
+      _t4MinController,
+      _t4RangeController,
+      _t4SDController,
+    );
+
     if (_epvatPressureType == 'Individual') {
-      final maxRounds = math.max(p1Values.length, math.max(p2Values.length, velValues.length));
+      final maxRounds = math.max(p1Values.length, math.max(p2Values.length, math.max(velValues.length, t4Values.length)));
       if (maxRounds > 0) {
         _producedController.text = '$maxRounds';
       }
@@ -10401,12 +11168,23 @@ class _EntryTabState extends State<EntryTab> {
       _primerDropWeightController.text = defaultDropWeight.toStringAsFixed(1);
     }
 
+    _initPrimerDropTable();
+
+    // Compute live totals for display
+    int totalF = 0;
+    int totalM = 0;
+    for (final r in _primerDropTableRows) {
+      totalF += int.tryParse(r.f.text.trim()) ?? 0;
+      totalM += int.tryParse(r.m.text.trim()) ?? 0;
+    }
+    final int totalTested = totalF + totalM;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
+        color: const Color(0xFFF1F6FB),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFFD6E4F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -10416,43 +11194,62 @@ class _EntryTabState extends State<EntryTab> {
             children: [
               Row(
                 children: const [
-                  Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 16.0),
-                  SizedBox(width: 6.0),
+                  Icon(Icons.track_changes_outlined, color: Color(0xFF06B6D4), size: 18.0),
+                  SizedBox(width: 8.0),
                   Text(
-                    'Primer Sensitivity Test',
-                    style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                    'Primer Sensitivity Test Specifications',
+                    style: TextStyle(color: Color(0xFF0F172A), fontSize: 13.0, fontWeight: FontWeight.bold, letterSpacing: 0.3),
                   ),
                 ],
               ),
-              if (!isLotPrimerLocked)
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final res = await getAttachmentHelper().pickFileAsBase64();
-                    if (res != null && res['name'] != null && res['data'] != null) {
-                      setState(() {
-                        _attachmentName = res['name']!;
-                        _attachmentBase64 = res['data']!;
-                      });
-                      _autoExtractFromAttachment(res['name']!, res['data']!);
-                    } else if (_attachmentBase64.isNotEmpty) {
-                      _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
-                    }
-                  },
-                  icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
-                  label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF06B6D4),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                    elevation: 1,
-                  ),
-                ),
+              Row(
+                children: [
+                  if (!isLotPrimerLocked) ...[
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          final lastH = _primerDropTableRows.isNotEmpty ? (double.tryParse(_primerDropTableRows.last.h.text.trim()) ?? 255.0) + 15.0 : 130.0;
+                          _primerDropTableRows.add(_createPrimerDropRow(lastH.toStringAsFixed(1), '', '', ''));
+                        });
+                      },
+                      icon: const Icon(Icons.add, size: 14.0, color: Color(0xFF0284C7)),
+                      label: const Text('Add Height Row', style: TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF38BDF8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        minimumSize: const Size(0, 28),
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                  ],
+                  if (!isLotPrimerLocked)
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final res = await getAttachmentHelper().pickFileAsBase64();
+                        if (res != null && res['name'] != null && res['data'] != null) {
+                          setState(() {
+                            _attachmentName = res['name']!;
+                            _attachmentBase64 = res['data']!;
+                          });
+                          _autoExtractFromAttachment(res['name']!, res['data']!);
+                        } else if (_attachmentBase64.isNotEmpty) {
+                          _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                        }
+                      },
+                      icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                      label: const Text('Auto-Extract from PDF Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                        minimumSize: const Size(0, 28),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 4.0),
+          const SizedBox(height: 6.0),
           if (isLotPrimerLocked) ...[
             Container(
               margin: const EdgeInsets.only(bottom: 6.0),
@@ -10469,96 +11266,243 @@ class _EntryTabState extends State<EntryTab> {
                   Expanded(
                     child: Text(
                       'Lot Acceptance Module: Primer Sensitivity metrics are synchronized automatically from Component Primer Lot (${_selectedComponentPrimerLot ?? _primerLotController.text}) and locked against manual changes.',
-                      style: const TextStyle(color: Color(0xFFE0F2FE), fontSize: 11.0, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
             ),
           ],
-          _buildFormRow([
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Total Rounds (Sample Size)',
-              child: _buildTextField(
-                controller: _producedController,
-                readOnly: isLotPrimerLocked,
-                hint: '150',
-                keyboardType: TextInputType.number,
-                onChanged: (val) {
-                  _scheduleAutoSave();
-                  setState(() {});
-                },
-              ),
+
+          // 1. Drop Table Section matching laboratory test report
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6.0),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
             ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Total Misfires (M)',
-              child: _buildTextField(
-                controller: _primerMisfiresCountController,
-                readOnly: isLotPrimerLocked,
-                hint: '0',
-                keyboardType: TextInputType.number,
-                onChanged: (val) {
-                  _defectsController.text = val;
-                  _scheduleAutoSave();
-                  setState(() {});
-                },
-              ),
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0F172A),
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(5.0), topRight: Radius.circular(5.0)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Expanded(flex: 3, child: Text('H (mm)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 11.0, fontWeight: FontWeight.bold))),
+                      Expanded(flex: 3, child: Text('F (Fires)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 11.0, fontWeight: FontWeight.bold))),
+                      Expanded(flex: 3, child: Text('M (Misfires)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 11.0, fontWeight: FontWeight.bold))),
+                      Expanded(flex: 3, child: Text('PI (Probability)', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                      SizedBox(width: 32.0, child: Text('', textAlign: TextAlign.center)),
+                    ],
+                  ),
+                ),
+                // Rows
+                for (int i = 0; i < _primerDropTableRows.length; i++) ...[
+                  Builder(builder: (context) {
+                    final row = _primerDropTableRows[i];
+                    return Container(
+                      color: i.isEven ? Colors.white : const Color(0xFFF8FAFC),
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                              child: _buildTextField(
+                                controller: row.h,
+                                hint: '0.0',
+                                readOnly: isLotPrimerLocked,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                onChanged: (_) {
+                                  _scheduleAutoSave();
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                              child: _buildTextField(
+                                controller: row.f,
+                                hint: '0',
+                                readOnly: isLotPrimerLocked,
+                                keyboardType: TextInputType.number,
+                                onChanged: (_) {
+                                  _recalculatePrimerDropStats();
+                                  _scheduleAutoSave();
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                              child: _buildTextField(
+                                controller: row.m,
+                                hint: '0',
+                                readOnly: isLotPrimerLocked,
+                                keyboardType: TextInputType.number,
+                                onChanged: (_) {
+                                  _recalculatePrimerDropStats();
+                                  _scheduleAutoSave();
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                              child: _buildTextField(
+                                controller: row.pi,
+                                hint: '0.000',
+                                readOnly: true,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 32.0,
+                            child: (!isLotPrimerLocked && _primerDropTableRows.length > 1)
+                                ? IconButton(
+                                    icon: const Icon(Icons.close, size: 14.0, color: Color(0xFF94A3B8)),
+                                    onPressed: () {
+                                      setState(() {
+                                        _primerDropTableRows.removeAt(i).dispose();
+                                        _recalculatePrimerDropStats();
+                                      });
+                                    },
+                                    tooltip: 'Remove row',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (i < _primerDropTableRows.length - 1)
+                    const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                ],
+                // Totals summary bar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(5.0), bottomRight: Radius.circular(5.0)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Total Tested: $totalTested',
+                        style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 11.5),
+                      ),
+                      const SizedBox(width: 16.0),
+                      Text(
+                        'Total Fires: $totalF',
+                        style: const TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.bold, fontSize: 11.5),
+                      ),
+                      const SizedBox(width: 16.0),
+                      Text(
+                        'Total Misfires: $totalM',
+                        style: const TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 11.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Mean Height H̄ / HM (mm)',
-              isRequired: true,
-              child: _buildTextField(
-                controller: _primerHbarController,
-                hint: 'e.g. 205.5',
-                readOnly: isLotPrimerLocked,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (_) {
-                  final h = double.tryParse(_primerHbarController.text.trim());
-                  final s = double.tryParse(_primerSDController.text.trim());
-                  if (h != null && s != null) {
-                    _primerHbarPlus5SController.text = (h + 5 * s).toStringAsFixed(2);
-                    _primerHbarMinus2SController.text = (h - 2 * s).toStringAsFixed(2);
-                  }
-                  setState(() {});
-                  _scheduleAutoSave();
-                },
-              ),
+          ),
+          const SizedBox(height: 8.0),
+
+          // 2. Statistics Table Section (HM, SD, Alpha3, Emax, Emin, HM+5SD, HM-2SD)
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6.0),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
             ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'Std Dev S / SD (mm)',
-              isRequired: true,
-              child: _buildTextField(
-                controller: _primerSDController,
-                hint: 'e.g. 30.1',
-                readOnly: isLotPrimerLocked,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (_) {
-                  final h = double.tryParse(_primerHbarController.text.trim());
-                  final s = double.tryParse(_primerSDController.text.trim());
-                  if (h != null && s != null) {
-                    _primerHbarPlus5SController.text = (h + 5 * s).toStringAsFixed(2);
-                    _primerHbarMinus2SController.text = (h - 2 * s).toStringAsFixed(2);
-                  }
-                  setState(() {});
-                  _scheduleAutoSave();
-                },
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Primer Sensitivity Statistics',
+                  style: TextStyle(color: Color(0xFF0284C7), fontSize: 12.0, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6.0),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatBox(
+                        label: 'HM (mm)',
+                        controller: _primerHbarController,
+                        readOnly: isLotPrimerLocked,
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(
+                        label: 'SD (mm)',
+                        controller: _primerSDController,
+                        readOnly: isLotPrimerLocked,
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(
+                        label: 'Alpha3',
+                        controller: _primerAlpha3Controller,
+                        readOnly: isLotPrimerLocked,
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(
+                        label: 'Emax',
+                        controller: _primerEmaxController,
+                        readOnly: isLotPrimerLocked,
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(
+                        label: 'Emin',
+                        controller: _primerEminController,
+                        readOnly: isLotPrimerLocked,
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(
+                        label: 'HM + 5SD (All Fire)',
+                        controller: _primerHbarPlus5SController,
+                        readOnly: true,
+                      ),
+                    ),
+                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: _buildStatBox(
+                        label: 'HM - 2SD (No Fire)',
+                        controller: _primerHbarMinus2SController,
+                        readOnly: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'All Fire H̄ + 5S (mm)',
-              child: _buildTextField(controller: _primerHbarPlus5SController, hint: 'Auto', readOnly: true),
-            ),
-            _buildFlexibleField(
-              flex: 1,
-              label: 'No Fire H̄ - 2S (mm)',
-              child: _buildTextField(controller: _primerHbarMinus2SController, hint: 'Auto', readOnly: true),
-            ),
-          ]),
+          ),
         ],
       ),
     );

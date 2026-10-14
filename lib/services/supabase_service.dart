@@ -166,6 +166,27 @@ class SupabaseService {
         return BallisticRecord.fromSupabaseMap(response);
       } catch (e) {
         debugPrint('Master table insert error: $e');
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('does not exist') || errStr.contains('pgrst204')) {
+          final fallbackMap = Map<String, dynamic>.from(sanitized);
+          const newCols = [
+            't4_mean', 't4_max', 't4_min', 't4_range', 't4_sd', 't4_rounds',
+            'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table'
+          ];
+          for (final c in newCols) {
+            fallbackMap.remove(c);
+          }
+          try {
+            final fallbackResponse = await client
+                .from(tableName)
+                .insert(fallbackMap)
+                .select()
+                .single();
+            return BallisticRecord.fromSupabaseMap(fallbackResponse);
+          } catch (e2) {
+            debugPrint('Fallback master table insert error: $e2');
+          }
+        }
         return null;
       }
     } catch (e) {
@@ -318,10 +339,30 @@ class SupabaseService {
         }
       }
 
-      await client
-          .from(tableName)
-          .update(map)
-          .eq('id', id);
+      try {
+        await client
+            .from(tableName)
+            .update(map)
+            .eq('id', id);
+      } catch (e) {
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('does not exist') || errStr.contains('pgrst204')) {
+          final fallbackMap = Map<String, dynamic>.from(map);
+          const newCols = [
+            't4_mean', 't4_max', 't4_min', 't4_range', 't4_sd', 't4_rounds',
+            'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table'
+          ];
+          for (final c in newCols) {
+            fallbackMap.remove(c);
+          }
+          await client
+              .from(tableName)
+              .update(fallbackMap)
+              .eq('id', id);
+        } else {
+          rethrow;
+        }
+      }
 
       if (record.lotNo.isNotEmpty) {
         try {
