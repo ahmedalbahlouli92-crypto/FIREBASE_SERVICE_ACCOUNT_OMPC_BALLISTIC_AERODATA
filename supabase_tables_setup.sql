@@ -247,8 +247,12 @@ ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_alpha3 TEXT
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_emax TEXT DEFAULT '';
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_emin TEXT DEFAULT '';
 ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS primer_drop_table TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS bullet_supplier TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS bullet_grain_size TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS sample_loading_method TEXT DEFAULT '';
+ALTER TABLE public.ballistic_records ADD COLUMN IF NOT EXISTS sample_received_date TEXT DEFAULT '';
 
--- 2. Create the 20 Dedicated Tables across Daily Report, Lot Acceptance, and Component Test
+-- 2. Create the 21 Dedicated Tables across Daily Report, Lot Acceptance, and Component Test
 DO $$
 DECLARE
     tbl TEXT;
@@ -277,7 +281,8 @@ DECLARE
 
         -- Component Module Tables
         'component_propellant_test',
-        'component_primer_sensitivity_test'
+        'component_primer_sensitivity_test',
+        'component_accuracy_test'
     ];
 BEGIN
     FOREACH tbl IN ARRAY tables
@@ -455,6 +460,30 @@ BEGIN
         'idx_' || tbl || '_caliber', tbl,
         'idx_' || tbl || '_created_at', tbl
         );
+    END LOOP;
+END $$;
+
+-- 2.1 Add Bullet Accuracy columns across all test tables if previously created
+DO $$
+DECLARE
+    tbl TEXT;
+    all_tables TEXT[] := ARRAY[
+        'ballistic_records',
+        'daily_waterproof_test', 'daily_extraction_force_test', 'daily_accuracy_test',
+        'daily_epvat_test', 'daily_function_test', 'daily_residual_stress_test',
+        'daily_terminal_effect_test', 'daily_firing_rate_cycle_test', 'daily_primer_sensitivity_test',
+        'lot_acceptance_waterproof_test', 'lot_acceptance_extraction_force_test', 'lot_acceptance_accuracy_test',
+        'lot_acceptance_epvat_test', 'lot_acceptance_function_test', 'lot_acceptance_residual_stress_test',
+        'lot_acceptance_terminal_effect_test', 'lot_acceptance_firing_rate_cycle_test', 'lot_acceptance_primer_sensitivity_test',
+        'component_propellant_test', 'component_primer_sensitivity_test', 'component_accuracy_test'
+    ];
+BEGIN
+    FOREACH tbl IN ARRAY all_tables
+    LOOP
+        EXECUTE 'ALTER TABLE IF EXISTS public.' || quote_ident(tbl) || ' ADD COLUMN IF NOT EXISTS bullet_supplier TEXT DEFAULT ''''';
+        EXECUTE 'ALTER TABLE IF EXISTS public.' || quote_ident(tbl) || ' ADD COLUMN IF NOT EXISTS bullet_grain_size TEXT DEFAULT ''''';
+        EXECUTE 'ALTER TABLE IF EXISTS public.' || quote_ident(tbl) || ' ADD COLUMN IF NOT EXISTS sample_loading_method TEXT DEFAULT ''''';
+        EXECUTE 'ALTER TABLE IF EXISTS public.' || quote_ident(tbl) || ' ADD COLUMN IF NOT EXISTS sample_received_date TEXT DEFAULT ''''';
     END LOOP;
 END $$;
 

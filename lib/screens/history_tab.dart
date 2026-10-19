@@ -1756,13 +1756,14 @@ class _HistoryTabState extends State<HistoryTab> {
               addTempVars('52', epv52MeanP1, epv52MaxP1, epv52MinP1, epv52SDP1, epv52MeanP2, epv52MaxP2, epv52MinP2, epv52SDP2, epv52VelMean, epv52VelMax, epv52VelMin, epv52VelSD, epv52ActMean, epv52ActSD);
               addTempVars('54', epv54MeanP1, epv54MaxP1, epv54MinP1, epv54SDP1, epv54MeanP2, epv54MaxP2, epv54MinP2, epv54SDP2, epv54VelMean, epv54VelMax, epv54VelMin, epv54VelSD, epv54ActMean, epv54ActSD);
 
-              for (var f in list) {
-                final item = Map<String, dynamic>.from(f as Map);
+              for (int i = 0; i < list.length; i++) {
+                final item = Map<String, dynamic>.from(list[i] as Map);
                 final res = EpvatFormulaHelper.evaluateFormulaItem(
                   item,
                   vars,
                   defaultTemp: '21',
                   activePressureUnit: epvPressureUnitController.text.trim().isNotEmpty ? epvPressureUnitController.text.trim() : 'bar',
+                  formulaIndex: i + 1,
                 );
                 if (res.isApplicable && !res.isPassed) {
                   return 'Rejected';
@@ -3138,6 +3139,8 @@ class _HistoryTabState extends State<HistoryTab> {
               _buildParamValueSpan('SD X', '${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm'),
             _buildParamValueSpan('SD Y', '${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm'),
             _buildParamValueSpan('Mean Velocity', '${r.velMean.isNotEmpty ? r.velMean : "-"} m/s'),
+            if (r.bulletSupplier.isNotEmpty)
+              _buildParamValueSpan('Bullet', '${r.bulletSupplier} (${r.bulletGrainSize})'),
           ],
         );
       }
@@ -3440,6 +3443,24 @@ class _HistoryTabState extends State<HistoryTab> {
     return r.timestamp.trim();
   }
 
+  String _getRecordNormalizedDate(BallisticRecord r) {
+    final d = _parseRecordUserTime(r);
+    if (d.year > 1970) {
+      return DateFormat('yyyy-MM-dd').format(d);
+    }
+    final t = r.testTime.trim().isNotEmpty ? r.testTime.trim() : r.timestamp.trim();
+    if (t.contains(' ')) return t.split(' ').first;
+    return t;
+  }
+
+  String _formatDisplayDate(String ymdDate) {
+    final parsed = DateTime.tryParse(ymdDate);
+    if (parsed != null) {
+      return DateFormat('dd/MM/yyyy (EEEE)').format(parsed);
+    }
+    return ymdDate;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!testNames.contains(_testNameFilter) && _testNameFilter != 'All') {
@@ -3493,13 +3514,39 @@ class _HistoryTabState extends State<HistoryTab> {
       return matchesSearch && matchesCaliber && matchesStatus && matchesTestName && matchesLot && matchesHopper;
     }).toList();
 
-    // Show newest first (older dates/times manually entered strictly sort downwards)
-    // For Lot Acceptance: strictly sort by Lot Number (Instruction 4)
+    // Build lotLatestTime map for Lot Acceptance so the most recently created lot is displayed at the top
+    final Map<String, int> lotLatestTime = {};
+    if (isLotAcceptance) {
+      for (final r in filtered) {
+        final key = '${r.caliber.trim()}|${r.lotNo.trim()}';
+        final d = _parseRecordUserTime(r);
+        final ms = d.millisecondsSinceEpoch > 0 ? d.millisecondsSinceEpoch : (DateTime.tryParse(r.timestamp)?.millisecondsSinceEpoch ?? 0);
+        if (!lotLatestTime.containsKey(key) || ms > lotLatestTime[key]!) {
+          lotLatestTime[key] = ms;
+        }
+      }
+    }
+
     final displayRecords = List<BallisticRecord>.from(filtered)
       ..sort((a, b) {
         if (isLotAcceptance) {
-          final lotCmp = _compareLotNumbers(b.lotNo, a.lotNo);
-          if (lotCmp != 0) return lotCmp;
+          final keyA = '${a.caliber.trim()}|${a.lotNo.trim()}';
+          final keyB = '${b.caliber.trim()}|${b.lotNo.trim()}';
+          if (keyA != keyB) {
+            final tA = lotLatestTime[keyA] ?? 0;
+            final tB = lotLatestTime[keyB] ?? 0;
+            if (tA != tB) {
+              return tB.compareTo(tA); // Most recently created lot displayed at top of list
+            }
+            final lotCmp = _compareLotNumbers(b.lotNo, a.lotNo);
+            if (lotCmp != 0) return lotCmp;
+          }
+        } else {
+          // For Daily Test: sort by normalized date (yyyy-MM-dd) descending first so all tests on the same date group together
+          final dateA = _getRecordNormalizedDate(a);
+          final dateB = _getRecordNormalizedDate(b);
+          final dateCmp = dateB.compareTo(dateA);
+          if (dateCmp != 0) return dateCmp;
         }
 
         final da = _parseRecordUserTime(a);
@@ -4513,16 +4560,12 @@ class _HistoryTabState extends State<HistoryTab> {
                   return rowWidget;
                 }
 
-                final String currDate = r.testTime.isNotEmpty && r.testTime.contains(' ')
-                    ? r.testTime.split(' ').first
-                    : (r.timestamp.contains(' ') ? r.timestamp.split(' ').first : r.timestamp);
+                final String currDateKey = _getRecordNormalizedDate(r);
                 bool showDateDivider = false;
                 if (index > 0) {
                   final prev = displayRecords[index - 1];
-                  final String prevDate = prev.testTime.isNotEmpty && prev.testTime.contains(' ')
-                      ? prev.testTime.split(' ').first
-                      : (prev.timestamp.contains(' ') ? prev.timestamp.split(' ').first : prev.timestamp);
-                  if (currDate != prevDate) {
+                  final String prevDateKey = _getRecordNormalizedDate(prev);
+                  if (currDateKey != prevDateKey) {
                     showDateDivider = true;
                   }
                 }
@@ -4546,7 +4589,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               const Icon(Icons.calendar_today, size: 12.0, color: Color(0xFF0284C7)),
                               const SizedBox(width: 6.0),
                               Text(
-                                'Day Separator — Tests of $currDate',
+                                'Day Separator — Tests of ${_formatDisplayDate(currDateKey)}',
                                 style: const TextStyle(
                                   fontSize: 11.0,
                                   fontWeight: FontWeight.bold,

@@ -7756,6 +7756,20 @@ class _MainShellState extends State<MainShell> {
                   if (val != null) {
                     setState(() {
                       _selectedRuleTest = val;
+                      if (val == 'Primer Sensitivity Test') {
+                        const validCalibers = ['7.62', '5.56', '9mm'];
+                        if (!validCalibers.contains(_ruleSelectedCaliber)) {
+                          if (_ruleSelectedCaliber.contains('7.62') || _ruleSelectedCaliber.contains('308') || _ruleSelectedCaliber.contains('M80')) {
+                            _ruleSelectedCaliber = '7.62';
+                          } else if (_ruleSelectedCaliber.contains('9x19') || _ruleSelectedCaliber.contains('9mm') || _ruleSelectedCaliber.contains('Para') || _ruleSelectedCaliber.contains('Luger') || _ruleSelectedCaliber.contains('CMJ')) {
+                            _ruleSelectedCaliber = '9mm';
+                          } else {
+                            _ruleSelectedCaliber = '5.56';
+                          }
+                          _ruleSelectedFuncCaliber = _ruleSelectedCaliber;
+                          _ruleSelectedEpvatCaliberForMass = _ruleSelectedCaliber;
+                        }
+                      }
                     });
                     _syncRulesControllers();
                   }
@@ -7770,10 +7784,6 @@ class _MainShellState extends State<MainShell> {
                   'Function Test',
                   'Firing Rate Cycle Test',
                   'Terminal Effect Test',
-                  'GP6 Transducers (EPVAT)',
-                  'Barrels',
-                  'Weapons',
-                  'Sampling Locations',
                 ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
               ),
             ),
@@ -7790,6 +7800,25 @@ class _MainShellState extends State<MainShell> {
                 _selectedRuleTest != 'Weapons' &&
                 _selectedRuleTest != 'Sampling Locations';
             if (!isCaliberAware) return const SizedBox.shrink();
+
+            final List<String> calList = _selectedRuleTest == 'Primer Sensitivity Test'
+                ? const ['7.62', '5.56', '9mm']
+                : const [
+                    '5.56x45 SS109',
+                    '5.56x45 M193',
+                    '5.56x45 .223 69 grains',
+                    '5.56x45 .223 55 grains',
+                    '5.56x45 .223 77 grains',
+                    '5.56x45 M200 Blank',
+                    '7.62x51 M80',
+                    '7.62x51 .308',
+                    '7.62x51 M82 Blank',
+                    '9x19mm Para',
+                    '9x19mm Luger',
+                    '9x19mm Match',
+                    '9x19mm 124 grains CMJ',
+                  ];
+            final currentCal = calList.contains(_ruleSelectedCaliber) ? _ruleSelectedCaliber : calList.first;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 16.0),
@@ -7840,7 +7869,7 @@ class _MainShellState extends State<MainShell> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _ruleSelectedCaliber,
+                        value: currentCal,
                         isExpanded: true,
                         dropdownColor: const Color(0xFF344D6E),
                         style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
@@ -7855,21 +7884,7 @@ class _MainShellState extends State<MainShell> {
                             _syncRulesControllers();
                           }
                         },
-                        items: [
-                          '5.56x45 SS109',
-                          '5.56x45 M193',
-                          '5.56x45 .223 69 grains',
-                          '5.56x45 .223 55 grains',
-                          '5.56x45 .223 77 grains',
-                          '5.56x45 M200 Blank',
-                          '7.62x51 M80',
-                          '7.62x51 .308',
-                          '7.62x51 M82 Blank',
-                          '9x19mm Para',
-                          '9x19mm Luger',
-                          '9x19mm Match',
-                          '9x19mm 124 grains CMJ',
-                        ].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        items: calList.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                       ),
                     ),
                   ),
@@ -8840,26 +8855,9 @@ class _MainShellState extends State<MainShell> {
               );
             }),
           ] else if (_selectedRuleTest == 'Primer Sensitivity Test') ...[
-            _buildRuleTextField('Drop Weight (grams) for $_ruleSelectedCaliber', _rulePrimerDropWeightCtrl),
-            _buildRuleTextField('Min All-Fire Height (H_max limit, mm) for $_ruleSelectedCaliber', _rulePrimerMinAllFireCtrl),
-            _buildRuleTextField('Max No-Fire Height (H_min limit, mm) for $_ruleSelectedCaliber', _rulePrimerMaxNoFireCtrl),
-            Row(
-              children: [
-                Expanded(child: _buildRuleTextField('Mean Height H̄ Min (mm)', _rulePrimerHbarMinCtrl)),
-                const SizedBox(width: 8.0),
-                Expanded(child: _buildRuleTextField('Mean Height H̄ Max (mm)', _rulePrimerHbarMaxCtrl)),
-              ],
-            ),
-            _buildRuleTextField('Max Standard Deviation S (mm) for $_ruleSelectedCaliber', _rulePrimerMaxSDCtrl),
-            Row(
-              children: [
-                Expanded(child: _buildRuleTextField('Retest Misfires Limit (>=)', _rulePrimerRetestMisfiresCtrl)),
-                const SizedBox(width: 8.0),
-                Expanded(child: _buildRuleTextField('Reject Misfires Limit (>=)', _rulePrimerRejectMisfiresCtrl)),
-              ],
-            ),
-            _buildRuleTextField('Configure "Approved with condition" Specification / Criteria for Primer Sensitivity', _rulePrimerCondCtrl, isMultiline: true),
-            _buildRuleTextField('Evaluation Instructions Remarks for $_ruleSelectedCaliber', _rulePrimerInstructionsCtrl, isMultiline: true),
+            _buildRuleTextField('Ball Weight (grams) for $_ruleSelectedCaliber', _rulePrimerDropWeightCtrl),
+            _buildRuleTextField('Max Limit of H̄ + 5SD (All-Fire Height, mm) for $_ruleSelectedCaliber', _rulePrimerMinAllFireCtrl),
+            _buildRuleTextField('Min Limit of H̄ - 2SD (No-Fire Height, mm) for $_ruleSelectedCaliber', _rulePrimerMaxNoFireCtrl),
           ] else if (_selectedRuleTest == 'Terminal Effect Test') ...[
             const Text(
               'Configure the default plate materials and thicknesses used for Terminal Effect testing. These settings dynamically update the test input form headers and exported ballistic reports.',

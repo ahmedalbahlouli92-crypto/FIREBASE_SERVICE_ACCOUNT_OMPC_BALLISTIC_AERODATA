@@ -171,7 +171,8 @@ class SupabaseService {
           final fallbackMap = Map<String, dynamic>.from(sanitized);
           const newCols = [
             't4_mean', 't4_max', 't4_min', 't4_range', 't4_sd', 't4_rounds',
-            'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table'
+            'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table',
+            'bullet_supplier', 'bullet_grain_size', 'sample_loading_method', 'sample_received_date'
           ];
           for (final c in newCols) {
             fallbackMap.remove(c);
@@ -350,7 +351,8 @@ class SupabaseService {
           final fallbackMap = Map<String, dynamic>.from(map);
           const newCols = [
             't4_mean', 't4_max', 't4_min', 't4_range', 't4_sd', 't4_rounds',
-            'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table'
+            'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table',
+            'bullet_supplier', 'bullet_grain_size', 'sample_loading_method', 'sample_received_date'
           ];
           for (final c in newCols) {
             fallbackMap.remove(c);

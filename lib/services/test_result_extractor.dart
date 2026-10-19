@@ -52,7 +52,15 @@ class TestResultExtractor {
   }) {
     final fields = <String, dynamic>{};
     final summary = <String>[];
-    final normalizedContent = normalizeShiftedText(content);
+    final sanitizedContent = content
+        .replaceAll('\u2212', '-')
+        .replaceAll('\u2013', '-')
+        .replaceAll('\u2014', '-')
+        .replaceAll('\u2011', '-')
+        .replaceAll('\u00AD', '-')
+        .replaceAll('\uFE63', '-')
+        .replaceAll('\uFF0D', '-');
+    final normalizedContent = normalizeShiftedText(sanitizedContent);
     final trimmed = normalizedContent.trim();
 
     if (trimmed.isEmpty) {
@@ -2404,7 +2412,15 @@ class PdfTextExtractor {
     }
 
     final rawText = buffer.toString().trim();
-    return TestResultExtractor.normalizeShiftedText(rawText);
+    final shifted = TestResultExtractor.normalizeShiftedText(rawText);
+    return shifted
+        .replaceAll('\u2212', '-')
+        .replaceAll('\u2013', '-')
+        .replaceAll('\u2014', '-')
+        .replaceAll('\u2011', '-')
+        .replaceAll('\u00AD', '-')
+        .replaceAll('\uFE63', '-')
+        .replaceAll('\uFF0D', '-');
   }
 
   static Map<int, String> _parseCMap(String cmapText) {

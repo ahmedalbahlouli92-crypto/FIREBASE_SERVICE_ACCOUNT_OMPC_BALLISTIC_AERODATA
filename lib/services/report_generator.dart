@@ -548,12 +548,16 @@ class ReportGenerator {
     final String defaultTemp = '21';
 
     final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
-    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
-      Map<String, dynamic>.from(f as Map),
-      variables,
-      defaultTemp: defaultTemp,
-      activePressureUnit: activePressureUnit,
-    )).toList();
+    final results = <EpvatFormulaResult>[];
+    for (int i = 0; i < list.length; i++) {
+      results.add(EpvatFormulaHelper.evaluateFormulaItem(
+        Map<String, dynamic>.from(list[i] as Map),
+        variables,
+        defaultTemp: defaultTemp,
+        activePressureUnit: activePressureUnit,
+        formulaIndex: i + 1,
+      ));
+    }
     final testedResults = results.where((r) => r.isApplicable).toList();
     final displayResults = testedResults.isNotEmpty ? testedResults : results;
     final bool allPassed = testedResults.isEmpty || testedResults.every((r) => r.isPassed);
@@ -802,11 +806,15 @@ class ReportGenerator {
       );
       if (epvFormulaList.isNotEmpty) {
         final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(records);
-        final evaluatedResults = epvFormulaList.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
-          Map<String, dynamic>.from(f as Map),
-          epvVars,
-          defaultTemp: '21',
-        )).toList();
+        final evaluatedResults = <EpvatFormulaResult>[];
+        for (int i = 0; i < epvFormulaList.length; i++) {
+          evaluatedResults.add(EpvatFormulaHelper.evaluateFormulaItem(
+            Map<String, dynamic>.from(epvFormulaList[i] as Map),
+            epvVars,
+            defaultTemp: '21',
+            formulaIndex: i + 1,
+          ));
+        }
         final applicableResults = evaluatedResults.where((r) => r.isApplicable).toList();
         if (applicableResults.isNotEmpty) {
           epvatFormulasPassed = applicableResults.every((r) => r.isPassed);
@@ -1459,6 +1467,19 @@ class ReportGenerator {
           <tr>
             <td style="font-weight: bold; text-align: left;">Mean Radius</td>
             <td colspan="3" style="font-weight: bold; color: ${getMeanRadiusColor(r.accMeanRadius)}; text-align: center;">${r.accMeanRadius} mm</td>
+          </tr>
+          ''');
+        }
+        if (r.bulletSupplier.isNotEmpty || r.bulletGrainSize.isNotEmpty) {
+          buffer.writeln('''
+          <tr>
+            <td colspan="4" style="background-color: #f8fafc; font-size: 11px; padding: 6px 10px; border-top: 1px solid #cbd5e1;">
+              <strong>Bullet Supplier:</strong> ${r.bulletSupplier.isNotEmpty ? r.bulletSupplier : "-"} &nbsp;|&nbsp;
+              <strong>Grain Size:</strong> ${r.bulletGrainSize.isNotEmpty ? r.bulletGrainSize : "-"} &nbsp;|&nbsp;
+              <strong>Powder Charge:</strong> ${r.propellantCharge.isNotEmpty ? r.propellantCharge : "-"} &nbsp;|&nbsp;
+              <strong>Loading Method:</strong> ${r.sampleLoadingMethod.isNotEmpty ? r.sampleLoadingMethod : "-"} &nbsp;|&nbsp;
+              <strong>Received Date:</strong> ${r.sampleReceivedDate.isNotEmpty ? r.sampleReceivedDate : "-"}
+            </td>
           </tr>
           ''');
         }
@@ -2218,11 +2239,15 @@ class ReportGenerator {
       );
       if (epvFormulaList.isNotEmpty) {
         final epvVars = EpvatFormulaHelper.extractVariablesFromRecords(records);
-        final evaluatedResults = epvFormulaList.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
-          Map<String, dynamic>.from(f as Map),
-          epvVars,
-          defaultTemp: '21',
-        )).toList();
+        final evaluatedResults = <EpvatFormulaResult>[];
+        for (int i = 0; i < epvFormulaList.length; i++) {
+          evaluatedResults.add(EpvatFormulaHelper.evaluateFormulaItem(
+            Map<String, dynamic>.from(epvFormulaList[i] as Map),
+            epvVars,
+            defaultTemp: '21',
+            formulaIndex: i + 1,
+          ));
+        }
         final applicableResults = evaluatedResults.where((r) => r.isApplicable).toList();
         if (applicableResults.isNotEmpty) {
           epvatFormulasPassed = applicableResults.every((r) => r.isPassed);
@@ -2665,6 +2690,19 @@ class ReportGenerator {
           <tr>
             <td style="font-weight: bold; text-align: left;">Mean Radius</td>
             <td colspan="3" style="font-weight: bold; color: ${getMeanRadiusColor(r.accMeanRadius)}; text-align: center;">${r.accMeanRadius} mm</td>
+          </tr>
+          ''');
+        }
+        if (r.bulletSupplier.isNotEmpty || r.bulletGrainSize.isNotEmpty) {
+          buffer.writeln('''
+          <tr>
+            <td colspan="4" style="background-color: #f8fafc; font-size: 11px; padding: 6px 10px; border-top: 1px solid #cbd5e1;">
+              <strong>Bullet Supplier:</strong> ${r.bulletSupplier.isNotEmpty ? r.bulletSupplier : "-"} &nbsp;|&nbsp;
+              <strong>Grain Size:</strong> ${r.bulletGrainSize.isNotEmpty ? r.bulletGrainSize : "-"} &nbsp;|&nbsp;
+              <strong>Powder Charge:</strong> ${r.propellantCharge.isNotEmpty ? r.propellantCharge : "-"} &nbsp;|&nbsp;
+              <strong>Loading Method:</strong> ${r.sampleLoadingMethod.isNotEmpty ? r.sampleLoadingMethod : "-"} &nbsp;|&nbsp;
+              <strong>Received Date:</strong> ${r.sampleReceivedDate.isNotEmpty ? r.sampleReceivedDate : "-"}
+            </td>
           </tr>
           ''');
         }
@@ -3566,12 +3604,16 @@ class ReportGenerator {
     bool epvatFormulasPassed = true;
     final epvatRecords = scopedRecords.where((r) => r.testName.toLowerCase().contains('epvat') || r.testName.toLowerCase().contains('propellant')).toList();
     if (epvatRecords.isNotEmpty && epvFormulaList.isNotEmpty) {
-      final evaluatedResults = epvFormulaList.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
-        Map<String, dynamic>.from(f as Map),
-        epvVars,
-        defaultTemp: '21',
-        activePressureUnit: activePressureUnit,
-      )).toList();
+      final evaluatedResults = <EpvatFormulaResult>[];
+      for (int i = 0; i < epvFormulaList.length; i++) {
+        evaluatedResults.add(EpvatFormulaHelper.evaluateFormulaItem(
+          Map<String, dynamic>.from(epvFormulaList[i] as Map),
+          epvVars,
+          defaultTemp: '21',
+          activePressureUnit: activePressureUnit,
+          formulaIndex: i + 1,
+        ));
+      }
       final applicableResults = evaluatedResults.where((r) => r.isApplicable).toList();
       if (applicableResults.isNotEmpty) {
         epvatFormulasPassed = applicableResults.every((r) => r.isPassed);

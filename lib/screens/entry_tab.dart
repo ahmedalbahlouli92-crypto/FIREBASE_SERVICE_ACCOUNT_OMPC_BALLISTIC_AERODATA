@@ -40,13 +40,18 @@ class SignedDecimalInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final text = newValue.text;
+    var text = newValue.text
+        .replaceAll('\u2212', '-')
+        .replaceAll('\u2013', '-')
+        .replaceAll('\u2014', '-')
+        .replaceAll('\u2011', '-')
+        .replaceAll('\u00AD', '-');
     if (text.isEmpty || text == '-') {
-      return newValue;
+      return newValue.copyWith(text: text);
     }
     final regExp = RegExp(r'^-?\d*\.?\d*$');
     if (regExp.hasMatch(text)) {
-      return newValue;
+      return newValue.copyWith(text: text);
     }
     return oldValue;
   }
@@ -238,10 +243,17 @@ class _EntryTabState extends State<EntryTab> {
   final List<String> _localAddedPropellantSuppliers = [];
   bool get _isAdmin => widget.userRole.toLowerCase() == 'admin';
 
+  final _bulletSupplierController = TextEditingController();
+  final _bulletGrainSizeController = TextEditingController();
+  String _sampleLoadingMethod = 'Manually Loaded';
+  late final _sampleReceivedDateController = TextEditingController(text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
+  String _bulletSampleLocation = 'QC';
+  String _epvatSingleSubMode = 'Stats Only';
+
   bool get _isCaliber9mm => _caliber.toLowerCase().contains('9mm') || _caliber.toLowerCase().contains('9x19');
   bool _isSameCaliberFamily(String calA, String calB) {
-    final a = calA.toLowerCase().replaceAll(' ', '');
-    final b = calB.toLowerCase().replaceAll(' ', '');
+    final a = calA.toLowerCase().replaceAll(' ', '').replaceAll(',', '.');
+    final b = calB.toLowerCase().replaceAll(' ', '').replaceAll(',', '.');
     if (a == b || a.contains(b) || b.contains(a)) return true;
     if ((a.contains('5.56') || a.contains('223')) && (b.contains('5.56') || b.contains('223'))) return true;
     if ((a.contains('7.62') || a.contains('308') || a.contains('m80')) && (b.contains('7.62') || b.contains('308') || b.contains('m80'))) return true;
@@ -1805,6 +1817,20 @@ class _EntryTabState extends State<EntryTab> {
         return false;
       }
     } else if (_testName == 'Accuracy Test') {
+      if (widget.currentModule == 'Component Test') {
+        if (_bulletSupplierController.text.trim().isEmpty) {
+          notifyMissing('Bullet Supplier');
+          return false;
+        }
+        if (_bulletGrainSizeController.text.trim().isEmpty) {
+          notifyMissing('Grain Size');
+          return false;
+        }
+        if (_propellantChargeController.text.trim().isEmpty) {
+          notifyMissing('Powder Charge');
+          return false;
+        }
+      }
       if (_barrelSNController.text.trim().isEmpty) {
         jumpTo(_barrelFieldKey, _barrelFocusNode, 'Accuracy Barrel Test Serial');
         return false;
@@ -2251,6 +2277,15 @@ class _EntryTabState extends State<EntryTab> {
   // calibers and testNames are now on EntryTab widget class
   List<String> get calibers {
     if (widget.currentModule == 'Component Test') {
+      if (_testName == 'Accuracy Test') {
+        return const [
+          '5.56x45 .223 55 grains',
+          '5.56x45 .223 69 grains',
+          '5.56x45 .223 77 grains',
+          '7.62x51 .308',
+          '9x19mm 124 grains CMJ',
+        ];
+      }
       return const ['5.56', '7.62', '9mm'];
     }
     return EntryTab.calibers;
@@ -2260,7 +2295,7 @@ class _EntryTabState extends State<EntryTab> {
       return EntryTab.testNames.where((t) => t != 'Primer Sensitivity Test' && t != 'Propellant Test').toList();
     }
     if (widget.currentModule == 'Component Test') {
-      return const ['Primer Sensitivity Test', 'Propellant Test'];
+      return const ['Primer Sensitivity Test', 'Propellant Test', 'Accuracy Test'];
     }
     return EntryTab.testNames.where((t) => t != 'Propellant Test').toList();
   }
@@ -2268,6 +2303,10 @@ class _EntryTabState extends State<EntryTab> {
   // Caliber-specific test matrix and sample sizing
   bool _isTestAllowedForCaliber(String test, String cal) {
     if (widget.currentModule == 'Component Test') {
+      if (test == 'Accuracy Test') {
+        final c = cal.toLowerCase().replaceAll(',', '.');
+        return c.contains('.223') || c.contains('.308') || (c.contains('124') && c.contains('cmj'));
+      }
       return test == 'Propellant Test' || test == 'Primer Sensitivity Test';
     }
     if (test == 'Propellant Test') return false;
@@ -2275,7 +2314,7 @@ class _EntryTabState extends State<EntryTab> {
       return false;
     }
 
-    final c = cal.toLowerCase();
+    final c = cal.toLowerCase().replaceAll(',', '.');
     if (test == 'Waterproof Test') {
       if (c.contains('.223') || c.contains('69 grain') || c.contains('55 grain') || c.contains('77 grain') ||
           c.contains('.308') || c.contains('match') || c.contains('luger')) {
@@ -2301,6 +2340,9 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   List<String> _allowedTestsForCaliber(String cal) {
+    if (widget.currentModule == 'Component Test') {
+      return testNames;
+    }
     return testNames.where((t) => _isTestAllowedForCaliber(t, cal)).toList();
   }
 
@@ -2472,6 +2514,19 @@ class _EntryTabState extends State<EntryTab> {
         _cartridgeTempController.text = '+21';
         _functionSingleTemp = '+21';
       }
+      if (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test') {
+        if (newCaliber.contains('55 grains')) {
+          _bulletGrainSizeController.text = '55 grains';
+        } else if (newCaliber.contains('69 grains')) {
+          _bulletGrainSizeController.text = '69 grains';
+        } else if (newCaliber.contains('77 grains')) {
+          _bulletGrainSizeController.text = '77 grains';
+        } else if (newCaliber.contains('124 grains')) {
+          _bulletGrainSizeController.text = '124 grains';
+        } else if (newCaliber.contains('.308')) {
+          _bulletGrainSizeController.text = '175 grains';
+        }
+      }
       if (_testName == 'Waterproof Test') {
         _pressureController.text = (_caliber.contains('M82') || _caliber.contains('M200')) ? '0.14' : '0.5';
       }
@@ -2602,6 +2657,32 @@ class _EntryTabState extends State<EntryTab> {
         _functionTempMode = 'Single';
         _cartridgeTempController.text = '+21';
         _functionSingleTemp = '+21';
+      }
+      if (widget.currentModule == 'Component Test') {
+        if (newTest == 'Accuracy Test') {
+          final c = _caliber.toLowerCase().replaceAll(',', '.');
+          final isAllowedBulletCal = c.contains('.223') || c.contains('.308') || (c.contains('124') && c.contains('cmj'));
+          if (!isAllowedBulletCal) {
+            _caliber = '5.56x45 .223 55 grains';
+            widget.onCaliberChanged(_caliber);
+          }
+          if (_caliber.contains('55 grains')) {
+            _bulletGrainSizeController.text = '55 grains';
+          } else if (_caliber.contains('69 grains')) {
+            _bulletGrainSizeController.text = '69 grains';
+          } else if (_caliber.contains('77 grains')) {
+            _bulletGrainSizeController.text = '77 grains';
+          } else if (_caliber.contains('124 grains')) {
+            _bulletGrainSizeController.text = '124 grains';
+          } else if (_caliber.contains('.308')) {
+            _bulletGrainSizeController.text = '175 grains';
+          }
+        } else {
+          if (_caliber.contains('grains') || _caliber.contains('.308') || _caliber.contains('CMJ')) {
+            _caliber = '5.56';
+            widget.onCaliberChanged(_caliber);
+          }
+        }
       }
       final sampleSize = _getDefaultSampleSize(
         test: _testName,
@@ -2744,6 +2825,13 @@ class _EntryTabState extends State<EntryTab> {
         'headFast': _headFastController.text,
         'epvatOverallRoundCount': _epvatOverallRoundCount,
         'epvatOverallSubMode': _epvatOverallSubMode,
+        'epvatSingleSubMode': _epvatSingleSubMode,
+        'bulletSupplier': _bulletSupplierController.text,
+        'bulletGrainSize': _bulletGrainSizeController.text,
+        'sampleLoadingMethod': _sampleLoadingMethod,
+        'sampleReceivedDate': _sampleReceivedDateController.text,
+        'bulletSampleLocation': _bulletSampleLocation,
+        'propellantCharge': _propellantChargeController.text,
         'savedAt': DateTime.now().toIso8601String(),
       };
       
@@ -2934,6 +3022,14 @@ class _EntryTabState extends State<EntryTab> {
             }
           });
         }
+
+        if (draft['epvatSingleSubMode'] != null) _epvatSingleSubMode = draft['epvatSingleSubMode'].toString();
+        if (draft['bulletSupplier'] != null) _bulletSupplierController.text = draft['bulletSupplier'].toString();
+        if (draft['bulletGrainSize'] != null) _bulletGrainSizeController.text = draft['bulletGrainSize'].toString();
+        if (draft['sampleLoadingMethod'] != null) _sampleLoadingMethod = draft['sampleLoadingMethod'].toString();
+        if (draft['sampleReceivedDate'] != null) _sampleReceivedDateController.text = draft['sampleReceivedDate'].toString();
+        if (draft['bulletSampleLocation'] != null) _bulletSampleLocation = draft['bulletSampleLocation'].toString();
+        if (draft['propellantCharge'] != null) _propellantChargeController.text = draft['propellantCharge'].toString();
 
         _autoSaveStatus = 'Restored draft from local storage';
       });
@@ -3221,6 +3317,9 @@ class _EntryTabState extends State<EntryTab> {
     _propellantLotController.dispose();
     _propellantChargeController.dispose();
     _propellantCodeController.dispose();
+    _bulletSupplierController.dispose();
+    _bulletGrainSizeController.dispose();
+    _sampleReceivedDateController.dispose();
     _epvatAdminPropellantSupplierController.dispose();
     _epvatAdminPrimerSupplierController.dispose();
     _lotThreeDigitsController.dispose();
@@ -3932,7 +4031,9 @@ class _EntryTabState extends State<EntryTab> {
           testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
           gp6Serial: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _gp6SerialController.text.trim() : '',
           userRole: widget.userRole,
-          samplingLocation: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : ''),
+          samplingLocation: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+              ? _bulletSampleLocation
+              : (_locationController.text.trim().isNotEmpty ? _locationController.text.trim() : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : '')),
           mouthSlow: _testName == 'Waterproof Test' ? (int.tryParse(_mouthSlowController.text.trim()) ?? 0) : 0,
           mouthFast: _testName == 'Waterproof Test' ? (int.tryParse(_mouthFastController.text.trim()) ?? 0) : 0,
           primerSlow: _testName == 'Waterproof Test' ? (int.tryParse(_primerSlowController.text.trim()) ?? 0) : 0,
@@ -4055,7 +4156,21 @@ class _EntryTabState extends State<EntryTab> {
           propellantSupplier: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantSupplier : '',
           propellantCode: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantCodeController.text.trim() : '',
           propellantLot: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? (_selectedComponentPropellantLot ?? _propellantLotController.text.trim()) : '',
-          propellantCharge: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantChargeController.text.trim() : '',
+          propellantCharge: (_testName == 'Propellant Test' || _testName == 'EPVAT test' || (_testName == 'Accuracy Test' && widget.currentModule == 'Component Test'))
+              ? _propellantChargeController.text.trim()
+              : '',
+          bulletSupplier: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+              ? _bulletSupplierController.text.trim()
+              : '',
+          bulletGrainSize: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+              ? _bulletGrainSizeController.text.trim()
+              : '',
+          sampleLoadingMethod: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+              ? _sampleLoadingMethod
+              : '',
+          sampleReceivedDate: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+              ? _sampleReceivedDateController.text.trim()
+              : '',
         );
         return record;
       }
@@ -4078,6 +4193,81 @@ class _EntryTabState extends State<EntryTab> {
       htmlContent: htmlContent,
       filename: previewFilename,
     );
+  }
+
+  bool _hasResultsFilled() {
+    switch (_testName) {
+      case 'Accuracy Test':
+        if (_caliber.contains('M193')) {
+          return _meanRadiusController.text.trim().isNotEmpty || _targetCoordinates.isNotEmpty;
+        }
+        return _meanXController.text.trim().isNotEmpty ||
+            _maxXController.text.trim().isNotEmpty ||
+            _meanYController.text.trim().isNotEmpty ||
+            _meanRadiusController.text.trim().isNotEmpty ||
+            _accLargestDistanceController.text.trim().isNotEmpty ||
+            _meanVelController.text.trim().isNotEmpty ||
+            _targetCoordinates.isNotEmpty;
+
+      case 'EPVAT test':
+      case 'Propellant Test':
+        if (_epvatPressureType == 'Overall') {
+          for (final t in ['+21', '+52', '-54']) {
+            final m = _overallEpvatControllers[t];
+            if (m != null && m.values.any((c) => c.text.trim().isNotEmpty)) return true;
+            if (_overallEpvatP1RoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false) return true;
+            if (_overallEpvatVelRoundsControllers[t]?.any((c) => c.text.trim().isNotEmpty) ?? false) return true;
+          }
+          return false;
+        } else {
+          return _epvatMeanPressureController.text.trim().isNotEmpty ||
+              _epvatMaxPressureController.text.trim().isNotEmpty ||
+              _meanVelController.text.trim().isNotEmpty ||
+              _actionTimeMeanController.text.trim().isNotEmpty ||
+              _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
+              _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty);
+        }
+
+      case 'Extraction Force Test':
+        return _rangeXController.text.trim().isNotEmpty ||
+            _sdXController.text.trim().isNotEmpty ||
+            _extractionRoundsControllers.any((c) => c.text.trim().isNotEmpty);
+
+      case 'Waterproof Test':
+        return _pressureController.text.trim().isNotEmpty ||
+            (int.tryParse(_mouthSlowController.text.trim()) ?? 0) > 0 ||
+            (int.tryParse(_mouthFastController.text.trim()) ?? 0) > 0 ||
+            (int.tryParse(_primerSlowController.text.trim()) ?? 0) > 0 ||
+            (int.tryParse(_primerFastController.text.trim()) ?? 0) > 0;
+
+      case 'Residual Stress Test':
+        return _bodySlowController.text.trim().isNotEmpty ||
+            _bodyFastController.text.trim().isNotEmpty ||
+            _headSlowController.text.trim().isNotEmpty ||
+            _headFastController.text.trim().isNotEmpty;
+
+      case 'Primer Sensitivity Test':
+        if (widget.currentModule == 'Lot Acceptance Test') {
+          return (_selectedComponentPrimerLot != null && _selectedComponentPrimerLot!.isNotEmpty) ||
+              _primerLotController.text.trim().isNotEmpty;
+        }
+        return _primerHbarController.text.trim().isNotEmpty ||
+            _primerDropTableRows.any((r) =>
+                (int.tryParse(r.f.text.trim()) ?? 0) > 0 ||
+                (int.tryParse(r.m.text.trim()) ?? 0) > 0);
+
+      case 'Function Test':
+        final p = int.tryParse(_producedController.text.trim()) ?? 0;
+        return p > 0;
+
+      case 'Terminal Effect Test':
+        return _terminalDistanceController.text.trim().isNotEmpty ||
+            _terminalBarrelSNController.text.trim().isNotEmpty ||
+            _notesController.text.trim().isNotEmpty;
+
+      default:
+        return _producedController.text.trim().isNotEmpty && _producedController.text.trim() != '0';
+    }
   }
 
   void _submitForm() async {
@@ -4109,6 +4299,70 @@ class _EntryTabState extends State<EntryTab> {
           ),
         );
         return;
+      }
+    }
+
+    // Item 8: Prevent submission if test measurement results are empty
+    if (!_hasResultsFilled()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Validation Error: Test measurement results cannot be empty. Please enter measurement results before submitting.'),
+          backgroundColor: Color(0xFFEF4444),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // Item 9: Warn user if a report with the same lot number and test type has already been submitted
+    final String currentLot = _lotController.text.trim();
+    if (currentLot.isNotEmpty) {
+      final existing = widget.records.where((r) {
+        final matchesTest = r.testName.trim().toLowerCase() == _testName.trim().toLowerCase();
+        final matchesCal = _isSameCaliberFamily(r.caliber, _caliber);
+        final matchesLot = r.lotNo.trim().toLowerCase() == currentLot.toLowerCase() ||
+            (widget.currentModule != 'Lot Acceptance Test' && r.hopperNo.trim().toLowerCase() == currentLot.toLowerCase());
+        return matchesTest && matchesCal && matchesLot;
+      }).toList();
+
+      if (existing.isNotEmpty) {
+        final prevRecord = existing.first;
+        final confirmed = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            title: Row(
+              children: const [
+                Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 24.0),
+                SizedBox(width: 8.0),
+                Text('Duplicate Submission Warning', style: TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text(
+              'A report for Lot "$currentLot" and Test "$_testName" ($_caliber) has already been submitted on ${prevRecord.testTime.isNotEmpty ? prevRecord.testTime : prevRecord.timestamp}.\n\nAre you sure you want to proceed and submit another report for this lot?',
+              style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.0, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Confirm & Submit'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) {
+          return;
+        }
       }
     }
 
@@ -4830,6 +5084,7 @@ class _EntryTabState extends State<EntryTab> {
 
           _epvatOverallRoundCount[currentTemp] = shotCount;
           _epvatOverallSubMode[currentTemp] = 'Individual Rounds';
+          _epvatSingleSubMode = 'Individual Rounds';
 
           final p1CtrlList = _overallEpvatP1RoundsControllers[currentTemp];
           final p2CtrlList = _overallEpvatP2RoundsControllers[currentTemp];
@@ -5395,7 +5650,9 @@ class _EntryTabState extends State<EntryTab> {
                       label: widget.currentModule == 'Lot Acceptance Test'
                           ? 'Lot Number'
                           : (widget.currentModule == 'Component Test'
-                              ? (_testName == 'Primer Sensitivity Test' ? 'Primer Lot No.' : 'Propellant Lot No.')
+                              ? (_testName == 'Primer Sensitivity Test'
+                                  ? 'Primer Lot No.'
+                                  : (_testName == 'Accuracy Test' ? 'Lot of Shipment' : 'Propellant Lot No.'))
                               : 'Hopper No.'),
                       isRequired: true,
                       child: _buildLotNoField(focusNode: _lotFocusNode),
@@ -6917,107 +7174,148 @@ class _EntryTabState extends State<EntryTab> {
                               },
                             ),
                           ] else ...[
-                            // Individual mode layout: Custom rounds list
+                            // Single Temp mode layout: ChoiceChips for Stats Only vs Individual Rounds
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Individual Round Inputs (${_epvatPressureUnit})',
-                                  style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4.0),
                                 Row(
                                   children: [
-                                    const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    const Expanded(flex: 2, child: Text('P max_1', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    if (!_isCaliber9mm)
-                                      const Expanded(flex: 2, child: Text('P max_2', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    const Expanded(flex: 2, child: Text('t4 [ms]', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    const Expanded(flex: 2, child: Text('ta [ms]', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text('V${_formattedVelocityDistance}_2', textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    Text(
+                                      _epvatSingleSubMode == 'Individual Rounds'
+                                          ? 'Individual Round Inputs (${_epvatPressureUnit})'
+                                          : 'EPVAT Statistics (${_epvatPressureUnit})',
+                                      style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 12.0, fontWeight: FontWeight.bold),
+                                    ),
+                                    const Spacer(),
+                                    const Text('Entry: ', style: TextStyle(color: Color(0xFF64748B), fontSize: 11.0, fontWeight: FontWeight.w600)),
+                                    const SizedBox(width: 4.0),
+                                    ChoiceChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('Stats Only', style: TextStyle(fontSize: 11.0)),
+                                      selected: _epvatSingleSubMode == 'Stats Only',
+                                      selectedColor: const Color(0xFF06B6D4),
+                                      backgroundColor: const Color(0xFFE2E8F0),
+                                      onSelected: (val) {
+                                        if (val) {
+                                          setState(() {
+                                            _epvatSingleSubMode = 'Stats Only';
+                                          });
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(width: 6.0),
+                                    ChoiceChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: const Text('Individual Rounds', style: TextStyle(fontSize: 11.0)),
+                                      selected: _epvatSingleSubMode == 'Individual Rounds',
+                                      selectedColor: const Color(0xFF06B6D4),
+                                      backgroundColor: const Color(0xFFE2E8F0),
+                                      onSelected: (val) {
+                                        if (val) {
+                                          setState(() {
+                                            _epvatSingleSubMode = 'Individual Rounds';
+                                          });
+                                          _recalculateEpvatStats();
+                                        }
+                                      },
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 4.0),
-                                ...List.generate(_getIndividualEpvatVisibleRounds(), (index) {
-                                  // Ensure controller exists at index
-                                  while (_t4RoundsControllers.length <= index) {
-                                    _t4RoundsControllers.add(TextEditingController());
-                                  }
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 4.0),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          flex: 1,
-                                          child: Text(
-                                            'Round ${index + 1}',
-                                            style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 2,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(right: 4.0),
-                                            child: _buildTextField(
-                                              controller: _epvatRoundsControllers[index],
-                                              hint: '0.0',
-                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              onChanged: (val) => _recalculateEpvatStats(),
+                                const SizedBox(height: 6.0),
+                                if (_epvatSingleSubMode == 'Individual Rounds') ...[
+                                  Row(
+                                    children: [
+                                      const Expanded(flex: 1, child: Text('Round', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      const Expanded(flex: 2, child: Text('P max_1', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      if (!_isCaliber9mm)
+                                        const Expanded(flex: 2, child: Text('P max_2', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      const Expanded(flex: 2, child: Text('t4 [ms]', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      const Expanded(flex: 2, child: Text('ta [ms]', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                      Expanded(flex: 2, child: Text('V${_formattedVelocityDistance}_2', textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF8E96A3), fontSize: 11.0, fontWeight: FontWeight.bold))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4.0),
+                                  ...List.generate(_getIndividualEpvatVisibleRounds(), (index) {
+                                    // Ensure controller exists at index
+                                    while (_t4RoundsControllers.length <= index) {
+                                      _t4RoundsControllers.add(TextEditingController());
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 4.0),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            flex: 1,
+                                            child: Text(
+                                              'Round ${index + 1}',
+                                              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
                                             ),
                                           ),
-                                        ),
-                                        if (!_isCaliber9mm)
                                           Expanded(
                                             flex: 2,
                                             child: Padding(
                                               padding: const EdgeInsets.only(right: 4.0),
                                               child: _buildTextField(
-                                                controller: _epvatP2RoundsControllers[index],
+                                                controller: _epvatRoundsControllers[index],
                                                 hint: '0.0',
                                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                                 onChanged: (val) => _recalculateEpvatStats(),
                                               ),
                                             ),
                                           ),
-                                        Expanded(
-                                          flex: 2,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(right: 4.0),
+                                          if (!_isCaliber9mm)
+                                            Expanded(
+                                              flex: 2,
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(right: 4.0),
+                                                child: _buildTextField(
+                                                  controller: _epvatP2RoundsControllers[index],
+                                                  hint: '0.0',
+                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                  onChanged: (val) => _recalculateEpvatStats(),
+                                                ),
+                                              ),
+                                            ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(right: 4.0),
+                                              child: _buildTextField(
+                                                controller: _t4RoundsControllers[index],
+                                                hint: '0.0',
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                onChanged: (val) => _recalculateEpvatStats(),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(right: 4.0),
+                                              child: _buildTextField(
+                                                controller: _actionTimeRoundsControllers[index],
+                                                hint: '0.0',
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                inputFormatters: [ActionTimeInputFormatter()],
+                                                onChanged: (val) => _recalculateEpvatStats(),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
                                             child: _buildTextField(
-                                              controller: _t4RoundsControllers[index],
+                                              controller: _epvatVelRoundsControllers[index],
                                               hint: '0.0',
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                               onChanged: (val) => _recalculateEpvatStats(),
                                             ),
                                           ),
-                                        ),
-                                        Expanded(
-                                          flex: 2,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(right: 4.0),
-                                            child: _buildTextField(
-                                              controller: _actionTimeRoundsControllers[index],
-                                              hint: '0.0',
-                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              inputFormatters: [ActionTimeInputFormatter()],
-                                              onChanged: (val) => _recalculateEpvatStats(),
-                                            ),
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 2,
-                                          child: _buildTextField(
-                                            controller: _epvatVelRoundsControllers[index],
-                                            hint: '0.0',
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                            onChanged: (val) => _recalculateEpvatStats(),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                                const SizedBox(height: 6.0),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                  const SizedBox(height: 6.0),
+                                ],
                                 // 5x5 Transposed Specification Matrix Table
                                 _buildEpvatTransposedMatrixTable(
                                   meanP1Ctrl: _epvatMeanPressureController,
@@ -7049,11 +7347,7 @@ class _EntryTabState extends State<EntryTab> {
                                   minVelCtrl: _minVelController,
                                   rangeVelCtrl: _rangeVelController,
                                   sdVelCtrl: _sdVelController,
-                                  readOnly: _epvatRoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
-                                            _epvatP2RoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
-                                            _t4RoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
-                                            _actionTimeRoundsControllers.any((c) => c.text.trim().isNotEmpty) ||
-                                            _epvatVelRoundsControllers.any((c) => c.text.trim().isNotEmpty),
+                                  readOnly: _epvatSingleSubMode == 'Individual Rounds',
                                 ),
                               ],
                             ),
@@ -9298,13 +9592,18 @@ class _EntryTabState extends State<EntryTab> {
       );
     } else if (widget.currentModule == 'Component Test') {
       final isPrimer = _testName == 'Primer Sensitivity Test';
-      final ctrl = isPrimer ? _primerLotController : _propellantLotController;
+      final isAccuracy = _testName == 'Accuracy Test';
+      final ctrl = isPrimer
+          ? _primerLotController
+          : (isAccuracy ? _lotController : _propellantLotController);
       return TextFormField(
         controller: ctrl,
         focusNode: focusNode,
         style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 12.5, fontWeight: FontWeight.bold),
         decoration: InputDecoration(
-          hintText: isPrimer ? 'Enter Primer Lot (e.g. CBC-26-01)' : 'Enter Propellant Lot (e.g. 90124)',
+          hintText: isPrimer
+              ? 'Enter Primer Lot (e.g. CBC-26-01)'
+              : (isAccuracy ? 'Enter Lot of Shipment' : 'Enter Propellant Lot (e.g. 90124)'),
           hintStyle: const TextStyle(color: Color(0xFF6495BF), fontSize: 12.0),
           filled: true,
           isDense: true,
@@ -9324,7 +9623,9 @@ class _EntryTabState extends State<EntryTab> {
         },
         validator: (v) {
           if (v == null || v.trim().isEmpty) {
-            return isPrimer ? 'Please enter Primer Lot' : 'Please enter Propellant Lot';
+            return isPrimer
+                ? 'Please enter Primer Lot'
+                : (isAccuracy ? 'Please enter Lot of Shipment' : 'Please enter Propellant Lot');
           }
           return null;
         },
@@ -10119,6 +10420,7 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   void _recalculateEpvatStats() {
+    if (_epvatSingleSubMode == 'Stats Only') return;
     // 1. P1 Chamber Pressure stats
     final List<double> p1Values = [];
     for (var ctrl in _epvatRoundsControllers) {
@@ -10327,9 +10629,21 @@ class _EntryTabState extends State<EntryTab> {
     final tempKeys = ['+21', '+52', '-54', '-32'];
     final suffixMap = {'+21': '21', '+52': '52', '-54': '54', '-32': '32'};
     
+    final double testedQty = double.tryParse(_producedController.text.trim()) ?? 0.0;
+    
     if (_epvatPressureType == 'Overall') {
+      final double defaultPerTempN = testedQty > 0 ? (testedQty / 3.0).roundToDouble() : 30.0;
       for (var t in tempKeys) {
         final sfx = suffixMap[t]!;
+        final nVal = (_epvatOverallRoundCount[t] != null && _epvatOverallRoundCount[t]! > 0)
+            ? _epvatOverallRoundCount[t]!.toDouble()
+            : defaultPerTempN;
+        variables['n_$sfx'] = nVal;
+        variables['count_$sfx'] = nVal;
+        variables['sample_size_$sfx'] = nVal;
+        variables['samplesize_$sfx'] = nVal;
+        variables['size_$sfx'] = nVal;
+
         final metricsMap = _overallEpvatControllers[t] ?? {};
         metricsMap.forEach((key, ctrl) {
           final val = double.tryParse(ctrl.text.trim()) ?? 0.0;
@@ -10346,9 +10660,31 @@ class _EntryTabState extends State<EntryTab> {
           }
         });
       }
+      final double overallN = testedQty > 0 ? testedQty : 90.0;
+      variables['n'] = overallN;
+      variables['count'] = overallN;
+      variables['sample_size'] = overallN;
+      variables['samplesize'] = overallN;
+      variables['size'] = overallN;
     } else {
       final activeTemp = _cartridgeTempController.text.trim();
       final String sfx = activeTemp.contains('52') ? '52' : (activeTemp.contains('32') ? '32' : (activeTemp.contains('54') ? '54' : '21'));
+      final double singleN = testedQty > 0
+          ? testedQty
+          : (_getIndividualEpvatVisibleRounds() > 0 ? _getIndividualEpvatVisibleRounds().toDouble() : 20.0);
+      variables['n_$sfx'] = singleN;
+      variables['count_$sfx'] = singleN;
+      variables['sample_size_$sfx'] = singleN;
+      variables['samplesize_$sfx'] = singleN;
+      variables['size_$sfx'] = singleN;
+      variables['n'] = singleN;
+      variables['count'] = singleN;
+      variables['sample_size'] = singleN;
+      variables['samplesize'] = singleN;
+      variables['size'] = singleN;
+      variables.putIfAbsent('n_21', () => singleN);
+      variables.putIfAbsent('count_21', () => singleN);
+      variables.putIfAbsent('sample_size_21', () => singleN);
       
       final p1Mean = double.tryParse(_epvatMeanPressureController.text.trim()) ?? 0.0;
       final p1Max = double.tryParse(_epvatMaxPressureController.text.trim()) ?? 0.0;
@@ -10888,13 +11224,14 @@ class _EntryTabState extends State<EntryTab> {
       final variables = _getEpvatVariablesMap();
 
       if (list.isNotEmpty) {
-        for (var f in list) {
-          final item = Map<String, dynamic>.from(f as Map);
+        for (int i = 0; i < list.length; i++) {
+          final item = Map<String, dynamic>.from(list[i] as Map);
           final res = EpvatFormulaHelper.evaluateFormulaItem(
             item,
             variables,
             defaultTemp: defaultTemp,
             activePressureUnit: _epvatPressureUnit,
+            formulaIndex: i + 1,
           );
           if (res.isApplicable && !res.isPassed) {
             return 'Rejected';
@@ -10973,12 +11310,16 @@ class _EntryTabState extends State<EntryTab> {
             : _cartridgeTempController.text.trim().replaceAll('+', '').replaceAll('-', '').replaceAll('°C', '').trim());
 
     final variables = _getEpvatVariablesMap();
-    final results = list.map((f) => EpvatFormulaHelper.evaluateFormulaItem(
-      Map<String, dynamic>.from(f as Map),
-      variables,
-      defaultTemp: defaultTemp,
-      activePressureUnit: _epvatPressureUnit,
-    )).toList();
+    final results = <EpvatFormulaResult>[];
+    for (int i = 0; i < list.length; i++) {
+      results.add(EpvatFormulaHelper.evaluateFormulaItem(
+        Map<String, dynamic>.from(list[i] as Map),
+        variables,
+        defaultTemp: defaultTemp,
+        activePressureUnit: _epvatPressureUnit,
+        formulaIndex: i + 1,
+      ));
+    }
     
     return Container(
       margin: const EdgeInsets.only(bottom: 6.0),
@@ -12472,6 +12813,10 @@ class _EntryTabState extends State<EntryTab> {
     final bool isComponent = widget.currentModule == 'Component Test';
     final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
 
+    if (isComponent && _testName == 'Accuracy Test') {
+      return _buildComponentBulletAccuracyCard();
+    }
+
     if (isComponent && _testName == 'Primer Sensitivity Test') {
       final depthText = _primerInsertionDepthController.text.trim();
       final depthNum = double.tryParse(depthText);
@@ -12777,8 +13122,28 @@ class _EntryTabState extends State<EntryTab> {
     }
 
     if (isLotAcceptance && _testName == 'Primer Sensitivity Test') {
-      final matchingRecords = widget.componentPrimerRecords.where((r) => r.caliber == _caliber).toList();
-      final lotOptions = matchingRecords
+      final matchingRecords = widget.componentPrimerRecords
+          .where((r) => _isSameCaliberFamily(r.caliber, _caliber))
+          .toList();
+
+      // Collect suppliers that actually have records submitted for this caliber family
+      final availableSuppliers = matchingRecords
+          .map((r) => r.primerSupplier.trim())
+          .where((s) => s.isNotEmpty)
+          .toSet()
+          .toList();
+
+      final supplierOptions = availableSuppliers.isNotEmpty ? availableSuppliers : _primerSuppliers;
+      final currentSupplier = supplierOptions.contains(_primerSupplier)
+          ? _primerSupplier
+          : (supplierOptions.isNotEmpty ? supplierOptions.first : '');
+
+      final recordsForSupplier = matchingRecords
+          .where((r) => r.primerSupplier.trim() == currentSupplier.trim())
+          .toList();
+      final targetRecords = recordsForSupplier.isNotEmpty ? recordsForSupplier : matchingRecords;
+
+      final lotOptions = targetRecords
           .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
           .where((l) => l.isNotEmpty)
           .toSet()
@@ -12790,10 +13155,11 @@ class _EntryTabState extends State<EntryTab> {
           if (mounted && lotOptions.isNotEmpty) {
             final defaultLot = lotOptions.first;
             setState(() {
+              if (_primerSupplier != currentSupplier) _primerSupplier = currentSupplier;
               _selectedComponentPrimerLot = defaultLot;
-              final match = matchingRecords.firstWhere(
+              final match = targetRecords.firstWhere(
                 (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == defaultLot,
-                orElse: () => matchingRecords.first,
+                orElse: () => targetRecords.first,
               );
               _syncPrimerSensitivityMetrics(match);
             });
@@ -12824,7 +13190,7 @@ class _EntryTabState extends State<EntryTab> {
             ),
             const SizedBox(height: 6.0),
             const Text(
-              'Select the verified Primer Lot from the Component module. All sensitivity metrics (H̄, S, H̄+5S, H̄-2S, Drop Weight, Quantity, Misfires, Supplier, and Depth) synchronize automatically and are locked for Lot Acceptance.',
+              'Select the verified Primer Supplier and Primer Lot from the Component module. All sensitivity metrics (H̄, S, H̄+5S, H̄-2S, Drop Weight, Quantity, Misfires, Supplier, and Depth) synchronize automatically and are locked for Lot Acceptance.',
               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
             ),
             const SizedBox(height: 14.0),
@@ -12849,11 +13215,41 @@ class _EntryTabState extends State<EntryTab> {
                   ],
                 ),
               )
-            else
+            else ...[
               _buildFormRow([
                 _buildFlexibleField(
                   flex: 1,
-                  label: 'Submitted Primer Lot (from Component Module)',
+                  label: 'Primer Supplier',
+                  isRequired: true,
+                  child: _buildDropdownField(
+                    value: currentSupplier,
+                    items: supplierOptions,
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _primerSupplier = v;
+                          final recs = matchingRecords.where((r) => r.primerSupplier.trim() == v.trim()).toList();
+                          final newLots = (recs.isNotEmpty ? recs : matchingRecords)
+                              .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
+                              .where((l) => l.isNotEmpty)
+                              .toSet()
+                              .toList();
+                          if (newLots.isNotEmpty) {
+                            _selectedComponentPrimerLot = newLots.first;
+                            final match = (recs.isNotEmpty ? recs : matchingRecords).firstWhere(
+                              (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == newLots.first,
+                              orElse: () => recs.first,
+                            );
+                            _syncPrimerSensitivityMetrics(match);
+                          }
+                        });
+                      }
+                    },
+                  ),
+                ),
+                _buildFlexibleField(
+                  flex: 1,
+                  label: 'Submitted Primer Lot (from Selected Supplier)',
                   isRequired: true,
                   child: _buildDropdownField(
                     value: lotOptions.contains(_selectedComponentPrimerLot)
@@ -12864,9 +13260,9 @@ class _EntryTabState extends State<EntryTab> {
                       if (v != null) {
                         setState(() {
                           _selectedComponentPrimerLot = v;
-                          final match = matchingRecords.firstWhere(
+                          final match = targetRecords.firstWhere(
                             (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == v,
-                            orElse: () => matchingRecords.first,
+                            orElse: () => targetRecords.first,
                           );
                           _syncPrimerSensitivityMetrics(match);
                         });
@@ -12875,49 +13271,213 @@ class _EntryTabState extends State<EntryTab> {
                   ),
                 ),
               ]),
-            const SizedBox(height: 12.0),
-            _buildFormRow([
-              _buildFlexibleField(
-                flex: 1,
-                label: 'Primer Lot (Synchronized & Read-Only)',
-                child: _buildTextField(
-                  controller: _primerLotController,
-                  readOnly: true,
-                  hint: 'Selected Primer Lot',
-                ),
-              ),
-              _buildFlexibleField(
-                flex: 1,
-                label: 'Primer Supplier (Auto-populated)',
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(6.0),
-                    border: Border.all(color: const Color(0xFF1E3A8A)),
-                  ),
-                  child: Text(
-                    _primerSupplier.isNotEmpty ? _primerSupplier : 'Not Specified',
-                    style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+              const SizedBox(height: 12.0),
+              _buildFormRow([
+                _buildFlexibleField(
+                  flex: 1,
+                  label: 'Primer Lot (Synchronized & Read-Only)',
+                  child: _buildTextField(
+                    controller: _primerLotController,
+                    readOnly: true,
+                    hint: 'Selected Primer Lot',
                   ),
                 ),
-              ),
-              _buildFlexibleField(
-                flex: 1,
-                label: 'Avg. Insertion Depth (mm) (Auto-populated)',
-                child: _buildTextField(
-                  controller: _primerInsertionDepthController,
-                  readOnly: true,
-                  hint: '0.00 mm',
+                _buildFlexibleField(
+                  flex: 1,
+                  label: 'Avg. Insertion Depth (mm) (Auto-populated)',
+                  child: _buildTextField(
+                    controller: _primerInsertionDepthController,
+                    readOnly: true,
+                    hint: '0.00 mm',
+                  ),
                 ),
-              ),
-            ]),
+              ]),
+            ],
           ],
         ),
       );
     }
 
     return const SizedBox.shrink();
+  }
+
+  Widget _buildComponentBulletAccuracyCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF23364F),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.track_changes_rounded, color: Color(0xFF38BDF8), size: 18.0),
+              const SizedBox(width: 8.0),
+              const Text(
+                'Component Bullet Accuracy Specifications',
+                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final res = await getAttachmentHelper().pickFileAsBase64();
+                  if (res != null && res['name'] != null && res['data'] != null) {
+                    setState(() {
+                      _attachmentName = res['name']!;
+                      _attachmentBase64 = res['data']!;
+                    });
+                    _autoExtractFromAttachment(res['name']!, res['data']!);
+                  } else if (_attachmentBase64.isNotEmpty) {
+                    _autoExtractFromAttachment(_attachmentName, _attachmentBase64);
+                  }
+                },
+                icon: const Icon(Icons.picture_as_pdf, size: 14.0, color: Colors.white),
+                label: const Text('Auto-Extract from Report', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                  elevation: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14.0),
+          _buildFormRow([
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Bullet Supplier',
+              isRequired: true,
+              child: _buildTextField(
+                controller: _bulletSupplierController,
+                hint: 'e.g., Sierra, Hornady, CBC, OMPC',
+                onChanged: (_) => _scheduleAutoSave(),
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Grain Size',
+              isRequired: true,
+              child: _buildTextField(
+                controller: _bulletGrainSizeController,
+                hint: 'e.g., 55 grains, 69 grains, 175 grains',
+                onChanged: (_) => _scheduleAutoSave(),
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Powder Charge in Gram',
+              isRequired: true,
+              child: _buildTextField(
+                controller: _propellantChargeController,
+                hint: 'e.g., 1.62',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
+                onChanged: (_) => _scheduleAutoSave(),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12.0),
+          _buildFormRow([
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Sample Loading Method',
+              isRequired: true,
+              child: _buildDropdownField(
+                value: ['Manually Loaded', 'From the Line'].contains(_sampleLoadingMethod)
+                    ? _sampleLoadingMethod
+                    : 'Manually Loaded',
+                items: const ['Manually Loaded', 'From the Line'],
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() => _sampleLoadingMethod = v);
+                    _scheduleAutoSave();
+                  }
+                },
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Sample Received Date',
+              isRequired: true,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _sampleReceivedDateController,
+                      hint: 'yyyy-MM-dd',
+                      readOnly: true,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF0284C7)),
+                      tooltip: 'Pick sample received date',
+                      padding: const EdgeInsets.all(6),
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      onPressed: () async {
+                        final now = DateTime.now();
+                        DateTime initialDate = now;
+                        try {
+                          if (_sampleReceivedDateController.text.trim().isNotEmpty) {
+                            initialDate = DateTime.parse(_sampleReceivedDateController.text.trim());
+                          }
+                        } catch (_) {}
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: initialDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _sampleReceivedDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+                          });
+                          _scheduleAutoSave();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _buildFlexibleField(
+              flex: 1,
+              label: 'Sample Location',
+              isRequired: true,
+              child: _buildDropdownField(
+                value: ['QC', 'Production', 'Inventory'].contains(_bulletSampleLocation)
+                    ? _bulletSampleLocation
+                    : 'QC',
+                items: const ['QC', 'Production', 'Inventory'],
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      _bulletSampleLocation = v;
+                      _locationController.text = v;
+                    });
+                    _scheduleAutoSave();
+                  }
+                },
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
   }
 
   Widget _buildCompactInlineAttachment() {

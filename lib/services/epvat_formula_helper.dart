@@ -146,7 +146,7 @@ class EpvatFormulaHelper {
       } else if (r.epvatVelRounds.isNotEmpty) {
         roundCount = r.epvatVelRounds.split(',').where((s) => s.trim().isNotEmpty).length;
       }
-      final double sampleSizeVal = roundCount > 0 ? roundCount.toDouble() : (r.produced > 0 ? r.produced.toDouble() : 20.0);
+      final double sampleSizeVal = r.produced > 0 ? r.produced.toDouble() : (roundCount > 0 ? roundCount.toDouble() : 20.0);
 
       vars['n_$sfx'] = sampleSizeVal;
       vars['count_$sfx'] = sampleSizeVal;
@@ -474,15 +474,23 @@ class EpvatFormulaHelper {
     return expr.trim();
   }
 
-  /// Evaluates an expression or multi-statement formula string using variables.
-  /// Supports combined multi-step formulas: e.g., 'r = x * y; t = a * b; s = r * t'
   static double evaluate(String expression, Map<String, double> variables, {String defaultTemp = '21'}) {
     final match = RegExp(r'\d+').firstMatch(defaultTemp);
     final cleanDefaultTemp = match != null ? match.group(0)! : '21';
     
-    final stmts = _splitStatements(expression);
+    String cleanExpr = expression;
+    for (final k in variables.keys) {
+      if (k.contains('_')) {
+        final spaceVer = k.replaceAll('_', ' ');
+        if (cleanExpr.toLowerCase().contains(spaceVer)) {
+          cleanExpr = cleanExpr.replaceAll(RegExp(r'\b' + RegExp.escape(spaceVer) + r'\b', caseSensitive: false), k);
+        }
+      }
+    }
+
+    final stmts = _splitStatements(cleanExpr);
     if (stmts.length <= 1) {
-      final normalized = normalizeFormula(expression, defaultTemp: cleanDefaultTemp);
+      final normalized = normalizeFormula(cleanExpr, defaultTemp: cleanDefaultTemp);
       return _parseAndCompute(normalized, variables);
     }
 
@@ -676,6 +684,7 @@ class EpvatFormulaHelper {
     Map<String, double> variables, {
     String defaultTemp = '21',
     String activePressureUnit = 'bar',
+    int? formulaIndex,
   }) {
     final String name = (item['name'] ?? 'Calculation').toString().trim();
     final String formula = (item['formula'] ?? '').toString().trim();
@@ -790,10 +799,28 @@ class EpvatFormulaHelper {
 
     // Register calculated value so chained formulas in this evaluation cycle can reference it
     final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toLowerCase().trim();
+    final compactName = name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase().trim();
     if (safeName.isNotEmpty) {
       variables[safeName] = calculated;
       variables['${safeName}_21'] = calculated;
       variables['${safeName}_$cleanDefaultTemp'] = calculated;
+    }
+    if (compactName.isNotEmpty && compactName != safeName) {
+      variables[compactName] = calculated;
+      variables['${compactName}_21'] = calculated;
+      variables['${compactName}_$cleanDefaultTemp'] = calculated;
+    }
+    if (formulaIndex != null) {
+      variables['formula_$formulaIndex'] = calculated;
+      variables['formula$formulaIndex'] = calculated;
+      variables['f$formulaIndex'] = calculated;
+      variables['f_${formulaIndex}'] = calculated;
+      variables['calc_$formulaIndex'] = calculated;
+      variables['calc$formulaIndex'] = calculated;
+      variables['result_$formulaIndex'] = calculated;
+      variables['result$formulaIndex'] = calculated;
+      variables['formula_${formulaIndex}_21'] = calculated;
+      variables['f${formulaIndex}_21'] = calculated;
     }
 
     double limitVal = 0.0;
