@@ -152,6 +152,21 @@ class SupabaseService {
           await client.from(dedicatedTable).insert(sanitized);
         } catch (e) {
           debugPrint('Note: dedicated table $dedicatedTable insert note: $e');
+          final errStr = e.toString().toLowerCase();
+          if (errStr.contains('does not exist') || errStr.contains('pgrst204')) {
+            final fallbackMap = Map<String, dynamic>.from(sanitized);
+            const newCols = [
+              't4_mean', 't4_max', 't4_min', 't4_range', 't4_sd', 't4_rounds',
+              'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table',
+              'bullet_supplier', 'bullet_grain_size', 'sample_loading_method', 'sample_received_date'
+            ];
+            for (final c in newCols) {
+              fallbackMap.remove(c);
+            }
+            try {
+              await client.from(dedicatedTable).insert(fallbackMap);
+            } catch (_) {}
+          }
         }
       }
 
@@ -337,6 +352,21 @@ class SupabaseService {
           await client.from(dedicatedTable).update(map).eq('id', id);
         } catch (e) {
           debugPrint('Note: dedicated table $dedicatedTable update note: $e');
+          final errStr = e.toString().toLowerCase();
+          if (errStr.contains('does not exist') || errStr.contains('pgrst204')) {
+            final fallbackMap = Map<String, dynamic>.from(map);
+            const newCols = [
+              't4_mean', 't4_max', 't4_min', 't4_range', 't4_sd', 't4_rounds',
+              'primer_alpha3', 'primer_emax', 'primer_emin', 'primer_drop_table',
+              'bullet_supplier', 'bullet_grain_size', 'sample_loading_method', 'sample_received_date'
+            ];
+            for (final c in newCols) {
+              fallbackMap.remove(c);
+            }
+            try {
+              await client.from(dedicatedTable).update(fallbackMap).eq('id', id);
+            } catch (_) {}
+          }
         }
       }
 
