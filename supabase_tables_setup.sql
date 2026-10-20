@@ -802,6 +802,19 @@ DROP POLICY IF EXISTS "Public access policy" ON public.admin_primer_suppliers;
 CREATE POLICY "Public access policy" ON public.admin_primer_suppliers FOR ALL USING (true) WITH CHECK (true);
 GRANT ALL ON TABLE public.admin_primer_suppliers TO anon, authenticated, service_role;
 
+-- 7b. Bullet Suppliers Input Table
+CREATE TABLE IF NOT EXISTS public.admin_bullet_suppliers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    name TEXT UNIQUE NOT NULL,
+    country TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT true
+);
+ALTER TABLE public.admin_bullet_suppliers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access policy" ON public.admin_bullet_suppliers;
+CREATE POLICY "Public access policy" ON public.admin_bullet_suppliers FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.admin_bullet_suppliers TO anon, authenticated, service_role;
+
 -- 8. Propellant Codes Input Table
 CREATE TABLE IF NOT EXISTS public.admin_propellant_codes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1206,12 +1219,15 @@ VALUES
     ('Primer Sensitivity Test', '9mm',  'Run-down primer sensitivity H-bar test for 9mm Luger ammunition', 'NATO AC/225 D/14', 50),
     ('Propellant Test', '5.56', 'Propellant charge lot qualification, visual & closed vessel analysis for 5.56mm', 'MIL-STD-286C', 20),
     ('Propellant Test', '7.62', 'Propellant charge lot qualification, visual & closed vessel analysis for 7.62mm', 'MIL-STD-286C', 20),
-    ('Propellant Test', '9mm',  'Propellant charge lot qualification, visual & closed vessel analysis for 9mm', 'MIL-STD-286C', 20)
+    ('Propellant Test', '9mm',  'Propellant charge lot qualification, visual & closed vessel analysis for 9mm', 'MIL-STD-286C', 20),
+    ('Accuracy Test', '5.56', 'Component bullet dispersion and accuracy verification for 5.56mm', 'NATO MOPI AC/225', 10),
+    ('Accuracy Test', '7.62', 'Component bullet dispersion and accuracy verification for 7.62mm', 'NATO MOPI AC/225', 10),
+    ('Accuracy Test', '9mm',  'Component bullet dispersion and accuracy verification for 9mm', 'NATO MOPI AC/225', 10)
 ON CONFLICT (test_name, caliber) DO UPDATE
 SET description = EXCLUDED.description,
     standard_reference = EXCLUDED.standard_reference,
     sample_size = EXCLUDED.sample_size;
 
-SELECT 'Successfully created all 21 test tables, 8 consumable category tables, component inventory, component tests catalog, witness storage tables, equipment issues, and admin control tables.' as result;
+SELECT 'Successfully created all 22 test tables, 8 consumable category tables, component inventory, component tests catalog, witness storage tables, equipment issues, and admin control tables.' as result;
 
 

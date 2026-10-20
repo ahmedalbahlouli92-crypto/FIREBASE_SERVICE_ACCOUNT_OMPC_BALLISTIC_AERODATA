@@ -995,6 +995,14 @@ final Map<String, dynamic> _defaultRules = {
       'GP6-PCB-9901',
     ],
   },
+  'bullet_suppliers': [
+    'Sierra',
+    'Hornady',
+    'CBC',
+    'OMPC',
+    'Nosler',
+    'Lapua',
+  ],
   'primer_suppliers': [
     'CBC',
     'UNIS "GINIX"',
@@ -1803,6 +1811,7 @@ class _MainShellState extends State<MainShell> {
   final TextEditingController _newGP6SerialCtrl = TextEditingController();
   final TextEditingController _newGP1TransducerCtrl = TextEditingController();
   final TextEditingController _newPrimerSupplierCtrl = TextEditingController();
+  final TextEditingController _newBulletSupplierCtrl = TextEditingController();
   final TextEditingController _newPropellantSupplierCtrl = TextEditingController();
   final TextEditingController _newPropellantCodeCtrl = TextEditingController();
   final TextEditingController _newWeaponTypeInputCtrl = TextEditingController();
@@ -2172,6 +2181,7 @@ class _MainShellState extends State<MainShell> {
     _newEpvatBarrelCtrl.dispose();
     _newGP6SerialCtrl.dispose();
     _newPrimerSupplierCtrl.dispose();
+    _newBulletSupplierCtrl.dispose();
     _newPropellantSupplierCtrl.dispose();
     _newPropellantCodeCtrl.dispose();
     _newWeaponTypeInputCtrl.dispose();
@@ -3115,6 +3125,12 @@ class _MainShellState extends State<MainShell> {
       }
       if (activeRules['submission_alerts_enabled'] == null) {
         activeRules['submission_alerts_enabled'] = true;
+      }
+      if (activeRules['bullet_suppliers'] == null) {
+        activeRules['bullet_suppliers'] = List<String>.from(_defaultRules['bullet_suppliers']);
+        schemaMigrated = true;
+      } else {
+        activeRules['bullet_suppliers'] = List<String>.from(activeRules['bullet_suppliers'] as List);
       }
       if (activeRules['primer_suppliers'] == null) {
         activeRules['primer_suppliers'] = List<String>.from(_defaultRules['primer_suppliers']);
@@ -5866,6 +5882,7 @@ class _MainShellState extends State<MainShell> {
     final gp6List = List<String>.from(_adminRules['gp6_serials'] as List<dynamic>? ?? []);
     final epvatBarrels = List<String>.from(_adminRules['epvat_barrels'] as List<dynamic>? ?? []);
     final accBarrels = List<String>.from(_adminRules['accuracy_barrels'] as List<dynamic>? ?? []);
+    final bulletSuppliers = List<String>.from(_adminRules['bullet_suppliers'] as List<dynamic>? ?? []);
     final primerSuppliers = List<String>.from(_adminRules['primer_suppliers'] as List<dynamic>? ?? []);
     final propellantSuppliers = List<String>.from(_adminRules['propellant_suppliers'] as List<dynamic>? ?? []);
     final propellantCodes = List<String>.from(_adminRules['propellant_codes'] as List<dynamic>? ?? []);
@@ -6821,6 +6838,66 @@ class _MainShellState extends State<MainShell> {
               onDelete: (item) async {
                 primerSuppliers.remove(item['serial']);
                 _adminRules['primer_suppliers'] = primerSuppliers;
+                await _storageService.saveRules(_adminRules);
+                setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+              },
+            ),
+            const SizedBox(height: 18.0),
+
+            // 6b. BULLET SUPPLIERS
+            _buildAssetCategoryHeader('Bullet Suppliers (Component Test)', Icons.track_changes_rounded, const Color(0xFF38BDF8)),
+            const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newBulletSupplierCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                    decoration: InputDecoration(
+                      hintText: 'Bullet Supplier (e.g., Sierra, Hornady, CBC, OMPC, Nosler, Lapua)',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () async {
+                    final sup = _newBulletSupplierCtrl.text.trim();
+                    if (sup.isEmpty) return;
+                    final list = List<String>.from(_adminRules['bullet_suppliers'] as List<dynamic>? ?? []);
+                    if (!list.contains(sup)) {
+                      list.add(sup);
+                      _adminRules['bullet_suppliers'] = list;
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _newBulletSupplierCtrl.clear();
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF38BDF8),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                  ),
+                  child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            _buildAssetItemList(
+              items: bulletSuppliers.map((s) => {'label': s, 'serial': s, 'rounds': 0, 'category': 'Bullet Supplier'}).toList(),
+              accentColor: const Color(0xFF38BDF8),
+              onDelete: (item) async {
+                bulletSuppliers.remove(item['serial']);
+                _adminRules['bullet_suppliers'] = bulletSuppliers;
                 await _storageService.saveRules(_adminRules);
                 setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
               },

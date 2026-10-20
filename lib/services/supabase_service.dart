@@ -1102,6 +1102,20 @@ class SupabaseService {
         }
       }
     }
+    final bulletSuppliers = rules['bullet_suppliers'];
+    if (bulletSuppliers is List) {
+      for (final s in bulletSuppliers) {
+        final name = s.toString().trim();
+        if (name.isNotEmpty) {
+          try {
+            await client.from('admin_bullet_suppliers').upsert({
+              'name': name,
+              'is_active': true,
+            }, onConflict: 'name');
+          } catch (_) {}
+        }
+      }
+    }
 
     // 7. Sampling Locations
     final locations = rules['sample_locations'];

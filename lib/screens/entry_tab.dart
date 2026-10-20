@@ -241,6 +241,7 @@ class _EntryTabState extends State<EntryTab> {
   }
   final List<String> _localAddedPrimerSuppliers = [];
   final List<String> _localAddedPropellantSuppliers = [];
+  final List<String> _localAddedBulletSuppliers = [];
   bool get _isAdmin => widget.userRole.toLowerCase() == 'admin';
 
   final _bulletSupplierController = TextEditingController();
@@ -1036,6 +1037,72 @@ class _EntryTabState extends State<EntryTab> {
       if (!base.contains(s)) base.add(s);
     }
     return base;
+  }
+
+  List<String> get _bulletSuppliers {
+    final list = widget.adminRules['bullet_suppliers'];
+    final base = <String>[];
+    if (list is List && list.isNotEmpty) {
+      base.addAll(list.map((e) => e.toString()));
+    } else {
+      base.addAll(['Sierra', 'Hornady', 'CBC', 'OMPC', 'Nosler', 'Lapua']);
+    }
+    for (final s in _localAddedBulletSuppliers) {
+      if (!base.contains(s)) base.add(s);
+    }
+    final cur = _bulletSupplierController.text.trim();
+    if (cur.isNotEmpty && !base.contains(cur)) {
+      base.add(cur);
+    }
+    return base;
+  }
+
+  void _showAddBulletSupplierDialog() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C3351),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: const Text('Add Bullet Supplier', style: TextStyle(color: Colors.white, fontSize: 16.0)),
+        content: TextField(
+          controller: ctrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Supplier Name',
+            labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+            filled: true,
+            fillColor: Color(0xFF0E223D),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF38BDF8)),
+            onPressed: () {
+              final val = ctrl.text.trim();
+              if (val.isEmpty) return;
+              setState(() {
+                if (!_localAddedBulletSuppliers.contains(val)) {
+                  _localAddedBulletSuppliers.add(val);
+                }
+                final currentList = List<String>.from(_bulletSuppliers);
+                if (!currentList.contains(val)) currentList.add(val);
+                widget.adminRules['bullet_suppliers'] = currentList;
+                _bulletSupplierController.text = val;
+              });
+              StorageService().saveRules(widget.adminRules);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Add Supplier', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddPrimerSupplierDialog() {
@@ -4199,15 +4266,14 @@ class _EntryTabState extends State<EntryTab> {
     switch (_testName) {
       case 'Accuracy Test':
         if (_caliber.contains('M193')) {
-          return _meanRadiusController.text.trim().isNotEmpty || _targetCoordinates.isNotEmpty;
+          return _meanRadiusController.text.trim().isNotEmpty;
         }
         return _meanXController.text.trim().isNotEmpty ||
             _maxXController.text.trim().isNotEmpty ||
             _meanYController.text.trim().isNotEmpty ||
             _meanRadiusController.text.trim().isNotEmpty ||
             _accLargestDistanceController.text.trim().isNotEmpty ||
-            _meanVelController.text.trim().isNotEmpty ||
-            _targetCoordinates.isNotEmpty;
+            _meanVelController.text.trim().isNotEmpty;
 
       case 'EPVAT test':
       case 'Propellant Test':
@@ -13302,6 +13368,9 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   Widget _buildComponentBulletAccuracyCard() {
+    if (_bulletSupplierController.text.trim().isEmpty && _bulletSuppliers.isNotEmpty) {
+      _bulletSupplierController.text = _bulletSuppliers.first;
+    }
     return Container(
       margin: const EdgeInsets.only(bottom: 20.0),
       padding: const EdgeInsets.all(16.0),
@@ -13355,10 +13424,42 @@ class _EntryTabState extends State<EntryTab> {
               flex: 1,
               label: 'Bullet Supplier',
               isRequired: true,
-              child: _buildTextField(
-                controller: _bulletSupplierController,
-                hint: 'e.g., Sierra, Hornady, CBC, OMPC',
-                onChanged: (_) => _scheduleAutoSave(),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildDropdownField(
+                      value: _bulletSuppliers.contains(_bulletSupplierController.text.trim())
+                          ? _bulletSupplierController.text.trim()
+                          : (_bulletSuppliers.isNotEmpty ? _bulletSuppliers.first : ''),
+                      items: _bulletSuppliers,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _bulletSupplierController.text = v;
+                          });
+                          _scheduleAutoSave();
+                        }
+                      },
+                    ),
+                  ),
+                  if (_isAdmin) ...[
+                    const SizedBox(width: 6.0),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF38BDF8).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4)),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.add, size: 18, color: Color(0xFF38BDF8)),
+                        tooltip: 'Admin: Add Bullet Supplier',
+                        padding: const EdgeInsets.all(6.0),
+                        constraints: const BoxConstraints(),
+                        onPressed: _showAddBulletSupplierDialog,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             _buildFlexibleField(
