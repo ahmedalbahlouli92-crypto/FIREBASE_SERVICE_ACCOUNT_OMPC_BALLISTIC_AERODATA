@@ -972,6 +972,7 @@ ALTER TABLE IF EXISTS public.daily_firing_rate_cycle_test ADD COLUMN IF NOT EXIS
 ALTER TABLE IF EXISTS public.daily_primer_sensitivity_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
 ALTER TABLE IF EXISTS public.component_propellant_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
 ALTER TABLE IF EXISTS public.component_primer_sensitivity_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE IF EXISTS public.component_accuracy_test ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
 
 -- 15. Equipment Issues & Maintenance Log Table
 CREATE TABLE IF NOT EXISTS public.equipment_issues (
