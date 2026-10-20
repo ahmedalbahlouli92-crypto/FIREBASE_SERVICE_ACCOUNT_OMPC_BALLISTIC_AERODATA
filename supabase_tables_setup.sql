@@ -288,7 +288,7 @@ BEGIN
     FOREACH tbl IN ARRAY tables
     LOOP
         EXECUTE format('
-            CREATE TABLE IF NOT EXISTS public.%I (
+            CREATE TABLE IF NOT EXISTS public.%1$I (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 created_at TIMESTAMPTZ DEFAULT now(),
                 timestamp TEXT,
@@ -398,6 +398,21 @@ BEGIN
                 propellant_code TEXT,
                 propellant_lot TEXT,
                 propellant_charge TEXT,
+                bullet_supplier TEXT DEFAULT '',
+                bullet_grain_size TEXT DEFAULT '',
+                sample_loading_method TEXT DEFAULT '',
+                sample_received_date TEXT DEFAULT '',
+                reference_no TEXT DEFAULT '',
+                t4_mean TEXT DEFAULT '',
+                t4_max TEXT DEFAULT '',
+                t4_min TEXT DEFAULT '',
+                t4_range TEXT DEFAULT '',
+                t4_sd TEXT DEFAULT '',
+                t4_rounds TEXT DEFAULT '',
+                primer_alpha3 TEXT DEFAULT '',
+                primer_emax TEXT DEFAULT '',
+                primer_emin TEXT DEFAULT '',
+                primer_drop_table TEXT DEFAULT '',
                 is_retest BOOLEAN DEFAULT false,
                 retest_timestamp TEXT,
                 retest_operator TEXT,
@@ -407,58 +422,60 @@ BEGIN
             );
             
             -- Ensure newest columns exist if table was previously created
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_lot TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_supplier TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_insertion_depth TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS propellant_supplier TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS propellant_code TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS propellant_lot TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS propellant_charge TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS is_retest BOOLEAN DEFAULT false;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_timestamp TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_operator TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_notes TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_status TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS original_status TEXT;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_produced INTEGER DEFAULT 0;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_defects INTEGER DEFAULT 0;
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS retest_metrics TEXT DEFAULT '{}';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_mean TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_max TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_min TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_range TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_sd TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS t4_rounds TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_alpha3 TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_emax TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_emin TEXT DEFAULT '';
-            ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS primer_drop_table TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS primer_lot TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS primer_supplier TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS primer_insertion_depth TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS propellant_supplier TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS propellant_code TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS propellant_lot TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS propellant_charge TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS is_retest BOOLEAN DEFAULT false;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS retest_timestamp TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS retest_operator TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS retest_notes TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS retest_status TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS original_status TEXT;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS retest_produced INTEGER DEFAULT 0;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS retest_defects INTEGER DEFAULT 0;
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS retest_metrics TEXT DEFAULT '{}';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS t4_mean TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS t4_max TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS t4_min TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS t4_range TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS t4_sd TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS t4_rounds TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS primer_alpha3 TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS primer_emax TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS primer_emin TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS primer_drop_table TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS bullet_supplier TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS bullet_grain_size TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS sample_loading_method TEXT DEFAULT '';
+            ALTER TABLE public.%1$I ADD COLUMN IF NOT EXISTS sample_received_date TEXT DEFAULT '';
 
             -- Enable Row Level Security (RLS)
-            ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE public.%1$I ENABLE ROW LEVEL SECURITY;
 
             -- Create Open Policy for Web & Desktop Client Access
-            DROP POLICY IF EXISTS "Public access policy" ON public.%I;
-            CREATE POLICY "Public access policy" ON public.%I
+            DROP POLICY IF EXISTS "Public access policy" ON public.%1$I;
+            CREATE POLICY "Public access policy" ON public.%1$I
                 FOR ALL
                 USING (true)
                 WITH CHECK (true);
 
             -- Grant database privileges
-            GRANT ALL ON TABLE public.%I TO anon, authenticated, service_role;
+            GRANT ALL ON TABLE public.%1$I TO anon, authenticated, service_role;
 
             -- High performance indexes
-            CREATE INDEX IF NOT EXISTS %I ON public.%I (lot_no);
-            CREATE INDEX IF NOT EXISTS %I ON public.%I (caliber);
-            CREATE INDEX IF NOT EXISTS %I ON public.%I (created_at DESC);
+            CREATE INDEX IF NOT EXISTS %2$I ON public.%1$I (lot_no);
+            CREATE INDEX IF NOT EXISTS %3$I ON public.%1$I (caliber);
+            CREATE INDEX IF NOT EXISTS %4$I ON public.%1$I (created_at DESC);
         ', 
         tbl,
-        tbl, tbl, tbl, tbl, tbl, tbl, tbl,
-        tbl, tbl, tbl, tbl,
-        'idx_' || tbl || '_lot_no', tbl,
-        'idx_' || tbl || '_caliber', tbl,
-        'idx_' || tbl || '_created_at', tbl
+        'idx_' || tbl || '_lot_no',
+        'idx_' || tbl || '_caliber',
+        'idx_' || tbl || '_created_at'
         );
     END LOOP;
 END $$;
