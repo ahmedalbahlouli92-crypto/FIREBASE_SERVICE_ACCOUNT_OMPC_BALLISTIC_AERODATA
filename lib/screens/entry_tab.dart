@@ -9576,14 +9576,14 @@ class _EntryTabState extends State<EntryTab> {
   }
 
   Widget _buildDropdownField({
-    required String value,
+    String? value,
     required List<String> items,
     required void Function(String?)? onChanged,
     FocusNode? focusNode,
     bool allowEmpty = false,
     String? hintText,
   }) {
-    final String? selectedValue = items.contains(value)
+    final String? selectedValue = (value != null && items.contains(value))
         ? value
         : (allowEmpty ? null : (items.isNotEmpty ? items.first : null));
 
