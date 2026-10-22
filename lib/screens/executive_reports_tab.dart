@@ -161,6 +161,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       return dt.year == _selectedDate.year &&
           dt.month == _selectedDate.month &&
           dt.day == _selectedDate.day;
+    } else if (_periodType == 'weekly') {
+      final startOfWeek = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day)
+          .subtract(Duration(days: _selectedDate.weekday - 1));
+      final endOfWeek = startOfWeek.add(const Duration(days: 7));
+      final checkDate = DateTime(dt.year, dt.month, dt.day);
+      return !checkDate.isBefore(startOfWeek) && checkDate.isBefore(endOfWeek);
     } else if (_periodType == 'monthly') {
       return dt.year == _selectedDate.year && dt.month == _selectedDate.month;
     } else {
@@ -179,6 +185,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   String get _periodLabel {
     if (_periodType == 'daily') {
       return DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate);
+    } else if (_periodType == 'weekly') {
+      final start = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      final end = start.add(const Duration(days: 6));
+      return 'Week: ${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, yyyy').format(end)}';
     } else if (_periodType == 'monthly') {
       return DateFormat('MMMM yyyy').format(_selectedDate);
     } else {
@@ -406,6 +416,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _buildPeriodButton('daily', 'Daily'),
+                            _buildPeriodButton('weekly', 'Weekly'),
                             _buildPeriodButton('monthly', 'Monthly'),
                             _buildPeriodButton('yearly', 'Yearly'),
                           ],
@@ -477,13 +488,29 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             ),
             const SizedBox(height: 24.0),
 
-            // Section 1: Inspection Logs Table
-            _buildInspectionLogsTable(inspections),
-            const SizedBox(height: 24.0),
+            // PART 1: LOT ACCEPTANCE (Divided into Caliber Specifications -> Lot Number alone -> Caliber SPC & Box-Whisker)
+            if (_includeLotAcceptance) ...[
+              _buildLotAcceptanceDashboardSection(
+                inspections.where((e) => e['module'] == 'Lot Acceptance').map((e) => e['record'] as BallisticRecord).toList(),
+              ),
+              const SizedBox(height: 24.0),
+            ],
 
-            // Section 2: SPC & Box-Whisker Analytics Section
-            _buildSpcAnalyticsSection(inspections.map((e) => e['record'] as BallisticRecord).toList()),
-            const SizedBox(height: 24.0),
+            // PART 2: DAILY TEST (Divided into Caliber Specifications -> Caliber SPC & Box-Whisker)
+            if (_includeDailyTest) ...[
+              _buildDailyTestDashboardSection(
+                inspections.where((e) => e['module'] == 'Daily Test').map((e) => e['record'] as BallisticRecord).toList(),
+              ),
+              const SizedBox(height: 24.0),
+            ],
+
+            // PART 3: COMPONENT TEST (Divided into Caliber/Component -> Lot Number alone -> Charts)
+            if (_includeComponentTest) ...[
+              _buildComponentTestDashboardSection(
+                inspections.where((e) => e['module'] == 'Component Test').map((e) => e['record'] as BallisticRecord).toList(),
+              ),
+              const SizedBox(height: 24.0),
+            ],
 
             // Section 2: Equipment Issues Table (Requirement 8 & 9)
             if (_includeEquipmentIssues) ...[
@@ -593,7 +620,84 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     }
   }
 
-  Widget _buildInspectionLogsTable(List<Map<String, dynamic>> inspections) {
+  Widget _buildMiniBadge(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4.0),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label: ', style: TextStyle(fontSize: 10.0, color: color, fontWeight: FontWeight.w600)),
+          Text(value, style: TextStyle(fontSize: 10.5, color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaliberAnalyticsCard({
+    required String cal,
+    required List<BallisticRecord> records,
+    required String currentModule,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: const Color(0xFF334155), width: 1.2),
+      ),
+      padding: const EdgeInsets.all(14.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.analytics_outlined, color: Color(0xFF38BDF8), size: 16.0),
+              const SizedBox(width: 8.0),
+              Text(
+                '$cal Statistical Process Control (SPC) & Box-Whisker Analytics',
+                style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+          // SPC Trend Chart
+          SizedBox(
+            height: 520.0,
+            child: TrendLineChart(
+              records: records,
+              selectedCaliber: cal,
+              currentModule: currentModule,
+            ),
+          ),
+          const SizedBox(height: 16.0),
+          const Divider(color: Color(0xFF334155)),
+          const SizedBox(height: 12.0),
+          const Text(
+            'Box & Whisker Distribution Profile',
+            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8.0),
+          SizedBox(
+            height: 380.0,
+            child: BoxPlotChart(records: records),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLotAcceptanceDashboardSection(List<BallisticRecord> records) {
+    // Group by Caliber
+    final Map<String, List<BallisticRecord>> caliberGroups = {};
+    for (var r in records) {
+      caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+    }
+    final sortedCalibers = caliberGroups.keys.toList()..sort();
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -606,23 +710,30 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Section Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
+              color: Color(0xFFF0F9FF),
               borderRadius: BorderRadius.vertical(top: Radius.circular(14.0)),
-              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+              border: Border(bottom: BorderSide(color: Color(0xFFBAE6FD))),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.biotech_outlined, color: Color(0xFF0284C7), size: 18.0),
+                    Container(
+                      width: 4.0,
+                      height: 18.0,
+                      decoration: BoxDecoration(color: const Color(0xFF0284C7), borderRadius: BorderRadius.circular(2.0)),
+                    ),
+                    const SizedBox(width: 8.0),
+                    const Icon(Icons.verified_outlined, color: Color(0xFF0284C7), size: 18.0),
                     const SizedBox(width: 8.0),
                     Text(
-                      '1. BALLISTIC INSPECTION LOGS (${inspections.length} RECORDS)',
-                      style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 12.5),
+                      'PART 1: LOT ACCEPTANCE INSPECTION & SPC ANALYSIS (${records.length} RECORDS)',
+                      style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 13.0),
                     ),
                   ],
                 ),
@@ -630,61 +741,175 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               ],
             ),
           ),
-          if (inspections.isEmpty)
+          if (records.isEmpty)
             const Padding(
               padding: EdgeInsets.all(32.0),
-              child: Center(child: Text('No ballistic inspection tests logged on this date.', style: TextStyle(color: Color(0xFF64748B)))),
+              child: Center(
+                child: Text('No lot acceptance tests logged for this period.', style: TextStyle(color: Color(0xFF64748B))),
+              ),
             )
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
-                headingTextStyle: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.0, fontWeight: FontWeight.bold),
-                dataTextStyle: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.5),
-                columns: const [
-                  DataColumn(label: Text('MODULE')),
-                  DataColumn(label: Text('DATE & TIME')),
-                  DataColumn(label: Text('INSPECTOR')),
-                  DataColumn(label: Text('TEST NAME')),
-                  DataColumn(label: Text('CALIBER')),
-                  DataColumn(label: Text('LOT / HOPPER')),
-                  DataColumn(label: Text('QTY TESTED')),
-                  DataColumn(label: Text('DEFECTS')),
-                  DataColumn(label: Text('STATUS')),
-                  DataColumn(label: Text('REMARKS')),
-                ],
-                rows: inspections.map((entry) {
-                  final m = entry['module'] as String;
-                  final r = entry['record'] as BallisticRecord;
-                  final status = r.status;
-                  final isPass = status.toLowerCase().contains('approved');
-                  final isReject = status.toLowerCase().contains('reject');
-                  final statusColor = isPass ? const Color(0xFF10B981) : (isReject ? const Color(0xFFEF4444) : const Color(0xFFF59E0B));
-                  final lotOrHopper = m == 'Daily Test' ? (r.hopperNo.isNotEmpty ? r.hopperNo : 'N/A') : (r.lotNo.isNotEmpty ? r.lotNo : 'N/A');
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: sortedCalibers.map((cal) {
+                  final calRecords = caliberGroups[cal]!;
+                  final int calRounds = calRecords.fold(0, (s, r) => s + r.produced);
+                  final int calDefects = calRecords.fold(0, (s, r) => s + r.defects);
+                  final double calYield = calRounds > 0 ? (((calRounds - calDefects) / calRounds) * 100.0) : 100.0;
+                  final int calPass = calRecords.where((r) => r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')).length;
+                  final int calFail = calRecords.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
 
-                  return DataRow(cells: [
-                    DataCell(Text(m, style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold))),
-                    DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp)),
-                    DataCell(Text(r.operators)),
-                    DataCell(Text(r.testName, style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text(r.caliber)),
-                    DataCell(Text(lotOrHopper)),
-                    DataCell(Text('${r.produced} rds')),
-                    DataCell(Text('${r.defects}')),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(4.0),
-                          border: Border.all(color: statusColor),
-                        ),
-                        child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10.0, fontWeight: FontWeight.bold)),
-                      ),
+                  // Group by Lot Number alone
+                  final Map<String, List<BallisticRecord>> lotGroups = {};
+                  for (var r in calRecords) {
+                    final lKey = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'Lot N/A';
+                    lotGroups.putIfAbsent(lKey, () => []).add(r);
+                  }
+                  final sortedLots = lotGroups.keys.toList()..sort();
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 20.0),
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    DataCell(Text(ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-')),
-                  ]);
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Caliber Specification Sub-Part Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0284C7),
+                                    borderRadius: BorderRadius.circular(6.0),
+                                  ),
+                                  child: Text(
+                                    'CALIBER: $cal',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.0),
+                                  ),
+                                ),
+                                const SizedBox(width: 10.0),
+                                Text(
+                                  '${calRecords.length} Tests across ${sortedLots.length} Lot${sortedLots.length == 1 ? '' : 's'}',
+                                  style: const TextStyle(color: Color(0xFF475569), fontSize: 11.5, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                            Wrap(
+                              spacing: 8.0,
+                              children: [
+                                _buildMiniBadge('Tested', '$calRounds rds', const Color(0xFF475569)),
+                                _buildMiniBadge('Defects', '$calDefects', calDefects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+                                _buildMiniBadge('Yield', '${calYield.toStringAsFixed(1)}%', const Color(0xFF0284C7)),
+                                _buildMiniBadge('Approved', '$calPass', const Color(0xFF10B981)),
+                                _buildMiniBadge('Rejected', '$calFail', const Color(0xFFEF4444)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14.0),
+
+                        // Sub-Sub Parts: Each Lot Number Alone
+                        ...sortedLots.map((lotKey) {
+                          final lotRecs = lotGroups[lotKey]!;
+                          final int lotRounds = lotRecs.fold(0, (s, r) => s + r.produced);
+                          final int lotDefects = lotRecs.fold(0, (s, r) => s + r.defects);
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.vertical(top: Radius.circular(8.0)),
+                                    border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'LOT NUMBER: $lotKey',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)),
+                                      ),
+                                      Text(
+                                        '${lotRecs.length} tests | $lotRounds rds | $lotDefects defects',
+                                        style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: DataTable(
+                                    headingRowHeight: 32.0,
+                                    dataRowHeight: 34.0,
+                                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                                    headingTextStyle: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                    dataTextStyle: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.0),
+                                    columns: const [
+                                      DataColumn(label: Text('DATE & TIME')),
+                                      DataColumn(label: Text('INSPECTOR')),
+                                      DataColumn(label: Text('TEST NAME')),
+                                      DataColumn(label: Text('QTY TESTED')),
+                                      DataColumn(label: Text('DEFECTS')),
+                                      DataColumn(label: Text('STATUS')),
+                                      DataColumn(label: Text('REMARKS')),
+                                    ],
+                                    rows: lotRecs.map((r) {
+                                      final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
+                                      final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
+                                      final stColor = isApp ? const Color(0xFF10B981) : (isRej ? const Color(0xFFEF4444) : const Color(0xFFF59E0B));
+                                      final dTime = r.testTime.isNotEmpty ? r.testTime : r.timestamp;
+                                      return DataRow(cells: [
+                                        DataCell(Text(dTime)),
+                                        DataCell(Text(r.operators)),
+                                        DataCell(Text(r.testName, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                        DataCell(Text('${r.produced} rds')),
+                                        DataCell(Text('${r.defects}')),
+                                        DataCell(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                                            decoration: BoxDecoration(
+                                              color: stColor.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(4.0),
+                                              border: Border.all(color: stColor),
+                                            ),
+                                            child: Text(r.status.toUpperCase(), style: TextStyle(color: stColor, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                                          ),
+                                        ),
+                                        DataCell(Text(ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-')),
+                                      ]);
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 10.0),
+
+                        // Caliber SPC and Box-Whisker Analytics (Included for this caliber alone)
+                        _buildCaliberAnalyticsCard(cal: cal, records: calRecords, currentModule: 'Lot Acceptance'),
+                      ],
+                    ),
+                  );
                 }).toList(),
               ),
             ),
@@ -693,7 +918,205 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     );
   }
 
-  Widget _buildSpcAnalyticsSection(List<BallisticRecord> records) {
+  Widget _buildDailyTestDashboardSection(List<BallisticRecord> records) {
+    // Group by Caliber
+    final Map<String, List<BallisticRecord>> caliberGroups = {};
+    for (var r in records) {
+      caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+    }
+    final sortedCalibers = caliberGroups.keys.toList()..sort();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFD6E4F0)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A1E3A8A), blurRadius: 10.0, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(14.0)),
+              border: Border(bottom: BorderSide(color: Color(0xFFBBF7D0))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 4.0,
+                      height: 18.0,
+                      decoration: BoxDecoration(color: const Color(0xFF059669), borderRadius: BorderRadius.circular(2.0)),
+                    ),
+                    const SizedBox(width: 8.0),
+                    const Icon(Icons.assignment_turned_in_outlined, color: Color(0xFF059669), size: 18.0),
+                    const SizedBox(width: 8.0),
+                    Text(
+                      'PART 2: DAILY TEST INSPECTION & SPC ANALYSIS (${records.length} RECORDS)',
+                      style: const TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold, fontSize: 13.0),
+                    ),
+                  ],
+                ),
+                Text('PERIOD: ${_periodLabel.toUpperCase()}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.0, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          if (records.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Center(
+                child: Text('No daily tests logged for this period.', style: TextStyle(color: Color(0xFF64748B))),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: sortedCalibers.map((cal) {
+                  final calRecords = caliberGroups[cal]!;
+                  final int calRounds = calRecords.fold(0, (s, r) => s + r.produced);
+                  final int calDefects = calRecords.fold(0, (s, r) => s + r.defects);
+                  final double calYield = calRounds > 0 ? (((calRounds - calDefects) / calRounds) * 100.0) : 100.0;
+                  final int calPass = calRecords.where((r) => r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')).length;
+                  final int calFail = calRecords.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 20.0),
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Caliber Specification Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF059669),
+                                    borderRadius: BorderRadius.circular(6.0),
+                                  ),
+                                  child: Text(
+                                    'CALIBER: $cal',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.0),
+                                  ),
+                                ),
+                                const SizedBox(width: 10.0),
+                                Text(
+                                  '${calRecords.length} Daily Tests',
+                                  style: const TextStyle(color: Color(0xFF475569), fontSize: 11.5, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                            Wrap(
+                              spacing: 8.0,
+                              children: [
+                                _buildMiniBadge('Tested', '$calRounds rds', const Color(0xFF475569)),
+                                _buildMiniBadge('Defects', '$calDefects', calDefects > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+                                _buildMiniBadge('Yield', '${calYield.toStringAsFixed(1)}%', const Color(0xFF059669)),
+                                _buildMiniBadge('Approved', '$calPass', const Color(0xFF10B981)),
+                                _buildMiniBadge('Rejected', '$calFail', const Color(0xFFEF4444)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12.0),
+
+                        // Daily Tests Table for this Caliber
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              headingRowHeight: 32.0,
+                              dataRowHeight: 34.0,
+                              headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                              headingTextStyle: const TextStyle(color: Color(0xFF059669), fontSize: 10.5, fontWeight: FontWeight.bold),
+                              dataTextStyle: const TextStyle(color: Color(0xFF0F172A), fontSize: 11.0),
+                              columns: const [
+                                DataColumn(label: Text('DATE & TIME')),
+                                DataColumn(label: Text('INSPECTOR')),
+                                DataColumn(label: Text('HOPPER NO.')),
+                                DataColumn(label: Text('TEST NAME')),
+                                DataColumn(label: Text('QTY TESTED')),
+                                DataColumn(label: Text('DEFECTS')),
+                                DataColumn(label: Text('STATUS')),
+                                DataColumn(label: Text('REMARKS')),
+                              ],
+                              rows: calRecords.map((r) {
+                                final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
+                                final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
+                                final stColor = isApp ? const Color(0xFF10B981) : (isRej ? const Color(0xFFEF4444) : const Color(0xFFF59E0B));
+                                final dTime = r.testTime.isNotEmpty ? r.testTime : r.timestamp;
+                                final hopVal = r.hopperNo.isNotEmpty ? r.hopperNo : (r.lotNo.isNotEmpty ? r.lotNo : '-');
+                                return DataRow(cells: [
+                                  DataCell(Text(dTime)),
+                                  DataCell(Text(r.operators)),
+                                  DataCell(Text(hopVal, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF059669)))),
+                                  DataCell(Text(r.testName, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                  DataCell(Text('${r.produced} rds')),
+                                  DataCell(Text('${r.defects}')),
+                                  DataCell(
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                                      decoration: BoxDecoration(
+                                        color: stColor.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(4.0),
+                                        border: Border.all(color: stColor),
+                                      ),
+                                      child: Text(r.status.toUpperCase(), style: TextStyle(color: stColor, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ),
+                                  DataCell(Text(ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-')),
+                                ]);
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10.0),
+
+                        // Caliber SPC and Box-Whisker Analytics (Included for this caliber alone)
+                        _buildCaliberAnalyticsCard(cal: cal, records: calRecords, currentModule: 'Daily Test'),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComponentTestDashboardSection(List<BallisticRecord> records) {
+    final Map<String, List<BallisticRecord>> caliberGroups = {};
+    for (var r in records) {
+      final key = r.caliber.trim().isNotEmpty ? r.caliber.trim() : (r.testName.trim().isNotEmpty ? r.testName.trim() : 'General');
+      caliberGroups.putIfAbsent(key, () => []).add(r);
+    }
+    final sortedCalibers = caliberGroups.keys.toList()..sort();
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -709,213 +1132,124 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
+              color: Color(0xFFFFFBEB),
               borderRadius: BorderRadius.vertical(top: Radius.circular(14.0)),
-              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+              border: Border(bottom: BorderSide(color: Color(0xFFFDE68A))),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.analytics_outlined, color: Color(0xFF0284C7), size: 18.0),
+                    Container(
+                      width: 4.0,
+                      height: 18.0,
+                      decoration: BoxDecoration(color: const Color(0xFFD97706), borderRadius: BorderRadius.circular(2.0)),
+                    ),
+                    const SizedBox(width: 8.0),
+                    const Icon(Icons.inventory_2_outlined, color: Color(0xFFD97706), size: 18.0),
                     const SizedBox(width: 8.0),
                     Text(
-                      '2. STATISTICAL PROCESS CONTROL (SPC) & BOX-WHISKER ANALYTICS (${_selectedSpcTests.length} ACTIVE)',
-                      style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 12.5),
+                      'PART 3: COMPONENT TEST INSPECTION & SPC ANALYSIS (${records.length} RECORDS)',
+                      style: const TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold, fontSize: 13.0),
                     ),
                   ],
                 ),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          if (_selectedSpcTests.length == _spcTestOptions.length) {
-                            _selectedSpcTests.clear();
-                          } else {
-                            _selectedSpcTests = _spcTestOptions.map((e) => e['id']!).toSet();
-                          }
-                        });
-                      },
-                      icon: Icon(_selectedSpcTests.length == _spcTestOptions.length ? Icons.clear_all : Icons.select_all, size: 15.0),
-                      label: Text(_selectedSpcTests.length == _spcTestOptions.length ? 'Clear All' : 'Select All'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF475569),
-                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-                        textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _exportAllSpcCharts(records),
-                      icon: const Icon(Icons.picture_as_pdf, size: 15.0),
-                      label: const Text('Export All SPC Charts'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0284C7),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                        textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
+                Text('PERIOD: ${_periodLabel.toUpperCase()}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.0, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Filter Tests to Display SPC & Box-Whisker Charts:',
-                  style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                ),
-                const SizedBox(height: 10.0),
-                Wrap(
-                  spacing: 8.0,
-                  runSpacing: 8.0,
-                  children: _spcTestOptions.map((test) {
-                    final id = test['id']!;
-                    final name = test['name']!;
-                    final isSelected = _selectedSpcTests.contains(id);
-                    return FilterChip(
-                      selected: isSelected,
-                      label: Text(name),
-                      labelStyle: TextStyle(
-                        fontSize: 11.0,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? const Color(0xFF0369A1) : const Color(0xFF475569),
-                      ),
-                      selectedColor: const Color(0xFFE0F2FE),
-                      backgroundColor: const Color(0xFFF1F5F9),
-                      side: BorderSide(
-                        color: isSelected ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1),
-                        width: isSelected ? 1.5 : 1.0,
-                      ),
-                      checkmarkColor: const Color(0xFF0284C7),
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedSpcTests.add(id);
-                          } else {
-                            _selectedSpcTests.remove(id);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16.0),
-                const Divider(color: Color(0xFFE2E8F0)),
-                const SizedBox(height: 12.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Chart Visualization Mode:',
-                      style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+          if (records.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Center(
+                child: Text('No component tests logged for this period.', style: TextStyle(color: Color(0xFF64748B))),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: sortedCalibers.map((cal) {
+                  final calRecords = caliberGroups[cal]!;
+                  final Map<String, List<BallisticRecord>> lotGroups = {};
+                  for (var r in calRecords) {
+                    final lKey = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.primerLot.trim().isNotEmpty ? r.primerLot.trim() : 'Lot N/A');
+                    lotGroups.putIfAbsent(lKey, () => []).add(r);
+                  }
+                  final sortedLots = lotGroups.keys.toList()..sort();
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 20.0),
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment<int>(
-                          value: 0,
-                          icon: Icon(Icons.show_chart, size: 16),
-                          label: Text('SPC & Trends', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        ),
-                        ButtonSegment<int>(
-                          value: 1,
-                          icon: Icon(Icons.candlestick_chart_outlined, size: 16),
-                          label: Text('Box & Whisker', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        ),
-                        ButtonSegment<int>(
-                          value: 2,
-                          icon: Icon(Icons.dashboard_outlined, size: 16),
-                          label: Text('Combined', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                      selected: {_spcChartViewMode},
-                      onSelectionChanged: (val) {
-                        setState(() => _spcChartViewMode = val.first);
-                      },
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14.0),
-                if (_selectedSpcTests.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24.0),
-                    child: Center(
-                      child: Text(
-                        'No tests selected. Select one or more tests above to display SPC control charts and distribution analysis.',
-                        style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
-                      ),
-                    ),
-                  )
-                else ...[
-                  for (final test in _spcTestOptions)
-                    if (_selectedSpcTests.contains(test['id'])) ...[
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 24.0),
-                        padding: const EdgeInsets.all(14.0),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A),
-                          borderRadius: BorderRadius.circular(10.0),
-                          border: Border.all(color: const Color(0xFF334155), width: 1.2),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('COMPONENT / SPEC: $cal', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFFD97706))),
+                        const SizedBox(height: 10.0),
+                        ...sortedLots.map((lotKey) {
+                          final lotRecs = lotGroups[lotKey]!;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.analytics_outlined, color: Color(0xFF38BDF8), size: 18.0),
-                                const SizedBox(width: 8.0),
-                                Text(
-                                  '${test['name']} - Statistical Process Control (SPC) & Distribution',
-                                  style: const TextStyle(
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                                  color: const Color(0xFFF1F5F9),
+                                  child: Text('LOT: $lotKey (${lotRecs.length} tests)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.0, color: Color(0xFF0F172A))),
+                                ),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: DataTable(
+                                    headingRowHeight: 30.0,
+                                    dataRowHeight: 32.0,
+                                    headingTextStyle: const TextStyle(color: Color(0xFFD97706), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                    columns: const [
+                                      DataColumn(label: Text('DATE & TIME')),
+                                      DataColumn(label: Text('TEST NAME')),
+                                      DataColumn(label: Text('QTY TESTED')),
+                                      DataColumn(label: Text('DEFECTS')),
+                                      DataColumn(label: Text('STATUS')),
+                                      DataColumn(label: Text('REMARKS')),
+                                    ],
+                                    rows: lotRecs.map((r) {
+                                      final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
+                                      final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
+                                      final stColor = isApp ? const Color(0xFF10B981) : (isRej ? const Color(0xFFEF4444) : const Color(0xFFF59E0B));
+                                      return DataRow(cells: [
+                                        DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp)),
+                                        DataCell(Text(r.testName)),
+                                        DataCell(Text('${r.produced}')),
+                                        DataCell(Text('${r.defects}')),
+                                        DataCell(Text(r.status.toUpperCase(), style: TextStyle(color: stColor, fontWeight: FontWeight.bold, fontSize: 10))),
+                                        DataCell(Text(ReportGenerator.cleanRemarks(r.notes))),
+                                      ]);
+                                    }).toList(),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14.0),
-                            if (_spcChartViewMode == 0 || _spcChartViewMode == 2) ...[
-                              TrendLineChart(
-                                records: records,
-                                selectedTestType: test['id']!,
-                              ),
-                              if (_spcChartViewMode == 2) ...[
-                                const SizedBox(height: 16.0),
-                                const Divider(color: Color(0xFF334155)),
-                                const SizedBox(height: 16.0),
-                              ],
-                            ],
-                            if (_spcChartViewMode == 1 || _spcChartViewMode == 2)
-                              SizedBox(
-                                height: 460,
-                                child: BoxPlotChart(
-                                  records: records.where((r) => r.testName.toLowerCase() == test['id']!.toLowerCase()).toList(),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                ],
-              ],
+                          );
+                        }),
+                        _buildCaliberAnalyticsCard(cal: cal, records: calRecords, currentModule: 'Component Test'),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1367,6 +1701,8 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       required String moduleTitle,
       required String idColName,
       required List<Map<String, dynamic>> moduleInspections,
+      bool isLotAcceptance = false,
+      bool isDailyTest = false,
     }) {
       if (moduleInspections.isEmpty) {
         return '''
@@ -1402,8 +1738,8 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         final int calRounds = calRecords.fold(0, (s, r) => s + r.produced);
         final int calDefects = calRecords.fold(0, (s, r) => s + r.defects);
         final double calYield = calRounds > 0 ? (((calRounds - calDefects) / calRounds) * 100.0) : 100.0;
-        final int calPass = calRecords.where((r) => r.status.toLowerCase().contains('approved')).length;
-        final int calFail = calRecords.where((r) => r.status.toLowerCase().contains('reject')).length;
+        final int calPass = calRecords.where((r) => r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')).length;
+        final int calFail = calRecords.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
 
         // Caliber-specific Charts
         final calSpc = SvgChartGenerator.generateSpcChartSvg(calRecords, width: 780, height: 190);
@@ -1428,17 +1764,77 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               Tested: <strong>$calRounds rds</strong> | Defects: <strong style="color: ${calDefects > 0 ? '#b91c1c' : '#15803d'};">$calDefects</strong> | Yield: <strong style="color: #10b981;">${calYield.toStringAsFixed(1)}%</strong> | Approved: <strong>$calPass</strong> | Rejected: <strong style="color: #ef4444;">$calFail</strong>
             </div>
           </div>
+        ''');
 
-          <!-- Caliber Records Table -->
+        if (isLotAcceptance) {
+          // Sub-sub-part: Each lot number alone!
+          final Map<String, List<BallisticRecord>> lotGroups = {};
+          for (var r in calRecords) {
+            final lKey = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'Lot N/A';
+            lotGroups.putIfAbsent(lKey, () => []).add(r);
+          }
+          final sortedLots = lotGroups.keys.toList()..sort();
+
+          for (final lotKey in sortedLots) {
+            final lotRecs = lotGroups[lotKey]!;
+            final int lotRounds = lotRecs.fold(0, (s, r) => s + r.produced);
+            final int lotDefects = lotRecs.fold(0, (s, r) => s + r.defects);
+            final double lotYield = lotRounds > 0 ? (((lotRounds - lotDefects) / lotRounds) * 100.0) : 100.0;
+            final int lotPass = lotRecs.where((r) => r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')).length;
+            final int lotFail = lotRecs.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
+
+            moduleBuffer.writeln('''
+            <div style="margin-top: 14px; margin-bottom: 10px; padding: 8px 12px; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: #0369a1; font-size: 12px; text-transform: uppercase;">Lot Number: $lotKey</strong>
+                <span style="font-size: 10.5px; color: #64748b; margin-left: 8px;">(${lotRecs.length} Tests)</span>
+              </div>
+              <div style="font-size: 10.5px; color: #334155;">
+                Tested: <strong>$lotRounds rds</strong> | Defects: <strong style="color: ${lotDefects > 0 ? '#b91c1c' : '#15803d'};">$lotDefects</strong> | Yield: <strong style="color: #10b981;">${lotYield.toStringAsFixed(1)}%</strong> | Pass: <strong>$lotPass</strong> | Fail: <strong style="color: #ef4444;">$lotFail</strong>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Test Name</th>
+                  <th>Qty Tested</th>
+                  <th>Defects</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lotRecs.map((r) {
+                  final statusClass = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')
+                      ? 'badge-approved'
+                      : (r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail') ? 'badge-rejected' : 'badge-retest');
+                  final dTime = r.testTime.isNotEmpty ? r.testTime : r.timestamp;
+                  return '<tr>'
+                      '<td>$dTime</td>'
+                      '<td><strong>${r.testName}</strong></td>'
+                      '<td>${r.produced} rds</td>'
+                      '<td>${r.defects}</td>'
+                      '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
+                      '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
+                      '</tr>';
+                }).join('')}
+              </tbody>
+            </table>
+            ''');
+          }
+        } else if (isDailyTest) {
+          // Daily Test: Sub-part with tests for this caliber specification, showing Hopper No.
+          moduleBuffer.writeln('''
           <div style="font-size: 10.5px; font-weight: bold; color: #475569; margin-bottom: 6px; text-transform: uppercase;">
-            &bull; $cal Inspection Log Records:
+            &bull; $cal Daily Test Inspection Records:
           </div>
           <table>
             <thead>
               <tr>
                 <th>Date &amp; Time</th>
                 <th>Test Name</th>
-                <th>$idColName</th>
+                <th>Hopper No.</th>
                 <th>Qty Tested</th>
                 <th>Defects</th>
                 <th>Status</th>
@@ -1447,12 +1843,15 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             </thead>
             <tbody>
               ${calRecords.map((r) {
-                final statusClass = r.status.toLowerCase().contains('approved') ? 'badge-approved' : (r.status.toLowerCase().contains('reject') ? 'badge-rejected' : 'badge-retest');
-                final idVal = idColName.contains('Hopper') ? (r.hopperNo.isNotEmpty ? r.hopperNo : r.lotNo) : r.lotNo;
+                final statusClass = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')
+                    ? 'badge-approved'
+                    : (r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail') ? 'badge-rejected' : 'badge-retest');
+                final dTime = r.testTime.isNotEmpty ? r.testTime : r.timestamp;
+                final hopVal = r.hopperNo.isNotEmpty ? r.hopperNo : (r.lotNo.isNotEmpty ? r.lotNo : '-');
                 return '<tr>'
-                    '<td>${r.testTime.isNotEmpty ? r.testTime : r.timestamp}</td>'
+                    '<td>$dTime</td>'
                     '<td><strong>${r.testName}</strong></td>'
-                    '<td>$idVal</td>'
+                    '<td><strong>$hopVal</strong></td>'
                     '<td>${r.produced} rds</td>'
                     '<td>${r.defects}</td>'
                     '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
@@ -1461,11 +1860,58 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               }).join('')}
             </tbody>
           </table>
+          ''');
+        } else {
+          // Component Test: Lot grouping
+          final Map<String, List<BallisticRecord>> lotGroups = {};
+          for (var r in calRecords) {
+            final lKey = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.primerLot.trim().isNotEmpty ? r.primerLot.trim() : 'Lot N/A');
+            lotGroups.putIfAbsent(lKey, () => []).add(r);
+          }
+          final sortedLots = lotGroups.keys.toList()..sort();
+          for (final lotKey in sortedLots) {
+            final lotRecs = lotGroups[lotKey]!;
+            moduleBuffer.writeln('''
+            <div style="margin-top: 10px; margin-bottom: 6px; padding: 4px 8px; background: #fffbeb; border-left: 3px solid #d97706; border-radius: 4px;">
+              <strong style="color: #b45309; font-size: 11px;">LOT / BATCH: $lotKey</strong> (${lotRecs.length} Tests)
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Test Name</th>
+                  <th>Qty Tested</th>
+                  <th>Defects</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lotRecs.map((r) {
+                  final statusClass = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')
+                      ? 'badge-approved'
+                      : (r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail') ? 'badge-rejected' : 'badge-retest');
+                  final dTime = r.testTime.isNotEmpty ? r.testTime : r.timestamp;
+                  return '<tr>'
+                      '<td>$dTime</td>'
+                      '<td><strong>${r.testName}</strong></td>'
+                      '<td>${r.produced} rds</td>'
+                      '<td>${r.defects}</td>'
+                      '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
+                      '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
+                      '</tr>';
+                }).join('')}
+              </tbody>
+            </table>
+            ''');
+          }
+        }
 
-          <!-- Caliber Specific Charts -->
+        // Caliber Specific Charts & SPC (grouped by test types)
+        moduleBuffer.writeln('''
           <div style="margin-top: 14px; background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;">
             <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 10px; text-transform: uppercase;">
-              &bull; $cal Visual Analytics &amp; Statistical Process Control:
+              &bull; $cal Visual Analytics &amp; Statistical Process Control (Grouped by Test Types):
             </div>
             <div style="margin-bottom: 12px;">
               <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">1. Statistical Process Control (SPC) Chart — $cal</div>
@@ -1480,12 +1926,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               $calVelocity
             </div>
             ${hasEpvat && calEpvat.isNotEmpty ? '''
-            <div style="margin-bottom: 12px;">
+            <div style="margin-top: 12px; margin-bottom: 12px;">
               <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">4. EPVAT Chamber (P1) &amp; Port (P2) Pressure Trend — $cal</div>
               $calEpvat
             </div>''' : ''}
             ${hasFunction && calFunction.isNotEmpty ? '''
-            <div>
+            <div style="margin-top: 12px; margin-bottom: 12px;">
               <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">5. Function Test Defect Classification Distribution — $cal</div>
               $calFunction
             </div>''' : ''}
@@ -1575,50 +2021,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         <div class="kpi-val" style="color: #8b5cf6;">${equipmentIssues.length}</div>
       </div>
     </div>
-
-    <!-- Ballistic Inspection Logs Table (as shown on executive dashboard, excluding Inspector) -->
-    <h3 style="margin-top: 24px; margin-bottom: 12px; color: #0f172a; font-size: 15px;">Ballistic Inspection Logs (${inspections.length} Records)</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Module</th>
-          <th>Date &amp; Time</th>
-          <th>Test Name</th>
-          <th>Caliber</th>
-          <th>Lot / Hopper</th>
-          <th>Qty Tested</th>
-          <th>Defects</th>
-          <th>Status</th>
-          <th>Remarks</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${inspections.isEmpty ? '<tr><td colspan="9" style="text-align: center; color: #64748b;">No inspection records registered for this period.</td></tr>' : inspections.map((entry) {
-          final m = entry['module'] as String;
-          final r = entry['record'] as BallisticRecord;
-          final lotOrHopper = m == 'Daily Test' ? (r.hopperNo.isNotEmpty ? r.hopperNo : 'N/A') : (r.lotNo.isNotEmpty ? r.lotNo : 'N/A');
-          final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
-          final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
-          final badgeClass = isApp ? 'badge-approved' : (isRej ? 'badge-rejected' : 'badge-retest');
-          final cleanNotes = ReportGenerator.cleanRemarks(r.notes);
-          final displayTime = r.testTime.isNotEmpty ? r.testTime : r.timestamp;
-          return '<tr>'
-              '<td><strong style="color: #0284c7;">$m</strong></td>'
-              '<td>$displayTime</td>'
-              '<td><strong>${r.testName}</strong></td>'
-              '<td>${r.caliber}</td>'
-              '<td>$lotOrHopper</td>'
-              '<td>${r.produced} rds</td>'
-              '<td>${r.defects}</td>'
-              '<td><span class="$badgeClass">${r.status.toUpperCase()}</span></td>'
-              '<td>${cleanNotes.isNotEmpty ? cleanNotes : '-'}</td>'
-              '</tr>';
-        }).join('')}
-      </tbody>
-    </table>
   </div>
 
-  <!-- MODULE 1: LOT ACCEPTANCE TEST (EACH CALIBER ALONE WITH CHARTS) -->
+  ${_includeLotAcceptance ? '''
+  <!-- MODULE 1: LOT ACCEPTANCE TEST (DIVIDED INTO CALIBER SPECIFICATIONS -> LOT NUMBER ALONE WITH SPC & BOX-WHISKER) -->
   <div class="page-break"></div>
   <div class="report-page">
     ${renderModuleSection(
@@ -1627,22 +2033,26 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       moduleTitle: 'Lot Acceptance Test Inspection Results & Analytics',
       idColName: 'Lot Number',
       moduleInspections: lotAcceptanceList,
+      isLotAcceptance: true,
     )}
-  </div>
+  </div>''' : ''}
 
-  <!-- MODULE 2: DAILY TEST (EACH CALIBER ALONE WITH CHARTS) -->
+  ${_includeDailyTest ? '''
+  <!-- MODULE 2: DAILY TEST (DIVIDED INTO CALIBER SPECIFICATIONS WITH SPC & BOX-WHISKER) -->
   <div class="page-break"></div>
   <div class="report-page">
     ${renderModuleSection(
       moduleBadge: 'MODULE 2 — DAILY TEST',
       badgeColor: '#059669',
       moduleTitle: 'Daily Test Inspection Results & Analytics',
-      idColName: 'Hopper / Lot',
+      idColName: 'Hopper ID',
       moduleInspections: dailyTestList,
+      isDailyTest: true,
     )}
-  </div>
+  </div>''' : ''}
 
-  <!-- MODULE 3: COMPONENT TEST (EACH CALIBER ALONE WITH CHARTS) -->
+  ${_includeComponentTest ? '''
+  <!-- MODULE 3: COMPONENT TEST -->
   <div class="page-break"></div>
   <div class="report-page">
     ${renderModuleSection(
@@ -1652,7 +2062,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       idColName: 'Batch / Lot',
       moduleInspections: componentTestList,
     )}
-  </div>
+  </div>''' : ''}
 
   <!-- SECTION 4: FACILITY, EQUIPMENT & WITNESS STORAGE ACTIVITY -->
   <div class="page-break"></div>
@@ -1786,40 +2196,110 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       if (list.isEmpty) {
         return '<p style="color: #64748b; font-style: italic; font-size: 11px;">No records registered for this section in the selected period.</p>';
       }
-      return '''
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>$lotLabel</th>
-            <th>Caliber</th>
-            <th>Test Name</th>
-            <th>Sample</th>
-            <th>Status</th>
-            <th>Remarks</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${list.map((e) {
-            final r = e['record'] as BallisticRecord;
-            final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
-            final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
-            final badgeColor = isApp ? '#10b981' : (isRej ? '#ef4444' : '#f59e0b');
-            final recDate = r.timestamp.split(' ').first;
-            final recNotes = ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-';
-            return '<tr>'
-                '<td>$recDate</td>'
-                '<td><strong>${r.lotNumber}</strong></td>'
-                '<td>${r.caliber}</td>'
-                '<td>${r.testName}</td>'
-                '<td>${r.produced}</td>'
-                '<td><span style="color: $badgeColor; font-weight: bold;">${r.status}</span></td>'
-                '<td>$recNotes</td>'
-                '</tr>';
-          }).join('')}
-        </tbody>
-      </table>
-      ''';
+
+      final Map<String, List<BallisticRecord>> caliberGroups = {};
+      for (var e in list) {
+        final r = e['record'] as BallisticRecord;
+        caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+      }
+      final sortedCalibers = caliberGroups.keys.toList()..sort();
+      final tableBuffer = StringBuffer();
+
+      for (final cal in sortedCalibers) {
+        final calRecs = caliberGroups[cal]!;
+        tableBuffer.writeln('''
+        <div style="font-weight: bold; color: #0284c7; font-size: 11px; margin-top: 10px; margin-bottom: 4px; padding: 3px 6px; background: #e0f2fe; border-radius: 4px;">
+          CALIBER SPECIFICATION: $cal (${calRecs.length} Tests)
+        </div>
+        ''');
+
+        if (lotLabel == 'Lot Number') {
+          // Sub-sub group by lot number alone
+          final Map<String, List<BallisticRecord>> lotGroups = {};
+          for (var r in calRecs) {
+            final lKey = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'Lot N/A';
+            lotGroups.putIfAbsent(lKey, () => []).add(r);
+          }
+          final sortedLots = lotGroups.keys.toList()..sort();
+
+          for (final lotKey in sortedLots) {
+            final lotRecs = lotGroups[lotKey]!;
+            tableBuffer.writeln('''
+            <div style="font-size: 10px; font-weight: bold; color: #475569; margin-top: 6px; margin-bottom: 3px; padding-left: 6px;">
+              &bull; Lot Number: <strong>$lotKey</strong> (${lotRecs.length} tests)
+            </div>
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Test Name</th>
+                  <th>Sample</th>
+                  <th>Defects</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lotRecs.map((r) {
+                  final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
+                  final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
+                  final badgeColor = isApp ? '#10b981' : (isRej ? '#ef4444' : '#f59e0b');
+                  final recDate = r.testTime.isNotEmpty ? r.testTime : r.timestamp.split(' ').first;
+                  final recNotes = ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-';
+                  return '<tr>'
+                      '<td>$recDate</td>'
+                      '<td><strong>${r.testName}</strong></td>'
+                      '<td>${r.produced}</td>'
+                      '<td>${r.defects}</td>'
+                      '<td><span style="color: $badgeColor; font-weight: bold;">${r.status}</span></td>'
+                      '<td>$recNotes</td>'
+                      '</tr>';
+                }).join('')}
+              </tbody>
+            </table>
+            ''');
+          }
+        } else {
+          // Daily Test or Component Test
+          final isDaily = lotLabel.contains('Hopper');
+          tableBuffer.writeln('''
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>${isDaily ? "Hopper No." : "Lot / Batch"}</th>
+                <th>Test Name</th>
+                <th>Sample</th>
+                <th>Defects</th>
+                <th>Status</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${calRecs.map((r) {
+                final isApp = r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass');
+                final isRej = r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail');
+                final badgeColor = isApp ? '#10b981' : (isRej ? '#ef4444' : '#f59e0b');
+                final recDate = r.testTime.isNotEmpty ? r.testTime : r.timestamp.split(' ').first;
+                final recNotes = ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-';
+                final idVal = isDaily ? (r.hopperNo.isNotEmpty ? r.hopperNo : (r.lotNo.isNotEmpty ? r.lotNo : '-')) : (r.lotNo.isNotEmpty ? r.lotNo : '-');
+                return '<tr>'
+                    '<td>$recDate</td>'
+                    '<td><strong>$idVal</strong></td>'
+                    '<td><strong>${r.testName}</strong></td>'
+                    '<td>${r.produced}</td>'
+                    '<td>${r.defects}</td>'
+                    '<td><span style="color: $badgeColor; font-weight: bold;">${r.status}</span></td>'
+                    '<td>$recNotes</td>'
+                    '</tr>';
+              }).join('')}
+            </tbody>
+          </table>
+          ''');
+        }
+      }
+
+      return tableBuffer.toString();
     }
 
     final html = '''
@@ -1885,24 +2365,28 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     </div>
   </div>
 
+  ${_includeLotAcceptance ? '''
   <div class="section-title">
     <span>1. Lot Acceptance Inspection Results</span>
     <span class="badge">Lot Acceptance (${lotAcceptanceList.length})</span>
   </div>
-  ${renderInspectionTable(lotAcceptanceList, 'Lot Number')}
+  ${renderInspectionTable(lotAcceptanceList, 'Lot Number')}''' : ''}
 
+  ${_includeDailyTest ? '''
   <div class="section-title">
     <span>2. Daily Test Inspection Results</span>
     <span class="badge">Daily Test (${dailyTestList.length})</span>
   </div>
-  ${renderInspectionTable(dailyTestList, 'Hopper / Lot')}
+  ${renderInspectionTable(dailyTestList, 'Hopper / Lot')}''' : ''}
 
+  ${_includeComponentTest ? '''
   <div class="section-title">
     <span>3. Component Test Inspection Results</span>
     <span class="badge">Component Test (${componentTestList.length})</span>
   </div>
-  ${renderInspectionTable(componentTestList, 'Lot / Batch')}
+  ${renderInspectionTable(componentTestList, 'Lot / Batch')}''' : ''}
 
+  ${_includeEquipmentIssues ? '''
   <div class="section-title">
     <span>4. Equipment Maintenance & Calibration Log</span>
     <span class="badge">Equipment Issues (${equipmentIssues.length})</span>
@@ -1933,8 +2417,9 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       ).join('')}
     </tbody>
   </table>
-  '''}
+  '''}''' : ''}
 
+  ${_includeConsumables ? '''
   <div class="section-title">
     <span>5. Consumables Usage & Stock Inventory</span>
     <span class="badge">Consumables (${consumables.length})</span>
@@ -1958,17 +2443,18 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         final isLow = qty <= minQty;
         return '<tr>'
           '<td><strong>${c['name']}</strong></td>'
-          '<td>${c['category'] ?? 'General'}</td>'
-          '<td style="font-weight: bold; color: ${isLow ? '#ef4444' : '#0f172a'};">${qty}</td>'
+          '<td>${c['category'] ?? '-'}</td>'
+          '<td>$qty</td>'
           '<td>${c['unit'] ?? 'pcs'}</td>'
-          '<td>${minQty}</td>'
+          '<td>$minQty</td>'
           '<td><span style="font-weight: bold; color: ${isLow ? '#ef4444' : '#10b981'};">${isLow ? 'LOW STOCK' : 'OK'}</span></td>'
           '</tr>';
       }).join('')}
     </tbody>
   </table>
-  '''}
+  '''}''' : ''}
 
+  ${_includeWitnessStorage ? '''
   <div class="section-title">
     <span>6. Witness Storage Operations</span>
     <span class="badge">Additions (${witnessAdditions.length}) | Consumptions (${witnessConsumptions.length})</span>
@@ -2009,7 +2495,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       ).join('')}
     </tbody>
   </table>
-  '''}
+  '''}''' : ''}
 
   <div class="footer">
     <div>OMPC Ballistic AeroData System &copy; ${DateTime.now().year} &bull; Confidential Internal QA Document</div>

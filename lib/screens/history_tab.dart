@@ -627,7 +627,7 @@ class _HistoryTabState extends State<HistoryTab> {
                             Row(
                               children: [
                                 Expanded(child: Text('Submitter: ${r.operators}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
-                                Expanded(child: Text('Date: ${r.timestamp}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
+                                Expanded(child: Text('Date: ${r.testTime.isNotEmpty ? r.testTime : r.timestamp}', style: const TextStyle(color: Colors.white70, fontSize: 12.0))),
                               ],
                             ),
                             const SizedBox(height: 4.0),
@@ -1235,7 +1235,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       style: const TextStyle(color: Color(0xFF0F172A), fontSize: 16.0, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'Lot: ${r.lotNo} • Caliber: ${r.caliber} • ${r.timestamp}',
+                      'Lot: ${r.lotNo} • Caliber: ${r.caliber} • ${r.testTime.isNotEmpty ? r.testTime : r.timestamp}',
                       style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -3559,7 +3559,9 @@ class _HistoryTabState extends State<HistoryTab> {
           if (cmp != 0) return cmp;
         }
 
-        return b.timestamp.compareTo(a.timestamp);
+        final timeB = b.testTime.trim().isNotEmpty ? b.testTime.trim() : b.timestamp.trim();
+        final timeA = a.testTime.trim().isNotEmpty ? a.testTime.trim() : a.timestamp.trim();
+        return timeB.compareTo(timeA);
       });
     final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS);
 
@@ -4672,16 +4674,22 @@ class _HistoryTabState extends State<HistoryTab> {
       rowBg = const Color(0xFFFAFCFF);
     }
 
-    String timePart = r.testTime.isNotEmpty ? r.testTime : '';
+    final performedDt = _parseRecordUserTime(r);
     String datePart = '';
-    if (r.timestamp.contains(' ')) {
-      final parts = r.timestamp.split(' ');
-      datePart = parts[0];
-      if (timePart.isEmpty && parts.length > 1) {
-        timePart = parts.sublist(1).join(' ');
-      }
+    String timePart = '';
+    if (performedDt.year > 1970) {
+      datePart = DateFormat('yyyy-MM-dd').format(performedDt);
+      timePart = DateFormat('hh:mm:ss a').format(performedDt);
     } else {
-      datePart = r.timestamp;
+      final src = r.testTime.trim().isNotEmpty ? r.testTime.trim() : r.timestamp.trim();
+      if (src.contains(' ')) {
+        final parts = src.split(' ');
+        datePart = parts[0];
+        timePart = parts.sublist(1).join(' ');
+      } else {
+        datePart = src;
+        timePart = src;
+      }
     }
     if (timePart.isEmpty) timePart = datePart;
 

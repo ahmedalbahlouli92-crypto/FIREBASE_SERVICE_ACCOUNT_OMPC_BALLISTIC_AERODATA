@@ -58,11 +58,20 @@ class _TrendLineChartState extends State<TrendLineChart> {
   bool _showMin = true;
   bool _showSD = true;
 
-  static const List<String> _groupByOptions = [
-    'By Lot Number',
-    'By Hopper No.',
-    'By Individual Test',
-  ];
+  bool get _isDailyTest => widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report';
+
+  List<String> get _groupByOptions {
+    if (_isDailyTest) {
+      return const [
+        'By Hopper No.',
+        'By Individual Test',
+      ];
+    }
+    return const [
+      'By Lot Number',
+      'By Individual Test',
+    ];
+  }
 
   List<String> get _availableTests {
     if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
@@ -205,6 +214,11 @@ class _TrendLineChartState extends State<TrendLineChart> {
   @override
   void initState() {
     super.initState();
+    if (_isDailyTest) {
+      _selectedGroupBy = 'By Hopper No.';
+    } else {
+      _selectedGroupBy = 'By Lot Number';
+    }
     if (widget.selectedCaliber != null && widget.selectedCaliber!.isNotEmpty) {
       _selectedCaliber = widget.selectedCaliber!;
     } else {
@@ -259,6 +273,13 @@ class _TrendLineChartState extends State<TrendLineChart> {
   @override
   void didUpdateWidget(TrendLineChart oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.currentModule != oldWidget.currentModule) {
+      if (_isDailyTest && _selectedGroupBy == 'By Lot Number') {
+        _selectedGroupBy = 'By Hopper No.';
+      } else if (!_isDailyTest && _selectedGroupBy == 'By Hopper No.') {
+        _selectedGroupBy = 'By Lot Number';
+      }
+    }
     if (widget.selectedCaliber != null && widget.selectedCaliber != oldWidget.selectedCaliber) {
       if (widget.selectedCaliber != _selectedCaliber) {
         setState(() {
@@ -507,9 +528,13 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   List<_TrendGroupPoint> _buildGroupPoints(List<BallisticRecord> filtered, {String? paramOverride}) {
     final activeParam = paramOverride ?? _selectedParam;
-    final distinctLots = filtered.map((r) => r.lotNo.trim()).where((l) => l.isNotEmpty).toSet();
-    final bool isSingleLot = distinctLots.length <= 1;
-    final groupBy = (isSingleLot && _selectedGroupBy == 'By Lot Number') ? 'By Individual Test' : _selectedGroupBy;
+    final distinctGroups = _isDailyTest
+        ? filtered.map((r) => r.hopperNo.trim()).where((l) => l.isNotEmpty).toSet()
+        : filtered.map((r) => r.lotNo.trim()).where((l) => l.isNotEmpty).toSet();
+    final bool isSingleGroup = distinctGroups.length <= 1;
+    final groupBy = (isSingleGroup && (_selectedGroupBy == 'By Lot Number' || _selectedGroupBy == 'By Hopper No.'))
+        ? 'By Individual Test'
+        : _selectedGroupBy;
 
     if (groupBy == 'By Individual Test') {
       final List<_TrendGroupPoint> pts = [];
@@ -518,10 +543,13 @@ class _TrendLineChartState extends State<TrendLineChart> {
         final metric = _extractRecordMetric(filtered[i], paramOverride: activeParam);
         if (metric != null) {
           final lot = filtered[i].lotNo.trim();
+          final hop = filtered[i].hopperNo.trim();
           final temp = filtered[i].cartridgeTemp.trim();
           final sub = temp.isNotEmpty && temp != 'N/A'
               ? temp
-              : (lot.isNotEmpty ? 'Lot $lot' : filtered[i].timestamp.split(' ')[0]);
+              : (_isDailyTest
+                  ? (hop.isNotEmpty ? 'Hopper $hop' : filtered[i].timestamp.split(' ')[0])
+                  : (lot.isNotEmpty ? 'Lot $lot' : filtered[i].timestamp.split(' ')[0]));
           pts.add(_TrendGroupPoint(
             index: pts.length,
             label: 'Test $testIndex',
@@ -541,7 +569,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
     // Grouping by Lot Number or Hopper No.
     final Map<String, List<_RecordMetric>> groups = {};
     for (var r in filtered) {
-      final key = groupBy == 'By Hopper No.'
+      final key = (_isDailyTest || groupBy == 'By Hopper No.')
           ? (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'N/A'))
           : (r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'Lot N/A');
 
@@ -580,7 +608,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
       final double overallMean = metricsList.map((m) => m.mean).reduce((a, b) => a + b) / metricsList.length;
       final double overallSD = metricsList.map((m) => m.sd).reduce((a, b) => a + b) / metricsList.length;
 
-      final prefix = groupBy == 'By Hopper No.' ? 'Hop ' : 'Lot ';
+      final prefix = (_isDailyTest || groupBy == 'By Hopper No.') ? 'Hopper ' : 'Lot ';
 
       pts.add(_TrendGroupPoint(
         index: idx++,
@@ -629,10 +657,12 @@ class _TrendLineChartState extends State<TrendLineChart> {
           children: [
             const Icon(Icons.analytics_outlined, color: Color(0xFF06B6D4), size: 20.0),
             const SizedBox(width: 8.0),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Lot & Hopper Statistical Trend Analysis (SPC Matrix)',
-                style: TextStyle(
+                _isDailyTest
+                    ? 'Hopper Statistical Trend Analysis (SPC Matrix)'
+                    : 'Lot Statistical Trend Analysis (SPC Matrix)',
+                style: const TextStyle(
                   fontSize: 15.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -662,16 +692,18 @@ class _TrendLineChartState extends State<TrendLineChart> {
                 border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
               ),
               child: Text(
-                '${_selectedTests.length} Tests | $totalEvaluatedGroups Groups',
+                '${_selectedTests.length} Tests | $totalEvaluatedGroups ${_isDailyTest ? "Hoppers" : "Lots"}',
                 style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11.0, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
         const SizedBox(height: 4.0),
-        const Text(
-          'Statistical process control chart displaying Min, Max, Mean, and SD readings from each lot or hopper across up to 4 tests simultaneously.',
-          style: TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3)),
+        Text(
+          _isDailyTest
+              ? 'Statistical process control chart displaying Min, Max, Mean, and SD readings from each hopper across up to 4 tests simultaneously.'
+              : 'Statistical process control chart displaying Min, Max, Mean, and SD readings from each lot across up to 4 tests simultaneously.',
+          style: const TextStyle(fontSize: 11.5, color: Color(0xFF8E96A3)),
         ),
         const SizedBox(height: 12.0),
 
@@ -689,7 +721,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
             ),
             _buildDropdown(
               label: 'GROUP READINGS BY',
-              value: _selectedGroupBy,
+              value: _groupByOptions.contains(_selectedGroupBy) ? _selectedGroupBy : _groupByOptions.first,
               items: _groupByOptions,
               onChanged: (v) => setState(() => _selectedGroupBy = v!),
             ),
@@ -1082,62 +1114,17 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
     if (_selectedTests.length == 1) {
       return _buildSingleTestSpcCard(_selectedTests[0]);
-    } else if (_selectedTests.length == 2) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _buildSingleTestSpcCard(_selectedTests[0])),
-          const SizedBox(width: 8.0),
-          Expanded(child: _buildSingleTestSpcCard(_selectedTests[1])),
-        ],
-      );
-    } else if (_selectedTests.length == 3) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildSingleTestSpcCard(_selectedTests[0])),
-                const SizedBox(width: 8.0),
-                Expanded(child: _buildSingleTestSpcCard(_selectedTests[1])),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          Expanded(child: _buildSingleTestSpcCard(_selectedTests[2])),
-        ],
-      );
-    } else {
-      // 4 tests: 2x2 grid
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildSingleTestSpcCard(_selectedTests[0])),
-                const SizedBox(width: 8.0),
-                Expanded(child: _buildSingleTestSpcCard(_selectedTests[1])),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildSingleTestSpcCard(_selectedTests[2])),
-                const SizedBox(width: 8.0),
-                Expanded(child: _buildSingleTestSpcCard(_selectedTests[3])),
-              ],
-            ),
-          ),
-        ],
-      );
     }
+
+    final children = <Widget>[];
+    for (int i = 0; i < _selectedTests.length; i++) {
+      if (i > 0) children.add(const SizedBox(height: 8.0));
+      children.add(Expanded(child: _buildSingleTestSpcCard(_selectedTests[i])));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
   }
 
   String get selectedCaliberLabel => _selectedCaliber == 'All' ? 'All Calibers' : _selectedCaliber;
@@ -1216,7 +1203,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
 <body>
   <div class="header-box">
     <div class="title">OMPC BALLISTIC AERODATA - STATISTICAL PROCESS CONTROL (SPC)</div>
-    <div class="subtitle">Lot & Hopper Trend Analysis Report • Parameter: <strong>$_selectedParam</strong></div>
+    <div class="subtitle">${_isDailyTest ? 'Hopper' : 'Lot'} Trend Analysis Report • Parameter: <strong>$_selectedParam</strong></div>
   </div>
 
   <div class="meta-grid">

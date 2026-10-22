@@ -11542,7 +11542,7 @@ class _MainShellState extends State<MainShell> {
         onTestNameChanged: (val) => setState(() => _selectedEntryTestName = val),
         adminRules: _adminRules,
         base64Logo: _base64Logo,
-        componentPrimerRecords: _componentTestRecords.where((r) => r.testName == 'Primer Sensitivity Test').toList(),
+        componentPrimerRecords: _componentTestRecords.where((r) => r.testName.toLowerCase().contains('primer') || r.primerLot.isNotEmpty).toList(),
         componentPropellantRecords: _componentTestRecords.where((r) => r.testName == 'Propellant Test').toList(),
         onOpenEpvatRulesInControl: () {
           setState(() {

@@ -253,13 +253,22 @@ class _EntryTabState extends State<EntryTab> {
 
   bool get _isCaliber9mm => _caliber.toLowerCase().contains('9mm') || _caliber.toLowerCase().contains('9x19');
   bool _isSameCaliberFamily(String calA, String calB) {
-    final a = calA.toLowerCase().replaceAll(' ', '').replaceAll(',', '.');
-    final b = calB.toLowerCase().replaceAll(' ', '').replaceAll(',', '.');
+    final a = calA.toLowerCase().replaceAll(' ', '').replaceAll(',', '.').replaceAll('mm', '');
+    final b = calB.toLowerCase().replaceAll(' ', '').replaceAll(',', '.').replaceAll('mm', '');
+    if (a.isEmpty || b.isEmpty) return true;
     if (a == b || a.contains(b) || b.contains(a)) return true;
-    if ((a.contains('5.56') || a.contains('223')) && (b.contains('5.56') || b.contains('223'))) return true;
-    if ((a.contains('7.62') || a.contains('308') || a.contains('m80')) && (b.contains('7.62') || b.contains('308') || b.contains('m80'))) return true;
-    if ((a.contains('9x19') || a.contains('9mm') || a.contains('luger') || a.contains('para')) &&
-        (b.contains('9x19') || b.contains('9mm') || b.contains('luger') || b.contains('para'))) return true;
+    // 5.56 and .223 are the same
+    final is556A = a.contains('5.56') || a.contains('223') || a.contains('ss109') || a.contains('m193') || a.contains('m200');
+    final is556B = b.contains('5.56') || b.contains('223') || b.contains('ss109') || b.contains('m193') || b.contains('m200');
+    if (is556A && is556B) return true;
+    // 7.62 and .308 are the same
+    final is762A = a.contains('7.62') || a.contains('308') || a.contains('m80');
+    final is762B = b.contains('7.62') || b.contains('308') || b.contains('m80');
+    if (is762A && is762B) return true;
+    // 9mm and 9x19 are the same
+    final is9mmA = a.contains('9x19') || a.contains('9') || a.contains('luger') || a.contains('para');
+    final is9mmB = b.contains('9x19') || b.contains('9') || b.contains('luger') || b.contains('para');
+    if (is9mmA && is9mmB) return true;
     return false;
   }
   bool get _isCaliberSingleTempOnly {
@@ -515,6 +524,8 @@ class _EntryTabState extends State<EntryTab> {
   // Function Test state (Weapon, Temperature, 4-Level Defect Classification)
   String _functionWeapon = '';
   List<String> _selectedFunctionWeapons = [];
+  final Map<String, int> _functionWeaponRounds = {};
+  final _currentWeaponRoundsController = TextEditingController();
   String _functionTempMode = 'Single'; // 'Single' or 'All'
   String _functionSingleTemp = '+21'; // '+21', '+52', '-54', or '-32'
   int _activeFunctionTempTabIndex = 0; // 0: +21, 1: +52, 2: -54 or -32
@@ -1608,11 +1619,8 @@ class _EntryTabState extends State<EntryTab> {
         ? '$activeModel (SN: $activeSerial)'
         : activeModel;
 
-    if (composed.isNotEmpty) {
-      _functionWeapon = composed;
-      if (_selectedFunctionWeapons.isEmpty || (_selectedFunctionWeapons.length == 1 && _selectedFunctionWeapons.first != composed)) {
-        _selectedFunctionWeapons = [composed];
-      }
+    if (_selectedFunctionWeapons.isNotEmpty) {
+      _functionWeapon = _selectedFunctionWeapons.join('; ');
     } else {
       _functionWeapon = '';
     }
@@ -2069,22 +2077,14 @@ class _EntryTabState extends State<EntryTab> {
         return false;
       }
     } else if (_testName == 'Function Test') {
-      final effectiveWeapon = _selectedFunctionWeapons.isNotEmpty
-          ? _selectedFunctionWeapons.join(', ')
-          : (_functionWeapon.isNotEmpty
-              ? _functionWeapon
-              : (_selectedRegisteredWeapon.isNotEmpty && _selectedRegisteredWeapon != '[+ Custom / Other Weapon]'
-                  ? _selectedRegisteredWeapon
-                  : (_customWeaponTypeController.text.trim().isNotEmpty
-                      ? (_customWeaponSNController.text.trim().isNotEmpty
-                          ? '${_customWeaponTypeController.text.trim()} (SN: ${_customWeaponSNController.text.trim()})'
-                          : _customWeaponTypeController.text.trim())
-                      : '')));
-      if (effectiveWeapon.trim().isEmpty) {
-        jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type & Serial');
+      if (_selectedFunctionWeapons.isEmpty) {
+        jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type, Serial & Rounds Fired');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select weapon serial and enter rounds fired in each weapon.')),
+        );
         return false;
       }
-      _functionWeapon = effectiveWeapon;
+      _functionWeapon = _selectedFunctionWeapons.join('; ');
     } else if (_testName == 'Firing Rate Cycle Test') {
       if (_cyclicRateWeaponType.trim().isEmpty) {
         jumpTo(_weaponFieldKey, _weaponFocusNode, 'Weapon Type & Serial');
@@ -2609,6 +2609,8 @@ class _EntryTabState extends State<EntryTab> {
       if (_testName == 'Primer Sensitivity Test') {
         final prRules = _getPrimerRulesForCaliber();
         _primerDropWeightController.text = ((prRules['drop_weight'] ?? 55.0) as num).toStringAsFixed(1);
+        _selectedComponentPrimerLot = null;
+        _clearPrimerFields();
       }
       if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
         _recalculateEpvatStats();
@@ -2765,6 +2767,8 @@ class _EntryTabState extends State<EntryTab> {
       } else if (_testName == 'Primer Sensitivity Test') {
         final prRules = _getPrimerRulesForCaliber();
         _primerDropWeightController.text = ((prRules['drop_weight'] ?? 55.0) as num).toStringAsFixed(1);
+        _selectedComponentPrimerLot = null;
+        _clearPrimerFields();
       }
     });
     widget.onTestNameChanged(newTest);
@@ -2956,10 +2960,6 @@ class _EntryTabState extends State<EntryTab> {
         if (draft['propellantSupplier'] != null) _propellantSupplier = draft['propellantSupplier'];
         if (draft['primerSupplier'] != null) _primerSupplier = draft['primerSupplier'];
         if (draft['selectedComponentPrimerLot'] != null) _selectedComponentPrimerLot = draft['selectedComponentPrimerLot'];
-        if (draft['selectedFunctionWeapons'] is List) {
-          _selectedFunctionWeapons = List<String>.from(draft['selectedFunctionWeapons']);
-          _functionWeapon = _selectedFunctionWeapons.join('; ');
-        }
         if (draft['produced'] != null) _producedController.text = draft['produced'];
         if (draft['defects'] != null) _defectsController.text = draft['defects'];
         if (draft['notes'] != null) _notesController.text = draft['notes'];
@@ -3397,6 +3397,7 @@ class _EntryTabState extends State<EntryTab> {
     _requirementController.dispose();
     _pressureController.dispose();
     _viscosityController.dispose();
+    _currentWeaponRoundsController.dispose();
     _testTimeController.dispose();
     _locationController.dispose();
     _mouthSlowController.dispose();
@@ -8113,7 +8114,18 @@ class _EntryTabState extends State<EntryTab> {
                 ],
               ),
             ),
-            // 4. Add to Tested Weapons
+            // 4. Rounds Fired in Weapon
+            _buildFlexibleField(
+              flex: 2,
+              label: 'Rounds Fired in Weapon',
+              isRequired: true,
+              child: _buildTextField(
+                controller: _currentWeaponRoundsController,
+                hint: 'e.g., 100',
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+            ),
+            // 5. Add to Tested Weapons
             _buildFlexibleField(
               flex: 2,
               label: 'Add to Test',
@@ -8122,14 +8134,31 @@ class _EntryTabState extends State<EntryTab> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     final toAdd = previewLabel.trim();
-                    if (toAdd.isNotEmpty) {
-                      setState(() {
-                        if (!_selectedFunctionWeapons.contains(toAdd)) {
-                          _selectedFunctionWeapons.add(toAdd);
-                        }
-                        _functionWeapon = _selectedFunctionWeapons.join('; ');
-                      });
+                    final rds = int.tryParse(_currentWeaponRoundsController.text.trim()) ?? 0;
+                    if (toAdd.isEmpty || activeSerial.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please select or enter the weapon serial number.')),
+                      );
+                      return;
                     }
+                    if (rds <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter how many rounds were fired in this weapon.')),
+                      );
+                      return;
+                    }
+                    setState(() {
+                      _functionWeaponRounds[toAdd] = rds;
+                      final entryWithRds = '$toAdd [$rds rds]';
+                      _selectedFunctionWeapons.removeWhere((w) => w.startsWith(toAdd));
+                      _selectedFunctionWeapons.add(entryWithRds);
+                      _functionWeapon = _selectedFunctionWeapons.join('; ');
+                      _currentWeaponRoundsController.clear();
+                      final totalRds = _functionWeaponRounds.values.fold(0, (s, r) => s + r);
+                      if (totalRds > 0) {
+                        _producedController.text = '$totalRds';
+                      }
+                    });
                   },
                   icon: const Icon(Icons.add, size: 16.0),
                   label: const Text('Add Weapon', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold)),
@@ -8219,7 +8248,13 @@ class _EntryTabState extends State<EntryTab> {
                   onDeleted: () {
                     setState(() {
                       _selectedFunctionWeapons.remove(weapon);
+                      final baseWeapon = weapon.contains(' [') ? weapon.split(' [')[0] : weapon;
+                      _functionWeaponRounds.remove(baseWeapon);
                       _functionWeapon = _selectedFunctionWeapons.join('; ');
+                      final totalRds = _functionWeaponRounds.values.fold(0, (s, r) => s + r);
+                      if (totalRds > 0) {
+                        _producedController.text = '$totalRds';
+                      }
                     });
                   },
                   side: const BorderSide(color: Color(0xFFBAE6FD)),
@@ -12875,6 +12910,18 @@ class _EntryTabState extends State<EntryTab> {
     if (match.samplingLocation.isNotEmpty) _locationController.text = match.samplingLocation;
   }
 
+  void _clearPrimerFields() {
+    _primerLotController.clear();
+    _primerInsertionDepthController.clear();
+    _primerHbarController.clear();
+    _primerSDController.clear();
+    _primerHbarPlus5SController.clear();
+    _primerHbarMinus2SController.clear();
+    _producedController.clear();
+    _primerMisfiresCountController.clear();
+    _notesController.clear();
+  }
+
   Widget _buildComponentAndPrimerFieldsCard() {
     final bool isComponent = widget.currentModule == 'Component Test';
     final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
@@ -13188,7 +13235,11 @@ class _EntryTabState extends State<EntryTab> {
     }
 
     if (isLotAcceptance && _testName == 'Primer Sensitivity Test') {
-      final matchingRecords = widget.componentPrimerRecords
+      final allAvailablePrimerRecords = [
+        ...widget.componentPrimerRecords,
+        ...widget.records.where((r) => r.testName.toLowerCase().contains('primer') || r.primerLot.isNotEmpty),
+      ];
+      final matchingRecords = allAvailablePrimerRecords
           .where((r) => _isSameCaliberFamily(r.caliber, _caliber))
           .toList();
 
@@ -13197,41 +13248,26 @@ class _EntryTabState extends State<EntryTab> {
           .map((r) => r.primerSupplier.trim())
           .where((s) => s.isNotEmpty)
           .toSet()
-          .toList();
+          .toList()
+        ..sort();
 
-      final supplierOptions = availableSuppliers.isNotEmpty ? availableSuppliers : _primerSuppliers;
+      final supplierOptions = ['All Suppliers', ...availableSuppliers];
       final currentSupplier = supplierOptions.contains(_primerSupplier)
           ? _primerSupplier
-          : (supplierOptions.isNotEmpty ? supplierOptions.first : '');
+          : 'All Suppliers';
 
-      final recordsForSupplier = matchingRecords
-          .where((r) => r.primerSupplier.trim() == currentSupplier.trim())
-          .toList();
+      final recordsForSupplier = (currentSupplier == 'All Suppliers' || currentSupplier.isEmpty)
+          ? matchingRecords
+          : matchingRecords.where((r) => r.primerSupplier.trim().toLowerCase() == currentSupplier.trim().toLowerCase()).toList();
       final targetRecords = recordsForSupplier.isNotEmpty ? recordsForSupplier : matchingRecords;
 
       final lotOptions = targetRecords
-          .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
-          .where((l) => l.isNotEmpty)
+          .map((r) => r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : r.lotNumber))
+          .where((l) => l.trim().isNotEmpty)
+          .map((l) => l.trim())
           .toSet()
-          .toList();
-
-      // Auto-synchronize first available lot if not yet selected
-      if (lotOptions.isNotEmpty && (_selectedComponentPrimerLot == null || _selectedComponentPrimerLot!.isEmpty || !lotOptions.contains(_selectedComponentPrimerLot))) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && lotOptions.isNotEmpty) {
-            final defaultLot = lotOptions.first;
-            setState(() {
-              if (_primerSupplier != currentSupplier) _primerSupplier = currentSupplier;
-              _selectedComponentPrimerLot = defaultLot;
-              final match = targetRecords.firstWhere(
-                (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == defaultLot,
-                orElse: () => targetRecords.first,
-              );
-              _syncPrimerSensitivityMetrics(match);
-            });
-          }
-        });
-      }
+          .toList()
+        ..sort();
 
       return Container(
         margin: const EdgeInsets.only(bottom: 20.0),
@@ -13286,7 +13322,7 @@ class _EntryTabState extends State<EntryTab> {
                 _buildFlexibleField(
                   flex: 1,
                   label: 'Primer Supplier',
-                  isRequired: true,
+                  isRequired: false,
                   child: _buildDropdownField(
                     value: currentSupplier,
                     items: supplierOptions,
@@ -13294,19 +13330,18 @@ class _EntryTabState extends State<EntryTab> {
                       if (v != null) {
                         setState(() {
                           _primerSupplier = v;
-                          final recs = matchingRecords.where((r) => r.primerSupplier.trim() == v.trim()).toList();
+                          final recs = (v == 'All Suppliers' || v.isEmpty)
+                              ? matchingRecords
+                              : matchingRecords.where((r) => r.primerSupplier.trim().toLowerCase() == v.trim().toLowerCase()).toList();
                           final newLots = (recs.isNotEmpty ? recs : matchingRecords)
-                              .map((r) => r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber)
-                              .where((l) => l.isNotEmpty)
+                              .map((r) => r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : r.lotNumber))
+                              .where((l) => l.trim().isNotEmpty)
+                              .map((l) => l.trim())
                               .toSet()
                               .toList();
-                          if (newLots.isNotEmpty) {
-                            _selectedComponentPrimerLot = newLots.first;
-                            final match = (recs.isNotEmpty ? recs : matchingRecords).firstWhere(
-                              (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == newLots.first,
-                              orElse: () => recs.first,
-                            );
-                            _syncPrimerSensitivityMetrics(match);
+                          if (_selectedComponentPrimerLot != null && !newLots.contains(_selectedComponentPrimerLot)) {
+                            _selectedComponentPrimerLot = null;
+                            _clearPrimerFields();
                           }
                         });
                       }
@@ -13315,22 +13350,31 @@ class _EntryTabState extends State<EntryTab> {
                 ),
                 _buildFlexibleField(
                   flex: 1,
-                  label: 'Submitted Primer Lot (from Selected Supplier)',
+                  label: 'Submitted Primer Lot',
                   isRequired: true,
                   child: _buildDropdownField(
                     value: lotOptions.contains(_selectedComponentPrimerLot)
-                        ? _selectedComponentPrimerLot!
-                        : lotOptions.first,
+                        ? _selectedComponentPrimerLot
+                        : null,
                     items: lotOptions,
+                    allowEmpty: true,
+                    hintText: lotOptions.isEmpty
+                        ? '-- No Primer Lots Found --'
+                        : '-- Select Primer Lot (${lotOptions.length} Available) --',
                     onChanged: (v) {
-                      if (v != null) {
+                      if (v != null && v.isNotEmpty) {
                         setState(() {
                           _selectedComponentPrimerLot = v;
                           final match = targetRecords.firstWhere(
-                            (r) => (r.primerLot.isNotEmpty ? r.primerLot : r.lotNumber) == v,
+                            (r) => (r.primerLot.isNotEmpty ? r.primerLot : (r.lotNo.isNotEmpty ? r.lotNo : r.lotNumber)).trim() == v.trim(),
                             orElse: () => targetRecords.first,
                           );
                           _syncPrimerSensitivityMetrics(match);
+                        });
+                      } else {
+                        setState(() {
+                          _selectedComponentPrimerLot = null;
+                          _clearPrimerFields();
                         });
                       }
                     },

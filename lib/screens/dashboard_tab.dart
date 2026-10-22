@@ -1223,7 +1223,7 @@ class _DashboardTabState extends State<DashboardTab> {
           // ── Statistical Process Control (SPC) Chart (MAXIMIZED, 4 Charts Default) ────────────────
           Container(
             width: double.infinity,
-            height: _isSpcMaximized ? 850.0 : 680.0,
+            height: _isSpcMaximized ? 1200.0 : 850.0,
             padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -1288,7 +1288,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       onChanged: (v) => setState(() => _spcTestName = v!),
                     ),
                     _buildFilterDropdown(
-                      label: 'LOT',
+                      label: widget.currentModule == 'Daily Test' ? 'HOPPER' : 'LOT',
                       value: _spcLot,
                       items: ['Overall', ...uniqueLots],
                       width: 140.0,
