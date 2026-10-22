@@ -19,27 +19,37 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v2.0.4';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.4 (EPVAT Formulas & Stats-Only, Component Bullet Accuracy, Primer Supplier Sync)';
-const BODY = `## OMPC Ballistic AeroData v2.0.4
+const TAG_NAME = 'v2.0.5';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.5 (Executive Report Hierarchy, Daily Test Performed Date Order, Vertically Stacked SPC Charts, Primer 5.56 Lot Sync, Weapon State Reset)';
+const BODY = `## OMPC Ballistic AeroData v2.0.5
 
-Major ballistic intelligence suite upgrade delivering key workflow enhancements, formula chaining, component bullet accuracy, and synchronization:
+Ballistic analytics and inspection intelligence release introducing complete executive report hierarchy restructuring, chronological inspection ordering by performance date, vertically stacked SPC analysis, dynamic hopper terminology for daily testing, seamless primer component cross-referencing, and state isolation:
 
 ### Key Enhancements & Features:
-1. **Single Temp EPVAT Entry ("Stats Only" Mode)**: Users can directly enter summary statistics without entering individual round measurements when only stats are available.
-2. **EPVAT Formula Sample Size \`n\`**: Dynamic variable \`n\` (quantity tested) properly wired from quantity produced across all formulas.
-3. **EPVAT Chained Formulas**: Output of earlier custom formulas can be seamlessly referenced by subsequent formulas using alias identifiers (\`formula_1\`, \`f1\`, \`calc_1\`, etc.).
-4. **Control Module Primer Sensitivity Rules**: Rules restricted strictly to \`7.62\`, \`5.56\`, and \`9mm\` calibers, with limits on Ball Weight, Max limit of $H̄+5SD$, and Min limit of $H̄-2SD$.
-5. **Control Module Evaluation Test Dropdown**: Removed non-test categories (\`GP6 Transducers (EPVAT)\`, \`Barrels\`, \`Weapons\`, \`Sampling Locations\`).
-6. **Lot Acceptance Primer Sensitivity Supplier Sync**: Product lot entered as usual; user selects verified Primer Supplier to strictly filter and auto-sync read-only sensitivity metrics from submitted Component Test primer lots.
-7. **Lot Acceptance Inspection Log Order**: Most recently created lot is displayed at the top of the list.
-8. **Submission Validation**: Form prevents submission if test measurement results are completely empty.
-9. **Duplicate Submission Alert**: Warns and prompts user for confirmation when a report with the same lot number and test type has already been submitted.
-10. **Primer Caliber Family Matching**: Normalized comma vs dot decimals (e.g. \`5,56\` vs \`5.56\`) so primer lots always match accurately.
-11. **Daily Test Day Separator**: Single day separator groups all tests submitted on that date regardless of caliber.
-12. **Negative Numbers in Accuracy Auto-Extractor**: Full support for negative values ($-x$, $-y$) including Unicode minus symbols.
-13. **Component Test Bullet Accuracy Test**: Dedicated accuracy test for bullet components with calibers (\`.223 55, 69, 77 gr\`, \`.308\`, and \`9mm CMJ 124 grain\`) and metadata (Bullet Supplier, Powder Charge, Lot of Shipment, Grain Size, Sample Loading Method, Sample Received Date, Sample Location).
-14. **Supabase Schema Updates**: Integrated \`bullet_supplier\`, \`bullet_grain_size\`, \`sample_loading_method\`, \`sample_received_date\`, and \`component_accuracy_test\` schema into Supabase.
+1. **Daily Test Inspection Log Ordering & Display**:
+   - The Inspection Log now prominently displays the actual test performance date and time (\`testTime\`) selected during log entry rather than the submission timestamp.
+   - All inspection records across Daily Test are sorted descending by date/time performed so users immediately see the most recent real-world test activity.
+2. **Executive Report Hierarchical Structure**:
+   - **Part 1: Lot Acceptance**: Sub-divided strictly by Caliber specifications, with individual Lot Numbers and their respective test results presented independently, followed by caliber-level SPC trend and Box & Whisker analysis.
+   - **Part 2: Daily Test**: Sub-divided by Caliber specifications with hoppers grouped together, followed by caliber-level SPC trend and Box & Whisker analysis.
+   - **Part 3: Component Test**: Structured with dedicated sub-sections for propellants and primer sensitivity.
+   - Module inclusion checkboxes allow selective generation of any combination of modules.
+3. **Weekly Period Analysis**:
+   - Added full support for 'Weekly' aggregation in both the UI dashboard and Executive HTML / Tabular report exports (Monday to Sunday calendar window), alongside Daily, Monthly, and Yearly.
+4. **Executive Report Dashboard UI**:
+   - Completely mirrors the executive report export hierarchy in the in-app Executive Reports tab, with embedded interactive Trend Line and Box & Whisker charts per caliber.
+5. **Primer 5.56 Lot Synchronization & Family Equivalence**:
+   - Primer lots submitted in the Component module are fully discoverable and selectable when creating a primer report in Lot Acceptance for any 5.56 caliber lot.
+   - Implemented bidirectional caliber equivalence families: \`5.56\` & \`.223\`, \`7.62\` & \`.308\`, \`9mm\` & \`9x19\`.
+6. **Daily Test Dashboard SPC Terminology ("Hopper")**:
+   - Updated the Daily Test SPC matrix controls and labels from "Lot" to "Hopper" (\`By Hopper No.\`), reserving the term "Lot" exclusively for Lot Acceptance and Component modules.
+7. **Vertically Stacked SPC Multi-Test Layout**:
+   - When multiple test types are selected in the SPC Matrix, charts are stacked vertically (top/bottom) instead of horizontally (left/right side-by-side) to maximize resolution, trend readability, and detail.
+8. **Lot Acceptance Primer Entry Form Clean State**:
+   - Result fields and remarks remain clean/empty upon selecting a caliber until the user explicitly selects a lot number and inputs remarks.
+9. **Weapon State Isolation & Round Count Validation**:
+   - Weapon selections and firing counts are cleanly reset on logout and when opening the Function Test dialog.
+   - Explicit weapon serial and round count entry is strictly enforced with user feedback.
 `;
 
 function request(options, postData) {
@@ -149,7 +159,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v2.0.4.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.4.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v2.0.5.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.5.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
