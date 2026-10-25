@@ -701,17 +701,14 @@ class SvgChartGenerator {
     }
 
     // UCL line
-    final uclY = getY(ucl);
     buffer.writeln('''  <line x1="$padLeft" y1="$uclY" x2="${width - padRight}" y2="$uclY" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4"/>''');
     buffer.writeln('''  <text x="${width - padRight + 4}" y="${uclY + 3}" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">UCL</text>''');
 
     // CL / Mean line
-    final clY = getY(mean);
     buffer.writeln('''  <line x1="$padLeft" y1="$clY" x2="${width - padRight}" y2="$clY" stroke="#0284c7" stroke-width="1.8" stroke-dasharray="4,3"/>''');
     buffer.writeln('''  <text x="${width - padRight + 4}" y="${clY + 3}" font-size="8.5" font-weight="bold" fill="#0284c7" font-family="sans-serif">CL</text>''');
 
     // LCL line
-    final lclY = getY(lcl);
     buffer.writeln('''  <line x1="$padLeft" y1="$lclY" x2="${width - padRight}" y2="$lclY" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4"/>''');
     buffer.writeln('''  <text x="${width - padRight + 4}" y="${lclY + 3}" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">LCL</text>''');
 
