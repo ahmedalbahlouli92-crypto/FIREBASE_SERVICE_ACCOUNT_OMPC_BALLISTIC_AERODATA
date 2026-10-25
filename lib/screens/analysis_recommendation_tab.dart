@@ -555,6 +555,103 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                       );
                     }).toList(),
                   ),
+
+                  // Deep Statistical Process Control & Capability Metrics
+                  if (testAdvisory.statisticalProcessMetrics.isNotEmpty) ...[
+                    const SizedBox(height: 16.0),
+                    Container(
+                      padding: const EdgeInsets.all(14.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: const Color(0xFFCBE2F8), width: 1.2),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.analytics_outlined, size: 16.0, color: Color(0xFF0284C7)),
+                              const SizedBox(width: 8.0),
+                              const Text(
+                                'Deep Statistical Process Control (SPC) & Capability Metrics',
+                                style: TextStyle(
+                                  fontSize: 13.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0F2FE),
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: const Text(
+                                  '3-Sigma & Cpk Analysis',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0284C7),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10.0),
+                          Wrap(
+                            spacing: 10.0,
+                            runSpacing: 8.0,
+                            children: testAdvisory.statisticalProcessMetrics.entries.map((e) {
+                              final isCpk = e.key.contains('Cpk');
+                              final isCapable = e.value.contains('Capable');
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                                decoration: BoxDecoration(
+                                  color: isCpk
+                                      ? (isCapable ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2))
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  border: Border.all(
+                                    color: isCpk
+                                        ? (isCapable ? const Color(0xFF10B981) : const Color(0xFFEF4444))
+                                        : const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                                child: RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '${e.key}: ',
+                                        style: TextStyle(
+                                          color: isCpk
+                                              ? (isCapable ? const Color(0xFF065F46) : const Color(0xFF991B1B))
+                                              : const Color(0xFF475569),
+                                          fontSize: 11.5,
+                                          fontWeight: isCpk ? FontWeight.w600 : FontWeight.normal,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: e.value,
+                                        style: TextStyle(
+                                          color: isCpk
+                                              ? (isCapable ? const Color(0xFF047857) : const Color(0xFFDC2626))
+                                              : const Color(0xFF0F172A),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20.0),
 
                   // Findings & Action Recommendations Grid

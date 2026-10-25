@@ -819,6 +819,20 @@ DROP POLICY IF EXISTS "Public access policy" ON public.admin_primer_suppliers;
 CREATE POLICY "Public access policy" ON public.admin_primer_suppliers FOR ALL USING (true) WITH CHECK (true);
 GRANT ALL ON TABLE public.admin_primer_suppliers TO anon, authenticated, service_role;
 
+-- Migration: Unify Primer Supplier to UNIS "GINEX" and move all registered lots
+UPDATE public.ballistic_records 
+SET primer_supplier = 'UNIS "GINEX"' 
+WHERE primer_supplier ILIKE '%unis ginex%' 
+   OR primer_supplier ILIKE '%unis "ginix"%' 
+   OR primer_supplier ILIKE '%unis ginix%';
+
+DELETE FROM public.admin_primer_suppliers 
+WHERE name ILIKE 'UNIS GINEX' OR name ILIKE 'UNIS "GINIX"' OR name ILIKE 'UNIS GINIX';
+
+INSERT INTO public.admin_primer_suppliers (name, is_active)
+VALUES ('UNIS "GINEX"', true)
+ON CONFLICT (name) DO NOTHING;
+
 -- 7b. Bullet Suppliers Input Table
 CREATE TABLE IF NOT EXISTS public.admin_bullet_suppliers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -646,16 +646,22 @@ class SvgChartGenerator {
 
     double getY(double v) => padTop + chartH - (((v - axisMin) / range) * chartH).clamp(0.0, chartH);
 
+    final bool isCompact = width < 520;
+    final double badgeScale = isCompact ? (width / 520.0).clamp(0.65, 0.95) : 1.0;
+    final double badgeTranslateX = isCompact ? padLeft : (width - padRight - 360);
+    final double titleY = isCompact ? 16 : 22;
+    final double badgeY = isCompact ? 26 : 10;
+
     final buffer = StringBuffer();
     buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
 
     // Title & Badges
-    buffer.writeln('''  <text x="$padLeft" y="22" font-size="12" font-weight="bold" fill="#0f172a" font-family="sans-serif">Statistical Process Control (SPC) Chart - $param</text>''');
+    buffer.writeln('''  <text x="$padLeft" y="$titleY" font-size="11.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">Statistical Process Control (SPC) Chart - $param</text>''');
     
-    // Limits Badges on the right
+    // Limits Badges
     buffer.writeln('''
-  <g transform="translate(${width - padRight - 360}, 10)">
+  <g transform="translate($badgeTranslateX, $badgeY) scale($badgeScale)">
     <rect x="0" y="0" width="75" height="18" rx="3" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8"/>
     <text x="37" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#b91c1c" font-family="sans-serif">UCL: ${ucl.toStringAsFixed(1)}</text>
 
@@ -675,6 +681,16 @@ class SvgChartGenerator {
 ''');
     }
     buffer.writeln('  </g>');
+
+    // Sigma Bands Shading (3σ and 1σ)
+    final double uclY = getY(ucl);
+    final double clY = getY(mean);
+    final double lclY = getY(lcl);
+    final double sigma1Top = getY(mean + sd);
+    final double sigma1Bottom = getY(math.max(0.0, mean - sd));
+
+    buffer.writeln('''  <rect x="$padLeft" y="$uclY" width="$chartW" height="${(lclY - uclY).abs()}" fill="#06b6d4" fill-opacity="0.04"/>''');
+    buffer.writeln('''  <rect x="$padLeft" y="$sigma1Top" width="$chartW" height="${(sigma1Bottom - sigma1Top).abs()}" fill="#10b981" fill-opacity="0.04"/>''');
 
     // Y Grid lines
     for (int i = 0; i <= 4; i++) {

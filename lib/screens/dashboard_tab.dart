@@ -839,11 +839,11 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           const SizedBox(height: 24.0),
 
-          // Ballistic Analytics & Fleet Volume (Minimized by default)
+          // Ballistic Analytics, Fleet Volume & Distributions (Unified Professional Overview)
           if (_isAnalyticsMinimized) ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
               decoration: BoxDecoration(
                 color: const Color(0xFFEDF4FC),
                 borderRadius: BorderRadius.circular(12.0),
@@ -854,7 +854,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 children: [
                   Expanded(
                     child: Wrap(
-                      spacing: 10.0,
+                      spacing: 8.0,
                       runSpacing: 6.0,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
@@ -871,7 +871,7 @@ class _DashboardTabState extends State<DashboardTab> {
                             ),
                             const SizedBox(width: 8.0),
                             const Text(
-                              'Ballistic Analytics & Fleet Volume',
+                              'Ballistic Analytics, Fleet Volume & Distribution',
                               style: TextStyle(
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.bold,
@@ -880,32 +880,30 @@ class _DashboardTabState extends State<DashboardTab> {
                             ),
                           ],
                         ),
-                        _buildMinimizedBadge('Total Rounds: $totalRounds', const Color(0xFF0284C7)),
-                        _buildMinimizedBadge('Yield: ${yieldRate.toStringAsFixed(1)}%', const Color(0xFF10B981)),
-                        _buildMinimizedBadge('Pass: $passCount', const Color(0xFF10B981)),
-                        if (condCount > 0) _buildMinimizedBadge('Cond: $condCount', const Color(0xFF06B6D4)),
-                        if (rejectCount > 0) _buildMinimizedBadge('Reject: $rejectCount', const Color(0xFFEF4444)),
-                        if (retestCount > 0) _buildMinimizedBadge('Retest: $retestCount', const Color(0xFFF59E0B)),
-                        if (topCaliber.isNotEmpty) _buildMinimizedBadge('Top: $topCaliber', const Color(0xFF6366F1)),
+                        _buildMinimizedBadge('Total Rounds: $analyticsTotalRounds', const Color(0xFF0284C7)),
+                        _buildMinimizedBadge('Yield: ${analyticsYieldRate.toStringAsFixed(1)}%', const Color(0xFF10B981)),
+                        _buildMinimizedBadge('Pass: $analyticsPassCount', const Color(0xFF10B981)),
+                        if (analyticsCondCount > 0) _buildMinimizedBadge('Cond: $analyticsCondCount', const Color(0xFF06B6D4)),
+                        if (analyticsRejectCount > 0) _buildMinimizedBadge('Reject: $analyticsRejectCount', const Color(0xFFEF4444)),
+                        if (analyticsRetestCount > 0) _buildMinimizedBadge('Retest: $analyticsRetestCount', const Color(0xFFF59E0B)),
+                        if (analyticsTopCaliber.isNotEmpty) _buildMinimizedBadge('Top: $analyticsTopCaliber', const Color(0xFF6366F1)),
+                        _buildMinimizedBadge('Defects: $analyticsTotalDefects', analyticsTotalDefects > 0 ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
                       ],
                     ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-
-                      OutlinedButton.icon(
-                        onPressed: () => setState(() => _isAnalyticsMinimized = false),
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
-                        label: const Text('Expand Overview', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
-                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                          minimumSize: const Size(0, 30.0),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                        ),
-                      ),
-                    ],
+                  OutlinedButton.icon(
+                    onPressed: () => setState(() {
+                      _isAnalyticsMinimized = false;
+                      _isOverviewChartsMinimized = false;
+                    }),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
+                    label: const Text('Expand Analytics & Charts', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                      minimumSize: const Size(0, 30.0),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
+                    ),
                   ),
                 ],
               ),
@@ -915,9 +913,12 @@ class _DashboardTabState extends State<DashboardTab> {
               margin: const EdgeInsets.only(bottom: 8.0),
               alignment: Alignment.centerRight,
               child: OutlinedButton.icon(
-                onPressed: () => setState(() => _isAnalyticsMinimized = true),
+                onPressed: () => setState(() {
+                  _isAnalyticsMinimized = true;
+                  _isOverviewChartsMinimized = true;
+                }),
                 icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFF4D99DB)),
-                label: const Text('Minimize Overview', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
+                label: const Text('Minimize Section', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
                   padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
@@ -927,21 +928,27 @@ class _DashboardTabState extends State<DashboardTab> {
               ),
             ),
             _buildSectionFilterBar(
-              title: 'Ballistic Analytics & Fleet Volume Filters',
+              title: 'Ballistic Analytics, Fleet Volume & Trends Filters',
               filters: [
                 _buildFilterDropdown(
                   label: 'CALIBER',
                   value: _analyticsCaliber,
                   items: ['All', ...uniqueCalibers],
                   width: 150.0,
-                  onChanged: (v) => setState(() => _analyticsCaliber = v!),
+                  onChanged: (v) => setState(() {
+                    _analyticsCaliber = v!;
+                    _overviewCaliber = v;
+                  }),
                 ),
                 _buildFilterDropdown(
                   label: 'TEST TYPE',
                   value: _analyticsTestName,
                   items: ['All', ...availableTestTypes],
                   width: 150.0,
-                  onChanged: (v) => setState(() => _analyticsTestName = v!),
+                  onChanged: (v) => setState(() {
+                    _analyticsTestName = v!;
+                    _overviewTestName = v;
+                  }),
                 ),
                 _buildFilterDropdown(
                   label: 'SHIFT',
@@ -955,7 +962,10 @@ class _DashboardTabState extends State<DashboardTab> {
                   value: _analyticsTime,
                   items: timeOptions,
                   width: 120.0,
-                  onChanged: (v) => setState(() => _analyticsTime = v!),
+                  onChanged: (v) => setState(() {
+                    _analyticsTime = v!;
+                    _overviewTime = v;
+                  }),
                 ),
               ],
               onResetToGlobal: () => setState(() {
@@ -964,6 +974,10 @@ class _DashboardTabState extends State<DashboardTab> {
                 _analyticsShift = _selectedShift;
                 _analyticsTime = _selectedTime;
                 _analyticsLot = _selectedLot;
+                _overviewCaliber = _selectedCaliber;
+                _overviewTestName = _selectedTestName;
+                _overviewTime = _selectedTime;
+                _overviewLot = _selectedLot;
               }),
             ),
             // Modern Analytics Overview Component (#edf4fc background, #4d99db sky blue accents)
@@ -982,7 +996,7 @@ class _DashboardTabState extends State<DashboardTab> {
               onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
               onQuickPrint: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
             ),
-            const SizedBox(height: 24.0),
+            const SizedBox(height: 20.0),
 
             // KPI Cards Grid
             LayoutBuilder(
@@ -1063,139 +1077,41 @@ class _DashboardTabState extends State<DashboardTab> {
                 );
               },
             ),
-          ],
-          const SizedBox(height: 18.0),
+            const SizedBox(height: 20.0),
 
-          // Overview Analytics & Distributions (3 Charts: General Defects, Tested Caliber Volume, Status Distribution)
-          if (_isOverviewChartsMinimized) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: const Color(0xFFD6E4F0), width: 1.0),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 3.5,
-                        height: 18.0,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4D99DB),
-                          borderRadius: BorderRadius.circular(2.0),
-                        ),
-                      ),
-                      const SizedBox(width: 8.0),
-                      const Text(
-                        'General Defects Trend, Tested Caliber Volume & Status Distribution',
-                        style: TextStyle(
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(width: 10.0),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE2E8F0),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: const Text('3 Charts Minimized', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => setState(() => _isOverviewChartsMinimized = false),
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
-                    label: const Text('Expand 3 Charts', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                      minimumSize: const Size(0, 30.0),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            Container(
-              margin: const EdgeInsets.only(bottom: 8.0),
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: () => setState(() => _isOverviewChartsMinimized = true),
-                icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFF4D99DB)),
-                label: const Text('Minimize Charts', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                  minimumSize: const Size(0, 30.0),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                ),
-              ),
-            ),
-            _buildSectionFilterBar(
-              title: 'General Defects & Volume Trend Filters',
-              filters: [
-                _buildFilterDropdown(
-                  label: 'CALIBER',
-                  value: _overviewCaliber,
-                  items: ['All', ...uniqueCalibers],
-                  width: 150.0,
-                  onChanged: (v) => setState(() => _overviewCaliber = v!),
-                ),
-                _buildFilterDropdown(
-                  label: 'TEST TYPE',
-                  value: _overviewTestName,
-                  items: ['All', ...availableTestTypes],
-                  width: 150.0,
-                  onChanged: (v) => setState(() => _overviewTestName = v!),
-                ),
-                _buildFilterDropdown(
-                  label: 'TIME RANGE',
-                  value: _overviewTime,
-                  items: timeOptions,
-                  width: 120.0,
-                  onChanged: (v) => setState(() => _overviewTime = v!),
-                ),
-              ],
-              onResetToGlobal: () => setState(() {
-                _overviewCaliber = _selectedCaliber;
-                _overviewTestName = _selectedTestName;
-                _overviewTime = _selectedTime;
-                _overviewLot = _selectedLot;
-              }),
-            ),
-            // Charts Card
+            // Unified 3 Charts Section (Defect Trend, Caliber Volume, Status Distribution)
             LayoutBuilder(
               builder: (context, constraints) {
                 final isDesktop = constraints.maxWidth >= 1100;
                 final charts = [
                   _buildChartCard(
-                    title: _overviewCaliber != 'All'
-                        ? '$_overviewCaliber Test Breakdown'
-                        : (_overviewTestName != 'All' ? '$_overviewTestName Metrics' : 'General Performance Trend'),
-                    child: _overviewCaliber != 'All'
-                        ? CaliberIndividualChart(records: overviewFiltered, caliber: _overviewCaliber)
-                        : TestMetricChart(filteredRecords: overviewFiltered, selectedTestName: _overviewTestName),
+                    title: _analyticsCaliber != 'All'
+                        ? '$_analyticsCaliber Test Breakdown'
+                        : (_analyticsTestName != 'All' ? '$_analyticsTestName Metrics' : 'General Performance & Defect Trend'),
+                    child: _analyticsCaliber != 'All'
+                        ? CaliberIndividualChart(records: analyticsFiltered, caliber: _analyticsCaliber)
+                        : TestMetricChart(filteredRecords: analyticsFiltered, selectedTestName: _analyticsTestName),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
                   ),
                   _buildChartCard(
                     title: 'Tested Caliber Volume',
-
                     child: SingleChildScrollView(
-                      child: CaliberVolumeList(caliberCounts: overviewCaliberCounts),
+                      child: CaliberVolumeList(caliberCounts: analyticsCaliberCounts),
                     ),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.28 : constraints.maxWidth,
                   ),
                   _buildChartCard(
                     title: 'Status Distribution',
-                    child: StatusDoughnutChart(statusCounts: overviewStatusCounts, yieldRate: overviewYieldRate),
+                    child: StatusDoughnutChart(
+                      statusCounts: {
+                        'Approved': analyticsPassCount,
+                        'Pending Review': 0,
+                        'Rejected': analyticsRejectCount,
+                        'Retest': analyticsRetestCount,
+                        'Approved with condition': analyticsCondCount,
+                      },
+                      yieldRate: analyticsYieldRate,
+                    ),
                     width: isDesktop ? (constraints.maxWidth - 40) * 0.27 : constraints.maxWidth,
                   ),
                 ];

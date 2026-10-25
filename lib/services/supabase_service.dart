@@ -94,6 +94,51 @@ class SupabaseService {
     }
   }
 
+  static bool _primerMigrationAttempted = false;
+
+  /// Automatically migrate UNIS GINEX / UNIS "GINIX" lots to UNIS "GINEX" in Supabase
+  static Future<void> autoMigratePrimerSuppliers() async {
+    if (_primerMigrationAttempted) return;
+    _primerMigrationAttempted = true;
+    if (!_initialized) {
+      final ok = await ensureInitialized();
+      if (!ok) return;
+    }
+    try {
+      // 1. Update any ballistic records with primer_supplier containing 'UNIS GIN' to 'UNIS "GINEX"'
+      try {
+        await client
+            .from('ballistic_records')
+            .update({'primer_supplier': 'UNIS "GINEX"'})
+            .ilike('primer_supplier', '%unis gin%');
+      } catch (e) {
+        debugPrint('Note on ballistic_records primer migration: $e');
+      }
+
+      // 2. Remove legacy admin_primer_suppliers rows and ensure UNIS "GINEX" is present
+      try {
+        await client
+            .from('admin_primer_suppliers')
+            .delete()
+            .ilike('name', 'UNIS GINEX');
+      } catch (_) {}
+      try {
+        await client
+            .from('admin_primer_suppliers')
+            .delete()
+            .ilike('name', 'UNIS "GINIX"');
+      } catch (_) {}
+      try {
+        await client.from('admin_primer_suppliers').upsert({
+          'name': 'UNIS "GINEX"',
+          'is_active': true,
+        }, onConflict: 'name');
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('Primer migration note: $e');
+    }
+  }
+
   /// Map Module + Test Name to its dedicated Supabase table name
   static String getTableName({String module = 'Lot Acceptance Test', String testName = ''}) {
     final bool isComponent = module == 'Component Test';
@@ -1091,7 +1136,11 @@ class SupabaseService {
     final primerSuppliers = rules['primer_suppliers'];
     if (primerSuppliers is List) {
       for (final s in primerSuppliers) {
-        final name = s.toString().trim();
+        final rawName = s.toString().trim();
+        final lower = rawName.toLowerCase();
+        final name = (lower == 'unis ginex' || lower == 'unis "ginix"' || lower == 'unis ginix' || lower.contains('ginex'))
+            ? 'UNIS "GINEX"'
+            : rawName;
         if (name.isNotEmpty) {
           try {
             await client.from('admin_primer_suppliers').upsert({

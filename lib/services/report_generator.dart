@@ -1506,6 +1506,8 @@ class ReportGenerator {
           </tr>
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+        // Render aggregated multi-temperature table only once per test
+        if (records.indexOf(r) > 0) continue;
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
         
@@ -2729,6 +2731,8 @@ class ReportGenerator {
           </tr>
         ''');
       } else if (testName == 'EPVAT test' || testName == 'Propellant Test') {
+        // Render aggregated multi-temperature table only once per test
+        if (records.indexOf(r) > 0) continue;
         final bool is9mm = r.caliber.toLowerCase().contains('9mm') || r.caliber.toLowerCase().startsWith('9x19');
         final variables = EpvatFormulaHelper.extractVariablesFromRecords(records);
         
@@ -3425,7 +3429,7 @@ class ReportGenerator {
     if (extRec != null) {
       final extMin = extRec.accMinX.isNotEmpty ? extRec.accMinX : (extRec.accMeanX.isNotEmpty ? extRec.accMeanX : '');
       extResult = extMin.isNotEmpty
-          ? '<div style="font-weight: bold; color: #1e293b;">Min Force: <span style="font-weight: normal;">$extMin N</span></div>'
+          ? '<div><span style="font-weight: bold; color: #1e293b;">$extMin N</span></div>'
           : '-';
     } else {
       extResult = '-';
@@ -3448,9 +3452,9 @@ class ReportGenerator {
       if (accRec.accSDX.isNotEmpty && accRec.accSDY.isNotEmpty) {
         accResult = '<div style="font-weight: bold; color: #1e293b;">SD X: <span style="font-weight: normal;">${accRec.accSDX} mm</span></div><div style="font-weight: bold; color: #1e293b; margin-top: 2px;">SD Y: <span style="font-weight: normal;">${accRec.accSDY} mm</span></div>';
       } else if (accRec.accMeanRadius.isNotEmpty) {
-        accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Radius: <span style="font-weight: normal;">${accRec.accMeanRadius} mm</span></div>';
+        accResult = '<div style="font-weight: bold; color: #1e293b;"><span style="font-weight: normal;">${accRec.accMeanRadius} mm</span></div>';
       } else if (accRec.velMean.isNotEmpty) {
-        accResult = '<div style="font-weight: bold; color: #1e293b;">Mean Velocity: <span style="font-weight: normal;">${accRec.velMean} m/s</span></div>';
+        accResult = '<div style="font-weight: bold; color: #1e293b;"><span style="font-weight: normal;">${accRec.velMean} m/s</span></div>';
       }
     }
     final accReq = calConfig['accuracy_req'] as String? ?? defAccReq;
@@ -3508,19 +3512,18 @@ class ReportGenerator {
         for (final f in configuredLines) {
           try {
             final val = EpvatFormulaHelper.evaluate(f, epvVars, defaultTemp: temp);
-            resList.add('<div style="font-weight: bold; color: #1e293b;">$f: <span style="font-weight: normal;">${val.toStringAsFixed(1)} $activePressureUnit</span></div>');
+            resList.add('<div style="font-weight: bold; color: #1e293b;">${val.toStringAsFixed(1)} <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$activePressureUnit</span></div>');
           } catch (_) {
             if (f.contains(':')) {
               final idx = f.indexOf(':');
-              final lbl = f.substring(0, idx).trim();
               final expr = f.substring(idx + 1).trim();
               try {
                 final val = EpvatFormulaHelper.evaluate(expr, epvVars, defaultTemp: temp);
-                resList.add('<div style="font-weight: bold; color: #1e293b;">$lbl: <span style="font-weight: normal;">${val.toStringAsFixed(1)} $activePressureUnit</span></div>');
+                resList.add('<div style="font-weight: bold; color: #1e293b;">${val.toStringAsFixed(1)} <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$activePressureUnit</span></div>');
                 continue;
               } catch (_) {}
             }
-            resList.add('<div style="font-weight: bold; color: #1e293b;">$f: <span style="font-weight: normal;">- $activePressureUnit</span></div>');
+            resList.add('<div style="font-weight: bold; color: #1e293b;">- <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$activePressureUnit</span></div>');
           }
         }
         if (resList.isNotEmpty) return resList.join('');
@@ -3534,9 +3537,8 @@ class ReportGenerator {
           try {
             final res = EpvatFormulaHelper.evaluateFormulaItem(f, epvVars, defaultTemp: temp, activePressureUnit: activePressureUnit);
             if (res.isApplicable) {
-              final n = f['name'] ?? f['formula'] ?? '';
               final u = f['unit'] ?? activePressureUnit;
-              resList.add('<div style="font-weight: bold; color: #1e293b;">$n: <span style="font-weight: normal;">${res.calculatedValue.toStringAsFixed(1)} $u</span></div>');
+              resList.add('<div style="font-weight: bold; color: #1e293b;">${res.calculatedValue.toStringAsFixed(1)} <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$u</span></div>');
             }
           } catch (_) {}
         }
@@ -3548,10 +3550,10 @@ class ReportGenerator {
         final p2 = (epvVars['p2_mean_$temp'] ?? 0.0) > 0 ? epvVars['p2_mean_$temp']!.toStringAsFixed(1) : '';
         final vel = (epvVars['vel_mean_$temp'] ?? 0.0) > 0 ? epvVars['vel_mean_$temp']!.toStringAsFixed(1) : '';
         final parts = <String>[
-          '<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>'
+          '<div style="font-weight: bold; color: #1e293b;">$p1 <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$activePressureUnit</span></div>'
         ];
-        if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
-        if (vel.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Velocity: <span style="font-weight: normal;">$vel m/s</span></div>');
+        if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">$p2 <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$activePressureUnit (P2)</span></div>');
+        if (vel.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">$vel <span style="font-weight: normal; color: #64748b; font-size: 8pt;">m/s</span></div>');
         return parts.join('');
       }
 
@@ -3561,9 +3563,9 @@ class ReportGenerator {
           final p1 = rec.epvatMeanPressure.isNotEmpty ? rec.epvatMeanPressure : '';
           final p2 = rec.epvatP2MeanPressure.isNotEmpty ? rec.epvatP2MeanPressure : '';
           final parts = <String>[];
-          if (p1.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b;">Mean Chamber: <span style="font-weight: normal;">$p1 $activePressureUnit</span></div>');
-          if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Mean Port: <span style="font-weight: normal;">$p2 $activePressureUnit</span></div>');
-          if (rec.velMean.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">Velocity: <span style="font-weight: normal;">${rec.velMean} m/s</span></div>');
+          if (p1.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b;">$p1 <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$activePressureUnit</span></div>');
+          if (p2.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">$p2 <span style="font-weight: normal; color: #64748b; font-size: 8pt;">$activePressureUnit (P2)</span></div>');
+          if (rec.velMean.isNotEmpty) parts.add('<div style="font-weight: bold; color: #1e293b; margin-top: 2px;">${rec.velMean} <span style="font-weight: normal; color: #64748b; font-size: 8pt;">m/s</span></div>');
           if (parts.isNotEmpty) return parts.join('');
         }
       }

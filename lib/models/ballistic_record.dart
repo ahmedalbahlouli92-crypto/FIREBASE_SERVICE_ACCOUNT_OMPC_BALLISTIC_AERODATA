@@ -300,7 +300,7 @@ class BallisticRecord {
     this.userRole = 'Operator',
     this.module = 'Lot Acceptance Test',
     this.primerLot = '',
-    this.primerSupplier = '',
+    String primerSupplier = '',
     this.primerInsertionDepth = '',
     this.propellantSupplier = '',
     this.propellantCode = '',
@@ -321,7 +321,25 @@ class BallisticRecord {
     this.bulletGrainSize = '',
     this.sampleLoadingMethod = '',
     this.sampleReceivedDate = '',
-  }) : id = (id != null && id.isNotEmpty) ? id : generateUuid();
+  }) : id = (id != null && id.isNotEmpty) ? id : generateUuid(),
+       primerSupplier = normalizePrimerSupplier(primerSupplier);
+
+  static String normalizePrimerSupplier(String s) {
+    final clean = s.trim();
+    final lower = clean.toLowerCase();
+    if (lower == 'unis ginex' ||
+        lower == 'unis "ginex"' ||
+        lower == 'unis “ginex”' ||
+        lower == 'unis "ginix"' ||
+        lower == 'unis ginix' ||
+        lower == 'unis “ginix”' ||
+        lower.contains('unis ginex') ||
+        lower.contains('unis "ginex"') ||
+        lower.contains('unis "ginix"')) {
+      return 'UNIS "GINEX"';
+    }
+    return clean;
+  }
 
   Map<String, dynamic> get parsedRetestMetrics {
     if (retestMetrics.trim().isEmpty) return const {};

@@ -1741,19 +1741,19 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         final int calPass = calRecords.where((r) => r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')).length;
         final int calFail = calRecords.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
 
-        // Caliber-specific Charts
-        final calSpc = SvgChartGenerator.generateSpcChartSvg(calRecords, width: 780, height: 190);
-        final calBox = SvgChartGenerator.generateBoxPlotSvg(calRecords, width: 780, height: 190);
-        final calVelocity = SvgChartGenerator.generateVelocityTrendSvg(calRecords, width: 780, height: 190);
+        // Caliber-specific Charts (Compact 2-column grid format)
+        final calSpc = SvgChartGenerator.generateSpcChartSvg(calRecords, width: 375, height: 165);
+        final calBox = SvgChartGenerator.generateBoxPlotSvg(calRecords, width: 375, height: 165);
+        final calVelocity = SvgChartGenerator.generateVelocityTrendSvg(calRecords, width: 375, height: 165);
 
         final bool hasEpvat = calRecords.any((r) => r.testName.toLowerCase().contains('epvat'));
-        final String calEpvat = hasEpvat ? SvgChartGenerator.generateEpvatChartSvg(calRecords, width: 780, height: 190) : '';
+        final String calEpvat = hasEpvat ? SvgChartGenerator.generateEpvatChartSvg(calRecords, width: 375, height: 165) : '';
 
         final bool hasFunction = calRecords.any((r) => r.testName.toLowerCase().contains('function'));
-        final String calFunction = hasFunction ? SvgChartGenerator.generateFunctionTestChartSvg(calRecords, width: 780, height: 190) : '';
+        final String calFunction = hasFunction ? SvgChartGenerator.generateFunctionTestChartSvg(calRecords, width: 375, height: 165) : '';
 
         moduleBuffer.writeln('''
-        <div style="margin-top: 18px; margin-bottom: 24px; padding: 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #ffffff; page-break-inside: avoid;">
+        <div class="caliber-box" style="margin-top: 14px; margin-bottom: 20px; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #ffffff;">
           <!-- Caliber Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
             <div>
@@ -1784,12 +1784,12 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             final int lotFail = lotRecs.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
 
             moduleBuffer.writeln('''
-            <div style="margin-top: 14px; margin-bottom: 10px; padding: 8px 12px; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="margin-top: 12px; margin-bottom: 8px; padding: 6px 10px; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <strong style="color: #0369a1; font-size: 12px; text-transform: uppercase;">Lot Number: $lotKey</strong>
-                <span style="font-size: 10.5px; color: #64748b; margin-left: 8px;">(${lotRecs.length} Tests)</span>
+                <strong style="color: #0369a1; font-size: 11.5px; text-transform: uppercase;">Lot Number: $lotKey</strong>
+                <span style="font-size: 10px; color: #64748b; margin-left: 8px;">(${lotRecs.length} Tests)</span>
               </div>
-              <div style="font-size: 10.5px; color: #334155;">
+              <div style="font-size: 10px; color: #334155;">
                 Tested: <strong>$lotRounds rds</strong> | Defects: <strong style="color: ${lotDefects > 0 ? '#b91c1c' : '#15803d'};">$lotDefects</strong> | Yield: <strong style="color: #10b981;">${lotYield.toStringAsFixed(1)}%</strong> | Pass: <strong>$lotPass</strong> | Fail: <strong style="color: #ef4444;">$lotFail</strong>
               </div>
             </div>
@@ -1907,34 +1907,36 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
           }
         }
 
-        // Caliber Specific Charts & SPC (grouped by test types)
+        // Caliber Specific Charts & SPC (in balanced 2-column grid)
         moduleBuffer.writeln('''
-          <div style="margin-top: 14px; background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 10px; text-transform: uppercase;">
-              &bull; $cal Visual Analytics &amp; Statistical Process Control (Grouped by Test Types):
+          <div style="margin-top: 12px; background: #f8fafc; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 8px; text-transform: uppercase;">
+              &bull; $cal Visual Analytics &amp; Statistical Process Control:
             </div>
-            <div style="margin-bottom: 12px;">
-              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">1. Statistical Process Control (SPC) Chart — $cal</div>
-              $calSpc
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 10px;">
+              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+                <div style="font-size: 9.5px; font-weight: bold; color: #475569; margin-bottom: 4px;">1. Statistical Process Control (SPC) Chart — $cal</div>
+                $calSpc
+              </div>
+              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+                <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">2. Box &amp; Whisker Distribution Profile — $cal</div>
+                $calBox
+              </div>
+              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+                <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">3. Muzzle Velocity Progression Trend — $cal</div>
+                $calVelocity
+              </div>
+              ${hasEpvat && calEpvat.isNotEmpty ? '''
+              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+                <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">4. EPVAT Chamber (P1) &amp; Port (P2) Pressure — $cal</div>
+                $calEpvat
+              </div>''' : ''}
+              ${hasFunction && calFunction.isNotEmpty ? '''
+              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+                <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">5. Function Test Defect Classification — $cal</div>
+                $calFunction
+              </div>''' : ''}
             </div>
-            <div style="margin-bottom: 12px;">
-              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">2. Box &amp; Whisker Distribution Profile — $cal</div>
-              $calBox
-            </div>
-            <div style="margin-bottom: 12px;">
-              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">3. Muzzle Velocity Progression Trend — $cal</div>
-              $calVelocity
-            </div>
-            ${hasEpvat && calEpvat.isNotEmpty ? '''
-            <div style="margin-top: 12px; margin-bottom: 12px;">
-              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">4. EPVAT Chamber (P1) &amp; Port (P2) Pressure Trend — $cal</div>
-              $calEpvat
-            </div>''' : ''}
-            ${hasFunction && calFunction.isNotEmpty ? '''
-            <div style="margin-top: 12px; margin-bottom: 12px;">
-              <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">5. Function Test Defect Classification Distribution — $cal</div>
-              $calFunction
-            </div>''' : ''}
           </div>
         </div>
         ''');
@@ -1951,41 +1953,44 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   <meta charset="utf-8">
   <title>OMPC Executive Quality Report - $_periodLabel</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 30px; color: #1e293b; background: #fff; }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px; }
-    .title { font-size: 22px; font-weight: bold; color: #0f172a; }
-    .subtitle { font-size: 13px; color: #64748b; margin-top: 4px; }
-    .kpi-row { display: flex; gap: 12px; margin-bottom: 25px; }
-    .kpi-card { flex: 1; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; text-align: center; }
-    .kpi-val { font-size: 20px; font-weight: bold; margin-top: 4px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 11px; }
-    th { background: #0f172a; color: #fff; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; }
-    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+    @page { size: A4 portrait; margin: 10mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; color: #1e293b; background: #fff; font-size: 11px; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 10px; margin-bottom: 16px; }
+    .title { font-size: 20px; font-weight: bold; color: #0f172a; }
+    .subtitle { font-size: 12px; color: #64748b; margin-top: 3px; }
+    .kpi-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .kpi-card { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; text-align: center; }
+    .kpi-val { font-size: 18px; font-weight: bold; margin-top: 3px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10.5px; }
+    th { background: #0f172a; color: #fff; text-align: left; padding: 6px 8px; font-size: 10px; text-transform: uppercase; }
+    td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+    tr { page-break-inside: avoid; }
     tr:nth-child(even) { background: #f8fafc; }
     .badge-approved { background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     .badge-rejected { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     .badge-retest { background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-    .footer { text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 30px; }
-    .module-badge { display: inline-block; background-color: #0284c7; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+    .footer { text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 24px; }
+    .module-badge { display: inline-block; background-color: #0284c7; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 6px; }
+    .page-break {
+      margin-top: 18px;
+      margin-bottom: 14px;
+      border-top: 1px dashed #cbd5e1;
+    }
     
     @media print {
-      body { margin: 12mm 15mm; }
+      body { margin: 8mm 10mm; }
       .page-break {
-        page-break-before: always !important;
-        break-before: page !important;
-        display: block;
-        height: 0;
-        margin: 0;
-        padding: 0;
-        border: none;
+        display: none !important;
       }
-    }
-    .page-break {
-      page-break-before: always;
-      break-before: page;
-      margin-top: 35px;
-      margin-bottom: 25px;
-      border-top: 2px dashed #cbd5e1;
+      .chart-box {
+        page-break-inside: avoid !important;
+      }
+      table {
+        page-break-inside: auto !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+      }
     }
   </style>
 </head>
@@ -2024,7 +2029,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   </div>
 
   ${_includeLotAcceptance ? '''
-  <!-- MODULE 1: LOT ACCEPTANCE TEST (DIVIDED INTO CALIBER SPECIFICATIONS -> LOT NUMBER ALONE WITH SPC & BOX-WHISKER) -->
+  <!-- MODULE 1: LOT ACCEPTANCE TEST -->
   <div class="page-break"></div>
   <div class="report-page">
     ${renderModuleSection(
@@ -2038,7 +2043,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   </div>''' : ''}
 
   ${_includeDailyTest ? '''
-  <!-- MODULE 2: DAILY TEST (DIVIDED INTO CALIBER SPECIFICATIONS WITH SPC & BOX-WHISKER) -->
+  <!-- MODULE 2: DAILY TEST -->
   <div class="page-break"></div>
   <div class="report-page">
     ${renderModuleSection(

@@ -29,7 +29,7 @@ void main() {
         requirement: '',
         module: 'Component Test',
         primerLot: 'PRIMER-LOT-88',
-        primerSupplier: 'UNIS "GINIX"',
+        primerSupplier: 'UNIS "GINEX"',
         primerInsertionDepth: '0.18',
         propellantSupplier: 'Explosia',
         propellantCode: 'D-073.4',
@@ -40,7 +40,7 @@ void main() {
       // Verify toSupabaseMap and fromSupabaseMap
       final map = record.toSupabaseMap();
       expect(map['primer_lot'], 'PRIMER-LOT-88');
-      expect(map['primer_supplier'], 'UNIS "GINIX"');
+      expect(map['primer_supplier'], 'UNIS "GINEX"');
       expect(map['primer_insertion_depth'], '0.18');
       expect(map['propellant_supplier'], 'Explosia');
       expect(map['propellant_code'], 'D-073.4');
@@ -49,7 +49,7 @@ void main() {
 
       final reconstructed = BallisticRecord.fromSupabaseMap(map);
       expect(reconstructed.primerLot, 'PRIMER-LOT-88');
-      expect(reconstructed.primerSupplier, 'UNIS "GINIX"');
+      expect(reconstructed.primerSupplier, 'UNIS "GINEX"');
       expect(reconstructed.primerInsertionDepth, '0.18');
       expect(reconstructed.propellantSupplier, 'Explosia');
       expect(reconstructed.propellantCode, 'D-073.4');
@@ -60,7 +60,7 @@ void main() {
       final csvLine = record.toCsvRow();
       final fromCsv = BallisticRecord.fromCsvRow(csvLine);
       expect(fromCsv.primerLot, 'PRIMER-LOT-88');
-      expect(fromCsv.primerSupplier, 'UNIS GINIX'); // double quotes stripped in CSV parser
+      expect(fromCsv.primerSupplier, 'UNIS "GINEX"');
       expect(fromCsv.primerInsertionDepth, '0.18');
       expect(fromCsv.propellantSupplier, 'Explosia');
       expect(fromCsv.propellantCode, 'D-073.4');

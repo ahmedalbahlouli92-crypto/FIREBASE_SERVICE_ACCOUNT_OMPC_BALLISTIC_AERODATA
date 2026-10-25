@@ -1573,6 +1573,89 @@ class _MultiMetricTrendPainter extends CustomPainter {
       );
     }
 
+    // ─── Statistical Process Control (SPC) Limits (CL, UCL, LCL) ────
+    final meanValues = points.map((p) => p.mean).toList();
+    final clVal = meanValues.isNotEmpty ? meanValues.reduce((a, b) => a + b) / meanValues.length : 0.0;
+    double varSum = 0.0;
+    if (meanValues.length > 1) {
+      for (var v in meanValues) {
+        varSum += math.pow(v - clVal, 2);
+      }
+      varSum /= (meanValues.length - 1);
+    }
+    final spcSd = math.sqrt(varSum);
+    final uclVal = clVal + (3.0 * spcSd);
+    final lclVal = math.max(0.0, clVal - (3.0 * spcSd));
+
+    // Draw shaded 3-Sigma Control Band
+    final yUcl = toY(uclVal).clamp(chartRect.top, chartRect.bottom);
+    final yLcl = toY(lclVal).clamp(chartRect.top, chartRect.bottom);
+    if ((yLcl - yUcl).abs() > 2.0) {
+      canvas.drawRect(
+        Rect.fromLTRB(chartRect.left, math.min(yUcl, yLcl), chartRect.right, math.max(yUcl, yLcl)),
+        Paint()..color = const Color(0xFF06B6D4).withOpacity(0.04),
+      );
+    }
+
+    void drawControlLine(double val, Color color, String label) {
+      final y = toY(val);
+      if (y < chartRect.top || y > chartRect.bottom) return;
+
+      const dashWidth = 5.0;
+      const dashSpace = 4.0;
+      double startX = chartRect.left;
+      final paint = Paint()
+        ..color = color.withOpacity(0.85)
+        ..strokeWidth = 1.2;
+
+      while (startX < chartRect.right) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(math.min(startX + dashWidth, chartRect.right), y),
+          paint,
+        );
+        startX += dashWidth + dashSpace;
+      }
+
+      final tpCtrl = TextPainter(
+        text: TextSpan(
+          text: '$label ${_formatVal(val)}',
+          style: TextStyle(
+            color: color,
+            fontSize: 8.5,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'JetBrainsMono',
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      final pill = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          chartRect.right - tpCtrl.width - 8.0,
+          y - tpCtrl.height / 2 - 2.0,
+          tpCtrl.width + 6.0,
+          tpCtrl.height + 4.0,
+        ),
+        const Radius.circular(3.0),
+      );
+      canvas.drawRRect(pill, Paint()..color = const Color(0xFF1E293B));
+      canvas.drawRRect(
+        pill,
+        Paint()
+          ..color = color.withOpacity(0.6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+      tpCtrl.paint(canvas, Offset(chartRect.right - tpCtrl.width - 5.0, y - tpCtrl.height / 2));
+    }
+
+    if (points.length > 1) {
+      drawControlLine(uclVal, const Color(0xFFEF4444), 'UCL:');
+      drawControlLine(clVal, const Color(0xFF06B6D4), 'CL:');
+      drawControlLine(lclVal, const Color(0xFFEF4444), 'LCL:');
+    }
+
     // ─── Draw Series Lines ────────────────────────────────────────────
     void drawSeries(
       List<double> values,
@@ -1605,22 +1688,32 @@ class _MultiMetricTrendPainter extends CustomPainter {
       }
       canvas.drawPath(linePath, linePaint);
 
-      // Dots & Badges
+      // Dots & Badges (with Out-of-Control indicator)
       final dotPaint = Paint()..color = color;
       final dotBgPaint = Paint()..color = const Color(0xFF242938);
 
       for (int i = 0; i < pts.length; i++) {
         final pt = pts[i];
-        canvas.drawCircle(pt, 4.5, dotBgPaint);
-        canvas.drawCircle(pt, 3.0, dotPaint);
+        final isOoc = values[i] > uclVal || values[i] < lclVal;
 
-        if (drawBadges) {
-          final valText = prefix.isNotEmpty ? '$prefix ${_formatVal(values[i])}' : _formatVal(values[i]);
+        if (isOoc) {
+          canvas.drawCircle(pt, 8.5, Paint()..color = const Color(0xFFEF4444).withOpacity(0.35));
+          canvas.drawCircle(pt, 5.0, Paint()..color = const Color(0xFFEF4444));
+          canvas.drawCircle(pt, 2.5, Paint()..color = Colors.white);
+        } else {
+          canvas.drawCircle(pt, 4.5, dotBgPaint);
+          canvas.drawCircle(pt, 3.0, dotPaint);
+        }
+
+        if (drawBadges || isOoc) {
+          final badgePrefix = isOoc ? '⚠ OOC' : prefix;
+          final badgeColor = isOoc ? const Color(0xFFEF4444) : color;
+          final valText = badgePrefix.isNotEmpty ? '$badgePrefix ${_formatVal(values[i])}' : _formatVal(values[i]);
           final tpVal = TextPainter(
             text: TextSpan(
               text: valText,
               style: TextStyle(
-                color: color,
+                color: badgeColor,
                 fontSize: 8.5,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'JetBrainsMono',
@@ -1641,9 +1734,9 @@ class _MultiMetricTrendPainter extends CustomPainter {
           canvas.drawRRect(
             pillRect,
             Paint()
-              ..color = color.withOpacity(0.5)
+              ..color = badgeColor.withOpacity(0.7)
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 0.7,
+              ..strokeWidth = isOoc ? 1.0 : 0.7,
           );
           tpVal.paint(canvas, Offset(pt.dx - tpVal.width / 2, pt.dy - 13.0 - tpVal.height / 2));
         }

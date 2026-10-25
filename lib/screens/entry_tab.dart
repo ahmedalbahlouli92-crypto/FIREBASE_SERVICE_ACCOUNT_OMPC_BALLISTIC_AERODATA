@@ -1028,12 +1028,25 @@ class _EntryTabState extends State<EntryTab> {
     if (list is List && list.isNotEmpty) {
       base.addAll(list.map((e) => e.toString()));
     } else {
-      base.addAll(['CBC', 'UNIS "GINIX"', 'S&B', 'MD']);
+      base.addAll(['CBC', 'UNIS "GINEX"', 'S&B', 'MD']);
     }
     for (final s in _localAddedPrimerSuppliers) {
       if (!base.contains(s)) base.add(s);
     }
-    return base;
+    // Strict normalization: remove UNIS GINEX / UNIS "GINIX" and ensure UNIS "GINEX" is present
+    final normalized = <String>[];
+    for (final s in base) {
+      final lower = s.trim().toLowerCase();
+      if (lower == 'unis ginex' || lower == 'unis "ginix"' || lower == 'unis ginix') {
+        if (!normalized.contains('UNIS "GINEX"')) normalized.add('UNIS "GINEX"');
+      } else if (lower.contains('ginex')) {
+        if (!normalized.contains('UNIS "GINEX"')) normalized.add('UNIS "GINEX"');
+      } else {
+        if (!normalized.contains(s.trim())) normalized.add(s.trim());
+      }
+    }
+    if (!normalized.contains('UNIS "GINEX"')) normalized.add('UNIS "GINEX"');
+    return normalized;
   }
 
   List<String> get _propellantSuppliers {
@@ -3617,6 +3630,10 @@ class _EntryTabState extends State<EntryTab> {
     calcMetrics(_overallEpvatT4RoundsControllers[temp] ?? [], 't4');
     calcMetrics(_overallEpvatP1RoundsControllers[temp] ?? [], 'p1');
     calcMetrics(_overallEpvatP2RoundsControllers[temp] ?? [], 'p2');
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   _PrimerDropTableRow _createPrimerDropRow(String h, String f, String m, String pi) {
@@ -5255,14 +5272,9 @@ class _EntryTabState extends State<EntryTab> {
       final primerSup = getVal('primer_supplier', 'primerSupplier', 'supplier')?.toString().trim();
       if (primerSup != null && primerSup.isNotEmpty) {
         String effectiveSup = primerSup;
-        if (primerSup.toLowerCase() == 'ug') {
-          final ugMatch = _primerSuppliers.firstWhere(
-            (s) => s.toLowerCase().contains('unis') || s.toLowerCase().contains('ginix'),
-            orElse: () => '',
-          );
-          if (ugMatch.isNotEmpty) {
-            effectiveSup = ugMatch;
-          }
+        final lowerSup = primerSup.toLowerCase();
+        if (lowerSup == 'ug' || lowerSup.contains('ginex') || lowerSup.contains('ginix')) {
+          effectiveSup = 'UNIS "GINEX"';
         }
         final existing = _primerSuppliers.firstWhere(
           (s) => s.toLowerCase() == effectiveSup.toLowerCase(),
@@ -10602,6 +10614,10 @@ class _EntryTabState extends State<EntryTab> {
       if (maxRounds > 0) {
         _producedController.text = '$maxRounds';
       }
+    }
+
+    if (mounted) {
+      setState(() {});
     }
   }
 

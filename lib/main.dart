@@ -1005,7 +1005,7 @@ final Map<String, dynamic> _defaultRules = {
   ],
   'primer_suppliers': [
     'CBC',
-    'UNIS "GINIX"',
+    'UNIS "GINEX"',
     'S&B',
     'MD',
   ],
@@ -3136,7 +3136,17 @@ class _MainShellState extends State<MainShell> {
         activeRules['primer_suppliers'] = List<String>.from(_defaultRules['primer_suppliers']);
         schemaMigrated = true;
       } else {
-        activeRules['primer_suppliers'] = List<String>.from(activeRules['primer_suppliers'] as List);
+        var rawPList = List<String>.from(activeRules['primer_suppliers'] as List);
+        rawPList = rawPList.where((s) {
+          final clean = s.trim().toLowerCase();
+          return clean != 'unis ginex' && clean != 'unis "ginix"' && clean != 'unis ginix';
+        }).toList();
+        if (!rawPList.any((s) => s.trim().toLowerCase().contains('ginex'))) {
+          rawPList.add('UNIS "GINEX"');
+        } else {
+          rawPList = rawPList.map((s) => s.toLowerCase().contains('ginex') ? 'UNIS "GINEX"' : s).toSet().toList();
+        }
+        activeRules['primer_suppliers'] = rawPList;
       }
       if (activeRules['propellant_suppliers'] == null) {
         activeRules['propellant_suppliers'] = List<String>.from(_defaultRules['propellant_suppliers']);
@@ -3278,6 +3288,7 @@ class _MainShellState extends State<MainShell> {
       if (schemaMigrated) {
         unawaited(_storageService.saveRules(activeRules));
       }
+      unawaited(SupabaseService.autoMigratePrimerSuppliers());
       
       // Load all three module records concurrently in parallel
       final recordsFutures = await Future.wait([
@@ -6794,7 +6805,7 @@ class _MainShellState extends State<MainShell> {
                     controller: _newPrimerSupplierCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 12.5),
                     decoration: InputDecoration(
-                      hintText: 'Supplier Name (e.g., CBC, UNIS "GINIX", S&B, MD)',
+                      hintText: 'Supplier Name (e.g., CBC, UNIS "GINEX", S&B, MD)',
                       hintStyle: const TextStyle(color: Color(0xFF64748B)),
                       filled: true,
                       fillColor: const Color(0xFF2C415E),
