@@ -55,11 +55,35 @@ class _DashboardTabState extends State<DashboardTab> {
   String _boxTestName = 'All';
   String _boxLot = 'Overall';
 
-  bool _isAnalyticsMinimized = true;
+  bool _isAnalyticsMinimized = false;
   bool _isOverviewChartsMinimized = true;
   bool _isBoxPlotMinimized = true;
   bool _isRecentLogsMinimized = true;
   bool _isSpcMaximized = true;
+
+  @override
+  void didUpdateWidget(DashboardTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentModule != oldWidget.currentModule) {
+      setState(() {
+        _selectedTestName = 'All';
+        _selectedCaliber = 'All';
+        _selectedLot = 'Overall';
+        _spcTestName = 'All';
+        _spcCaliber = 'All';
+        _spcLot = 'Overall';
+        _analyticsTestName = 'All';
+        _analyticsCaliber = 'All';
+        _analyticsLot = 'Overall';
+        _overviewTestName = 'All';
+        _overviewCaliber = 'All';
+        _overviewLot = 'Overall';
+        _boxTestName = 'All';
+        _boxCaliber = 'All';
+        _boxLot = 'Overall';
+      });
+    }
+  }
 
   Widget _buildMinimizedBadge(String text, Color color) {
     return Container(
@@ -275,23 +299,33 @@ class _DashboardTabState extends State<DashboardTab> {
     uniqueCalibers.sort();
 
     final List<String> availableTestTypes = widget.currentModule == 'Component Test'
-        ? (() {
-            final fromRecords = widget.records.map((r) => r.testName.trim()).where((t) => t.isNotEmpty).toSet().toList();
-            if (fromRecords.isNotEmpty) {
-              fromRecords.sort();
-              return fromRecords;
-            }
-            return ['Primer Sensitivity Test', 'Propellant Test'];
-          })()
-        : [
-            'EPVAT test',
-            'Accuracy Test',
-            'Function Test',
-            'Waterproof Test',
-            'Residual Stress Test',
-            'Firing Rate Cycle Test',
-            'Terminal Effect Test',
-          ];
+        ? const [
+            'Primer Sensitivity Test',
+            'Propellant Test',
+            'Bullet components',
+          ]
+        : (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report')
+            ? const [
+                'Waterproof Test',
+                'Accuracy Test',
+                'EPVAT test',
+                'Residual Stress Test',
+                'Function Test',
+                'Extraction Force Test',
+                'Firing Rate Cycle Test',
+                'Terminal Effect Test',
+              ]
+            : const [
+                'EPVAT test',
+                'Accuracy Test',
+                'Waterproof Test',
+                'Residual Stress Test',
+                'Function Test',
+                'Extraction Force Test',
+                'Primer Sensitivity Test',
+                'Firing Rate Cycle Test',
+                'Terminal Effect Test',
+              ];
 
     // Dynamically adjust dropdown selections if values are no longer in list
     if (_selectedLot != 'Overall' && !uniqueLots.contains(_selectedLot)) {
@@ -302,6 +336,15 @@ class _DashboardTabState extends State<DashboardTab> {
     }
     if (_selectedTestName != 'All' && !availableTestTypes.contains(_selectedTestName)) {
       _selectedTestName = 'All';
+    }
+    if (_spcTestName != 'All' && !availableTestTypes.contains(_spcTestName)) {
+      _spcTestName = 'All';
+    }
+    if (_analyticsTestName != 'All' && !availableTestTypes.contains(_analyticsTestName)) {
+      _analyticsTestName = 'All';
+    }
+    if (_overviewTestName != 'All' && !availableTestTypes.contains(_overviewTestName)) {
+      _overviewTestName = 'All';
     }
 
     const timeOptions = [
@@ -839,301 +882,313 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           const SizedBox(height: 24.0),
 
-          // Ballistic Analytics, Fleet Volume & Distributions (Unified Professional Overview)
-          if (_isAnalyticsMinimized) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDF4FC),
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: const Color(0xFFCBE2F8), width: 1.2),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: 8.0,
-                      runSpacing: 6.0,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+          // ─── Unified Ballistic Analytics, Fleet Volume & Distribution Section ───
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFCBE2F8), width: 1.2),
+              boxShadow: const [
+                BoxShadow(color: Color(0x0A0284C7), blurRadius: 12.0, offset: Offset(0, 4)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Unified Master Header with Quick Badges & Controls
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEDF4FC),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(13.0),
+                      topRight: Radius.circular(13.0),
+                    ),
+                    border: Border(bottom: BorderSide(color: Color(0xFFCBE2F8), width: 1.0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
                           children: [
                             Container(
-                              width: 3.5,
-                              height: 18.0,
+                              padding: const EdgeInsets.all(6.0),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF4D99DB),
-                                borderRadius: BorderRadius.circular(2.0),
+                                color: const Color(0xFF0284C7).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8.0),
                               ),
+                              child: const Icon(Icons.analytics_rounded, size: 20.0, color: Color(0xFF0284C7)),
                             ),
-                            const SizedBox(width: 8.0),
-                            const Text(
-                              'Ballistic Analytics, Fleet Volume & Distribution',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0C2A4D),
+                            const SizedBox(width: 10.0),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Ballistic Analytics & Fleet Volume Overview',
+                                    style: TextStyle(
+                                      fontSize: 16.0,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0C2A4D),
+                                      letterSpacing: 0.2,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2.0),
+                                  Text(
+                                    'Consolidated inspection volume, quality yields, defect trends, and caliber distribution across ${widget.currentModule}',
+                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        _buildMinimizedBadge('Total Rounds: $analyticsTotalRounds', const Color(0xFF0284C7)),
-                        _buildMinimizedBadge('Yield: ${analyticsYieldRate.toStringAsFixed(1)}%', const Color(0xFF10B981)),
-                        _buildMinimizedBadge('Pass: $analyticsPassCount', const Color(0xFF10B981)),
-                        if (analyticsCondCount > 0) _buildMinimizedBadge('Cond: $analyticsCondCount', const Color(0xFF06B6D4)),
-                        if (analyticsRejectCount > 0) _buildMinimizedBadge('Reject: $analyticsRejectCount', const Color(0xFFEF4444)),
-                        if (analyticsRetestCount > 0) _buildMinimizedBadge('Retest: $analyticsRetestCount', const Color(0xFFF59E0B)),
-                        if (analyticsTopCaliber.isNotEmpty) _buildMinimizedBadge('Top: $analyticsTopCaliber', const Color(0xFF6366F1)),
-                        _buildMinimizedBadge('Defects: $analyticsTotalDefects', analyticsTotalDefects > 0 ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildMinimizedBadge('Total Rounds: $analyticsTotalRounds', const Color(0xFF0284C7)),
+                          const SizedBox(width: 6.0),
+                          _buildMinimizedBadge('Yield: ${analyticsYieldRate.toStringAsFixed(1)}%', const Color(0xFF10B981)),
+                          const SizedBox(width: 6.0),
+                          _buildMinimizedBadge('Pass: $analyticsPassCount', const Color(0xFF10B981)),
+                          if (analyticsRejectCount > 0) ...[
+                            const SizedBox(width: 6.0),
+                            _buildMinimizedBadge('Reject: $analyticsRejectCount', const Color(0xFFEF4444)),
+                          ],
+                          const SizedBox(width: 10.0),
+                          IconButton(
+                            onPressed: () => setState(() {
+                              _isAnalyticsMinimized = !_isAnalyticsMinimized;
+                              _isOverviewChartsMinimized = _isAnalyticsMinimized;
+                            }),
+                            icon: Icon(
+                              _isAnalyticsMinimized ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                              color: const Color(0xFF0284C7),
+                              size: 22.0,
+                            ),
+                            tooltip: _isAnalyticsMinimized ? 'Expand Section' : 'Minimize Section',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (!_isAnalyticsMinimized) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Master Filter Bar
+                        _buildSectionFilterBar(
+                          title: 'Ballistic Analytics & Trends Filter Bar',
+                          filters: [
+                            _buildFilterDropdown(
+                              label: 'CALIBER',
+                              value: _analyticsCaliber,
+                              items: ['All', ...uniqueCalibers],
+                              width: 150.0,
+                              onChanged: (v) => setState(() {
+                                _analyticsCaliber = v!;
+                                _overviewCaliber = v;
+                              }),
+                            ),
+                            _buildFilterDropdown(
+                              label: 'TEST TYPE',
+                              value: _analyticsTestName,
+                              items: ['All', ...availableTestTypes],
+                              width: 150.0,
+                              onChanged: (v) => setState(() {
+                                _analyticsTestName = v!;
+                                _overviewTestName = v;
+                              }),
+                            ),
+                            _buildFilterDropdown(
+                              label: 'SHIFT',
+                              value: _analyticsShift,
+                              items: shiftOptions,
+                              width: 120.0,
+                              onChanged: (v) => setState(() => _analyticsShift = v!),
+                            ),
+                            _buildFilterDropdown(
+                              label: 'TIME RANGE',
+                              value: _analyticsTime,
+                              items: timeOptions,
+                              width: 120.0,
+                              onChanged: (v) => setState(() {
+                                _analyticsTime = v!;
+                                _overviewTime = v;
+                              }),
+                            ),
+                          ],
+                          onResetToGlobal: () => setState(() {
+                            _analyticsCaliber = _selectedCaliber;
+                            _analyticsTestName = _selectedTestName;
+                            _analyticsShift = _selectedShift;
+                            _analyticsTime = _selectedTime;
+                            _analyticsLot = _selectedLot;
+                            _overviewCaliber = _selectedCaliber;
+                            _overviewTestName = _selectedTestName;
+                            _overviewTime = _selectedTime;
+                            _overviewLot = _selectedLot;
+                          }),
+                        ),
+                        const SizedBox(height: 14.0),
+
+                        // Fleet Volume Overview Card
+                        ModernAnalyticsOverviewCard(
+                          totalRounds: analyticsTotalRounds,
+                          totalInspections: analyticsFiltered.length,
+                          passCount: analyticsPassCount,
+                          condCount: analyticsCondCount,
+                          rejectCount: analyticsRejectCount,
+                          retestCount: analyticsRetestCount,
+                          yieldRate: analyticsYieldRate,
+                          activeCalibersCount: analyticsActiveCalibersCount,
+                          topCaliber: analyticsTopCaliber,
+                          topCaliberRounds: analyticsTopCaliberRounds,
+                          currentModule: widget.currentModule,
+                          onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
+                          onQuickPrint: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
+                        ),
+                        const SizedBox(height: 16.0),
+
+                        // KPI Cards Row
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final double cardWidth = constraints.maxWidth > 1200
+                                ? (constraints.maxWidth - 80) / 6
+                                : constraints.maxWidth > 900
+                                    ? (constraints.maxWidth - 48) / 3
+                                    : constraints.maxWidth > 600
+                                        ? (constraints.maxWidth - 32) / 2
+                                        : constraints.maxWidth;
+
+                            return Wrap(
+                              spacing: 14.0,
+                              runSpacing: 14.0,
+                              children: [
+                                _buildKpiCard(
+                                  title: 'QUANTITY TESTED',
+                                  value: analyticsTotalRounds.toString(),
+                                  desc: _analyticsTime == 'Overall' ? 'Total rounds logged' : 'Rounds in this period',
+                                  accentColor: const Color(0xFF0284C7),
+                                  width: cardWidth,
+                                  icon: Icons.flash_on,
+                                ),
+                                _buildKpiCard(
+                                  title: 'PASSED TESTS',
+                                  value: analyticsPassCount.toString(),
+                                  desc: 'Tests approved & conforming',
+                                  accentColor: const Color(0xFF10B981),
+                                  width: cardWidth,
+                                  icon: Icons.check_circle_outline,
+                                ),
+                                _buildKpiCard(
+                                  title: 'COND. APPROVED',
+                                  value: analyticsCondCount.toString(),
+                                  desc: 'Approved with condition',
+                                  accentColor: const Color(0xFF06B6D4),
+                                  width: cardWidth,
+                                  icon: Icons.verified_user_outlined,
+                                ),
+                                _buildKpiCard(
+                                  title: 'REJECTED TESTS',
+                                  value: analyticsRejectCount.toString(),
+                                  desc: 'Failed evaluations',
+                                  accentColor: const Color(0xFFEF4444),
+                                  width: cardWidth,
+                                  icon: Icons.cancel_outlined,
+                                ),
+                                _buildKpiCard(
+                                  title: 'RETEST REQUIRED',
+                                  value: analyticsRetestCount.toString(),
+                                  desc: 'Need new inspections',
+                                  accentColor: const Color(0xFFF59E0B),
+                                  width: cardWidth,
+                                  icon: Icons.sync_problem_outlined,
+                                ),
+                                _buildKpiCard(
+                                  title: 'YIELD RATE',
+                                  value: '${analyticsYieldRate.toStringAsFixed(2)}%',
+                                  desc: 'Percent within specifications',
+                                  accentColor: const Color(0xFF0EA5E9),
+                                  width: cardWidth,
+                                  icon: Icons.trending_up,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 18.0),
+
+                        // Unified 3 Charts: Defect Trend, Caliber Volume, Status Distribution
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isDesktop = constraints.maxWidth >= 1100;
+                            final charts = [
+                              _buildChartCard(
+                                title: _analyticsCaliber != 'All'
+                                    ? '$_analyticsCaliber Test Breakdown'
+                                    : (_analyticsTestName != 'All' ? '$_analyticsTestName Metrics' : 'General Performance & Defect Trend'),
+                                child: _analyticsCaliber != 'All'
+                                    ? CaliberIndividualChart(records: analyticsFiltered, caliber: _analyticsCaliber)
+                                    : TestMetricChart(filteredRecords: analyticsFiltered, selectedTestName: _analyticsTestName),
+                                width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
+                              ),
+                              _buildChartCard(
+                                title: 'Tested Caliber Volume',
+                                child: SingleChildScrollView(
+                                  child: CaliberVolumeList(caliberCounts: analyticsCaliberCounts),
+                                ),
+                                width: isDesktop ? (constraints.maxWidth - 40) * 0.28 : constraints.maxWidth,
+                              ),
+                              _buildChartCard(
+                                title: 'Status Distribution',
+                                child: StatusDoughnutChart(
+                                  statusCounts: {
+                                    'Approved': analyticsPassCount,
+                                    'Pending Review': 0,
+                                    'Rejected': analyticsRejectCount,
+                                    'Retest': analyticsRetestCount,
+                                    'Approved with condition': analyticsCondCount,
+                                  },
+                                  yieldRate: analyticsYieldRate,
+                                ),
+                                width: isDesktop ? (constraints.maxWidth - 40) * 0.27 : constraints.maxWidth,
+                              ),
+                            ];
+
+                            return isDesktop
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: charts,
+                                  )
+                                : Column(
+                                    children: [
+                                      charts[0],
+                                      const SizedBox(height: 16.0),
+                                      charts[1],
+                                      const SizedBox(height: 16.0),
+                                      charts[2],
+                                    ],
+                                  );
+                          },
+                        ),
                       ],
                     ),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => setState(() {
-                      _isAnalyticsMinimized = false;
-                      _isOverviewChartsMinimized = false;
-                    }),
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF4D99DB)),
-                    label: const Text('Expand Analytics & Charts', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                      minimumSize: const Size(0, 30.0),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                    ),
-                  ),
                 ],
-              ),
-            ),
-          ] else ...[
-            Container(
-              margin: const EdgeInsets.only(bottom: 8.0),
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: () => setState(() {
-                  _isAnalyticsMinimized = true;
-                  _isOverviewChartsMinimized = true;
-                }),
-                icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFF4D99DB)),
-                label: const Text('Minimize Section', style: TextStyle(fontSize: 11.5, color: Color(0xFF4D99DB), fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF4D99DB), width: 1.0),
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
-                  minimumSize: const Size(0, 30.0),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0)),
-                ),
-              ),
-            ),
-            _buildSectionFilterBar(
-              title: 'Ballistic Analytics, Fleet Volume & Trends Filters',
-              filters: [
-                _buildFilterDropdown(
-                  label: 'CALIBER',
-                  value: _analyticsCaliber,
-                  items: ['All', ...uniqueCalibers],
-                  width: 150.0,
-                  onChanged: (v) => setState(() {
-                    _analyticsCaliber = v!;
-                    _overviewCaliber = v;
-                  }),
-                ),
-                _buildFilterDropdown(
-                  label: 'TEST TYPE',
-                  value: _analyticsTestName,
-                  items: ['All', ...availableTestTypes],
-                  width: 150.0,
-                  onChanged: (v) => setState(() {
-                    _analyticsTestName = v!;
-                    _overviewTestName = v;
-                  }),
-                ),
-                _buildFilterDropdown(
-                  label: 'SHIFT',
-                  value: _analyticsShift,
-                  items: shiftOptions,
-                  width: 120.0,
-                  onChanged: (v) => setState(() => _analyticsShift = v!),
-                ),
-                _buildFilterDropdown(
-                  label: 'TIME RANGE',
-                  value: _analyticsTime,
-                  items: timeOptions,
-                  width: 120.0,
-                  onChanged: (v) => setState(() {
-                    _analyticsTime = v!;
-                    _overviewTime = v;
-                  }),
-                ),
               ],
-              onResetToGlobal: () => setState(() {
-                _analyticsCaliber = _selectedCaliber;
-                _analyticsTestName = _selectedTestName;
-                _analyticsShift = _selectedShift;
-                _analyticsTime = _selectedTime;
-                _analyticsLot = _selectedLot;
-                _overviewCaliber = _selectedCaliber;
-                _overviewTestName = _selectedTestName;
-                _overviewTime = _selectedTime;
-                _overviewLot = _selectedLot;
-              }),
             ),
-            // Modern Analytics Overview Component (#edf4fc background, #4d99db sky blue accents)
-            ModernAnalyticsOverviewCard(
-              totalRounds: analyticsTotalRounds,
-              totalInspections: analyticsFiltered.length,
-              passCount: analyticsPassCount,
-              condCount: analyticsCondCount,
-              rejectCount: analyticsRejectCount,
-              retestCount: analyticsRetestCount,
-              yieldRate: analyticsYieldRate,
-              activeCalibersCount: analyticsActiveCalibersCount,
-              topCaliber: analyticsTopCaliber,
-              topCaliberRounds: analyticsTopCaliberRounds,
-              currentModule: widget.currentModule,
-              onExportCaliberVolume: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
-              onQuickPrint: () => _exportCaliberVolumeAlone(context, analyticsCaliberCounts, records: analyticsFiltered),
-            ),
-            const SizedBox(height: 20.0),
-
-            // KPI Cards Grid
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final double cardWidth = constraints.maxWidth > 1200
-                    ? (constraints.maxWidth - 80) / 6
-                    : constraints.maxWidth > 900
-                        ? (constraints.maxWidth - 48) / 3
-                        : constraints.maxWidth > 600
-                            ? (constraints.maxWidth - 32) / 2
-                            : constraints.maxWidth;
-
-                return Wrap(
-                  spacing: 16.0,
-                  runSpacing: 16.0,
-                  children: [
-                    _buildKpiCard(
-                      title: 'QUANTITY TESTED',
-                      value: analyticsTotalRounds.toString(),
-                      desc: _analyticsTime == 'Overall' ? 'Total rounds logged' : 'Rounds in this period',
-                      accentColor: const Color(0xFF0284C7),
-                      width: cardWidth,
-                      icon: Icons.flash_on,
-                    ),
-                    _buildKpiCard(
-                      title: 'PASSED TESTS',
-                      value: analyticsPassCount.toString(),
-                      desc: 'Tests approved & conforming',
-                      accentColor: const Color(0xFF10B981),
-                      width: cardWidth,
-                      icon: Icons.check_circle_outline,
-                    ),
-                    _buildKpiCard(
-                      title: 'COND. APPROVED',
-                      value: analyticsCondCount.toString(),
-                      desc: 'Approved with condition',
-                      accentColor: const Color(0xFF06B6D4),
-                      width: cardWidth,
-                      icon: Icons.verified_user_outlined,
-                    ),
-                    _buildKpiCard(
-                      title: 'REJECTED TESTS',
-                      value: analyticsRejectCount.toString(),
-                      desc: 'Failed evaluations',
-                      accentColor: const Color(0xFFEF4444),
-                      width: cardWidth,
-                      icon: Icons.cancel_outlined,
-                    ),
-                    _buildKpiCard(
-                      title: 'RETEST REQUIRED',
-                      value: analyticsRetestCount.toString(),
-                      desc: 'Need new inspections',
-                      accentColor: const Color(0xFFF59E0B),
-                      width: cardWidth,
-                      icon: Icons.sync_problem_outlined,
-                    ),
-                    _buildKpiCard(
-                      title: 'YIELD RATE',
-                      value: '${analyticsYieldRate.toStringAsFixed(2)}%',
-                      desc: 'Percent within specifications',
-                      accentColor: const Color(0xFF0EA5E9),
-                      width: cardWidth,
-                      icon: Icons.trending_up,
-                    ),
-                    _buildKpiCard(
-                      title: widget.currentModule == 'Component Test' ? 'COMPONENT TESTS' : 'LOT ACCEPTANCE TESTS',
-                      value: widget.currentModule == 'Component Test'
-                          ? '${analyticsFiltered.length} Tests'
-                          : '$lotAcceptanceTestsCount Tests',
-                      desc: widget.currentModule == 'Component Test'
-                          ? '${uniqueLots.length} unique component lots'
-                          : '$lotAcceptanceLotsCount unique lots tested',
-                      accentColor: const Color(0xFF0284C7),
-                      width: cardWidth,
-                      icon: Icons.fact_check_outlined,
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 20.0),
-
-            // Unified 3 Charts Section (Defect Trend, Caliber Volume, Status Distribution)
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isDesktop = constraints.maxWidth >= 1100;
-                final charts = [
-                  _buildChartCard(
-                    title: _analyticsCaliber != 'All'
-                        ? '$_analyticsCaliber Test Breakdown'
-                        : (_analyticsTestName != 'All' ? '$_analyticsTestName Metrics' : 'General Performance & Defect Trend'),
-                    child: _analyticsCaliber != 'All'
-                        ? CaliberIndividualChart(records: analyticsFiltered, caliber: _analyticsCaliber)
-                        : TestMetricChart(filteredRecords: analyticsFiltered, selectedTestName: _analyticsTestName),
-                    width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
-                  ),
-                  _buildChartCard(
-                    title: 'Tested Caliber Volume',
-                    child: SingleChildScrollView(
-                      child: CaliberVolumeList(caliberCounts: analyticsCaliberCounts),
-                    ),
-                    width: isDesktop ? (constraints.maxWidth - 40) * 0.28 : constraints.maxWidth,
-                  ),
-                  _buildChartCard(
-                    title: 'Status Distribution',
-                    child: StatusDoughnutChart(
-                      statusCounts: {
-                        'Approved': analyticsPassCount,
-                        'Pending Review': 0,
-                        'Rejected': analyticsRejectCount,
-                        'Retest': analyticsRetestCount,
-                        'Approved with condition': analyticsCondCount,
-                      },
-                      yieldRate: analyticsYieldRate,
-                    ),
-                    width: isDesktop ? (constraints.maxWidth - 40) * 0.27 : constraints.maxWidth,
-                  ),
-                ];
-
-                return isDesktop
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: charts,
-                      )
-                    : Column(
-                        children: [
-                          charts[0],
-                          const SizedBox(height: 20.0),
-                          charts[1],
-                          const SizedBox(height: 20.0),
-                          charts[2],
-                        ],
-                      );
-              },
-            ),
-          ],
+          ),
           const SizedBox(height: 18.0),
 
           // ── Statistical Process Control (SPC) Chart (MAXIMIZED, 4 Charts Default) ────────────────
@@ -2759,28 +2814,34 @@ class _DashboardTabState extends State<DashboardTab> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
                         ),
-                        items: (widget.currentModule == 'Daily Test'
+                        items: (widget.currentModule == 'Component Test'
                             ? const [
-                                'EPVAT test',
-                                'Accuracy Test',
-                                'Function Test',
-                                'Waterproof Test',
-                                'Residual Stress Test',
-                                'Extraction Force Test',
-                                'Firing Rate Cycle Test',
-                                'Terminal Effect Test',
-                              ]
-                            : const [
-                                'EPVAT test',
-                                'Accuracy Test',
-                                'Function Test',
-                                'Waterproof Test',
-                                'Residual Stress Test',
-                                'Extraction Force Test',
-                                'Firing Rate Cycle Test',
-                                'Terminal Effect Test',
                                 'Primer Sensitivity Test',
-                              ]).map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                                'Propellant Test',
+                                'Bullet components',
+                              ]
+                            : (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report')
+                                ? const [
+                                    'EPVAT test',
+                                    'Accuracy Test',
+                                    'Function Test',
+                                    'Waterproof Test',
+                                    'Residual Stress Test',
+                                    'Extraction Force Test',
+                                    'Firing Rate Cycle Test',
+                                    'Terminal Effect Test',
+                                  ]
+                                : const [
+                                    'EPVAT test',
+                                    'Accuracy Test',
+                                    'Function Test',
+                                    'Waterproof Test',
+                                    'Residual Stress Test',
+                                    'Extraction Force Test',
+                                    'Primer Sensitivity Test',
+                                    'Firing Rate Cycle Test',
+                                    'Terminal Effect Test',
+                                  ]).map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                         onChanged: (v) => setDialogState(() => targetTest = v!),
                       ),
                     ),

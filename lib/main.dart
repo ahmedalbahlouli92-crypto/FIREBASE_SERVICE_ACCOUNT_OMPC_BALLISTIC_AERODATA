@@ -11535,6 +11535,7 @@ class _MainShellState extends State<MainShell> {
 
     final List<Widget> tabs = [
       DashboardTab(
+        key: ValueKey(_currentModule),
         currentModule: _currentModule,
         records: _activeRecords,
         onGoToLogs: () => setState(() => _activeTabIndex = 2),

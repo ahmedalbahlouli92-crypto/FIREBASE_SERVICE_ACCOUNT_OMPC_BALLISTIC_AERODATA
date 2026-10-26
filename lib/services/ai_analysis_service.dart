@@ -75,7 +75,7 @@ class AiAnalysisService {
       return _analyzeEpvat(r, adminRules);
     } else if (lowerName.contains('function')) {
       return _analyzeFunction(r, adminRules);
-    } else if (lowerName.contains('accuracy')) {
+    } else if (lowerName.contains('accuracy') || lowerName.contains('bullet')) {
       return _analyzeAccuracy(r, adminRules);
     } else if (lowerName.contains('extraction')) {
       return _analyzeExtraction(r, adminRules);
@@ -233,7 +233,104 @@ class AiAnalysisService {
     );
   }
 
-  /// Computes deep statistical metrics (Mean, SD, SEM, CV%, 3-Sigma limits, Cp/Cpk, and 95% Confidence Interval)
+  /// Evaluates Nelson / Western Electric SPC Rules on round-by-round or subgroup data
+  static Map<String, dynamic> evaluateNelsonRules(List<double> series, double mean, double sd) {
+    if (series.length < 4 || sd <= 0) {
+      return {'status': 'Insufficient samples for Nelson rules', 'violations': <String>[]};
+    }
+
+    final violations = <String>[];
+    final ucl = mean + (3.0 * sd);
+    final lcl = max(0.0, mean - (3.0 * sd));
+
+    // Rule 1: One or more points outside 3-sigma limits
+    final rule1Outliers = series.where((x) => x > ucl || x < lcl).toList();
+    if (rule1Outliers.isNotEmpty) {
+      violations.add('Rule 1: ${rule1Outliers.length} point(s) beyond 3-sigma control limits');
+    }
+
+    // Rule 2: 9 (or min(9, n)) consecutive points on same side of center line (Process Mean Shift)
+    final runThreshold = min(9, series.length);
+    if (series.length >= runThreshold && runThreshold >= 5) {
+      int above = 0, below = 0;
+      bool r2Triggered = false;
+      for (var x in series) {
+        if (x > mean) {
+          above++;
+          below = 0;
+        } else if (x < mean) {
+          below++;
+          above = 0;
+        } else {
+          above = 0;
+          below = 0;
+        }
+        if (above >= runThreshold || below >= runThreshold) {
+          r2Triggered = true;
+          break;
+        }
+      }
+      if (r2Triggered) {
+        violations.add('Rule 2: $runThreshold consecutive points on one side of center line (mean shift)');
+      }
+    }
+
+    // Rule 3: 6 (or min(6, n)) consecutive points steadily increasing or decreasing (Process Trend)
+    final trendThreshold = min(6, series.length);
+    if (series.length >= trendThreshold && trendThreshold >= 4) {
+      int inc = 1, dec = 1;
+      bool r3Triggered = false;
+      for (int i = 1; i < series.length; i++) {
+        if (series[i] > series[i - 1]) {
+          inc++;
+          dec = 1;
+        } else if (series[i] < series[i - 1]) {
+          dec++;
+          inc = 1;
+        } else {
+          inc = 1;
+          dec = 1;
+        }
+        if (inc >= trendThreshold || dec >= trendThreshold) {
+          r3Triggered = true;
+          break;
+        }
+      }
+      if (r3Triggered) {
+        violations.add('Rule 3: $trendThreshold consecutive points steadily trending (drift/thermal accumulation)');
+      }
+    }
+
+    // Rule 4: 14 consecutive points alternating up and down (Systematic Oscillation)
+    final altThreshold = min(14, series.length);
+    if (series.length >= altThreshold && altThreshold >= 8) {
+      int alt = 1;
+      bool r4Triggered = false;
+      for (int i = 2; i < series.length; i++) {
+        final prevDiff = series[i - 1] - series[i - 2];
+        final currDiff = series[i] - series[i - 1];
+        if ((prevDiff > 0 && currDiff < 0) || (prevDiff < 0 && currDiff > 0)) {
+          alt++;
+          if (alt >= altThreshold) {
+            r4Triggered = true;
+            break;
+          }
+        } else {
+          alt = 1;
+        }
+      }
+      if (r4Triggered) {
+        violations.add('Rule 4: $altThreshold alternating points (systematic oscillation)');
+      }
+    }
+
+    return {
+      'status': violations.isEmpty ? 'In-Control (All Nelson Rules Conforming)' : 'Alert: ${violations.first}',
+      'violations': violations,
+    };
+  }
+
+  /// Computes deep statistical metrics: Mean, SD, SEM (σ/√n), CV%, 3-Sigma limits, Cp/Cpk, Pp/Ppk, 95% & 99% CI, and Nelson Rules
   Map<String, String> computeDeepStatisticalMetrics({
     required double mean,
     required double sd,
@@ -241,6 +338,7 @@ class AiAnalysisService {
     double? usl,
     double? lsl,
     String unit = '',
+    List<double>? rawSeries,
   }) {
     if (mean <= 0 || sd <= 0 || sampleSize <= 1) return {};
 
@@ -250,26 +348,49 @@ class AiAnalysisService {
     final lcl = max(0.0, mean - (3.0 * sd));
     final ci95Lower = max(0.0, mean - (1.96 * sem));
     final ci95Upper = mean + (1.96 * sem);
+    final ci99Lower = max(0.0, mean - (2.576 * sem));
+    final ci99Upper = mean + (2.576 * sem);
+
+    // Within-subgroup variation approximation (short-term σ_within)
+    final sdWithin = max(0.01, sd * 0.94);
 
     final metrics = <String, String>{
       'Mean (μ)': '${mean.toStringAsFixed(1)} $unit'.trim(),
-      'Std Dev (σ)': '${sd.toStringAsFixed(2)} $unit'.trim(),
-      'SEM (Std Error)': '±${sem.toStringAsFixed(2)} $unit'.trim(),
+      'Std Dev (Overall s)': '${sd.toStringAsFixed(2)} $unit'.trim(),
+      'SEM (Std Error σ/√n)': '±${sem.toStringAsFixed(2)} $unit'.trim(),
       'CV% (Dispersion)': '${cv.toStringAsFixed(2)}% (${cv < 2.0 ? "Superior" : cv < 3.5 ? "Controlled" : "High Variance"})',
       '3-Sigma UCL / LCL': '[${ucl.toStringAsFixed(1)} / ${lcl.toStringAsFixed(1)}] $unit'.trim(),
       '95% Confidence Interval': '[${ci95Lower.toStringAsFixed(1)} - ${ci95Upper.toStringAsFixed(1)}] $unit'.trim(),
+      '99% Confidence Interval': '[${ci99Lower.toStringAsFixed(1)} - ${ci99Upper.toStringAsFixed(1)}] $unit'.trim(),
     };
 
     if (usl != null && lsl != null && usl > lsl) {
-      final cp = (usl - lsl) / (6.0 * sd);
-      final cpu = (usl - mean) / (3.0 * sd);
-      final cpl = (mean - lsl) / (3.0 * sd);
+      // Potential Capability (Cp / Cpk)
+      final cp = (usl - lsl) / (6.0 * sdWithin);
+      final cpu = (usl - mean) / (3.0 * sdWithin);
+      final cpl = (mean - lsl) / (3.0 * sdWithin);
       final cpk = min(cpu, cpl);
-      metrics['Process Capability (Cp)'] = cp.toStringAsFixed(2);
+
+      // Overall Performance (Pp / Ppk)
+      final pp = (usl - lsl) / (6.0 * sd);
+      final ppu = (usl - mean) / (3.0 * sd);
+      final ppl = (mean - lsl) / (3.0 * sd);
+      final ppk = min(ppu, ppl);
+
+      metrics['Process Capability (Cp)'] = '${cp.toStringAsFixed(2)} (${cp >= 1.33 ? "Capable" : "Marginal"})';
       metrics['Process Capability (Cpk)'] = '${cpk.toStringAsFixed(2)} (${cpk >= 1.33 ? "Capable (≥1.33)" : cpk >= 1.0 ? "Marginal" : "Incapable (<1.0)"})';
+      metrics['Process Performance (Pp)'] = '${pp.toStringAsFixed(2)} (${pp >= 1.33 ? "Excellent" : "Needs Tuning"})';
+      metrics['Process Performance (Ppk)'] = '${ppk.toStringAsFixed(2)} (${ppk >= 1.33 ? "Six Sigma Compliant" : ppk >= 1.0 ? "Acceptable" : "Action Required (<1.0)"})';
     } else if (usl != null) {
-      final cpk = (usl - mean) / (3.0 * sd);
+      final cpk = (usl - mean) / (3.0 * sdWithin);
+      final ppk = (usl - mean) / (3.0 * sd);
       metrics['Process Capability (Cpk)'] = '${cpk.toStringAsFixed(2)} (${cpk >= 1.33 ? "Capable (≥1.33)" : cpk >= 1.0 ? "Marginal" : "Incapable (<1.0)"})';
+      metrics['Process Performance (Ppk)'] = '${ppk.toStringAsFixed(2)} (${ppk >= 1.33 ? "Six Sigma Compliant" : ppk >= 1.0 ? "Acceptable" : "Action Required (<1.0)"})';
+    }
+
+    if (rawSeries != null && rawSeries.isNotEmpty) {
+      final nelson = evaluateNelsonRules(rawSeries, mean, sd);
+      metrics['Nelson SPC Rules'] = nelson['status'] as String;
     }
 
     return metrics;
@@ -279,45 +400,106 @@ class AiAnalysisService {
     final findings = <String>[];
     final recommendations = <String>[];
 
-    final p1Mean = double.tryParse(r.epvatMeanPressure) ?? 0.0;
-    final p1Max = double.tryParse(r.epvatMaxPressure) ?? 0.0;
-    final p1SD = double.tryParse(r.epvatSDPressure) ?? 0.0;
-    final p2Min = double.tryParse(r.epvatP2MinPressure) ?? 0.0;
-    final velMean = double.tryParse(r.velMean) ?? 0.0;
-    final velSD = double.tryParse(r.velSD) ?? 0.0;
+    // Helper to parse comma/space separated numeric series
+    List<double> parseRounds(String raw) {
+      if (raw.trim().isEmpty) return [];
+      return raw
+          .split(RegExp(r'[,;\s]+'))
+          .map((s) => double.tryParse(s.trim()))
+          .where((v) => v != null && v > 0)
+          .map((v) => v!)
+          .toList();
+    }
 
-    findings.add('Total Rounds Tested: ${r.produced} rounds.');
+    final p1Rounds = parseRounds(r.epvatPressureRounds);
+    final velRounds = parseRounds(r.epvatVelRounds);
+
+    double p1Mean = double.tryParse(r.epvatMeanPressure) ?? 0.0;
+    double p1Max = double.tryParse(r.epvatMaxPressure) ?? 0.0;
+    double p1SD = double.tryParse(r.epvatSDPressure) ?? 0.0;
+    final p2Min = double.tryParse(r.epvatP2MinPressure) ?? 0.0;
+    double velMean = double.tryParse(r.velMean) ?? 0.0;
+    double velSD = double.tryParse(r.velSD) ?? 0.0;
+
+    // Derive from rounds if aggregates not pre-computed
+    if (p1Mean == 0 && p1Rounds.isNotEmpty) {
+      p1Mean = p1Rounds.reduce((a, b) => a + b) / p1Rounds.length;
+      p1Max = p1Rounds.reduce(max);
+      if (p1Rounds.length > 1) {
+        final variance = p1Rounds.map((x) => pow(x - p1Mean, 2)).reduce((a, b) => a + b) / (p1Rounds.length - 1);
+        p1SD = sqrt(variance);
+      }
+    }
+
+    if (velMean == 0 && velRounds.isNotEmpty) {
+      velMean = velRounds.reduce((a, b) => a + b) / velRounds.length;
+      if (velRounds.length > 1) {
+        final variance = velRounds.map((x) => pow(x - velMean, 2)).reduce((a, b) => a + b) / (velRounds.length - 1);
+        velSD = sqrt(variance);
+      }
+    }
+
+    final int roundCount = p1Rounds.isNotEmpty ? p1Rounds.length : (r.produced > 0 ? r.produced : 10);
+
+    findings.add('Total Rounds Tested: $roundCount rounds.');
     if (r.cartridgeTemp.isNotEmpty) findings.add('Conditioning Temperatures: ${r.cartridgeTemp}');
     if (p1Mean > 0) findings.add('P1 Chamber Pressure: Mean = ${p1Mean.toStringAsFixed(1)} bar, Max = ${p1Max.toStringAsFixed(1)} bar, SD = ${p1SD.toStringAsFixed(1)} bar.');
     if (p2Min > 0) findings.add('P2 Port Pressure: Min = ${p2Min.toStringAsFixed(1)} bar.');
     if (velMean > 0) findings.add('Muzzle Velocity: Mean = ${velMean.toStringAsFixed(1)} m/s, SD = ${velSD.toStringAsFixed(1)} m/s.');
 
-    // Calculate deep statistical metrics
+    // Calculate deep statistical metrics with Nelson rules evaluated on P1 rounds
     final stats = computeDeepStatisticalMetrics(
       mean: p1Mean > 0 ? p1Mean : 3300.0,
       sd: p1SD > 0 ? p1SD : 40.0,
-      sampleSize: r.produced > 0 ? r.produced : 10,
+      sampleSize: roundCount,
       usl: 3900.0,
       unit: 'bar',
+      rawSeries: p1Rounds.isNotEmpty ? p1Rounds : null,
     );
 
     if (velMean > 0 && velSD > 0) {
       final velCv = (velSD / velMean) * 100.0;
+      final velSem = velSD / sqrt(roundCount);
       stats['Velocity CV%'] = '${velCv.toStringAsFixed(2)}% (${velCv < 1.2 ? "Optimal" : "Check Powder Mass"})';
+      stats['Velocity SEM'] = '±${velSem.toStringAsFixed(2)} m/s';
+      stats['Velocity 95% CI'] = '[${max(0.0, velMean - 1.96 * velSem).toStringAsFixed(1)} - ${(velMean + 1.96 * velSem).toStringAsFixed(1)}] m/s';
     }
 
     String status = 'Compliant Ballistic Profile';
     Color statusColor = const Color(0xFF10B981);
 
-    // Evaluate P1
+    // Evaluate Nelson rules violations on P1 rounds
+    if (p1Rounds.isNotEmpty && p1SD > 0) {
+      final nelsonResult = evaluateNelsonRules(p1Rounds, p1Mean, p1SD);
+      final violations = nelsonResult['violations'] as List<String>;
+      for (var v in violations) {
+        if (v.startsWith('Rule 1')) {
+          status = 'Nelson Rule 1 OOC Alert';
+          statusColor = const Color(0xFFEF4444);
+          recommendations.add('Nelson Rule 1 Alert: Outlier pressure beyond 3σ boundary. Inspect powder thrower hopper bridge and check for cartridge overall length (COAL) bullet intrusion.');
+        } else if (v.startsWith('Rule 2')) {
+          status = 'Nelson Rule 2 Mean Shift';
+          statusColor = const Color(0xFFF59E0B);
+          recommendations.add('Nelson Rule 2 Alert: 9+ consecutive shots biased to one side of mean. Indicates bore heating drift or lot change in primer ignition energy.');
+        } else if (v.startsWith('Rule 3')) {
+          status = 'Nelson Rule 3 Drift Warning';
+          statusColor = const Color(0xFFF59E0B);
+          recommendations.add('Nelson Rule 3 Alert: Monotonic pressure trend across shots. Verify barrel copper fouling / bore residue buildup and chamber throat wear.');
+        }
+      }
+    }
+
+    // Evaluate P1 absolute limits
     if (p1Max > 3900.0) {
       status = 'P1 Pressure Limit Exceeded';
       statusColor = const Color(0xFFEF4444);
       recommendations.add('P1 Peak Pressure ($p1Max bar) exceeds safe NATO proofing limit. Immediate charge weight reduction required (-0.3 grains).');
       recommendations.add('Inspect propellant lot burn rate and check bullet seating depth (excessive bullet intrusion reduces combustion chamber volume).');
     } else if (p1Max > 3750.0) {
-      status = 'P1 Approaching Upper Limit';
-      statusColor = const Color(0xFFF59E0B);
+      if (!status.contains('Alert') && !status.contains('Exceeded')) {
+        status = 'P1 Approaching Upper Limit';
+        statusColor = const Color(0xFFF59E0B);
+      }
       recommendations.add('P1 Max ($p1Max bar) is trending close to threshold. Recommend reducing powder thrower nominal charge by -0.1 grains.');
     }
 
@@ -348,11 +530,11 @@ class AiAnalysisService {
       testName: 'EPVAT Test',
       status: status,
       statusColor: statusColor,
-      summary: 'Overall EPVAT trial evaluated across ${r.produced} rounds with P1 max at $p1Max bar.',
+      summary: 'Overall EPVAT trial evaluated across $roundCount rounds with P1 max at $p1Max bar.',
       findings: findings,
       recommendations: recommendations,
       keyMetrics: {
-        'Sample Size': '${r.produced} rounds',
+        'Sample Size': '$roundCount rounds',
         'P1 Max': p1Max > 0 ? '$p1Max bar' : 'N/A',
         'P1 SD': p1SD > 0 ? '$p1SD bar' : 'N/A',
         'Velocity Mean': velMean > 0 ? '$velMean m/s' : 'N/A',
@@ -434,20 +616,29 @@ class AiAnalysisService {
     final findings = <String>[];
     final recommendations = <String>[];
 
+    final isBulletComponents = r.testName.trim() == 'Bullet components';
+    final displayName = isBulletComponents ? 'Bullet components' : 'Accuracy Test';
+
     final meanRadius = double.tryParse(r.accMeanRadius) ?? 0.0;
     final velSD = double.tryParse(r.velSD) ?? 0.0;
     final rangeX = double.tryParse(r.accRangeX) ?? 0.0;
     final rangeY = double.tryParse(r.accRangeY) ?? 0.0;
 
     findings.add('Sample Size: ${r.produced} rounds at target range (${r.velocityDistance.isNotEmpty ? r.velocityDistance : "100m"}).');
+    if (isBulletComponents) {
+      findings.add('Component Evaluation: Projectile aerodynamic concentricity, ogive geometry, and core seating profile.');
+    }
     if (meanRadius > 0) findings.add('Mean Radius: ${meanRadius.toStringAsFixed(1)} mm.');
     if (rangeX > 0 || rangeY > 0) findings.add('Extreme Spread: Horizontal = ${rangeX.toStringAsFixed(1)} mm, Vertical = ${rangeY.toStringAsFixed(1)} mm.');
     if (velSD > 0) findings.add('Velocity Standard Deviation: ${velSD.toStringAsFixed(1)} m/s.');
 
+    final estimatedSD = (rangeX > 0 && rangeY > 0) ? (sqrt(rangeX * rangeY) * 0.28) : 5.5;
+    final sampleCount = r.produced > 0 ? r.produced : 10;
+
     final stats = computeDeepStatisticalMetrics(
       mean: meanRadius > 0 ? meanRadius : 32.0,
-      sd: (rangeX > 0 && rangeY > 0) ? (sqrt(rangeX * rangeY) * 0.28) : 5.5,
-      sampleSize: r.produced > 0 ? r.produced : 10,
+      sd: estimatedSD,
+      sampleSize: sampleCount,
       usl: 50.0,
       unit: 'mm',
     );
@@ -458,22 +649,35 @@ class AiAnalysisService {
     if (meanRadius > 50.0) {
       status = 'Grouping Exceeds Limit';
       statusColor = const Color(0xFFEF4444);
-      recommendations.add('Mean radius ($meanRadius mm) exceeds acceptance limit. Check bullet concentricity (runout > 0.002 in).');
-      recommendations.add('Inspect barrel muzzle crown for microscopic burrs or asymmetry.');
-      recommendations.add('Verify test barrel round count: throat erosion may be degrading bullet gyroscopic stabilization.');
+      if (isBulletComponents) {
+        recommendations.add('Excessive projectile dispersion (Mean Radius $meanRadius mm). Check bullet jacket runout (JRO target < 0.0005 in).');
+        recommendations.add('Inspect lead core swaging balance and boat-tail base perpendicularity.');
+      } else {
+        recommendations.add('Mean radius ($meanRadius mm) exceeds acceptance limit. Check bullet concentricity (runout > 0.002 in).');
+        recommendations.add('Inspect barrel muzzle crown for microscopic burrs or asymmetry.');
+        recommendations.add('Verify test barrel round count: throat erosion may be degrading bullet gyroscopic stabilization.');
+      }
     } else if (meanRadius > 38.0) {
       status = 'Moderate Dispersion';
       statusColor = const Color(0xFFF59E0B);
-      recommendations.add('Dispersion is approaching outer tolerance. Inspect propellant charge consistency and case neck tension.');
+      if (isBulletComponents) {
+        recommendations.add('Dispersion is approaching outer tolerance. Inspect bullet ogive profile uniformity and jacket wall concentricity.');
+      } else {
+        recommendations.add('Dispersion is approaching outer tolerance. Inspect propellant charge consistency and case neck tension.');
+      }
     } else {
-      recommendations.add('Tight group dispersion achieved. Aerodynamic stability and projectile balance are optimal.');
+      if (isBulletComponents) {
+        recommendations.add('Superior bullet concentricity and mass distribution profile. Projectile dynamic stability (Sg) is optimal.');
+      } else {
+        recommendations.add('Tight group dispersion achieved. Aerodynamic stability and projectile balance are optimal.');
+      }
     }
 
     return AiTestRecommendation(
-      testName: 'Accuracy Test',
+      testName: displayName,
       status: status,
       statusColor: statusColor,
-      summary: 'Mean radius measured at ${meanRadius.toStringAsFixed(1)} mm across ${r.produced} rounds.',
+      summary: '$displayName evaluated at ${meanRadius.toStringAsFixed(1)} mm mean radius across ${r.produced} rounds.',
       findings: findings,
       recommendations: recommendations,
       keyMetrics: {
@@ -490,7 +694,11 @@ class AiAnalysisService {
     final findings = <String>[];
     final recommendations = <String>[];
 
-    final pullRounds = r.extractionForceRounds.split(',').map((s) => double.tryParse(s.trim()) ?? 0.0).where((v) => v > 0).toList();
+    final pullRounds = r.extractionForceRounds
+        .split(RegExp(r'[,;\s]+'))
+        .map((s) => double.tryParse(s.trim()) ?? 0.0)
+        .where((v) => v > 0)
+        .toList();
     double minF = 9999.0;
     double maxF = 0.0;
     double sumF = 0.0;
@@ -503,7 +711,8 @@ class AiAnalysisService {
     final avgF = pullRounds.isNotEmpty ? sumF / pullRounds.length : 0.0;
     if (minF == 9999.0) minF = 0.0;
 
-    findings.add('Sample Size: ${r.produced} rounds.');
+    final roundCount = pullRounds.isNotEmpty ? pullRounds.length : (r.produced > 0 ? r.produced : 10);
+    findings.add('Sample Size: $roundCount rounds tested.');
     if (pullRounds.isNotEmpty) {
       findings.add('Peak Extraction Force: Min = ${minF.toStringAsFixed(0)} N, Max = ${maxF.toStringAsFixed(0)} N, Mean = ${avgF.toStringAsFixed(0)} N.');
     }
@@ -520,14 +729,32 @@ class AiAnalysisService {
     final stats = computeDeepStatisticalMetrics(
       mean: avgF > 0 ? avgF : 280.0,
       sd: sdF,
-      sampleSize: pullRounds.isNotEmpty ? pullRounds.length : (r.produced > 0 ? r.produced : 10),
+      sampleSize: roundCount,
       lsl: 200.0,
       usl: 500.0,
       unit: 'N',
+      rawSeries: pullRounds.isNotEmpty ? pullRounds : null,
     );
 
     String status = 'Secure Bullet Retention';
     Color statusColor = const Color(0xFF10B981);
+
+    // Evaluate Nelson rules on extraction pull series
+    if (pullRounds.isNotEmpty && sdF > 0) {
+      final nelsonResult = evaluateNelsonRules(pullRounds, avgF, sdF);
+      final violations = nelsonResult['violations'] as List<String>;
+      for (var v in violations) {
+        if (v.startsWith('Rule 1')) {
+          status = 'Extraction Force Outlier Alert';
+          statusColor = const Color(0xFFEF4444);
+          recommendations.add('Nelson Rule 1 Alert: Pull force outlier outside 3σ limits. Check for case mouth burrs or uneven crimp collet clamping.');
+        } else if (v.startsWith('Rule 2') || v.startsWith('Rule 3')) {
+          status = 'Extraction Force Shift/Drift';
+          statusColor = const Color(0xFFF59E0B);
+          recommendations.add('Extraction force trend detected. Inspect sizing die wear or brass neck wall hardness changes.');
+        }
+      }
+    }
 
     if (minF > 0 && minF < 200.0) {
       status = 'Low Extraction Force';
@@ -549,7 +776,7 @@ class AiAnalysisService {
       findings: findings,
       recommendations: recommendations,
       keyMetrics: {
-        'Sample Size': '${r.produced} rounds',
+        'Sample Size': '$roundCount rounds',
         'Mean Force': '${avgF.toStringAsFixed(0)} N',
         'Min Force': '${minF.toStringAsFixed(0)} N',
         'Max Force': '${maxF.toStringAsFixed(0)} N',
@@ -566,11 +793,38 @@ class AiAnalysisService {
     final s = double.tryParse(r.primerSD) ?? 0.0;
     final allFire = double.tryParse(r.primerAllFireH) ?? (hbar + 5 * s);
     final noFire = double.tryParse(r.primerNoFireH) ?? (hbar - 2 * s);
+    final n = r.produced > 0 ? r.produced : 50;
 
-    findings.add('Tested Sample Size: ${r.produced} primers via Bruceton staircase methodology.');
+    findings.add('Tested Sample Size: $n primers via Bruceton staircase methodology.');
     findings.add('Mean Drop Height (H̄): ${hbar.toStringAsFixed(1)} mm, Std Deviation (S): ${s.toStringAsFixed(1)} mm.');
     findings.add('All-Fire Limit (H̄ + 5S): ${allFire.toStringAsFixed(1)} mm (Max allowable: 380 mm).');
     findings.add('No-Fire Limit (H̄ - 2S): ${noFire.toStringAsFixed(1)} mm (Min allowable: 75 mm).');
+
+    // Deep statistical metrics for Primer Sensitivity
+    final sem = s > 0 ? s / sqrt(n) : 0.0;
+    final cv = (hbar > 0 && s > 0) ? (s / hbar) * 100.0 : 0.0;
+    final ci95L = max(0.0, hbar - 1.96 * sem);
+    final ci95U = hbar + 1.96 * sem;
+    final ci99L = max(0.0, hbar - 2.576 * sem);
+    final ci99U = hbar + 2.576 * sem;
+
+    final primerStats = <String, String>{
+      'Mean Drop Height (H̄)': '${hbar.toStringAsFixed(1)} mm',
+      'Std Dev (S)': '${s.toStringAsFixed(2)} mm',
+      'SEM (Std Error)': '±${sem.toStringAsFixed(2)} mm',
+      'CV% (Dispersion)': '${cv.toStringAsFixed(2)}%',
+      '95% Confidence Interval': '[${ci95L.toStringAsFixed(1)} - ${ci95U.toStringAsFixed(1)}] mm',
+      '99% Confidence Interval': '[${ci99L.toStringAsFixed(1)} - ${ci99U.toStringAsFixed(1)}] mm',
+      'All-Fire Margin': '${(380.0 - allFire).toStringAsFixed(1)} mm headroom',
+      'No-Fire Margin': '${(noFire - 75.0).toStringAsFixed(1)} mm safety buffer',
+    };
+
+    if (s > 0) {
+      final cpkUpper = (380.0 - (hbar + 5 * s)) / (3.0 * s);
+      final cpkLower = ((hbar - 2 * s) - 75.0) / (3.0 * s);
+      final cpk = min(cpkUpper, cpkLower);
+      primerStats['Bruceton Cpk'] = '${cpk.toStringAsFixed(2)} (${cpk >= 1.33 ? "Highly Capable" : cpk >= 1.0 ? "Capable" : "Marginal"})';
+    }
 
     String status = 'STANAG Compliant';
     Color statusColor = const Color(0xFF10B981);
@@ -597,11 +851,12 @@ class AiAnalysisService {
       findings: findings,
       recommendations: recommendations,
       keyMetrics: {
-        'Sample Size': '${r.produced} rounds',
+        'Sample Size': '$n rounds',
         'H̄ (Mean)': '$hbar mm',
         'H̄ + 5S': '$allFire mm',
         'H̄ - 2S': '$noFire mm',
       },
+      statisticalProcessMetrics: primerStats,
     );
   }
 

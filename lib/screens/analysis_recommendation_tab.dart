@@ -589,7 +589,7 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                                   borderRadius: BorderRadius.circular(4.0),
                                 ),
                                 child: const Text(
-                                  '3-Sigma & Cpk Analysis',
+                                  '3-Sigma, Cp/Cpk, Pp/Ppk & Nelson Rules',
                                   style: TextStyle(
                                     fontSize: 10.5,
                                     fontWeight: FontWeight.bold,
@@ -604,20 +604,29 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                             spacing: 10.0,
                             runSpacing: 8.0,
                             children: testAdvisory.statisticalProcessMetrics.entries.map((e) {
-                              final isCpk = e.key.contains('Cpk');
-                              final isCapable = e.value.contains('Capable');
+                              final isHighlight = e.key.contains('Cp') || e.key.contains('Pp') || e.key.contains('Nelson');
+                              final isPositive = e.value.contains('Capable') || e.value.contains('Superior') || e.value.contains('Six Sigma') || e.value.contains('In-Control') || e.value.contains('Optimal');
+                              final isNegative = e.value.contains('Incapable') || e.value.contains('Action Required') || e.value.contains('Alert') || e.value.contains('Violation') || e.value.contains('High Variance');
+
+                              final Color chipBg = isNegative
+                                  ? const Color(0xFFFEF2F2)
+                                  : (isPositive && isHighlight ? const Color(0xFFECFDF5) : Colors.white);
+                              final Color chipBorder = isNegative
+                                  ? const Color(0xFFEF4444)
+                                  : (isPositive && isHighlight ? const Color(0xFF10B981) : const Color(0xFFCBD5E1));
+                              final Color labelColor = isNegative
+                                  ? const Color(0xFF991B1B)
+                                  : (isPositive && isHighlight ? const Color(0xFF065F46) : const Color(0xFF475569));
+                              final Color valueColor = isNegative
+                                  ? const Color(0xFFDC2626)
+                                  : (isPositive && isHighlight ? const Color(0xFF047857) : const Color(0xFF0F172A));
+
                               return Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                                 decoration: BoxDecoration(
-                                  color: isCpk
-                                      ? (isCapable ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2))
-                                      : Colors.white,
+                                  color: chipBg,
                                   borderRadius: BorderRadius.circular(6.0),
-                                  border: Border.all(
-                                    color: isCpk
-                                        ? (isCapable ? const Color(0xFF10B981) : const Color(0xFFEF4444))
-                                        : const Color(0xFFCBD5E1),
-                                  ),
+                                  border: Border.all(color: chipBorder),
                                 ),
                                 child: RichText(
                                   text: TextSpan(
@@ -625,19 +634,15 @@ class _AnalysisRecommendationTabState extends State<AnalysisRecommendationTab> {
                                       TextSpan(
                                         text: '${e.key}: ',
                                         style: TextStyle(
-                                          color: isCpk
-                                              ? (isCapable ? const Color(0xFF065F46) : const Color(0xFF991B1B))
-                                              : const Color(0xFF475569),
+                                          color: labelColor,
                                           fontSize: 11.5,
-                                          fontWeight: isCpk ? FontWeight.w600 : FontWeight.normal,
+                                          fontWeight: isHighlight ? FontWeight.w600 : FontWeight.normal,
                                         ),
                                       ),
                                       TextSpan(
                                         text: e.value,
                                         style: TextStyle(
-                                          color: isCpk
-                                              ? (isCapable ? const Color(0xFF047857) : const Color(0xFFDC2626))
-                                              : const Color(0xFF0F172A),
+                                          color: valueColor,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12.0,
                                         ),

@@ -1254,7 +1254,10 @@ VALUES
     ('Propellant Test', '9mm',  'Propellant charge lot qualification, visual & closed vessel analysis for 9mm', 'MIL-STD-286C', 20),
     ('Accuracy Test', '5.56', 'Component bullet dispersion and accuracy verification for 5.56mm', 'NATO MOPI AC/225', 10),
     ('Accuracy Test', '7.62', 'Component bullet dispersion and accuracy verification for 7.62mm', 'NATO MOPI AC/225', 10),
-    ('Accuracy Test', '9mm',  'Component bullet dispersion and accuracy verification for 9mm', 'NATO MOPI AC/225', 10)
+    ('Accuracy Test', '9mm',  'Component bullet dispersion and accuracy verification for 9mm', 'NATO MOPI AC/225', 10),
+    ('Bullet components', '5.56', 'Component bullet dispersion and accuracy verification for 5.56mm', 'NATO MOPI AC/225', 10),
+    ('Bullet components', '7.62', 'Component bullet dispersion and accuracy verification for 7.62mm', 'NATO MOPI AC/225', 10),
+    ('Bullet components', '9mm',  'Component bullet dispersion and accuracy verification for 9mm', 'NATO MOPI AC/225', 10)
 ON CONFLICT (test_name, caliber) DO UPDATE
 SET description = EXCLUDED.description,
     standard_reference = EXCLUDED.standard_reference,

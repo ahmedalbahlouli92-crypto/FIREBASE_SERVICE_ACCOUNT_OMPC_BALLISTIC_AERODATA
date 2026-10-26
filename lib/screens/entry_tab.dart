@@ -1904,7 +1904,7 @@ class _EntryTabState extends State<EntryTab> {
         notifyMissing('Sampling Location');
         return false;
       }
-    } else if (_testName == 'Accuracy Test') {
+    } else if (_isAccuracyOrBullet) {
       if (widget.currentModule == 'Component Test') {
         if (_bulletSupplierController.text.trim().isEmpty) {
           notifyMissing('Bullet Supplier');
@@ -2354,10 +2354,12 @@ class _EntryTabState extends State<EntryTab> {
     );
   }
 
+  bool get _isAccuracyOrBullet => _testName == 'Accuracy Test' || _testName == 'Bullet components';
+
   // calibers and testNames are now on EntryTab widget class
   List<String> get calibers {
     if (widget.currentModule == 'Component Test') {
-      if (_testName == 'Accuracy Test') {
+      if (_isAccuracyOrBullet) {
         return const [
           '5.56x45 .223 55 grains',
           '5.56x45 .223 69 grains',
@@ -2375,7 +2377,7 @@ class _EntryTabState extends State<EntryTab> {
       return EntryTab.testNames.where((t) => t != 'Primer Sensitivity Test' && t != 'Propellant Test').toList();
     }
     if (widget.currentModule == 'Component Test') {
-      return const ['Primer Sensitivity Test', 'Propellant Test', 'Accuracy Test'];
+      return const ['Primer Sensitivity Test', 'Propellant Test', 'Bullet components'];
     }
     return EntryTab.testNames.where((t) => t != 'Propellant Test').toList();
   }
@@ -2383,7 +2385,7 @@ class _EntryTabState extends State<EntryTab> {
   // Caliber-specific test matrix and sample sizing
   bool _isTestAllowedForCaliber(String test, String cal) {
     if (widget.currentModule == 'Component Test') {
-      if (test == 'Accuracy Test') {
+      if (test == 'Accuracy Test' || test == 'Bullet components') {
         final c = cal.toLowerCase().replaceAll(',', '.');
         return c.contains('.223') || c.contains('.308') || (c.contains('124') && c.contains('cmj'));
       }
@@ -2484,7 +2486,7 @@ class _EntryTabState extends State<EntryTab> {
     if (test == 'Terminal Effect Test') return 30;
     if (test == 'Firing Rate Cycle Test') return 60;
     if (test == 'Primer Sensitivity Test') return 275;
-    if (test == 'Accuracy Test') {
+    if (test == 'Accuracy Test' || test == 'Bullet components') {
       if (c.contains('.223') || c.contains('.308') || c.contains('match') || c.contains('luger')) {
         return 10;
       }
@@ -2594,7 +2596,7 @@ class _EntryTabState extends State<EntryTab> {
         _cartridgeTempController.text = '+21';
         _functionSingleTemp = '+21';
       }
-      if (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test') {
+      if (widget.currentModule == 'Component Test' && _isAccuracyOrBullet) {
         if (newCaliber.contains('55 grains')) {
           _bulletGrainSizeController.text = '55 grains';
         } else if (newCaliber.contains('69 grains')) {
@@ -2741,7 +2743,7 @@ class _EntryTabState extends State<EntryTab> {
         _functionSingleTemp = '+21';
       }
       if (widget.currentModule == 'Component Test') {
-        if (newTest == 'Accuracy Test') {
+        if (newTest == 'Accuracy Test' || newTest == 'Bullet components') {
           final c = _caliber.toLowerCase().replaceAll(',', '.');
           final isAllowedBulletCal = c.contains('.223') || c.contains('.308') || (c.contains('124') && c.contains('cmj'));
           if (!isAllowedBulletCal) {
@@ -3123,11 +3125,11 @@ class _EntryTabState extends State<EntryTab> {
     super.initState();
     _caliber = widget.initialCaliber;
     _testName = widget.initialTestName;
-    if (widget.currentModule == 'Component Test' && _caliber.isNotEmpty) {
-      if (!const ['5.56', '7.62', '9mm'].contains(_caliber)) {
-        _caliber = '5.56';
+    if (widget.currentModule == 'Component Test') {
+      if (_testName == 'Accuracy Test') {
+        _testName = 'Bullet components';
       }
-      if (_testName != 'Propellant Test' && _testName != 'Primer Sensitivity Test') {
+      if (_testName != 'Propellant Test' && _testName != 'Primer Sensitivity Test' && _testName != 'Bullet components') {
         _testName = 'Primer Sensitivity Test';
       }
     } else if ((widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') && _testName.isNotEmpty) {
@@ -3324,7 +3326,7 @@ class _EntryTabState extends State<EntryTab> {
       }
       _syncFunctionWeaponState();
       if (_accuracyBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_accuracyBarrels.contains(_barrelSNController.text))) {
-        if (_testName == 'Accuracy Test') _barrelSNController.text = _accuracyBarrels.first;
+        if (_isAccuracyOrBullet) _barrelSNController.text = _accuracyBarrels.first;
       }
       if (_epvatBarrels.isNotEmpty && (_barrelSNController.text.isEmpty || !_epvatBarrels.contains(_barrelSNController.text))) {
         if (_testName == 'EPVAT test') _barrelSNController.text = _epvatBarrels.first;
@@ -3370,7 +3372,7 @@ class _EntryTabState extends State<EntryTab> {
 
 
   void _updateDefaultDistance() {
-    if (_testName != 'Accuracy Test' && _testName != 'EPVAT test') return;
+    if (!_isAccuracyOrBullet && _testName != 'EPVAT test') return;
     if (_caliber.contains('M193')) {
       _distanceController.text = '21';
     } else if (_caliber.contains('SS109') || _caliber.contains('M80')) {
@@ -4116,7 +4118,7 @@ class _EntryTabState extends State<EntryTab> {
           testTime: _testTimeController.text.trim().isNotEmpty ? _testTimeController.text.trim() : formattedDate,
           gp6Serial: (_testName == 'EPVAT test' || _testName == 'Propellant Test') ? _gp6SerialController.text.trim() : '',
           userRole: widget.userRole,
-          samplingLocation: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+          samplingLocation: (widget.currentModule == 'Component Test' && _isAccuracyOrBullet)
               ? _bulletSampleLocation
               : (_locationController.text.trim().isNotEmpty ? _locationController.text.trim() : (_allSampleLocations.isNotEmpty ? _allSampleLocations.first : '')),
           mouthSlow: _testName == 'Waterproof Test' ? (int.tryParse(_mouthSlowController.text.trim()) ?? 0) : 0,
@@ -4128,26 +4130,26 @@ class _EntryTabState extends State<EntryTab> {
           requirement: _requirementController.text.trim(),
           barrelSN: _testName == 'Function Test'
               ? (_selectedFunctionWeapons.isNotEmpty ? _selectedFunctionWeapons.join('; ') : _functionWeapon)
-              : (_testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _barrelSNController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalBarrelSNController.text.trim() : '')),
+              : (_isAccuracyOrBullet || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _barrelSNController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalBarrelSNController.text.trim() : '')),
           barrelType: '',
-          velocityDistance: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _distanceController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalDistanceController.text.trim() : ''),
-          accMeanX: (_testName == 'Accuracy Test' && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _meanXController.text.trim() : '',
-          accMaxX: (_testName == 'Accuracy Test' && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _maxXController.text.trim() : '',
-          accMinX: (_testName == 'Accuracy Test' && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _minXController.text.trim() : '',
-          accRangeX: (_testName == 'Accuracy Test' && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _rangeXController.text.trim() : '',
-          accSDX: _testName == 'Accuracy Test' || _testName == 'Extraction Force Test' ? _sdXController.text.trim() : '',
-          accMeanY: _testName == 'Accuracy Test' && _caliber != '5.56x45 M193' ? _meanYController.text.trim() : '',
-          accMaxY: _testName == 'Accuracy Test' && _caliber != '5.56x45 M193' ? _maxYController.text.trim() : '',
-          accMinY: _testName == 'Accuracy Test' && _caliber != '5.56x45 M193' ? _minYController.text.trim() : '',
-          accRangeY: _testName == 'Accuracy Test' && _caliber != '5.56x45 M193' ? _rangeYController.text.trim() : '',
-          accSDY: _testName == 'Accuracy Test' ? _sdYController.text.trim() : '',
-          velMean: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _meanVelController.text.trim() : '',
-          velMin: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _minVelController.text.trim() : '',
-          velMax: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _maxVelController.text.trim() : '',
-          velRange: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _rangeVelController.text.trim() : '',
-          velSD: _testName == 'Accuracy Test' || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _sdVelController.text.trim() : '',
-          accMeanRadius: _testName == 'Accuracy Test' ? _meanRadiusController.text.trim() : '',
-          accLargestDistance: _testName == 'Accuracy Test' ? _accLargestDistanceController.text.trim() : '',
+          velocityDistance: _isAccuracyOrBullet || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _distanceController.text.trim() : (_testName == 'Terminal Effect Test' ? _terminalDistanceController.text.trim() : ''),
+          accMeanX: (_isAccuracyOrBullet && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _meanXController.text.trim() : '',
+          accMaxX: (_isAccuracyOrBullet && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _maxXController.text.trim() : '',
+          accMinX: (_isAccuracyOrBullet && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _minXController.text.trim() : '',
+          accRangeX: (_isAccuracyOrBullet && _caliber != '5.56x45 M193') || _testName == 'Extraction Force Test' ? _rangeXController.text.trim() : '',
+          accSDX: _isAccuracyOrBullet || _testName == 'Extraction Force Test' ? _sdXController.text.trim() : '',
+          accMeanY: _isAccuracyOrBullet && _caliber != '5.56x45 M193' ? _meanYController.text.trim() : '',
+          accMaxY: _isAccuracyOrBullet && _caliber != '5.56x45 M193' ? _maxYController.text.trim() : '',
+          accMinY: _isAccuracyOrBullet && _caliber != '5.56x45 M193' ? _minYController.text.trim() : '',
+          accRangeY: _isAccuracyOrBullet && _caliber != '5.56x45 M193' ? _rangeYController.text.trim() : '',
+          accSDY: _isAccuracyOrBullet ? _sdYController.text.trim() : '',
+          velMean: _isAccuracyOrBullet || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _meanVelController.text.trim() : '',
+          velMin: _isAccuracyOrBullet || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _minVelController.text.trim() : '',
+          velMax: _isAccuracyOrBullet || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _maxVelController.text.trim() : '',
+          velRange: _isAccuracyOrBullet || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _rangeVelController.text.trim() : '',
+          velSD: _isAccuracyOrBullet || _testName == 'EPVAT test' || _testName == 'Propellant Test' ? _sdVelController.text.trim() : '',
+          accMeanRadius: _isAccuracyOrBullet ? _meanRadiusController.text.trim() : '',
+          accLargestDistance: _isAccuracyOrBullet ? _accLargestDistanceController.text.trim() : '',
           extractionForceType: _testName == 'Extraction Force Test' ? _extractionForceType : '',
           extractionForceRounds: _testName == 'Extraction Force Test' ? _extractionRoundsControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join(',') : '',
           cartridgeTemp: (_testName == 'EPVAT test' || _testName == 'Propellant Test')
@@ -4241,19 +4243,19 @@ class _EntryTabState extends State<EntryTab> {
           propellantSupplier: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantSupplier : '',
           propellantCode: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? _propellantCodeController.text.trim() : '',
           propellantLot: (_testName == 'Propellant Test' || _testName == 'EPVAT test') ? (_selectedComponentPropellantLot ?? _propellantLotController.text.trim()) : '',
-          propellantCharge: (_testName == 'Propellant Test' || _testName == 'EPVAT test' || (_testName == 'Accuracy Test' && widget.currentModule == 'Component Test'))
+          propellantCharge: (_testName == 'Propellant Test' || _testName == 'EPVAT test' || (_isAccuracyOrBullet && widget.currentModule == 'Component Test'))
               ? _propellantChargeController.text.trim()
               : '',
-          bulletSupplier: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+          bulletSupplier: (widget.currentModule == 'Component Test' && _isAccuracyOrBullet)
               ? _bulletSupplierController.text.trim()
               : '',
-          bulletGrainSize: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+          bulletGrainSize: (widget.currentModule == 'Component Test' && _isAccuracyOrBullet)
               ? _bulletGrainSizeController.text.trim()
               : '',
-          sampleLoadingMethod: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+          sampleLoadingMethod: (widget.currentModule == 'Component Test' && _isAccuracyOrBullet)
               ? _sampleLoadingMethod
               : '',
-          sampleReceivedDate: (widget.currentModule == 'Component Test' && _testName == 'Accuracy Test')
+          sampleReceivedDate: (widget.currentModule == 'Component Test' && _isAccuracyOrBullet)
               ? _sampleReceivedDateController.text.trim()
               : '',
         );
@@ -6646,7 +6648,7 @@ class _EntryTabState extends State<EntryTab> {
                     const SizedBox(height: 4.0),
                   ],
 
-                  if (_testName == 'Accuracy Test') ...[
+                  if (_isAccuracyOrBullet) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                       decoration: BoxDecoration(
@@ -11215,7 +11217,7 @@ class _EntryTabState extends State<EntryTab> {
       return 'Approved';
     }
     
-    if (_testName == 'Accuracy Test') {
+    if (_isAccuracyOrBullet) {
       final accRules = _getAccuracyRulesForCaliber();
       final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
       final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
@@ -12011,7 +12013,7 @@ class _EntryTabState extends State<EntryTab> {
           } else {
             autoStatus = 'Approved';
           }
-        } else if (_testName == 'Accuracy Test') {
+        } else if (_isAccuracyOrBullet) {
           final accRules = _getAccuracyRulesForCaliber();
           final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
           final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();
@@ -12302,7 +12304,7 @@ class _EntryTabState extends State<EntryTab> {
       ], lockSingleRow: true);
     }
 
-    if (_testName == 'Accuracy Test') {
+    if (_isAccuracyOrBullet) {
       return _buildFormRow([
         _buildFlexibleField(
           key: _producedFieldKey,
@@ -12942,7 +12944,7 @@ class _EntryTabState extends State<EntryTab> {
     final bool isComponent = widget.currentModule == 'Component Test';
     final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
 
-    if (isComponent && _testName == 'Accuracy Test') {
+    if (isComponent && _isAccuracyOrBullet) {
       return _buildComponentBulletAccuracyCard();
     }
 
@@ -13734,7 +13736,7 @@ class _EntryTabState extends State<EntryTab> {
       final double limit = (extRules['min_force'] ?? 200.0).toDouble();
       specText = 'Caliber: $_caliber | Min Extraction Force: ${limit.toStringAsFixed(1)} N.';
       instructionsText = extRules['instructions'] ?? 'Perform pull-out test of bullet and record peak force.';
-    } else if (_testName == 'Accuracy Test') {
+    } else if (_isAccuracyOrBullet) {
       final accRules = _getAccuracyRulesForCaliber();
       final double maxMeanRadius = (accRules['max_mean_radius'] ?? 50.0).toDouble();
       final double maxSD = (accRules['max_sd'] ?? 200.0).toDouble();

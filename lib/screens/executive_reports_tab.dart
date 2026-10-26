@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import '../models/ballistic_record.dart';
 import '../services/storage_service.dart';
@@ -657,21 +658,35 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             children: [
               const Icon(Icons.analytics_outlined, color: Color(0xFF38BDF8), size: 16.0),
               const SizedBox(width: 8.0),
-              Text(
-                '$cal Statistical Process Control (SPC) & Box-Whisker Analytics',
-                style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  '$cal Statistical Process Control (SPC) & Box-Whisker Analytics',
+                  style: const TextStyle(color: Colors.white, fontSize: 13.0, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12.0),
-          // SPC Trend Chart
-          SizedBox(
-            height: 520.0,
-            child: TrendLineChart(
-              records: records,
-              selectedCaliber: cal,
-              currentModule: currentModule,
-            ),
+          // Adaptive SPC Trend Chart Container
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final calRecords = records.where((r) => r.caliber.trim() == cal.trim()).toList();
+              final testTypes = calRecords.map((r) => r.testName).toSet();
+              final numTests = math.max(1, testTypes.length);
+              final isWide = constraints.maxWidth >= 800;
+              final numRows = isWide ? (numTests / 2).ceil() : numTests;
+              final chartHeight = math.max(540.0, numRows * 330.0 + 40.0);
+
+              return SizedBox(
+                height: chartHeight,
+                child: TrendLineChart(
+                  records: records,
+                  selectedCaliber: cal,
+                  currentModule: currentModule,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16.0),
           const Divider(color: Color(0xFF334155)),
@@ -681,8 +696,15 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8.0),
-          SizedBox(
-            height: 380.0,
+          // Framed BoxPlotChart with light surface ensuring clean contrast and preventing text overlap
+          Container(
+            height: 420.0,
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.0),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
             child: BoxPlotChart(records: records),
           ),
         ],

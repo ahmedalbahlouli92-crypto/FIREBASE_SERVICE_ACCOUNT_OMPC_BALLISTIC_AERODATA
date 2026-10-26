@@ -31,6 +31,9 @@ class TrendLineChart extends StatefulWidget {
 class _TrendLineChartState extends State<TrendLineChart> {
   String _selectedCaliber = 'All';
   String _selectedGroupBy = 'By Lot Number'; // 'By Lot Number' | 'By Hopper No.' | 'By Individual Test'
+  String _selectedTemp = '21 °C'; // Default to 21 °C per Requirement 2
+  static const List<String> _tempOptions = ['21 °C', '+52 °C', '-54 °C', 'All Temps'];
+
   List<String> _selectedTests = [];
   final Map<String, Set<String>> _testActiveParams = {};
 
@@ -89,6 +92,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
       return [
         'Primer Sensitivity Test',
         'Propellant Test',
+        'Bullet components',
       ];
     } else {
       return [
@@ -111,7 +115,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
     if (rLower == tLower) return true;
     if (rLower.contains('epvat') && tLower.contains('epvat')) return true;
     if (rLower.contains('waterproof') && tLower.contains('waterproof')) return true;
-    if (rLower.contains('accuracy') && tLower.contains('accuracy')) return true;
+    if ((rLower.contains('accuracy') || rLower.contains('bullet')) &&
+        (tLower.contains('accuracy') || tLower.contains('bullet'))) return true;
     if (rLower.contains('stress') && tLower.contains('stress')) return true;
     if (rLower.contains('primer') && tLower.contains('primer')) return true;
     if (rLower.contains('propellant') && tLower.contains('propellant')) return true;
@@ -121,6 +126,17 @@ class _TrendLineChartState extends State<TrendLineChart> {
     if ((rLower.contains('firing rate') || rLower.contains('cyclic')) &&
         (tLower.contains('firing rate') || tLower.contains('cyclic'))) return true;
     return false;
+  }
+
+  bool _matchesTemperature(BallisticRecord r, String selectedTemp) {
+    if (selectedTemp == 'All Temps') return true;
+    final t = r.cartridgeTemp.trim();
+    // Non-temperature conditioned tests remain included
+    if (t.isEmpty || t == 'N/A' || t == '-') return true;
+    if (selectedTemp.contains('21')) return t.contains('21');
+    if (selectedTemp.contains('52')) return t.contains('52');
+    if (selectedTemp.contains('54')) return t.contains('54');
+    return t == selectedTemp;
   }
 
   String? _findMatchingTestName(String input) {
@@ -149,7 +165,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
         'Total Slow Leaks',
         'Total Leaks',
       ];
-    } else if (lower.contains('accuracy')) {
+    } else if (lower.contains('accuracy') || lower.contains('bullet')) {
       return [
         'Average SD (X & Y)',
         'Mean Radius (mm)',
@@ -279,6 +295,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
       } else if (!_isDailyTest && _selectedGroupBy == 'By Hopper No.') {
         _selectedGroupBy = 'By Lot Number';
       }
+      _initSelectedTests();
     }
     if (widget.selectedCaliber != null && widget.selectedCaliber != oldWidget.selectedCaliber) {
       if (widget.selectedCaliber != _selectedCaliber) {
@@ -629,7 +646,8 @@ class _TrendLineChartState extends State<TrendLineChart> {
     final filtered = widget.records.where((r) {
       final matchesCal = _selectedCaliber == 'All' || r.caliber == _selectedCaliber;
       final matchesTest = _matchesTestName(r.testName, testName);
-      return matchesCal && matchesTest;
+      final matchesTemp = _matchesTemperature(r, _selectedTemp);
+      return matchesCal && matchesTest && matchesTemp;
     }).toList();
 
     return _buildGroupPoints(filtered, paramOverride: activeParam);
@@ -707,7 +725,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
         ),
         const SizedBox(height: 12.0),
 
-        // ─── Filter row (Caliber Specification & Group By only) ────────
+        // ─── Filter row (Caliber, Group By & Temperature) ────────
         Wrap(
           spacing: 12.0,
           runSpacing: 10.0,
@@ -724,6 +742,49 @@ class _TrendLineChartState extends State<TrendLineChart> {
               value: _groupByOptions.contains(_selectedGroupBy) ? _selectedGroupBy : _groupByOptions.first,
               items: _groupByOptions,
               onChanged: (v) => setState(() => _selectedGroupBy = v!),
+            ),
+            // Temperature Filter (Default 21 °C with instant toggle pills)
+            _buildDropdown(
+              label: 'TEMPERATURE',
+              value: _selectedTemp,
+              items: _tempOptions,
+              onChanged: (v) => setState(() => _selectedTemp = v!),
+            ),
+            // Temperature Quick Pills
+            Padding(
+              padding: const EdgeInsets.only(top: 14.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: _tempOptions.map((temp) {
+                  final isSel = _selectedTemp == temp;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 5.0),
+                    child: InkWell(
+                      onTap: () => setState(() => _selectedTemp = temp),
+                      borderRadius: BorderRadius.circular(6.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        decoration: BoxDecoration(
+                          color: isSel ? const Color(0xFF0284C7).withOpacity(0.3) : const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(
+                            color: isSel ? const Color(0xFF38BDF8) : const Color(0xFF334155),
+                            width: isSel ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: Text(
+                          temp,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                            color: isSel ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
             // Metric toggle pills
             Padding(
@@ -957,6 +1018,23 @@ class _TrendLineChartState extends State<TrendLineChart> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
                 decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(4.0),
+                  border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4)),
+                ),
+                child: Text(
+                  _selectedTemp,
+                  style: const TextStyle(
+                    color: Color(0xFF38BDF8),
+                    fontSize: 9.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6.0),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
+                decoration: BoxDecoration(
                   color: isOOC ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5),
                   borderRadius: BorderRadius.circular(4.0),
                 ),
@@ -1109,21 +1187,111 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   Widget _buildTestsGrid() {
     if (_selectedTests.isEmpty) {
-      return const Center(child: Text('No test selected. Please select up to 4 tests above.', style: TextStyle(color: Color(0xFF94A3B8))));
+      return const Center(
+        child: Text(
+          'No test selected. Please select up to 4 tests above.',
+          style: TextStyle(color: Color(0xFF94A3B8)),
+        ),
+      );
     }
 
     if (_selectedTests.length == 1) {
       return _buildSingleTestSpcCard(_selectedTests[0]);
     }
 
-    final children = <Widget>[];
-    for (int i = 0; i < _selectedTests.length; i++) {
-      if (i > 0) children.add(const SizedBox(height: 8.0));
-      children.add(Expanded(child: _buildSingleTestSpcCard(_selectedTests[i])));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double availableHeight = constraints.maxHeight;
+        final double availableWidth = constraints.maxWidth;
+        final int count = _selectedTests.length;
+
+        // If available height per card is too cramped (< 260px), make it a scrollable column or 2-column layout
+        final bool isHeightConstrained = availableHeight.isFinite && (availableHeight / count < 260.0);
+        final bool canUse2Cols = availableWidth >= 800 && count >= 2;
+
+        if (canUse2Cols) {
+          final rows = <Widget>[];
+          for (int i = 0; i < count; i += 2) {
+            final card1 = _buildSingleTestSpcCard(_selectedTests[i]);
+            Widget? card2;
+            if (i + 1 < count) {
+              card2 = _buildSingleTestSpcCard(_selectedTests[i + 1]);
+            }
+            if (rows.isNotEmpty) rows.add(const SizedBox(height: 10.0));
+
+            if (isHeightConstrained) {
+              rows.add(
+                SizedBox(
+                  height: 310.0,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: card1),
+                      const SizedBox(width: 10.0),
+                      Expanded(child: card2 ?? const SizedBox.shrink()),
+                    ],
+                  ),
+                ),
+              );
+            } else {
+              rows.add(
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: card1),
+                      const SizedBox(width: 10.0),
+                      Expanded(child: card2 ?? const SizedBox.shrink()),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          if (isHeightConstrained) {
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: rows,
+              ),
+            );
+          } else {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: rows,
+            );
+          }
+        }
+
+        if (isHeightConstrained) {
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (int i = 0; i < count; i++) ...[
+                  if (i > 0) const SizedBox(height: 10.0),
+                  SizedBox(
+                    height: 290.0,
+                    child: _buildSingleTestSpcCard(_selectedTests[i]),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+
+        // Unconstrained height: fill equally
+        final children = <Widget>[];
+        for (int i = 0; i < count; i++) {
+          if (i > 0) children.add(const SizedBox(height: 10.0));
+          children.add(Expanded(child: _buildSingleTestSpcCard(_selectedTests[i])));
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        );
+      },
     );
   }
 
@@ -1650,10 +1818,39 @@ class _MultiMetricTrendPainter extends CustomPainter {
       tpCtrl.paint(canvas, Offset(chartRect.right - tpCtrl.width - 5.0, y - tpCtrl.height / 2));
     }
 
+    void drawSubtleGuideLine(double val, Color color, String label) {
+      final y = toY(val);
+      if (y < chartRect.top || y > chartRect.bottom) return;
+      const dashWidth = 3.0;
+      const dashSpace = 5.0;
+      double startX = chartRect.left;
+      final paint = Paint()
+        ..color = color
+        ..strokeWidth = 0.8;
+      while (startX < chartRect.right) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(math.min(startX + dashWidth, chartRect.right), y),
+          paint,
+        );
+        startX += dashWidth + dashSpace;
+      }
+    }
+
     if (points.length > 1) {
-      drawControlLine(uclVal, const Color(0xFFEF4444), 'UCL:');
-      drawControlLine(clVal, const Color(0xFF06B6D4), 'CL:');
-      drawControlLine(lclVal, const Color(0xFFEF4444), 'LCL:');
+      final sigma1Upper = clVal + spcSd;
+      final sigma1Lower = math.max(0.0, clVal - spcSd);
+      final sigma2Upper = clVal + (2.0 * spcSd);
+      final sigma2Lower = math.max(0.0, clVal - (2.0 * spcSd));
+
+      drawSubtleGuideLine(sigma2Upper, const Color(0xFFF59E0B).withOpacity(0.35), '+2σ');
+      drawSubtleGuideLine(sigma2Lower, const Color(0xFFF59E0B).withOpacity(0.35), '-2σ');
+      drawSubtleGuideLine(sigma1Upper, const Color(0xFF10B981).withOpacity(0.25), '+1σ');
+      drawSubtleGuideLine(sigma1Lower, const Color(0xFF10B981).withOpacity(0.25), '-1σ');
+
+      drawControlLine(uclVal, const Color(0xFFEF4444), 'UCL (+3σ):');
+      drawControlLine(clVal, const Color(0xFF06B6D4), 'CL (x̄):');
+      drawControlLine(lclVal, const Color(0xFFEF4444), 'LCL (-3σ):');
     }
 
     // ─── Draw Series Lines ────────────────────────────────────────────
