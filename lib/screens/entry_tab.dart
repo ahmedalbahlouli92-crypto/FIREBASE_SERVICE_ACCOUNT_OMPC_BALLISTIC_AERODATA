@@ -4080,18 +4080,6 @@ class _EntryTabState extends State<EntryTab> {
         return record;
       } else {
         String customRecordNotes = _notesController.text.trim();
-        if (_testName == 'Waterproof Test') {
-          final hasLeaksOrRetest = (int.tryParse(_mouthSlowController.text.trim()) ?? 0) > 0 ||
-              (int.tryParse(_mouthFastController.text.trim()) ?? 0) > 0 ||
-              (int.tryParse(_primerSlowController.text.trim()) ?? 0) > 0 ||
-              (int.tryParse(_primerFastController.text.trim()) ?? 0) > 0 ||
-              defects > 0 ||
-              finalStatus.toLowerCase().contains('reject') ||
-              finalStatus.toLowerCase().contains('retest');
-          if (hasLeaksOrRetest && !customRecordNotes.toLowerCase().contains('need for sealant')) {
-            customRecordNotes = customRecordNotes.isEmpty ? 'need for sealant' : '$customRecordNotes; need for sealant';
-          }
-        }
 
         // Individual or other test name
         final record = BallisticRecord(

@@ -83,11 +83,53 @@ class ReportGenerator {
       final idx = s.indexOf('[RETEST by');
       s = s.substring(0, idx).trim();
     }
+    s = s.replaceAll(RegExp(r'\bneed for sealant\b', caseSensitive: false), ' ').trim();
     s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    s = s.replaceAll(RegExp(r'^[\s;|,.\-]+|[\s;|,.\-]+$'), '').trim();
     if (s.toLowerCase() == 'no remarks recorded.' || s.toLowerCase() == 'no remarks recorded' || s == '-' || s == '.') {
       return '';
     }
     return s;
+  }
+
+  /// Resolves caliber specification for volume reports across modules.
+  /// Handles Component Test module mappings:
+  /// - Primed Cases: '5.56 primed cases', '7.62 primed cases', '9mm primed cases'
+  /// - Bullets: '.223 bullet', '.308 bullet', '9mm bullet'
+  static String resolveCaliberVolumeName(BallisticRecord r, [String? currentModule]) {
+    final mod = (currentModule ?? r.module).trim();
+    final isComponent = mod == 'Component Test' || mod.toLowerCase().contains('component');
+    final calRaw = r.caliber.replaceAll(';', ' ').trim();
+    final testLower = r.testName.toLowerCase();
+
+    if (isComponent) {
+      final isPrimer = testLower.contains('primer');
+      final isBullet = testLower.contains('bullet') || testLower.contains('accuracy');
+      final calLower = calRaw.toLowerCase();
+
+      if (isPrimer || (!isBullet && !testLower.contains('propellant'))) {
+        if (calLower.contains('5.56') || calLower.contains('.223')) {
+          return '5.56 primed cases';
+        } else if (calLower.contains('7.62') || calLower.contains('.308')) {
+          return '7.62 primed cases';
+        } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
+          return '9mm primed cases';
+        } else {
+          return calRaw.isNotEmpty ? '$calRaw primed cases' : 'Primed Cases';
+        }
+      } else if (isBullet) {
+        if (calLower.contains('5.56') || calLower.contains('.223')) {
+          return '.223 bullet';
+        } else if (calLower.contains('7.62') || calLower.contains('.308')) {
+          return '.308 bullet';
+        } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
+          return '9mm bullet';
+        } else {
+          return calRaw.isNotEmpty ? '$calRaw bullet' : 'Bullets';
+        }
+      }
+    }
+    return calRaw.isNotEmpty ? calRaw : 'Unspecified Caliber';
   }
 
   static String formatWeapons(String raw) {
@@ -346,7 +388,7 @@ class ReportGenerator {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.pressureBar, r.viscosity, r.testTime, r.samplingLocation,
-          r.mouthSlow, r.mouthFast, r.primerSlow, r.primerFast, r.notes
+          r.mouthSlow, r.mouthFast, r.primerSlow, r.primerFast, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -356,7 +398,7 @@ class ReportGenerator {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.roomTemp, r.neckSlow, r.neckFast, r.shoulderSlow, r.shoulderFast,
-          r.bodySlow, r.bodyFast, r.headSlow, r.headFast, r.samplingLocation, r.testTime, r.notes
+          r.bodySlow, r.bodyFast, r.headSlow, r.headFast, r.samplingLocation, r.testTime, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -365,7 +407,7 @@ class ReportGenerator {
       for (var r in records) {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
-          r.extractionForceType, r.accMinX, r.accMeanX, r.accMaxX, r.accRangeX, r.accSDX, r.extractionForceRounds, r.notes
+          r.extractionForceType, r.accMinX, r.accMeanX, r.accMaxX, r.accRangeX, r.accSDX, r.extractionForceRounds, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -377,7 +419,7 @@ class ReportGenerator {
           r.barrelSN, r.velocityDistance,
           r.accMeanX, r.accMaxX, r.accMinX, r.accRangeX, r.accSDX,
           r.accMeanY, r.accMaxY, r.accMinY, r.accRangeY, r.accSDY,
-          r.accMeanRadius, r.velMean, r.velMin, r.velMax, r.velRange, r.velSD, r.notes
+          r.accMeanRadius, r.velMean, r.velMin, r.velMax, r.velRange, r.velSD, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -392,7 +434,7 @@ class ReportGenerator {
           r.epvatMeanPressure, r.epvatMaxPressure, r.epvatMinPressure, r.epvatRangePressure, r.epvatSDPressure,
           r.epvatP2MeanPressure, r.epvatP2MaxPressure, r.epvatP2MinPressure, r.epvatP2RangePressure, r.epvatP2SDPressure,
           r.velMean, r.velMin, r.velMax, r.velRange, r.velSD,
-          r.epvatPressureRounds, r.epvatP2PressureRounds, r.epvatVelRounds, r.notes
+          r.epvatPressureRounds, r.epvatP2PressureRounds, r.epvatVelRounds, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -401,7 +443,7 @@ class ReportGenerator {
       for (var r in records) {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
-          r.cyclicRateWeaponType, r.cyclicRateAmmoType, r.cyclicRateMin, r.cyclicRateMax, r.cyclicRateValue, r.notes
+          r.cyclicRateWeaponType, r.cyclicRateAmmoType, r.cyclicRateMin, r.cyclicRateMax, r.cyclicRateValue, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -411,7 +453,7 @@ class ReportGenerator {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.barrelSN, r.velocityDistance,
-          r.terminalHoleDiameter, r.terminalSteelPenetration, r.terminalAluminumPenetration, r.terminalVelocity, r.notes
+          r.terminalHoleDiameter, r.terminalSteelPenetration, r.terminalAluminumPenetration, r.terminalVelocity, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -420,7 +462,7 @@ class ReportGenerator {
       for (var r in records) {
         final row = [
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.cyclicRateWeaponType, r.cartridgeTemp, r.status, r.produced,
-          r.functionLevel1, r.functionLevel2, r.functionLevel3, r.functionLevel4, r.defects, r.notes
+          r.functionLevel1, r.functionLevel2, r.functionLevel3, r.functionLevel4, r.defects, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -431,7 +473,7 @@ class ReportGenerator {
           r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.status, r.produced,
           r.primerLot, r.primerSupplier, r.primerInsertionDepth,
           r.primerHbar, r.primerSD, r.primerAllFireH, r.primerNoFireH,
-          r.primerDropHeights, r.primerFireResults, r.notes
+          r.primerDropHeights, r.primerFireResults, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -445,7 +487,7 @@ class ReportGenerator {
           r.epvatMeanPressure, r.epvatMaxPressure, r.epvatMinPressure, r.epvatRangePressure, r.epvatSDPressure,
           r.epvatP2MeanPressure, r.epvatP2MaxPressure, r.epvatP2MinPressure, r.epvatP2RangePressure, r.epvatP2SDPressure,
           r.velMean, r.velMin, r.velMax, r.velRange, r.velSD,
-          r.epvatPressureRounds, r.epvatP2PressureRounds, r.epvatVelRounds, r.notes
+          r.epvatPressureRounds, r.epvatP2PressureRounds, r.epvatVelRounds, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -454,7 +496,7 @@ class ReportGenerator {
       for (var r in records) {
         final metrics = _getRecordMetricsSummary(r);
         final row = [
-          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.testName, r.status, r.produced, metrics, r.notes
+          r.timestamp, r.operators, r.shift, r.caliber, r.lotNo, r.testName, r.status, r.produced, metrics, cleanRemarks(r.notes)
         ].map((e) => '"${e.toString().replaceAll('"', '""')}"').join(',');
         buffer.writeln(row);
       }
@@ -1673,7 +1715,7 @@ class ReportGenerator {
             <td style="font-weight: bold;">${r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-'}</td>
             <td>${r.primerAllFireH.isNotEmpty ? '${r.primerAllFireH} cm' : '-'}</td>
             <td>${r.primerNoFireH.isNotEmpty ? '${r.primerNoFireH} cm' : '-'}</td>
-            <td>${cleanRemarks(r.notes).isNotEmpty ? cleanRemarks(r.notes) : '-'}</td>
+            <td>${cleanRemarks(r.notes)}</td>
           </tr>
         ''');
       } else {
@@ -1687,7 +1729,7 @@ class ReportGenerator {
             <td>${r.produced} rounds</td>
             <td>$metrics</td>
             <td><span class="badge $badgeClass">${r.status}</span></td>
-            <td>${r.notes}</td>
+            <td>${cleanRemarks(r.notes)}</td>
           </tr>
         ''');
       }
@@ -1986,7 +2028,7 @@ class ReportGenerator {
                 notes = notes.isEmpty ? 'sealant applied' : '$notes | sealant applied';
               }
             }
-            return notes;
+            return cleanRemarks(notes);
           })()}</td>
         </tr>
         ''');
@@ -2887,7 +2929,7 @@ class ReportGenerator {
             <td style="font-weight: bold;">${r.primerSD.isNotEmpty ? '${r.primerSD} cm' : '-'}</td>
             <td>${r.primerAllFireH.isNotEmpty ? '${r.primerAllFireH} cm' : '-'}</td>
             <td>${r.primerNoFireH.isNotEmpty ? '${r.primerNoFireH} cm' : '-'}</td>
-            <td>${cleanRemarks(r.notes).isNotEmpty ? cleanRemarks(r.notes) : '-'}</td>
+            <td>${cleanRemarks(r.notes)}</td>
           </tr>
         ''');
       } else {
@@ -2901,7 +2943,7 @@ class ReportGenerator {
             <td>${r.produced} rounds</td>
             <td>$metrics</td>
             <td><span class="badge $badgeClass">${r.status}</span></td>
-            <td>${r.notes}</td>
+            <td>${cleanRemarks(r.notes)}</td>
           </tr>
         ''');
       }
@@ -4212,7 +4254,7 @@ ${certRowsBuffer.toString()}        </tbody>
   <style>
     @page Section1 {
       size: 595.3pt 841.9pt;
-      margin: 12.0pt 18.0pt 10.0pt 18.0pt;
+      margin: 16.0pt 22.0pt 14.0pt 22.0pt;
       mso-header-margin: 0pt;
       mso-footer-margin: 0pt;
     }
@@ -4222,28 +4264,28 @@ ${certRowsBuffer.toString()}        </tbody>
       mso-margin-bottom-alt: 0pt;
       mso-line-height-rule: exactly;
     }
-    body { font-family: Arial, sans-serif; font-size: 7pt; color: #000000; margin: 0; padding: 0; line-height: 1.08; }
+    body { font-family: Calibri, Arial, sans-serif; font-size: 8.5pt; color: #000000; margin: 0; padding: 0; line-height: 1.15; }
     .cert-wrapper { width: 100%; margin: 0; }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 2pt; }
+    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 3pt; }
     .header-table td { border: none !important; padding: 0 !important; }
-    .title-section { text-align: center; margin-bottom: 2pt; }
-    .title-section h1 { font-size: 10.5pt; font-weight: bold; color: #000000; margin: 0 0 1pt 0; text-transform: uppercase; line-height: 1.05; }
-    .caliber-subtitle { font-size: 8.5pt; font-weight: bold; color: #000000; margin-bottom: 1pt; text-align: center; }
-    .lot-subtitle { font-size: 7.8pt; font-weight: bold; color: #475569; text-align: center; }
-    .title-line { height: 1.5px; width: 100%; background-color: #06b6d4; margin-top: 1.5pt; margin-bottom: 2.5pt; border-bottom: 1.5px solid #06b6d4; }
-    .section-title { font-size: 7.8pt; font-weight: bold; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 1pt; margin-top: 2.5pt; margin-bottom: 1.5pt; text-transform: uppercase; }
-    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 2.5pt; }
-    .details-table td { border: none !important; padding: 0.8pt 1.5pt; font-size: 7pt; }
+    .title-section { text-align: center; margin-bottom: 3pt; }
+    .title-section h1 { font-size: 12pt; font-weight: bold; color: #000000; margin: 0 0 1.5pt 0; text-transform: uppercase; line-height: 1.1; }
+    .caliber-subtitle { font-size: 10pt; font-weight: bold; color: #000000; margin-bottom: 1pt; text-align: center; }
+    .lot-subtitle { font-size: 9pt; font-weight: bold; color: #334155; text-align: center; }
+    .title-line { height: 2px; width: 100%; background-color: #06b6d4; margin-top: 2pt; margin-bottom: 3pt; border-bottom: 2px solid #06b6d4; }
+    .section-title { font-size: 8.5pt; font-weight: bold; color: #0f172a; border-bottom: 1.2px solid #cbd5e1; padding-bottom: 1pt; margin-top: 3pt; margin-bottom: 2pt; text-transform: uppercase; }
+    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 3pt; }
+    .details-table td { border: none !important; padding: 1.5pt 2pt; font-size: 8pt; }
     table { border-collapse: collapse; width: 100%; }
-    table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 2.5pt; }
-    table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 1.5pt 1.5pt; font-size: 6.5pt; text-transform: uppercase; }
-    table.results-table td { border: 1px solid #cbd5e1; padding: 1pt 2pt; font-size: 6.5pt; vertical-align: middle; line-height: 1.05; }
-    .test-name-cell { color: #0284c7; font-weight: bold; font-size: 6.8pt; text-align: center; }
-    .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 6.5pt; }
-    .status-cell { text-align: center; font-size: 6.5pt; }
-    .sentence-box { padding: 2pt 4pt; border: 1px solid #cbd5e1; border-radius: 3px; background-color: #f8fafc; font-size: 7pt; font-weight: bold; color: #1e293b; line-height: 1.1; }
-    .signatures-table { border: none !important; margin-top: 2pt; width: 100%; }
-    .signatures-table td { border: none !important; padding: 1pt 2pt; vertical-align: bottom; text-align: center; font-size: 7pt; }
+    table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 3pt; }
+    table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 2.5pt 2pt; font-size: 8pt; text-transform: uppercase; }
+    table.results-table td { border: 1px solid #cbd5e1; padding: 1.8pt 2.5pt; font-size: 8pt; vertical-align: middle; line-height: 1.1; }
+    .test-name-cell { color: #0284c7; font-weight: bold; font-size: 8.2pt; text-align: center; }
+    .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 8pt; }
+    .status-cell { text-align: center; font-size: 8pt; }
+    .sentence-box { padding: 3pt 5pt; border: 1px solid #cbd5e1; border-radius: 3px; background-color: #f8fafc; font-size: 8pt; font-weight: bold; color: #1e293b; line-height: 1.15; margin-bottom: 3pt; }
+    .signatures-table { border: none !important; margin-top: 3pt; width: 100%; }
+    .signatures-table td { border: none !important; padding: 1.5pt 2pt; vertical-align: bottom; text-align: center; font-size: 8pt; }
     .ref-footer { display: none; }
   </style>
 </head>

@@ -948,14 +948,11 @@ class _TrendLineChartState extends State<TrendLineChart> {
     double grandSD = 0;
     double ucl = 0;
     double lcl = 0;
-    bool isOOC = false;
-
     if (pts.isNotEmpty) {
       grandMean = pts.map((p) => p.mean).reduce((a, b) => a + b) / pts.length;
       grandSD = pts.map((p) => p.sd).reduce((a, b) => a + b) / pts.length;
       ucl = grandMean + (3 * grandSD);
       lcl = math.max(0.0, grandMean - (3 * grandSD));
-      isOOC = pts.any((p) => p.mean > ucl || p.mean < lcl);
     }
 
     final isMulti = activeParams.length > 1;
@@ -966,7 +963,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
-          color: isOOC ? const Color(0xFFEF4444).withOpacity(0.6) : const Color(0xFF334155),
+          color: const Color(0xFF334155),
           width: 1.2,
         ),
         boxShadow: const [
@@ -976,7 +973,7 @@ class _TrendLineChartState extends State<TrendLineChart> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Test Name & Icon + Parameter Count Badge + Status Badge
+          // Row 1: Test Name & Icon + Parameter Count Badge + Temp Badge
           Row(
             children: [
               Container(
@@ -1026,22 +1023,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
                   _selectedTemp,
                   style: const TextStyle(
                     color: Color(0xFF38BDF8),
-                    fontSize: 9.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6.0),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
-                decoration: BoxDecoration(
-                  color: isOOC ? const Color(0xFFFEE2E2) : const Color(0xFFD1FAE5),
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-                child: Text(
-                  isOOC ? 'OOC' : 'In Control',
-                  style: TextStyle(
-                    color: isOOC ? const Color(0xFFDC2626) : const Color(0xFF059669),
                     fontSize: 9.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1319,10 +1300,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
     final tableRows = StringBuffer();
     for (var p in points) {
       final range = p.max - p.min;
-      final bool isOut = p.mean > ucl || p.mean < lcl;
-      final statusBadge = isOut
-          ? '<span style="color: #ef4444; font-weight: bold; background: #fee2e2; padding: 3px 8px; border-radius: 4px;">OOC (Out of Control)</span>'
-          : '<span style="color: #10b981; font-weight: bold; background: #d1fae5; padding: 3px 8px; border-radius: 4px;">Normal (In Control)</span>';
 
       tableRows.write('''
         <tr>
@@ -1333,7 +1310,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
           <td style="font-family: monospace; font-weight: bold; color: #0284c7;">${p.mean.toStringAsFixed(2)}</td>
           <td style="font-family: monospace;">${range.toStringAsFixed(2)}</td>
           <td style="font-family: monospace; color: #8b5cf6;">${p.sd.toStringAsFixed(2)}</td>
-          <td>$statusBadge</td>
         </tr>
       ''');
     }
@@ -1422,7 +1398,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
         <th>Mean</th>
         <th>Range</th>
         <th>SD</th>
-        <th>Process State</th>
       </tr>
     </thead>
     <tbody>
@@ -1891,26 +1866,16 @@ class _MultiMetricTrendPainter extends CustomPainter {
 
       for (int i = 0; i < pts.length; i++) {
         final pt = pts[i];
-        final isOoc = values[i] > uclVal || values[i] < lclVal;
+        canvas.drawCircle(pt, 4.5, dotBgPaint);
+        canvas.drawCircle(pt, 3.0, dotPaint);
 
-        if (isOoc) {
-          canvas.drawCircle(pt, 8.5, Paint()..color = const Color(0xFFEF4444).withOpacity(0.35));
-          canvas.drawCircle(pt, 5.0, Paint()..color = const Color(0xFFEF4444));
-          canvas.drawCircle(pt, 2.5, Paint()..color = Colors.white);
-        } else {
-          canvas.drawCircle(pt, 4.5, dotBgPaint);
-          canvas.drawCircle(pt, 3.0, dotPaint);
-        }
-
-        if (drawBadges || isOoc) {
-          final badgePrefix = isOoc ? '⚠ OOC' : prefix;
-          final badgeColor = isOoc ? const Color(0xFFEF4444) : color;
-          final valText = badgePrefix.isNotEmpty ? '$badgePrefix ${_formatVal(values[i])}' : _formatVal(values[i]);
+        if (drawBadges) {
+          final valText = prefix.isNotEmpty ? '$prefix ${_formatVal(values[i])}' : _formatVal(values[i]);
           final tpVal = TextPainter(
             text: TextSpan(
               text: valText,
               style: TextStyle(
-                color: badgeColor,
+                color: color,
                 fontSize: 8.5,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'JetBrainsMono',
@@ -1931,9 +1896,9 @@ class _MultiMetricTrendPainter extends CustomPainter {
           canvas.drawRRect(
             pillRect,
             Paint()
-              ..color = badgeColor.withOpacity(0.7)
+              ..color = color.withOpacity(0.7)
               ..style = PaintingStyle.stroke
-              ..strokeWidth = isOoc ? 1.0 : 0.7,
+              ..strokeWidth = 0.7,
           );
           tpVal.paint(canvas, Offset(pt.dx - tpVal.width / 2, pt.dy - 13.0 - tpVal.height / 2));
         }

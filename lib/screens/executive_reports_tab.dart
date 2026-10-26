@@ -385,6 +385,17 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                       ),
                     ),
+                    ElevatedButton.icon(
+                      onPressed: () => _exportExecutiveCaliberVolumeAlone(inspections),
+                      icon: const Icon(Icons.bar_chart_rounded, size: 16.0),
+                      label: const Text('Export Caliber Volume Alone', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0369A1),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -487,6 +498,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                 _buildKpiCard('EQUIPMENT ISSUES', '${equipmentIssues.length}', const Color(0xFF8B5CF6), Icons.construction_outlined),
               ],
             ),
+            const SizedBox(height: 24.0),
+
+            // Caliber Volume Overview across all modules (Lot Acceptance, Daily Test, Component Test)
+            _buildExecutiveCaliberVolumeSection(inspections),
             const SizedBox(height: 24.0),
 
             // PART 1: LOT ACCEPTANCE (Divided into Caliber Specifications -> Lot Number alone -> Caliber SPC & Box-Whisker)
@@ -634,6 +649,245 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         children: [
           Text('$label: ', style: TextStyle(fontSize: 10.0, color: color, fontWeight: FontWeight.w600)),
           Text(value, style: TextStyle(fontSize: 10.5, color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExecutiveCaliberVolumeSection(List<Map<String, dynamic>> inspections) {
+    final lotRecords = inspections.where((e) => e['module'] == 'Lot Acceptance').map((e) => e['record'] as BallisticRecord).toList();
+    final dailyRecords = inspections.where((e) => e['module'] == 'Daily Test').map((e) => e['record'] as BallisticRecord).toList();
+    final compRecords = inspections.where((e) => e['module'] == 'Component Test').map((e) => e['record'] as BallisticRecord).toList();
+
+    Map<String, int> calcVolume(List<BallisticRecord> recs, String mod) {
+      final Map<String, int> res = {};
+      for (final r in recs) {
+        final name = ReportGenerator.resolveCaliberVolumeName(r, mod);
+        res[name] = (res[name] ?? 0) + r.produced;
+      }
+      return res;
+    }
+
+    final lotVols = calcVolume(lotRecords, 'Lot Acceptance');
+    final dailyVols = calcVolume(dailyRecords, 'Daily Test');
+    final compVols = calcVolume(compRecords, 'Component Test');
+
+    final int lotTotal = lotVols.values.fold<int>(0, (s, v) => s + v);
+    final int dailyTotal = dailyVols.values.fold<int>(0, (s, v) => s + v);
+    final int compTotal = compVols.values.fold<int>(0, (s, v) => s + v);
+    final int grandTotal = lotTotal + dailyTotal + compTotal;
+
+    Widget buildModuleCard({
+      required String title,
+      required String badge,
+      required Color color,
+      required int totalVolume,
+      required String unit,
+      required Map<String, int> volumes,
+    }) {
+      final sortedKeys = volumes.keys.toList()..sort((a, b) => volumes[b]!.compareTo(volumes[a]!));
+      return Expanded(
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(10.0),
+            border: Border.all(color: color.withOpacity(0.4), width: 1.2),
+          ),
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4.0),
+                          border: Border.all(color: color),
+                        ),
+                        child: Text(badge, style: TextStyle(color: color, fontSize: 10.0, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8.0),
+                      Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.0)),
+                    ],
+                  ),
+                  Text('$totalVolume $unit', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13.0)),
+                ],
+              ),
+              const Divider(color: Color(0xFF334155), height: 18.0),
+              if (volumes.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text('No test records in this period.', style: TextStyle(color: Color(0xFF64748B), fontSize: 11.0, fontStyle: FontStyle.italic)),
+                )
+              else
+                ...sortedKeys.map((k) {
+                  final v = volumes[k]!;
+                  final share = totalVolume > 0 ? ((v / totalVolume) * 100).toStringAsFixed(1) : '0.0';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3.5),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            k,
+                            style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11.5, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text('$v $unit', style: const TextStyle(color: Colors.white, fontSize: 11.5, fontFamily: 'monospace', fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8.0),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E293B),
+                                borderRadius: BorderRadius.circular(3.0),
+                              ),
+                              child: Text('$share%', style: TextStyle(color: color, fontSize: 10.0, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: const Color(0xFF334155), width: 1.2),
+        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6.0),
+                    ),
+                    child: const Icon(Icons.bar_chart_rounded, color: Color(0xFF38BDF8), size: 18.0),
+                  ),
+                  const SizedBox(width: 10.0),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CALIBER & COMPONENT TEST VOLUME OVERVIEW',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.0, letterSpacing: 0.3),
+                      ),
+                      Text(
+                        'Total tested volumes aggregated across Lot Acceptance, Daily Test, and Component modules',
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(color: const Color(0xFF38BDF8)),
+                ),
+                child: Row(
+                  children: [
+                    const Text('FLEET TOTAL: ', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.0, fontWeight: FontWeight.bold)),
+                    Text('$grandTotal Units/Rounds', style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.0, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16.0),
+          LayoutBuilder(
+            builder: (ctx, constraints) {
+              if (constraints.maxWidth < 800) {
+                return Column(
+                  children: [
+                    buildModuleCard(
+                      title: 'Lot Acceptance',
+                      badge: 'PART 1',
+                      color: const Color(0xFF0284C7),
+                      totalVolume: lotTotal,
+                      unit: 'rounds',
+                      volumes: lotVols,
+                    ),
+                    const SizedBox(height: 12.0),
+                    buildModuleCard(
+                      title: 'Daily Test',
+                      badge: 'PART 2',
+                      color: const Color(0xFF10B981),
+                      totalVolume: dailyTotal,
+                      unit: 'rounds',
+                      volumes: dailyVols,
+                    ),
+                    const SizedBox(height: 12.0),
+                    buildModuleCard(
+                      title: 'Component Test',
+                      badge: 'PART 3',
+                      color: const Color(0xFFF59E0B),
+                      totalVolume: compTotal,
+                      unit: 'cases/bullets',
+                      volumes: compVols,
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  buildModuleCard(
+                    title: 'Lot Acceptance',
+                    badge: 'PART 1',
+                    color: const Color(0xFF0284C7),
+                    totalVolume: lotTotal,
+                    unit: 'rounds',
+                    volumes: lotVols,
+                  ),
+                  const SizedBox(width: 12.0),
+                  buildModuleCard(
+                    title: 'Daily Test',
+                    badge: 'PART 2',
+                    color: const Color(0xFF10B981),
+                    totalVolume: dailyTotal,
+                    unit: 'rounds',
+                    volumes: dailyVols,
+                  ),
+                  const SizedBox(width: 12.0),
+                  buildModuleCard(
+                    title: 'Component Test',
+                    badge: 'PART 3',
+                    color: const Color(0xFFF59E0B),
+                    totalVolume: compTotal,
+                    unit: 'cases/bullets',
+                    volumes: compVols,
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -1650,6 +1904,49 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     }
     buffer.writeln('');
 
+    buffer.writeln('SECTION 1b: TESTED CALIBER & COMPONENT VOLUMES BREAKDOWN');
+    buffer.writeln('Module,Caliber / Component Specification,Total Tested Units / Rounds,Share of Module (%)');
+    final lotRecs = inspections.where((e) => e['module'] == 'Lot Acceptance').map((e) => e['record'] as BallisticRecord).toList();
+    final dailyRecs = inspections.where((e) => e['module'] == 'Daily Test').map((e) => e['record'] as BallisticRecord).toList();
+    final compRecs = inspections.where((e) => e['module'] == 'Component Test').map((e) => e['record'] as BallisticRecord).toList();
+
+    Map<String, int> getModuleVol(List<BallisticRecord> recs, String mod) {
+      final Map<String, int> res = {};
+      for (final r in recs) {
+        final name = ReportGenerator.resolveCaliberVolumeName(r, mod);
+        res[name] = (res[name] ?? 0) + r.produced;
+      }
+      return res;
+    }
+    final lVols = getModuleVol(lotRecs, 'Lot Acceptance');
+    final dVols = getModuleVol(dailyRecs, 'Daily Test');
+    final cVols = getModuleVol(compRecs, 'Component Test');
+    final lTot = lVols.values.fold<int>(0, (s, v) => s + v);
+    final dTot = dVols.values.fold<int>(0, (s, v) => s + v);
+    final cTot = cVols.values.fold<int>(0, (s, v) => s + v);
+    final fTot = lTot + dTot + cTot;
+
+    for (final k in lVols.keys.toList()..sort((a, b) => lVols[b]!.compareTo(lVols[a]!))) {
+      final v = lVols[k]!;
+      final s = lTot > 0 ? ((v / lTot) * 100).toStringAsFixed(1) : '0.0';
+      buffer.writeln('"Lot Acceptance","${k.replaceAll('"', '""')}",$v,$s%');
+    }
+    buffer.writeln('"Lot Acceptance - Total","All Calibers",$lTot,100.0%');
+    for (final k in dVols.keys.toList()..sort((a, b) => dVols[b]!.compareTo(dVols[a]!))) {
+      final v = dVols[k]!;
+      final s = dTot > 0 ? ((v / dTot) * 100).toStringAsFixed(1) : '0.0';
+      buffer.writeln('"Daily Test","${k.replaceAll('"', '""')}",$v,$s%');
+    }
+    buffer.writeln('"Daily Test - Total","All Calibers",$dTot,100.0%');
+    for (final k in cVols.keys.toList()..sort((a, b) => cVols[b]!.compareTo(cVols[a]!))) {
+      final v = cVols[k]!;
+      final s = cTot > 0 ? ((v / cTot) * 100).toStringAsFixed(1) : '0.0';
+      buffer.writeln('"Component Test","${k.replaceAll('"', '""')}",$v,$s%');
+    }
+    buffer.writeln('"Component Test - Total","All Components",$cTot,100.0%');
+    buffer.writeln('"FLEET GRAND TOTAL ACROSS ALL MODULES","ALL MODULES",$fTot,100.0%');
+    buffer.writeln('');
+
     buffer.writeln('SECTION 2: REPORTED EQUIPMENT ISSUES');
     buffer.writeln('Timestamp,Equipment,Fault Summary,Severity,Status,Reported By,Action Taken');
     for (var issue in equipmentIssues) {
@@ -1683,6 +1980,272 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         SnackBar(content: Text('Executive CSV report exported: $filename'), backgroundColor: const Color(0xFF10B981)),
       );
     }
+  }
+
+  Future<void> _exportExecutiveCaliberVolumeAlone(List<Map<String, dynamic>> inspections) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C3351),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.0)),
+        title: Row(
+          children: const [
+            Icon(Icons.bar_chart_rounded, color: Color(0xFF4D99DB), size: 24),
+            SizedBox(width: 10),
+            Text(
+              'Export Caliber & Component Volume',
+              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'Export tested caliber and component volume breakdown across all modules (Lot Acceptance, Daily Test, Component Test) as a standalone report.',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Select export format:',
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF059669)),
+              foregroundColor: const Color(0xFF34D399),
+            ),
+            onPressed: () => Navigator.pop(ctx, 'csv'),
+            icon: const Icon(Icons.table_chart, size: 16),
+            label: const Text('Excel (.csv)'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4D99DB),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, 'pdf'),
+            icon: const Icon(Icons.print, size: 16),
+            label: const Text('Print / PDF'),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == null) return;
+
+    final lotRecords = inspections.where((e) => e['module'] == 'Lot Acceptance').map((e) => e['record'] as BallisticRecord).toList();
+    final dailyRecords = inspections.where((e) => e['module'] == 'Daily Test').map((e) => e['record'] as BallisticRecord).toList();
+    final compRecords = inspections.where((e) => e['module'] == 'Component Test').map((e) => e['record'] as BallisticRecord).toList();
+
+    Map<String, int> calcVol(List<BallisticRecord> recs, String mod) {
+      final Map<String, int> res = {};
+      for (final r in recs) {
+        final name = ReportGenerator.resolveCaliberVolumeName(r, mod);
+        res[name] = (res[name] ?? 0) + r.produced;
+      }
+      return res;
+    }
+
+    final lotVols = calcVol(lotRecords, 'Lot Acceptance');
+    final dailyVols = calcVol(dailyRecords, 'Daily Test');
+    final compVols = calcVol(compRecords, 'Component Test');
+
+    final int lotTotal = lotVols.values.fold<int>(0, (s, v) => s + v);
+    final int dailyTotal = dailyVols.values.fold<int>(0, (s, v) => s + v);
+    final int compTotal = compVols.values.fold<int>(0, (s, v) => s + v);
+    final int fleetTotal = lotTotal + dailyTotal + compTotal;
+
+    if (choice == 'csv') {
+      final buffer = StringBuffer();
+      buffer.writeln('OMPC BALLISTIC AERODATA - TESTED CALIBER & COMPONENT VOLUMES REPORT');
+      buffer.writeln('Period:,$_periodLabel');
+      buffer.writeln('Export Date:,${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}');
+      buffer.writeln('Generated By:,${widget.loggedInUser}');
+      buffer.writeln('');
+
+      buffer.writeln('Module,Caliber / Component Specification,Total Tested Units / Rounds,Share of Module (%)');
+      
+      // Lot Acceptance
+      for (final k in lotVols.keys.toList()..sort((a, b) => lotVols[b]!.compareTo(lotVols[a]!))) {
+        final v = lotVols[k]!;
+        final share = lotTotal > 0 ? ((v / lotTotal) * 100.0).toStringAsFixed(1) : '0.0';
+        buffer.writeln('"Lot Acceptance","${k.replaceAll('"', '""')}",$v,$share%');
+      }
+      buffer.writeln('"Lot Acceptance - Total","All Calibers",$lotTotal,100.0%');
+      buffer.writeln('');
+
+      // Daily Test
+      for (final k in dailyVols.keys.toList()..sort((a, b) => dailyVols[b]!.compareTo(dailyVols[a]!))) {
+        final v = dailyVols[k]!;
+        final share = dailyTotal > 0 ? ((v / dailyTotal) * 100.0).toStringAsFixed(1) : '0.0';
+        buffer.writeln('"Daily Test","${k.replaceAll('"', '""')}",$v,$share%');
+      }
+      buffer.writeln('"Daily Test - Total","All Calibers",$dailyTotal,100.0%');
+      buffer.writeln('');
+
+      // Component Test
+      for (final k in compVols.keys.toList()..sort((a, b) => compVols[b]!.compareTo(compVols[a]!))) {
+        final v = compVols[k]!;
+        final share = compTotal > 0 ? ((v / compTotal) * 100.0).toStringAsFixed(1) : '0.0';
+        buffer.writeln('"Component Test","${k.replaceAll('"', '""')}",$v,$share%');
+      }
+      buffer.writeln('"Component Test - Total","All Components",$compTotal,100.0%');
+      buffer.writeln('');
+
+      buffer.writeln('"FLEET GRAND TOTAL ACROSS ALL MODULES","ALL MODULES",$fleetTotal,100.0%');
+
+      final filename = 'ompc_executive_caliber_volume_${DateTime.now().millisecondsSinceEpoch}.csv';
+      await ReportHelper.instance.downloadCsv(content: buffer.toString(), filename: filename);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exported Caliber Volume CSV: $filename'), backgroundColor: const Color(0xFF10B981)),
+        );
+      }
+      return;
+    }
+
+    // PDF / HTML Print preview
+    final html = StringBuffer();
+    html.writeln('''<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OMPC Ballistic AeroData - Tested Caliber & Component Volumes</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; padding: 36px 48px; margin: 0; background-color: #f8fafc; }
+    .container { max-width: 860px; margin: 0 auto; background: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px; }
+    .header-title h1 { margin: 0; font-size: 20px; color: #0c2a4d; text-transform: uppercase; }
+    .header-title p { margin: 3px 0 0 0; font-size: 13px; color: #64748b; }
+    .badge { background-color: #e0f2fe; color: #0369a1; border: 1px solid #0284c7; padding: 5px 12px; border-radius: 16px; font-size: 12px; font-weight: 700; }
+    .no-print { margin-bottom: 18px; display: flex; gap: 10px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; background-color: #0284c7; color: #ffffff; }
+    .mod-section { margin-top: 20px; margin-bottom: 16px; }
+    .mod-title { font-size: 14px; font-weight: bold; color: #0f172a; margin-bottom: 8px; border-left: 4px solid #0284c7; padding-left: 8px; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+    th { background: #1e3a8a; color: #ffffff; padding: 8px 12px; border: 1px solid #1e3a8a; text-align: left; font-weight: 700; font-size: 12.5px; }
+    th.num { text-align: right; }
+    td { padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 12.5px; }
+    td.num { text-align: right; font-family: monospace; font-weight: 600; color: #0c2a4d; }
+    tr:nth-child(even) td { background-color: #f8fafc; }
+    tr.subtotal td { background-color: #e0f2fe !important; font-weight: bold; color: #0369a1; border-top: 2px solid #0284c7; }
+    tr.grand-total td { background-color: #dbeafe !important; font-weight: 800; color: #0c2a4d; font-size: 13.5px; border-top: 3px solid #1e3a8a; border-bottom: 3px solid #1e3a8a; }
+    @media print { body { padding: 0; background: #ffffff; } .container { border: none; box-shadow: none; padding: 0; max-width: 100%; } .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="no-print">
+      <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+    <div class="header-bar">
+      <div class="header-title">
+        <h1>OMPC Ballistic AeroData</h1>
+        <p>Tested Caliber & Component Volumes Overview Across All Modules</p>
+      </div>
+      <div class="badge">PERIOD: $_periodLabel</div>
+    </div>
+
+    <!-- LOT ACCEPTANCE -->
+    <div class="mod-section">
+      <div class="mod-title" style="border-color: #0284c7;">Part 1: Lot Acceptance Caliber Volume ($lotTotal rounds)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Caliber Specification</th>
+            <th class="num">Rounds Tested</th>
+            <th class="num">Module Share (%)</th>
+          </tr>
+        </thead>
+        <tbody>''');
+
+    for (final k in lotVols.keys.toList()..sort((a, b) => lotVols[b]!.compareTo(lotVols[a]!))) {
+      final v = lotVols[k]!;
+      final share = lotTotal > 0 ? ((v / lotTotal) * 100.0).toStringAsFixed(1) : '0.0';
+      html.writeln('<tr><td><strong>$k</strong></td><td class="num">$v</td><td class="num">$share%</td></tr>');
+    }
+    html.writeln('''
+          <tr class="subtotal"><td><strong>Lot Acceptance Total</strong></td><td class="num">$lotTotal</td><td class="num">100.0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- DAILY TEST -->
+    <div class="mod-section">
+      <div class="mod-title" style="border-color: #10b981;">Part 2: Daily Test Caliber Volume ($dailyTotal rounds)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Caliber Specification</th>
+            <th class="num">Rounds Tested</th>
+            <th class="num">Module Share (%)</th>
+          </tr>
+        </thead>
+        <tbody>''');
+
+    for (final k in dailyVols.keys.toList()..sort((a, b) => dailyVols[b]!.compareTo(dailyVols[a]!))) {
+      final v = dailyVols[k]!;
+      final share = dailyTotal > 0 ? ((v / dailyTotal) * 100.0).toStringAsFixed(1) : '0.0';
+      html.writeln('<tr><td><strong>$k</strong></td><td class="num">$v</td><td class="num">$share%</td></tr>');
+    }
+    html.writeln('''
+          <tr class="subtotal"><td><strong>Daily Test Total</strong></td><td class="num">$dailyTotal</td><td class="num">100.0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- COMPONENT TEST -->
+    <div class="mod-section">
+      <div class="mod-title" style="border-color: #f59e0b;">Part 3: Component Test Volume ($compTotal primed cases / bullets)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Component Specification</th>
+            <th class="num">Units Tested</th>
+            <th class="num">Module Share (%)</th>
+          </tr>
+        </thead>
+        <tbody>''');
+
+    for (final k in compVols.keys.toList()..sort((a, b) => compVols[b]!.compareTo(compVols[a]!))) {
+      final v = compVols[k]!;
+      final share = compTotal > 0 ? ((v / compTotal) * 100.0).toStringAsFixed(1) : '0.0';
+      html.writeln('<tr><td><strong>$k</strong></td><td class="num">$v</td><td class="num">$share%</td></tr>');
+    }
+    html.writeln('''
+          <tr class="subtotal"><td><strong>Component Test Total</strong></td><td class="num">$compTotal</td><td class="num">100.0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- GRAND TOTAL -->
+    <table>
+      <tbody>
+        <tr class="grand-total">
+          <td>🏆 <strong>FLEET GRAND TOTAL ACROSS ALL MONITORED MODULES</strong></td>
+          <td class="num" style="font-size: 14px;"><strong>$fleetTotal units</strong></td>
+          <td class="num"><strong>100.0%</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top: 24px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+      OMPC Ballistic AeroData • Generated on \${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())} by \${widget.loggedInUser}
+    </div>
+  </div>
+</body>
+</html>''');
+
+    await ReportHelper.instance.printHtml(htmlContent: html.toString());
   }
 
   Future<void> _exportExecutiveHtml(

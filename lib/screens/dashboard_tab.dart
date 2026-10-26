@@ -5,6 +5,7 @@ import '../widgets/custom_dashboard_charts.dart';
 import '../widgets/trend_chart.dart';
 import '../widgets/modern_analytics_card.dart';
 import '../services/report_helper.dart';
+import '../services/report_generator.dart';
 import '../services/svg_chart_generator.dart';
 
 class DashboardTab extends StatefulWidget {
@@ -60,6 +61,46 @@ class _DashboardTabState extends State<DashboardTab> {
   bool _isBoxPlotMinimized = true;
   bool _isRecentLogsMinimized = true;
   bool _isSpcMaximized = true;
+
+  int? _selectedLotYear;
+
+  static int? extractLotYear(String lotNo, [String? timestamp]) {
+    final clean = lotNo.trim();
+    // 1. Matches /26, /2026, -26, / 26
+    final match = RegExp(r'[/\-](\d{2,4})\b').firstMatch(clean);
+    if (match != null) {
+      int yr = int.parse(match.group(1)!);
+      if (yr < 100) yr += 2000;
+      return yr;
+    }
+    // 2. Matches 202x
+    final matchEnd = RegExp(r'\b(20\d{2})\b').firstMatch(clean);
+    if (matchEnd != null) {
+      return int.parse(matchEnd.group(1)!);
+    }
+    // 3. Fallback to timestamp if available
+    if (timestamp != null && timestamp.isNotEmpty) {
+      final t = timestamp.trim();
+      try {
+        if (t.contains('/')) {
+          final parts = t.split(' ')[0].split('/');
+          if (parts.length >= 3) {
+            int y = int.parse(parts[2]);
+            if (y < 100) y += 2000;
+            return y;
+          }
+        }
+        if (t.contains('-')) {
+          final parts = t.split(' ')[0].split('-');
+          if (parts.length >= 3) {
+            int y = int.parse(parts[0]);
+            return y;
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
 
   @override
   void didUpdateWidget(DashboardTab oldWidget) {
@@ -279,8 +320,29 @@ class _DashboardTabState extends State<DashboardTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Extract unique lots and calibers from widget.records
-    final uniqueLots = widget.records
+    final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Lot Acceptance';
+
+    // Extract available production years for Lot Acceptance (Req 7)
+    final availableLotYears = widget.records
+        .map((r) => extractLotYear(r.lotNo, r.timestamp))
+        .whereType<int>()
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    if (availableLotYears.isEmpty) {
+      availableLotYears.add(DateTime.now().year);
+    }
+    final effectiveLotYear = (_selectedLotYear != null && availableLotYears.contains(_selectedLotYear))
+        ? _selectedLotYear!
+        : availableLotYears.first;
+
+    // Isolate Lot Acceptance records to the selected year alone
+    final List<BallisticRecord> baseRecords = isLotAcceptance
+        ? widget.records.where((r) => extractLotYear(r.lotNo, r.timestamp) == effectiveLotYear).toList()
+        : widget.records;
+
+    // Extract unique lots and calibers from baseRecords
+    final uniqueLots = baseRecords
         .expand((r) => [r.lotNo.trim(), r.primerLot.trim(), r.propellantLot.trim(), r.hopperNo.trim()])
         .where((l) => l.isNotEmpty)
         .toSet()
@@ -288,9 +350,9 @@ class _DashboardTabState extends State<DashboardTab> {
     uniqueLots.sort();
 
     final uniqueCalibers = widget.currentModule == 'Component Test'
-        ? widget.records.map((r) => r.caliber.trim()).where((c) => c.isNotEmpty).toSet().toList()
+        ? baseRecords.map((r) => r.caliber.trim()).where((c) => c.isNotEmpty).toSet().toList()
         : {
-            ...widget.records.map((r) => r.caliber).where((c) => c.isNotEmpty),
+            ...baseRecords.map((r) => r.caliber).where((c) => c.isNotEmpty),
             ...allCaliberSpecifications,
           }.toList();
     if (widget.currentModule == 'Component Test' && uniqueCalibers.isEmpty) {
@@ -370,7 +432,7 @@ class _DashboardTabState extends State<DashboardTab> {
     }
 
     // Filter records
-    List<BallisticRecord> filtered = widget.records;
+    List<BallisticRecord> filtered = baseRecords;
 
     // 1. Shift Filter
     if (_selectedShift == 'Morning' || _selectedShift == 'Day Shift') {
@@ -452,7 +514,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
     // Sectional independent filtered record sets
     final analyticsFiltered = _applyRecordFilters(
-      source: widget.records,
+      source: baseRecords,
       shift: _analyticsShift,
       time: _analyticsTime,
       lot: _analyticsLot,
@@ -499,7 +561,7 @@ class _DashboardTabState extends State<DashboardTab> {
     final int analyticsActiveCalibersCount = analyticsCaliberCounts.values.where((c) => c > 0).length;
 
     final overviewFiltered = _applyRecordFilters(
-      source: widget.records,
+      source: baseRecords,
       time: _overviewTime,
       lot: _overviewLot,
       caliber: _overviewCaliber,
@@ -533,7 +595,7 @@ class _DashboardTabState extends State<DashboardTab> {
         : 100.0;
 
     final spcFiltered = _applyRecordFilters(
-      source: widget.records,
+      source: baseRecords,
       time: _spcTime,
       lot: _spcLot,
       caliber: _spcCaliber,
@@ -541,7 +603,7 @@ class _DashboardTabState extends State<DashboardTab> {
     );
 
     final boxFiltered = _applyRecordFilters(
-      source: widget.records,
+      source: baseRecords,
       lot: _boxLot,
       caliber: _boxCaliber,
       testName: _boxTestName,
@@ -718,6 +780,27 @@ class _DashboardTabState extends State<DashboardTab> {
                         padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
                       ),
                     ),
+                    ElevatedButton.icon(
+                      onPressed: () => _showLotHopperComparisonDialog(context, uniqueLots, baseRecords),
+                      icon: const Icon(Icons.compare_arrows_rounded, size: 17.0),
+                      label: Text(
+                        widget.currentModule == 'Daily Test' ? 'Compare Hoppers' : 'Compare Lots',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.0,
+                          fontFamily: 'sans-serif',
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0284C7),
+                        foregroundColor: Colors.white,
+                        elevation: 3.0,
+                        shadowColor: const Color(0x600284C7),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                      ),
+                    ),
                     OutlinedButton.icon(
                       onPressed: () => _showClearAllConfirmationDialog(context),
                       icon: const Icon(Icons.delete_sweep_outlined, size: 16.0, color: Color(0xFFEF4444)),
@@ -866,9 +949,36 @@ class _DashboardTabState extends State<DashboardTab> {
                       });
                     },
                   ),
-                  if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Component Test')
+                  if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Lot Acceptance') ...[
                     _buildFilterDropdown(
-                      label: widget.currentModule == 'Component Test' ? 'COMPONENT LOT NUMBER' : 'LOT NUMBER',
+                      label: 'PRODUCTION YEAR',
+                      value: 'Year ${effectiveLotYear.toString().substring(2)} ($effectiveLotYear)',
+                      items: availableLotYears.map((y) => 'Year ${y.toString().substring(2)} ($y)').toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          final yrMatch = RegExp(r'\((\d{4})\)').firstMatch(val);
+                          if (yrMatch != null) {
+                            setState(() {
+                              _selectedLotYear = int.parse(yrMatch.group(1)!);
+                              _selectedLot = 'Overall';
+                            });
+                          }
+                        }
+                      },
+                    ),
+                    _buildFilterDropdown(
+                      label: 'LOT NUMBER',
+                      value: _selectedLot,
+                      items: ['Overall', ...uniqueLots],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedLot = val!;
+                        });
+                      },
+                    ),
+                  ] else if (widget.currentModule == 'Component Test')
+                    _buildFilterDropdown(
+                      label: 'COMPONENT LOT NUMBER',
                       value: _selectedLot,
                       items: ['Overall', ...uniqueLots],
                       onChanged: (val) {
@@ -3834,6 +3944,466 @@ class _DashboardTabState extends State<DashboardTab> {
     }
   }
 
+  void _showLotHopperComparisonDialog(
+    BuildContext context,
+    List<String> availableLots,
+    List<BallisticRecord> records,
+  ) {
+    if (availableLots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No lots or hoppers recorded to compare.'),
+          backgroundColor: Color(0xFFF59E0B),
+        ),
+      );
+      return;
+    }
+
+    final Set<String> selectedLots = {};
+    if (availableLots.length >= 2) {
+      selectedLots.add(availableLots[0]);
+      selectedLots.add(availableLots[1]);
+    } else {
+      selectedLots.addAll(availableLots);
+    }
+
+    String lotSearch = '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setStateDialog) {
+          final isDaily = widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report';
+          final entityLabel = isDaily ? 'Hopper' : 'Lot';
+
+          final displayedLots = availableLots.where((l) {
+            if (lotSearch.isEmpty) return true;
+            return l.toLowerCase().contains(lotSearch.toLowerCase());
+          }).toList();
+
+          // Build comparison metrics for each selected lot
+          final List<Map<String, dynamic>> compData = [];
+          for (final lot in selectedLots) {
+            final lotRecs = records.where((r) =>
+              r.lotNo.trim() == lot ||
+              r.hopperNo.trim() == lot ||
+              r.primerLot.trim() == lot ||
+              r.propellantLot.trim() == lot
+            ).toList();
+
+            final totalRounds = lotRecs.fold<int>(0, (s, r) => s + r.produced);
+            final totalDefects = lotRecs.fold<int>(0, (s, r) => s + r.defects);
+            final yieldRate = totalRounds > 0 ? (((totalRounds - totalDefects) / totalRounds) * 100.0) : 100.0;
+            final cal = lotRecs.isNotEmpty ? lotRecs.first.caliber : 'N/A';
+            final hasReject = lotRecs.any((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase() == 'fail');
+            final status = hasReject ? 'Rejected' : (lotRecs.isEmpty ? 'Pending' : 'Approved');
+
+            BallisticRecord? findTest(String kw) {
+              for (final r in lotRecs) {
+                if (r.testName.toLowerCase().contains(kw.toLowerCase())) return r;
+              }
+              return null;
+            }
+
+            final wp = findTest('waterproof');
+            final ext = findTest('extraction');
+            final acc = findTest('accuracy');
+            final epv = findTest('epvat');
+            final func = findTest('function');
+            final rs = findTest('stress');
+            final term = findTest('terminal');
+            final primer = findTest('primer');
+
+            compData.add({
+              'lot': lot,
+              'caliber': cal,
+              'rounds': '$totalRounds rounds',
+              'defects': '$totalDefects defects',
+              'yield': '${yieldRate.toStringAsFixed(1)}%',
+              'status': status,
+              'testsCount': '${lotRecs.length} tests',
+              'wp': wp != null ? 'Mouth: S${wp.mouthSlow}/F${wp.mouthFast} | Primer: S${wp.primerSlow}/F${wp.primerFast}' : '-',
+              'ext': ext != null ? (ext.accMinX.isNotEmpty ? '${ext.accMinX} N' : (ext.accMeanX.isNotEmpty ? '${ext.accMeanX} N' : '-')) : '-',
+              'accRadius': acc != null && acc.accMeanRadius.isNotEmpty ? '${acc.accMeanRadius} mm' : '-',
+              'accSD': acc != null && (acc.accSDX.isNotEmpty || acc.accSDY.isNotEmpty) ? 'X: ${acc.accSDX} / Y: ${acc.accSDY}' : '-',
+              'accVel': acc != null && acc.velMean.isNotEmpty ? '${acc.velMean} m/s' : (epv != null && epv.velMean.isNotEmpty ? '${epv.velMean} m/s' : '-'),
+              'epvP1': epv != null && epv.epvatPressureRounds.isNotEmpty ? '${epv.epvatPressureRounds} bar' : '-',
+              'func': func != null ? 'L1: ${func.functionLevel1} | L2: ${func.functionLevel2} | L3: ${func.functionLevel3}' : '-',
+              'rs': rs != null ? 'Neck: ${rs.neckSlow + rs.neckFast} | Total: ${rs.neckSlow + rs.neckFast + rs.shoulderSlow + rs.shoulderFast + rs.bodySlow + rs.bodyFast + rs.headSlow + rs.headFast}' : '-',
+              'term': term != null && term.terminalHoleDiameter.isNotEmpty ? '${term.terminalHoleDiameter} mm' : '-',
+              'primer': primer != null && primer.primerHbar.isNotEmpty ? 'H̄: ${primer.primerHbar} cm' : '-',
+            });
+          }
+
+          final List<Map<String, String>> metricsList = [
+            {'key': 'caliber', 'name': 'Caliber Specification'},
+            {'key': 'rounds', 'name': 'Total Rounds Tested'},
+            {'key': 'yield', 'name': 'Yield Rate (%)'},
+            {'key': 'status', 'name': 'Overall Compliance Status'},
+            {'key': 'testsCount', 'name': 'Tests Performed Count'},
+            {'key': 'wp', 'name': 'Waterproof Test (Leaks)'},
+            {'key': 'ext', 'name': 'Bullet Extraction Force'},
+            {'key': 'accRadius', 'name': 'Accuracy (Mean Radius)'},
+            {'key': 'accSD', 'name': 'Accuracy Dispersion (SD X/Y)'},
+            {'key': 'accVel', 'name': 'Mean Velocity (m/s)'},
+            {'key': 'epvP1', 'name': 'EPVAT Chamber Pressure'},
+            {'key': 'func', 'name': 'Function Test Defects'},
+            {'key': 'rs', 'name': 'Residual Stress Splits'},
+            {'key': 'term', 'name': 'Terminal Effect Hole'},
+            {'key': 'primer', 'name': 'Primer Sensitivity (Mean H̄)'},
+          ];
+
+          Future<void> exportComparisonCsv() async {
+            if (compData.length < 2) return;
+            final buf = StringBuffer();
+            buf.write('Evaluation Parameter');
+            for (final d in compData) {
+              buf.write(',"${d['lot']}"');
+            }
+            buf.writeln('');
+            for (final m in metricsList) {
+              buf.write('"${m['name']}"');
+              for (final d in compData) {
+                final v = d[m['key']]?.toString() ?? '-';
+                buf.write(',"${v.replaceAll('"', '""')}"');
+              }
+              buf.writeln('');
+            }
+            final fname = 'ompc_${entityLabel.toLowerCase()}_comparison_${DateTime.now().millisecondsSinceEpoch}.csv';
+            await ReportHelper.instance.downloadCsv(content: buf.toString(), filename: fname);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Downloaded comparison CSV: $fname'), backgroundColor: const Color(0xFF10B981)),
+            );
+          }
+
+          Future<void> exportComparisonPdf() async {
+            if (compData.length < 2) return;
+            final buf = StringBuffer();
+            buf.writeln('''<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OMPC Ballistic AeroData - $entityLabel Comparison Matrix</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; padding: 24px 36px; background: #ffffff; }
+    h1 { color: #0c2a4d; text-transform: uppercase; margin-bottom: 4px; font-size: 20px; }
+    p { color: #64748b; font-size: 13px; margin-top: 0; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    th { background: #1e3a8a; color: #ffffff; padding: 10px 12px; border: 1px solid #1e3a8a; text-align: left; }
+    td { padding: 8px 12px; border: 1px solid #cbd5e1; }
+    tr:nth-child(even) td { background-color: #f8fafc; }
+    .metric-name { font-weight: bold; color: #0284c7; width: 220px; }
+    @media print { .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom: 16px;">
+    <button onclick="window.print()" style="padding: 8px 16px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">🖨️ Print / Save as PDF</button>
+  </div>
+  <h1>OMPC Ballistic AeroData — $entityLabel Comparison Matrix</h1>
+  <p>Side-by-side ballistic test comparison for ${compData.map((d) => d['lot']).join(', ')} • Generated ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Test / Inspection Metric</th>''');
+            for (final d in compData) {
+              buf.writeln('<th>${d['lot']} (${d['caliber']})</th>');
+            }
+            buf.writeln('''
+      </tr>
+    </thead>
+    <tbody>''');
+            for (final m in metricsList) {
+              buf.writeln('<tr><td class="metric-name">${m['name']}</td>');
+              for (final d in compData) {
+                final v = d[m['key']]?.toString() ?? '-';
+                buf.writeln('<td>$v</td>');
+              }
+              buf.writeln('</tr>');
+            }
+            buf.writeln('''
+    </tbody>
+  </table>
+</body>
+</html>''');
+            await ReportHelper.instance.printHtml(htmlContent: buf.toString());
+          }
+
+          return Dialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+            child: Container(
+              width: 1100,
+              height: 720,
+              padding: const EdgeInsets.all(22.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Dialog Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0284C7).withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: const Icon(Icons.compare_arrows_rounded, color: Color(0xFF38BDF8), size: 24.0),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Compare ${isDaily ? "Hoppers" : "Lots"} Side-by-Side',
+                                style: const TextStyle(fontSize: 19.0, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                              const SizedBox(height: 2.0),
+                              Text(
+                                'Select 2 or more $entityLabel to benchmark ballistic metrics across all performed tests',
+                                style: const TextStyle(fontSize: 12.0, color: Color(0xFF94A3B8)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: selectedLots.length >= 2 ? exportComparisonCsv : null,
+                            icon: const Icon(Icons.table_chart, size: 15),
+                            label: const Text('Export CSV'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF10B981),
+                              side: BorderSide(color: selectedLots.length >= 2 ? const Color(0xFF10B981) : Colors.grey),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: selectedLots.length >= 2 ? exportComparisonPdf : null,
+                            icon: const Icon(Icons.print, size: 15),
+                            label: const Text('Print / PDF'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0284C7),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            icon: const Icon(Icons.close, color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16.0),
+
+                  // Selection & Filter Bar
+                  Container(
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(10.0),
+                      border: Border.all(color: const Color(0xFF334155)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                style: const TextStyle(color: Colors.white, fontSize: 13.0),
+                                decoration: InputDecoration(
+                                  hintText: 'Search $entityLabel identifier...',
+                                  hintStyle: const TextStyle(color: Color(0xFF64748b), fontSize: 13.0),
+                                  prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
+                                  filled: true,
+                                  fillColor: const Color(0xFF1E293B),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  isDense: true,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                ),
+                                onChanged: (v) => setStateDialog(() => lotSearch = v.trim()),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            TextButton.icon(
+                              onPressed: () => setStateDialog(() => selectedLots.addAll(availableLots)),
+                              icon: const Icon(Icons.select_all, size: 16),
+                              label: const Text('Select All'),
+                              style: TextButton.styleFrom(foregroundColor: const Color(0xFF38BDF8)),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => setStateDialog(() => selectedLots.clear()),
+                              icon: const Icon(Icons.clear_all, size: 16),
+                              label: const Text('Clear'),
+                              style: TextButton.styleFrom(foregroundColor: const Color(0xFF94A3B8)),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: selectedLots.length >= 2 ? const Color(0xFF0284C7).withOpacity(0.2) : const Color(0xFFEF4444).withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: selectedLots.length >= 2 ? const Color(0xFF38BDF8) : const Color(0xFFEF4444)),
+                              ),
+                              child: Text(
+                                '${selectedLots.length} Selected ${selectedLots.length < 2 ? "(Min 2 required)" : ""}',
+                                style: TextStyle(
+                                  color: selectedLots.length >= 2 ? const Color(0xFF38BDF8) : const Color(0xFFFCA5A5),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        // Lot Chips Bar
+                        SizedBox(
+                          height: 38,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: displayedLots.length,
+                            itemBuilder: (c, idx) {
+                              final l = displayedLots[idx];
+                              final isSel = selectedLots.contains(l);
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6.0),
+                                child: FilterChip(
+                                  label: Text(l, style: TextStyle(color: isSel ? Colors.white : const Color(0xFF94A3B8), fontSize: 11.5, fontWeight: isSel ? FontWeight.bold : FontWeight.normal)),
+                                  selected: isSel,
+                                  onSelected: (val) {
+                                    setStateDialog(() {
+                                      if (val) {
+                                        selectedLots.add(l);
+                                      } else {
+                                        selectedLots.remove(l);
+                                      }
+                                    });
+                                  },
+                                  backgroundColor: const Color(0xFF1E293B),
+                                  selectedColor: const Color(0xFF0284C7),
+                                  checkmarkColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                    side: BorderSide(color: isSel ? const Color(0xFF38BDF8) : const Color(0xFF334155)),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14.0),
+
+                  // Comparison Area
+                  Expanded(
+                    child: selectedLots.length < 2
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.touch_app_outlined, size: 48, color: Color(0xFF64748B)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Please select at least 2 $entityLabel to display side-by-side comparison matrix.',
+                                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F172A),
+                              borderRadius: BorderRadius.circular(10.0),
+                              border: Border.all(color: const Color(0xFF334155)),
+                            ),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.vertical,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: DataTable(
+                                  columnSpacing: 20.0,
+                                  horizontalMargin: 16.0,
+                                  headingRowHeight: 52.0,
+                                  dataRowMinHeight: 40.0,
+                                  dataRowMaxHeight: 54.0,
+                                  headingRowColor: MaterialStateProperty.all(const Color(0xFF1E293B)),
+                                  columns: [
+                                    const DataColumn(
+                                      label: Text(
+                                        'EVALUATION PARAMETER',
+                                        style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11.5),
+                                      ),
+                                    ),
+                                    ...compData.map((d) {
+                                      final isApproved = (d['status'] as String).toLowerCase().contains('approved');
+                                      return DataColumn(
+                                        label: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              d['lot'] as String,
+                                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.5),
+                                            ),
+                                            Text(
+                                              '${d['caliber']} • ${d['status']}',
+                                              style: TextStyle(color: isApproved ? const Color(0xFF10B981) : const Color(0xFFEF4444), fontSize: 10.5),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ],
+                                  rows: metricsList.map((m) {
+                                    return DataRow(
+                                      cells: [
+                                        DataCell(
+                                          Text(
+                                            m['name']!,
+                                            style: const TextStyle(color: Color(0xFFE2E8F0), fontWeight: FontWeight.w600, fontSize: 11.5),
+                                          ),
+                                        ),
+                                        ...compData.map((d) {
+                                          final val = d[m['key']]?.toString() ?? '-';
+                                          return DataCell(
+                                            Text(
+                                              val,
+                                              style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontFamily: 'monospace'),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _exportCaliberVolumeAlone(
     BuildContext context,
     Map<String, int> caliberCounts, {
@@ -3904,60 +4474,46 @@ class _DashboardTabState extends State<DashboardTab> {
 
     final sourceRecords = (records != null && records.isNotEmpty) ? records : widget.records;
 
-    // Grouping by caliber specification -> lot number -> total rounds
-    final Map<String, Map<String, int>> breakdown = {};
+    // Aggregate pure totals per caliber specification only (Req 2 & Req 5)
+    final Map<String, int> caliberTotals = {};
     for (final r in sourceRecords) {
-      final cal = r.caliber.trim().isNotEmpty ? r.caliber.trim() : 'Unspecified Caliber';
-      final lot = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : 'Unassigned Lot';
+      final cal = ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule);
       final rounds = r.produced;
-      breakdown.putIfAbsent(cal, () => {});
-      breakdown[cal]![lot] = (breakdown[cal]![lot] ?? 0) + rounds;
+      caliberTotals[cal] = (caliberTotals[cal] ?? 0) + rounds;
     }
 
     // Ensure any caliber from caliberCounts is represented
     for (final entry in caliberCounts.entries) {
-      if (!breakdown.containsKey(entry.key)) {
-        breakdown[entry.key] = {'Total Tested': entry.value};
+      final calName = entry.key.trim().isNotEmpty ? entry.key.trim() : 'Unspecified Caliber';
+      if (!caliberTotals.containsKey(calName)) {
+        caliberTotals[calName] = entry.value;
       }
     }
 
-    // Sort calibers alphabetically or by total volume
-    final sortedCalibers = breakdown.keys.toList()
-      ..sort((a, b) {
-        final sumA = breakdown[a]!.values.fold<int>(0, (s, v) => s + v);
-        final sumB = breakdown[b]!.values.fold<int>(0, (s, v) => s + v);
-        return sumB.compareTo(sumA);
-      });
+    // Sort calibers by total volume descending
+    final sortedCalibers = caliberTotals.keys.toList()
+      ..sort((a, b) => caliberTotals[b]!.compareTo(caliberTotals[a]!));
 
-    int grandTotalRounds = 0;
+    final int grandTotalRounds = caliberTotals.values.fold<int>(0, (s, v) => s + v);
 
     if (choice == 'csv' || choice == 'excel') {
       final buffer = StringBuffer();
-      buffer.writeln('Caliber Specification,Lot Number,Rounds Tested per Lot,Sum of All Lots for Caliber');
+      buffer.writeln('Caliber Specification,Total Rounds / Units Tested,Percentage Share (%)');
 
       for (final cal in sortedCalibers) {
-        final lotMap = breakdown[cal]!;
-        final sortedLots = lotMap.keys.toList()..sort();
-        final calSum = lotMap.values.fold<int>(0, (s, v) => s + v);
-        grandTotalRounds += calSum;
-
-        for (final lot in sortedLots) {
-          final rounds = lotMap[lot]!;
-          final cleanCal = cal.replaceAll('"', '""');
-          final cleanLot = lot.replaceAll('"', '""');
-          buffer.writeln('"$cleanCal","$cleanLot",$rounds,');
-        }
+        final calSum = caliberTotals[cal]!;
+        final share = grandTotalRounds > 0 ? ((calSum / grandTotalRounds) * 100.0).toStringAsFixed(1) : '0.0';
         final cleanCal = cal.replaceAll('"', '""');
-        buffer.writeln('"$cleanCal - Total","ALL LOTS",$calSum,$calSum');
+        buffer.writeln('"$cleanCal",$calSum,$share%');
       }
-      buffer.writeln('"GRAND TOTAL ACROSS ALL CALIBERS","ALL LOTS",$grandTotalRounds,$grandTotalRounds');
+      buffer.writeln('"GRAND TOTAL ACROSS ALL CALIBERS",$grandTotalRounds,100.0%');
 
-      final filename = 'ompc_caliber_volume_breakdown_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final filename = 'ompc_caliber_volume_total_${DateTime.now().millisecondsSinceEpoch}.csv';
       await ReportHelper.instance.downloadCsv(content: buffer.toString(), filename: filename);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Exported Caliber Volume Breakdown CSV: $filename'),
+            content: Text('Exported Caliber Volume Total CSV: $filename'),
             backgroundColor: const Color(0xFF10B981),
           ),
         );
@@ -3966,16 +4522,12 @@ class _DashboardTabState extends State<DashboardTab> {
     }
 
     // PDF / HTML Print preview
-    for (final cal in sortedCalibers) {
-      grandTotalRounds += breakdown[cal]!.values.fold<int>(0, (s, v) => s + v);
-    }
-
     final html = StringBuffer();
     html.writeln('''<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OMPC Ballistic AeroData - Tested Caliber Volume Breakdown</title>
+  <title>OMPC Ballistic AeroData - Tested Caliber Volume Summary</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -4058,7 +4610,7 @@ class _DashboardTabState extends State<DashboardTab> {
       text-align: right;
     }
     td {
-      padding: 9px 14px;
+      padding: 10px 14px;
       border: 1px solid #e2e8f0;
       font-size: 13px;
     }
@@ -4069,30 +4621,14 @@ class _DashboardTabState extends State<DashboardTab> {
       color: #0c2a4d;
       font-size: 13.5px;
     }
-    .caliber-header {
-      background-color: #edf4fc !important;
-      color: #0c2a4d;
-      font-weight: 700;
-      font-size: 13.5px;
-      border-top: 2px solid #93c5fd;
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
     }
-    .caliber-subtotal {
-      background-color: #f1f5f9 !important;
-      font-weight: bold;
-      color: #1e3a8a;
-      border-bottom: 2px solid #cbd5e1;
-    }
-    .caliber-subtotal td {
-      font-weight: bold;
-      color: #1e3a8a;
-    }
-    tr.grand-total {
+    tr.grand-total td {
       background-color: #dbeafe !important;
       font-weight: bold;
       border-top: 3px solid #1e3a8a;
       border-bottom: 3px solid #1e3a8a;
-    }
-    tr.grand-total td {
       font-size: 14px;
       font-weight: 800;
       color: #0c2a4d;
@@ -4122,7 +4658,7 @@ class _DashboardTabState extends State<DashboardTab> {
     <div class="header-bar">
       <div class="header-title">
         <h1>OMPC Ballistic AeroData</h1>
-        <p>Tested Caliber Volume Breakdown (Rounds per Lot & Caliber Sum)</p>
+        <p>Tested Caliber Volume Summary (Total Rounds per Caliber)</p>
       </div>
       <div class="badge">${widget.currentModule.toUpperCase()}</div>
     </div>
@@ -4131,46 +4667,28 @@ class _DashboardTabState extends State<DashboardTab> {
       <thead>
         <tr>
           <th>Caliber Specification</th>
-          <th>Lot Number</th>
-          <th class="num">Rounds Tested</th>
-          <th class="num">Caliber Total</th>
+          <th class="num">Total Tested Rounds</th>
+          <th class="num">Volume Share (%)</th>
         </tr>
       </thead>
       <tbody>''');
 
     for (final cal in sortedCalibers) {
-      final lotMap = breakdown[cal]!;
-      final sortedLots = lotMap.keys.toList()..sort();
-      final calSum = lotMap.values.fold<int>(0, (s, v) => s + v);
-
+      final rounds = caliberTotals[cal]!;
+      final share = grandTotalRounds > 0 ? ((rounds / grandTotalRounds) * 100.0).toStringAsFixed(1) : '0.0';
       html.writeln('''
-        <tr class="caliber-header">
-          <td colspan="4">🏷️ <strong>Caliber Specification: $cal</strong></td>
-        </tr>''');
-
-      for (final lot in sortedLots) {
-        final rounds = lotMap[lot]!;
-        html.writeln('''
         <tr>
-          <td style="padding-left: 24px; color: #64748b;">$cal</td>
-          <td><strong>Lot # $lot</strong></td>
-          <td class="num">$rounds</td>
-          <td class="num" style="color: #94a3b8;">-</td>
-        </tr>''');
-      }
-
-      html.writeln('''
-        <tr class="caliber-subtotal">
-          <td colspan="2" style="padding-left: 24px;">📊 <strong>Sum of All Lots for $cal</strong></td>
-          <td class="num" style="color: #1e3a8a;"><strong>$calSum</strong></td>
-          <td class="num" style="color: #1e3a8a;"><strong>$calSum rounds</strong></td>
+          <td>🏷️ <strong>$cal</strong></td>
+          <td class="num">$rounds rounds</td>
+          <td class="num" style="color: #0284c7;">$share%</td>
         </tr>''');
     }
 
     html.writeln('''
         <tr class="grand-total">
-          <td colspan="2">🏆 <strong>GRAND TOTAL ACROSS ALL CALIBERS</strong></td>
-          <td class="num" colspan="2"><strong>$grandTotalRounds rounds</strong></td>
+          <td>🏆 <strong>GRAND TOTAL ACROSS ALL CALIBERS</strong></td>
+          <td class="num"><strong>$grandTotalRounds rounds</strong></td>
+          <td class="num"><strong>100.0%</strong></td>
         </tr>
       </tbody>
     </table>

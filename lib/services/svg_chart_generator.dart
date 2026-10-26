@@ -627,8 +627,6 @@ class SvgChartGenerator {
     final double ucl = mean + (3 * sd);
     final double lcl = math.max(0.0, mean - (3 * sd));
 
-    final int oocCount = values.where((v) => v > ucl || v < lcl).length;
-
     // 3. Layout Dimensions
     final padLeft = 65.0;
     final padRight = 35.0;
@@ -673,14 +671,7 @@ class SvgChartGenerator {
 
     <rect x="256" y="0" width="65" height="18" rx="3" fill="#f3e8ff" stroke="#a855f7" stroke-width="0.8"/>
     <text x="288" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#7e22ce" font-family="sans-serif">σ: ${sd.toStringAsFixed(2)}</text>
-''');
-    if (oocCount > 0) {
-      buffer.writeln('''
-    <rect x="328" y="0" width="70" height="18" rx="3" fill="#ef4444"/>
-    <text x="363" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#ffffff" font-family="sans-serif">OOC: $oocCount</text>
-''');
-    }
-    buffer.writeln('  </g>');
+  </g>''');
 
     // Sigma Bands Shading (3σ and 1σ)
     final double uclY = getY(ucl);
@@ -727,9 +718,8 @@ class SvgChartGenerator {
       final x = displayPoints.length > 1 ? padLeft + (i * stepX) : padLeft + chartW / 2;
       final val = displayPoints[i]['val'] as double;
       final y = getY(val);
-      final isOoc = val > ucl || val < lcl;
-      final color = isOoc ? '#ef4444' : '#0284c7';
-      final radius = isOoc ? 6.0 : 4.5;
+      const color = '#0284c7';
+      const radius = 4.5;
       final label = displayPoints[i]['label'] as String;
 
       buffer.writeln('''  <circle cx="$x" cy="$y" r="$radius" fill="$color" stroke="#ffffff" stroke-width="2"/>''');

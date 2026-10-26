@@ -19,37 +19,33 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v2.0.5';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.5 (Executive Report Hierarchy, Daily Test Performed Date Order, Vertically Stacked SPC Charts, Primer 5.56 Lot Sync, Weapon State Reset)';
-const BODY = `## OMPC Ballistic AeroData v2.0.5
+const TAG_NAME = 'v2.0.8';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.8 (Clean Remarks, Caliber Volume Totals, Executive Volume Overview, 1-Page Certificate, OOC Removal, Annual Lot Isolation & Benchmark Comparison)';
+const BODY = `## OMPC Ballistic AeroData v2.0.8
 
-Ballistic analytics and inspection intelligence release introducing complete executive report hierarchy restructuring, chronological inspection ordering by performance date, vertically stacked SPC analysis, dynamic hopper terminology for daily testing, seamless primer component cross-referencing, and state isolation:
+Enterprise ballistic quality suite update introducing clean remarks formatting, total caliber volume exports without lot/hopper clutter, executive module volume analytics across all three modules, 1-page final lot acceptance certificates, SPC chart cleanup (removing OOC labels), annual lot production year isolation, and side-by-side lot/hopper performance benchmarking:
 
 ### Key Enhancements & Features:
-1. **Daily Test Inspection Log Ordering & Display**:
-   - The Inspection Log now prominently displays the actual test performance date and time (\`testTime\`) selected during log entry rather than the submission timestamp.
-   - All inspection records across Daily Test are sorted descending by date/time performed so users immediately see the most recent real-world test activity.
-2. **Executive Report Hierarchical Structure**:
-   - **Part 1: Lot Acceptance**: Sub-divided strictly by Caliber specifications, with individual Lot Numbers and their respective test results presented independently, followed by caliber-level SPC trend and Box & Whisker analysis.
-   - **Part 2: Daily Test**: Sub-divided by Caliber specifications with hoppers grouped together, followed by caliber-level SPC trend and Box & Whisker analysis.
-   - **Part 3: Component Test**: Structured with dedicated sub-sections for propellants and primer sensitivity.
-   - Module inclusion checkboxes allow selective generation of any combination of modules.
-3. **Weekly Period Analysis**:
-   - Added full support for 'Weekly' aggregation in both the UI dashboard and Executive HTML / Tabular report exports (Monday to Sunday calendar window), alongside Daily, Monthly, and Yearly.
-4. **Executive Report Dashboard UI**:
-   - Completely mirrors the executive report export hierarchy in the in-app Executive Reports tab, with embedded interactive Trend Line and Box & Whisker charts per caliber.
-5. **Primer 5.56 Lot Synchronization & Family Equivalence**:
-   - Primer lots submitted in the Component module are fully discoverable and selectable when creating a primer report in Lot Acceptance for any 5.56 caliber lot.
-   - Implemented bidirectional caliber equivalence families: \`5.56\` & \`.223\`, \`7.62\` & \`.308\`, \`9mm\` & \`9x19\`.
-6. **Daily Test Dashboard SPC Terminology ("Hopper")**:
-   - Updated the Daily Test SPC matrix controls and labels from "Lot" to "Hopper" (\`By Hopper No.\`), reserving the term "Lot" exclusively for Lot Acceptance and Component modules.
-7. **Vertically Stacked SPC Multi-Test Layout**:
-   - When multiple test types are selected in the SPC Matrix, charts are stacked vertically (top/bottom) instead of horizontally (left/right side-by-side) to maximize resolution, trend readability, and detail.
-8. **Lot Acceptance Primer Entry Form Clean State**:
-   - Result fields and remarks remain clean/empty upon selecting a caliber until the user explicitly selects a lot number and inputs remarks.
-9. **Weapon State Isolation & Round Count Validation**:
-   - Weapon selections and firing counts are cleanly reset on logout and when opening the Function Test dialog.
-   - Explicit weapon serial and round count entry is strictly enforced with user feedback.
+1. **Inspection Log Clean Remarks & Reference Number Removal**:
+   - Remarks column remains completely blank/empty unless user explicitly enters custom observations.
+   - Stripped all automated reference tokens, tags, and numbers from export reports.
+2. **Tested Caliber Volume Total Export (No Hopper/Lot Rows)**:
+   - Export Caliber Volume standalone reports (CSV & Print/PDF) now aggregate totals strictly per caliber specification with volume share percentages, removing individual hopper and lot sub-rows.
+3. **Executive Report Caliber & Component Volume Overview**:
+   - Integrated full caliber and component volume breakdown across all 3 modules (Lot Acceptance, Daily Test, Component Test).
+   - Added prominent in-dashboard breakdown card and dedicated "Export Caliber Volume Alone" action button in the Executive Reports tab.
+4. **Final Lot Acceptance Certificate One-Page Fitting**:
+   - Calibrated typography, spacing, and table cell heights to ensure generated Word documents fit comfortably and legibly on a single overall page without being microscopic.
+5. **Component Test Caliber & Nomenclature Alignment**:
+   - Primer Sensitivity volumes are categorized by primed cases (\`5.56 primed cases\`, \`7.62 primed cases\`, \`9mm primed cases\`).
+   - Bullet component tests are categorized by projectile calibre (\`.223 bullet\`, \`.308 bullet\`, \`9mm bullet\`).
+6. **SPC Chart Simplification (Removal of OOC)**:
+   - Removed all Out of Control (OOC) badges, counters, and highlights from SPC charts across in-app charts and exported vector reports, maintaining UCL, Centerline (CL), and LCL control limits.
+7. **Lot Acceptance Dashboard Production Year Isolation**:
+   - Production year is automatically extracted from lot numbers (e.g. \`001 OMPC/26\` -> Year 26, \`001 OMPC/25\` -> Year 25).
+   - Lot Acceptance dashboard strictly isolates and displays records from a single production year at a time via a dedicated Year Selector dropdown.
+8. **Side-by-Side Lot & Hopper Benchmark Comparison**:
+   - Added multi-selection comparison matrix dialog allowing users to pick two or more lots or hoppers to directly compare test metrics, defect counts, compliance status, and export comparison reports (CSV & Print/PDF).
 `;
 
 function request(options, postData) {
@@ -159,7 +155,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v2.0.5.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.5.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v2.0.8.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.8.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];
