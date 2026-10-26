@@ -362,19 +362,108 @@ const List<String> allCaliberSpecifications = [
 
 class CaliberVolumeList extends StatelessWidget {
   final Map<String, int> caliberCounts;
+  final String? currentModule;
+  final String? selectedTestName;
 
-  const CaliberVolumeList({Key? key, required this.caliberCounts}) : super(key: key);
+  const CaliberVolumeList({
+    Key? key,
+    required this.caliberCounts,
+    this.currentModule,
+    this.selectedTestName,
+  }) : super(key: key);
+
+  List<String> _getDisplayCalibers() {
+    final bool isComponent = currentModule == 'Component Test' || (currentModule?.toLowerCase().contains('component') ?? false);
+    if (!isComponent) {
+      return allCaliberSpecifications;
+    }
+
+    final test = (selectedTestName ?? 'All').toLowerCase();
+    final bool isBulletOnly = test.contains('bullet') || test.contains('accuracy');
+    final bool isPrimerOnly = test.contains('primer');
+
+    final bool has545Primer = (caliberCounts['5.45 primed cases'] ?? 0) > 0 || (caliberCounts['5.45'] ?? 0) > 0;
+    final bool has545Bullet = (caliberCounts['5.45 bullet'] ?? 0) > 0;
+
+    final primerCalibers = [
+      if (has545Primer) '5.45 primed cases' else '5.56 primed cases',
+      '7.62 primed cases',
+      '9mm primed cases',
+    ];
+
+    final bulletCalibers = [
+      if (has545Bullet) '5.45 bullet' else '5.56 bullet',
+      '7.62 bullet',
+      '9mm bullet',
+    ];
+
+    if (isBulletOnly) {
+      return bulletCalibers;
+    }
+    if (isPrimerOnly) {
+      return primerCalibers;
+    }
+
+    // When 'All': inspect submitted counts to present submitted component categories
+    final bool hasAnyBullet = caliberCounts.keys.any((k) => k.toLowerCase().contains('bullet') && (caliberCounts[k] ?? 0) > 0);
+    final bool hasAnyPrimer = caliberCounts.keys.any((k) => (k.toLowerCase().contains('primer') || k.toLowerCase().contains('cases')) && (caliberCounts[k] ?? 0) > 0);
+
+    if (hasAnyBullet && !hasAnyPrimer) {
+      return bulletCalibers;
+    }
+    if (hasAnyPrimer && !hasAnyBullet) {
+      return primerCalibers;
+    }
+    if (hasAnyBullet && hasAnyPrimer) {
+      return [...primerCalibers, ...bulletCalibers];
+    }
+
+    // Default to 3 standard primed case calibers
+    return primerCalibers;
+  }
+
+  int _resolveCount(String caliber) {
+    if (caliberCounts.containsKey(caliber)) {
+      return caliberCounts[caliber]!;
+    }
+    final calLower = caliber.toLowerCase();
+    int sum = 0;
+    for (final entry in caliberCounts.entries) {
+      final keyLower = entry.key.toLowerCase();
+      if (keyLower == calLower) {
+        sum += entry.value;
+      } else if (calLower.contains('5.56') && (keyLower == '5.56' || keyLower.contains('5.56x45') || keyLower.contains('.223'))) {
+        sum += entry.value;
+      } else if (calLower.contains('5.45') && (keyLower == '5.45' || keyLower.contains('5.45x39'))) {
+        sum += entry.value;
+      } else if (calLower.contains('7.62') && (keyLower == '7.62' || keyLower.contains('7.62x51') || keyLower.contains('.308'))) {
+        sum += entry.value;
+      } else if (calLower.contains('9mm') && (keyLower == '9mm' || keyLower.contains('9x19'))) {
+        sum += entry.value;
+      }
+    }
+    return sum;
+  }
+
+  String _resolveUnit(String caliber) {
+    final lower = caliber.toLowerCase();
+    if (lower.contains('primed cases')) return 'primed cases';
+    if (lower.contains('bullet')) return 'bullets';
+    return 'rounds';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final displayCalibers = _getDisplayCalibers();
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: allCaliberSpecifications.length,
+      itemCount: displayCalibers.length,
       separatorBuilder: (context, index) => const Divider(color: Color(0xFFE2E8F0), height: 1.0),
       itemBuilder: (context, index) {
-        final caliber = allCaliberSpecifications[index];
-        final count = caliberCounts[caliber] ?? 0;
+        final caliber = displayCalibers[index];
+        final count = _resolveCount(caliber);
+        final unit = _resolveUnit(caliber);
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 7.0),
           child: Row(
@@ -397,7 +486,7 @@ class CaliberVolumeList extends StatelessWidget {
                   border: Border.all(color: const Color(0xFF4D99DB).withOpacity(0.4)),
                 ),
                 child: Text(
-                  '$count rounds',
+                  '$count $unit',
                   style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11.5, fontFamily: 'JetBrainsMono', fontWeight: FontWeight.bold),
                 ),
               ),

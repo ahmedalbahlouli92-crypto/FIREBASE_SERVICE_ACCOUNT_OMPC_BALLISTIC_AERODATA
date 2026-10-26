@@ -94,8 +94,8 @@ class ReportGenerator {
 
   /// Resolves caliber specification for volume reports across modules.
   /// Handles Component Test module mappings:
-  /// - Primed Cases: '5.56 primed cases', '7.62 primed cases', '9mm primed cases'
-  /// - Bullets: '.223 bullet', '.308 bullet', '9mm bullet'
+  /// - Primed Cases: '5.56 primed cases' (or '5.45 primed cases'), '7.62 primed cases', '9mm primed cases'
+  /// - Bullets: '5.56 bullet' (or '5.45 bullet'), '7.62 bullet', '9mm bullet'
   static String resolveCaliberVolumeName(BallisticRecord r, [String? currentModule]) {
     final mod = (currentModule ?? r.module).trim();
     final isComponent = mod == 'Component Test' || mod.toLowerCase().contains('component');
@@ -108,7 +108,9 @@ class ReportGenerator {
       final calLower = calRaw.toLowerCase();
 
       if (isPrimer || (!isBullet && !testLower.contains('propellant'))) {
-        if (calLower.contains('5.56') || calLower.contains('.223')) {
+        if (calLower.contains('5.45')) {
+          return '5.45 primed cases';
+        } else if (calLower.contains('5.56') || calLower.contains('.223')) {
           return '5.56 primed cases';
         } else if (calLower.contains('7.62') || calLower.contains('.308')) {
           return '7.62 primed cases';
@@ -118,10 +120,12 @@ class ReportGenerator {
           return calRaw.isNotEmpty ? '$calRaw primed cases' : 'Primed Cases';
         }
       } else if (isBullet) {
-        if (calLower.contains('5.56') || calLower.contains('.223')) {
-          return '.223 bullet';
+        if (calLower.contains('5.45')) {
+          return '5.45 bullet';
+        } else if (calLower.contains('5.56') || calLower.contains('.223')) {
+          return '5.56 bullet';
         } else if (calLower.contains('7.62') || calLower.contains('.308')) {
-          return '.308 bullet';
+          return '7.62 bullet';
         } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
           return '9mm bullet';
         } else {

@@ -236,12 +236,18 @@ class _DashboardTabState extends State<DashboardTab> {
     }
 
     if (lot != 'Overall' && lot != 'All') {
-      res = res.where((r) =>
-        r.lotNo.trim() == lot ||
-        r.primerLot.trim() == lot ||
-        r.propellantLot.trim() == lot ||
-        r.hopperNo.trim() == lot
-      ).toList();
+      if (widget.currentModule == 'Lot Acceptance Test' || widget.currentModule == 'Lot Acceptance') {
+        res = res.where((r) => r.lotNo.trim() == lot).toList();
+      } else if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
+        res = res.where((r) => r.hopperNo.trim() == lot || r.lotNo.trim() == lot).toList();
+      } else {
+        res = res.where((r) =>
+          r.lotNo.trim() == lot ||
+          r.primerLot.trim() == lot ||
+          r.propellantLot.trim() == lot ||
+          r.hopperNo.trim() == lot
+        ).toList();
+      }
     }
 
     if (caliber != 'All') {
@@ -342,11 +348,24 @@ class _DashboardTabState extends State<DashboardTab> {
         : widget.records;
 
     // Extract unique lots and calibers from baseRecords
-    final uniqueLots = baseRecords
-        .expand((r) => [r.lotNo.trim(), r.primerLot.trim(), r.propellantLot.trim(), r.hopperNo.trim()])
-        .where((l) => l.isNotEmpty)
-        .toSet()
-        .toList();
+    // For Lot Acceptance, strictly isolate to product ammunition lot numbers (exclude component primer/propellant lots)
+    final uniqueLots = isLotAcceptance
+        ? baseRecords
+            .map((r) => r.lotNo.trim())
+            .where((l) => l.isNotEmpty)
+            .toSet()
+            .toList()
+        : (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report')
+            ? baseRecords
+                .expand((r) => [r.hopperNo.trim(), r.lotNo.trim()])
+                .where((l) => l.isNotEmpty)
+                .toSet()
+                .toList()
+            : baseRecords
+                .expand((r) => [r.lotNo.trim(), r.primerLot.trim(), r.propellantLot.trim(), r.hopperNo.trim()])
+                .where((l) => l.isNotEmpty)
+                .toSet()
+                .toList();
     uniqueLots.sort();
 
     final uniqueCalibers = widget.currentModule == 'Component Test'
@@ -480,12 +499,18 @@ class _DashboardTabState extends State<DashboardTab> {
 
     // 3. Lot Filter
     if (_selectedLot != 'Overall') {
-      filtered = filtered.where((r) =>
-        r.lotNo.trim() == _selectedLot ||
-        r.primerLot.trim() == _selectedLot ||
-        r.propellantLot.trim() == _selectedLot ||
-        r.hopperNo.trim() == _selectedLot
-      ).toList();
+      if (isLotAcceptance) {
+        filtered = filtered.where((r) => r.lotNo.trim() == _selectedLot).toList();
+      } else if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {
+        filtered = filtered.where((r) => r.hopperNo.trim() == _selectedLot || r.lotNo.trim() == _selectedLot).toList();
+      } else {
+        filtered = filtered.where((r) =>
+          r.lotNo.trim() == _selectedLot ||
+          r.primerLot.trim() == _selectedLot ||
+          r.propellantLot.trim() == _selectedLot ||
+          r.hopperNo.trim() == _selectedLot
+        ).toList();
+      }
     }
 
     // 4. Caliber Filter
@@ -533,7 +558,10 @@ class _DashboardTabState extends State<DashboardTab> {
     for (var r in analyticsFiltered) {
       analyticsTotalRounds += r.produced;
       analyticsTotalDefects += r.defects;
-      analyticsCaliberCounts[r.caliber] = (analyticsCaliberCounts[r.caliber] ?? 0) + r.produced;
+      final calKey = widget.currentModule == 'Component Test'
+          ? ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule)
+          : r.caliber;
+      analyticsCaliberCounts[calKey] = (analyticsCaliberCounts[calKey] ?? 0) + r.produced;
 
       if (r.status == 'Approved') {
         analyticsPassCount++;
@@ -582,7 +610,10 @@ class _DashboardTabState extends State<DashboardTab> {
     for (var r in overviewFiltered) {
       overviewTotalRounds += r.produced;
       overviewTotalDefects += r.defects;
-      overviewCaliberCounts[r.caliber] = (overviewCaliberCounts[r.caliber] ?? 0) + r.produced;
+      final calKey = widget.currentModule == 'Component Test'
+          ? ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule)
+          : r.caliber;
+      overviewCaliberCounts[calKey] = (overviewCaliberCounts[calKey] ?? 0) + r.produced;
       if (overviewStatusCounts.containsKey(r.status)) {
         overviewStatusCounts[r.status] = (overviewStatusCounts[r.status] ?? 0) + 1;
       } else {
@@ -629,7 +660,10 @@ class _DashboardTabState extends State<DashboardTab> {
       totalRounds += r.produced;
       totalDefects += r.defects;
 
-      caliberCounts[r.caliber] = (caliberCounts[r.caliber] ?? 0) + r.produced;
+      final calKey = widget.currentModule == 'Component Test'
+          ? ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule)
+          : r.caliber;
+      caliberCounts[calKey] = (caliberCounts[calKey] ?? 0) + r.produced;
 
       if (statusCounts.containsKey(r.status)) {
         statusCounts[r.status] = (statusCounts[r.status] ?? 0) + 1;
@@ -1253,9 +1287,15 @@ class _DashboardTabState extends State<DashboardTab> {
                                 width: isDesktop ? (constraints.maxWidth - 40) * 0.45 : constraints.maxWidth,
                               ),
                               _buildChartCard(
-                                title: 'Tested Caliber Volume',
+                                title: widget.currentModule == 'Component Test'
+                                    ? 'Tested Component Caliber Volume'
+                                    : 'Tested Caliber Volume',
                                 child: SingleChildScrollView(
-                                  child: CaliberVolumeList(caliberCounts: analyticsCaliberCounts),
+                                  child: CaliberVolumeList(
+                                    caliberCounts: analyticsCaliberCounts,
+                                    currentModule: widget.currentModule,
+                                    selectedTestName: _analyticsTestName,
+                                  ),
                                 ),
                                 width: isDesktop ? (constraints.maxWidth - 40) * 0.28 : constraints.maxWidth,
                               ),
@@ -4476,16 +4516,15 @@ class _DashboardTabState extends State<DashboardTab> {
 
     // Aggregate pure totals per caliber specification only (Req 2 & Req 5)
     final Map<String, int> caliberTotals = {};
-    for (final r in sourceRecords) {
-      final cal = ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule);
-      final rounds = r.produced;
-      caliberTotals[cal] = (caliberTotals[cal] ?? 0) + rounds;
-    }
-
-    // Ensure any caliber from caliberCounts is represented
-    for (final entry in caliberCounts.entries) {
-      final calName = entry.key.trim().isNotEmpty ? entry.key.trim() : 'Unspecified Caliber';
-      if (!caliberTotals.containsKey(calName)) {
+    if (sourceRecords.isNotEmpty) {
+      for (final r in sourceRecords) {
+        final cal = ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule);
+        final rounds = r.produced;
+        caliberTotals[cal] = (caliberTotals[cal] ?? 0) + rounds;
+      }
+    } else {
+      for (final entry in caliberCounts.entries) {
+        final calName = entry.key.trim().isNotEmpty ? entry.key.trim() : 'Unspecified Caliber';
         caliberTotals[calName] = entry.value;
       }
     }

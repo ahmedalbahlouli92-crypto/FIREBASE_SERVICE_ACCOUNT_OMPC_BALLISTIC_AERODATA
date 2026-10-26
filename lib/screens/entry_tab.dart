@@ -2368,7 +2368,7 @@ class _EntryTabState extends State<EntryTab> {
           '9x19mm 124 grains CMJ',
         ];
       }
-      return const ['5.56', '7.62', '9mm'];
+      return const ['5.56', '5.45', '7.62', '9mm'];
     }
     return EntryTab.calibers;
   }
