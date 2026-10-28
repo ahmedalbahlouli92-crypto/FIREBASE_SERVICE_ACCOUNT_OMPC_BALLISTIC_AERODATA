@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../models/ballistic_record.dart';
+import '../services/report_generator.dart';
 import '../services/report_helper.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -167,15 +168,14 @@ class _TrendLineChartState extends State<TrendLineChart> {
       ];
     } else if (lower.contains('accuracy') || lower.contains('bullet')) {
       return [
+        'Mean Velocity (m/s)',
         'Average SD (X & Y)',
         'Mean Radius (mm)',
         'SD X (mm)',
         'SD Y (mm)',
-        'Mean Velocity (m/s)',
       ];
     } else if (lower.contains('epvat')) {
       return [
-        'Mean Velocity (m/s)',
         'P1 Chamber Pressure (bar)',
         'P1 Max Pressure (bar)',
         'P1 SD Pressure (bar)',
@@ -183,7 +183,6 @@ class _TrendLineChartState extends State<TrendLineChart> {
         'P2 Max Pressure (bar)',
         'P2 SD Pressure (bar)',
         'Action Time (ms)',
-        'Velocity SD (m/s)',
       ];
     } else if (lower.contains('stress')) {
       return [
@@ -644,7 +643,9 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   List<_TrendGroupPoint> _buildGroupPointsForTest(String testName, String activeParam) {
     final filtered = widget.records.where((r) {
-      final matchesCal = _selectedCaliber == 'All' || r.caliber == _selectedCaliber;
+      final matchesCal = _selectedCaliber == 'All' ||
+          r.caliber == _selectedCaliber ||
+          ReportGenerator.isSameCaliberGroup(r.caliber, _selectedCaliber);
       final matchesTest = _matchesTestName(r.testName, testName);
       final matchesTemp = _matchesTemperature(r, _selectedTemp);
       return matchesCal && matchesTest && matchesTemp;
@@ -655,9 +656,24 @@ class _TrendLineChartState extends State<TrendLineChart> {
 
   @override
   Widget build(BuildContext context) {
-    // Caliber filter list
-    final calibers = ['All', ...widget.records.map((r) => r.caliber).where((c) => c.isNotEmpty).toSet().toList()..sort()];
-    if (!calibers.contains(_selectedCaliber)) _selectedCaliber = 'All';
+    // Caliber filter list (normalizing M80 and SS109 variants)
+    final calibers = [
+      'All',
+      ...widget.records
+          .map((r) => ReportGenerator.normalizeCaliberGroup(r.caliber))
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort()
+    ];
+    if (_selectedCaliber != 'All') {
+      final normSel = ReportGenerator.normalizeCaliberGroup(_selectedCaliber);
+      if (calibers.contains(normSel)) {
+        _selectedCaliber = normSel;
+      } else if (!calibers.contains(_selectedCaliber)) {
+        _selectedCaliber = 'All';
+      }
+    }
 
     // Total groups across selected tests
     int totalEvaluatedGroups = 0;

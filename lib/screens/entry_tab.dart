@@ -1892,7 +1892,45 @@ class _EntryTabState extends State<EntryTab> {
       return false;
     }
 
+    bool checkStats(String label, {String? maxStr, String? minStr, String? meanStr, String? sdStr}) {
+      final err = ReportGenerator.validateStatsNotIdentical(
+        label,
+        maxStr: maxStr,
+        minStr: minStr,
+        meanStr: meanStr,
+        sdStr: sdStr,
+      );
+      if (err != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text(err)),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return false;
+      }
+      return true;
+    }
+
     // 5. Test specific field validation
+    if (_testName == 'Extraction Force Test') {
+      if (!checkStats(
+        'Extraction Force',
+        maxStr: _maxXController.text,
+        minStr: _minXController.text,
+        meanStr: _meanXController.text,
+        sdStr: _sdXController.text,
+      )) {
+        return false;
+      }
+    }
     if (_testName == 'Waterproof Test') {
       if (_pressureController.text.trim().isEmpty) {
         notifyMissing('Waterproof Pressure (Bar)');
@@ -1967,9 +2005,36 @@ class _EntryTabState extends State<EntryTab> {
           notifyMissing('Min of Y');
           return false;
         }
+        if (!checkStats(
+          'X Dispersion',
+          maxStr: _maxXController.text,
+          minStr: _minXController.text,
+          meanStr: _meanXController.text,
+          sdStr: _sdXController.text,
+        )) {
+          return false;
+        }
+        if (!checkStats(
+          'Y Dispersion',
+          maxStr: _maxYController.text,
+          minStr: _minYController.text,
+          meanStr: _meanYController.text,
+          sdStr: _sdYController.text,
+        )) {
+          return false;
+        }
       }
       if (_meanVelController.text.trim().isEmpty) {
         notifyMissing('Mean Velocity');
+        return false;
+      }
+      if (!checkStats(
+        'Velocity',
+        maxStr: _maxVelController.text,
+        minStr: _minVelController.text,
+        meanStr: _meanVelController.text,
+        sdStr: _sdVelController.text,
+      )) {
         return false;
       }
     } else if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
@@ -2059,6 +2124,51 @@ class _EntryTabState extends State<EntryTab> {
             notifyMissing('Velocity Mean (' + t + '°C)');
             return false;
           }
+          if (!checkStats(
+            'Chamber Pressure P1 ($t°C)',
+            maxStr: _overallEpvatControllers[t]?['p1_max']?.text,
+            minStr: _overallEpvatControllers[t]?['p1_min']?.text,
+            meanStr: _overallEpvatControllers[t]?['p1_mean']?.text,
+            sdStr: _overallEpvatControllers[t]?['p1_sd']?.text,
+          )) {
+            return false;
+          }
+          if (!checkStats(
+            'Port Pressure P2 ($t°C)',
+            maxStr: _overallEpvatControllers[t]?['p2_max']?.text,
+            minStr: _overallEpvatControllers[t]?['p2_min']?.text,
+            meanStr: _overallEpvatControllers[t]?['p2_mean']?.text,
+            sdStr: _overallEpvatControllers[t]?['p2_sd']?.text,
+          )) {
+            return false;
+          }
+          if (!checkStats(
+            'Action Time ($t°C)',
+            maxStr: _overallEpvatControllers[t]?['action_time_max']?.text,
+            minStr: _overallEpvatControllers[t]?['action_time_min']?.text,
+            meanStr: _overallEpvatControllers[t]?['action_time_mean']?.text,
+            sdStr: _overallEpvatControllers[t]?['action_time_sd']?.text,
+          )) {
+            return false;
+          }
+          if (!checkStats(
+            'Velocity ($t°C)',
+            maxStr: _overallEpvatControllers[t]?['vel_max']?.text,
+            minStr: _overallEpvatControllers[t]?['vel_min']?.text,
+            meanStr: _overallEpvatControllers[t]?['vel_mean']?.text,
+            sdStr: _overallEpvatControllers[t]?['vel_sd']?.text,
+          )) {
+            return false;
+          }
+          if (!checkStats(
+            't4 ($t°C)',
+            maxStr: _overallEpvatControllers[t]?['t4_max']?.text,
+            minStr: _overallEpvatControllers[t]?['t4_min']?.text,
+            meanStr: _overallEpvatControllers[t]?['t4_mean']?.text,
+            sdStr: _overallEpvatControllers[t]?['t4_sd']?.text,
+          )) {
+            return false;
+          }
         }
       } else {
         if (_cartridgeTempController.text.trim().isEmpty) {
@@ -2079,6 +2189,51 @@ class _EntryTabState extends State<EntryTab> {
         }
         if (!isBlank && _meanVelController.text.trim().isEmpty) {
           notifyMissing('Mean Velocity');
+          return false;
+        }
+        if (!checkStats(
+          'Chamber Pressure P1',
+          maxStr: _epvatMaxPressureController.text,
+          minStr: _epvatMinPressureController.text,
+          meanStr: _epvatMeanPressureController.text,
+          sdStr: _epvatSDPressureController.text,
+        )) {
+          return false;
+        }
+        if (!checkStats(
+          'Port Pressure P2',
+          maxStr: _epvatP2MaxPressureController.text,
+          minStr: _epvatP2MinPressureController.text,
+          meanStr: _epvatP2MeanPressureController.text,
+          sdStr: _epvatP2SDPressureController.text,
+        )) {
+          return false;
+        }
+        if (!checkStats(
+          'Action Time',
+          maxStr: _actionTimeMaxController.text,
+          minStr: _actionTimeMinController.text,
+          meanStr: _actionTimeMeanController.text,
+          sdStr: _actionTimeSDController.text,
+        )) {
+          return false;
+        }
+        if (!checkStats(
+          'Velocity',
+          maxStr: _maxVelController.text,
+          minStr: _minVelController.text,
+          meanStr: _meanVelController.text,
+          sdStr: _sdVelController.text,
+        )) {
+          return false;
+        }
+        if (!checkStats(
+          't4',
+          maxStr: _t4MaxController.text,
+          minStr: _t4MinController.text,
+          meanStr: _t4MeanController.text,
+          sdStr: _t4SDController.text,
+        )) {
           return false;
         }
       }
@@ -2360,19 +2515,32 @@ class _EntryTabState extends State<EntryTab> {
 
   // calibers and testNames are now on EntryTab widget class
   List<String> get calibers {
+    final adminCalsRaw = widget.adminRules['calibers_list'];
+    final List<String> adminCals = adminCalsRaw is List
+        ? adminCalsRaw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList()
+        : <String>[];
     if (widget.currentModule == 'Component Test') {
-      if (_isAccuracyOrBullet) {
-        return const [
-          '5.56x45 .223 55 grains',
-          '5.56x45 .223 69 grains',
-          '5.56x45 .223 77 grains',
-          '7.62x51 .308',
-          '9x19mm 124 grains CMJ',
-        ];
+      final base = _isAccuracyOrBullet
+          ? <String>[
+              '5.56x45 .223 55 grains',
+              '5.56x45 .223 69 grains',
+              '5.56x45 .223 77 grains',
+              '7.62x51 .308',
+              '9x19mm 124 grains CMJ',
+            ]
+          : <String>['5.56', '5.45', '7.62', '9mm'];
+      for (final c in adminCals) {
+        if (!EntryTab.defaultCalibers.contains(c) && !base.contains(c)) {
+          base.add(c);
+        }
       }
-      return const ['5.56', '5.45', '7.62', '9mm'];
+      return base;
     }
-    return EntryTab.calibers;
+    final merged = <String>[...EntryTab.calibers];
+    for (final c in adminCals) {
+      if (!merged.contains(c)) merged.add(c);
+    }
+    return merged;
   }
   List<String> get testNames {
     if (widget.currentModule == 'Daily Test' || widget.currentModule == 'Daily Test Report') {

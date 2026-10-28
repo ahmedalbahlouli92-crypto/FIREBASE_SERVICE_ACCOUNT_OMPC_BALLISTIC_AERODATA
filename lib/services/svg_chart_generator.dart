@@ -1,20 +1,23 @@
 import 'dart:math' as math;
 import '../models/ballistic_record.dart';
+import 'report_generator.dart';
 
 class SvgChartGenerator {
   /// Generates an SVG Doughnut / Donut chart for Quality Status distribution
   static String generateStatusDonutSvg(
     Map<String, int> statusCounts,
     double yieldRate, {
-    double width = 340,
-    double height = 220,
+    double width = 420,
+    double height = 230,
   }) {
+    final double vbW = math.max(width, 420.0);
+    final double vbH = math.max(height, 220.0);
     final int total = statusCounts.values.fold(0, (sum, v) => sum + v);
     if (total == 0) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="#f8fafc" rx="8"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Status Data</text>
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Status Data</text>
       </svg>
       ''';
     }
@@ -27,54 +30,59 @@ class SvgChartGenerator {
       'Approved with condition': '#06b6d4',
     };
 
-    final cx = 100.0;
-    final cy = height / 2;
-    final r = 70.0;
-    final innerR = 48.0;
+    final cx = 95.0;
+    final cy = vbH / 2;
+    final r = 66.0;
+    final innerR = 45.0;
 
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>''');
 
-    double currentAngle = -math.pi / 2;
-    for (var entry in statusCounts.entries) {
-      final count = entry.value;
-      if (count <= 0) continue;
-      final sweep = (count / total) * 2 * math.pi;
-      final endAngle = currentAngle + sweep;
+    final nonZeroEntries = statusCounts.entries.where((e) => e.value > 0).toList();
+    if (nonZeroEntries.length == 1) {
+      final onlyEntry = nonZeroEntries.first;
+      final color = colors[onlyEntry.key] ?? '#10b981';
+      buffer.writeln('''  <circle cx="$cx" cy="$cy" r="${(r + innerR) / 2}" fill="none" stroke="$color" stroke-width="${r - innerR}"/>''');
+    } else {
+      double currentAngle = -math.pi / 2;
+      for (var entry in nonZeroEntries) {
+        final count = entry.value;
+        final sweep = (count / total) * 2 * math.pi;
+        final endAngle = currentAngle + sweep;
 
-      final x1 = cx + r * math.cos(currentAngle);
-      final y1 = cy + r * math.sin(currentAngle);
-      final x2 = cx + r * math.cos(endAngle);
-      final y2 = cy + r * math.sin(endAngle);
+        final x1 = cx + r * math.cos(currentAngle);
+        final y1 = cy + r * math.sin(currentAngle);
+        final x2 = cx + r * math.cos(endAngle);
+        final y2 = cy + r * math.sin(endAngle);
 
-      final ix1 = cx + innerR * math.cos(endAngle);
-      final iy1 = cy + innerR * math.sin(endAngle);
-      final ix2 = cx + innerR * math.cos(currentAngle);
-      final iy2 = cy + innerR * math.sin(currentAngle);
+        final ix1 = cx + innerR * math.cos(endAngle);
+        final iy1 = cy + innerR * math.sin(endAngle);
+        final ix2 = cx + innerR * math.cos(currentAngle);
+        final iy2 = cy + innerR * math.sin(currentAngle);
 
-      final largeArc = sweep > math.pi ? 1 : 0;
-      final color = colors[entry.key] ?? '#64748b';
+        final largeArc = sweep > math.pi ? 1 : 0;
+        final color = colors[entry.key] ?? '#64748b';
 
-      buffer.writeln('''  <path d="M $x1 $y1 A $r $r 0 $largeArc 1 $x2 $y2 L $ix1 $iy1 A $innerR $innerR 0 $largeArc 0 $ix2 $iy2 Z" fill="$color"/>''');
-      currentAngle = endAngle;
+        buffer.writeln('''  <path d="M $x1 $y1 A $r $r 0 $largeArc 1 $x2 $y2 L $ix1 $iy1 A $innerR $innerR 0 $largeArc 0 $ix2 $iy2 Z" fill="$color"/>''');
+        currentAngle = endAngle;
+      }
     }
 
     // Center text: Yield Rate
-    buffer.writeln('''  <text x="$cx" y="${cy - 4}" text-anchor="middle" font-size="15" font-weight="bold" fill="#0f172a" font-family="sans-serif">${yieldRate.toStringAsFixed(1)}%</text>''');
-    buffer.writeln('''  <text x="$cx" y="${cy + 12}" text-anchor="middle" font-size="9" font-weight="600" fill="#64748b" font-family="sans-serif">YIELD RATE</text>''');
+    buffer.writeln('''  <text x="$cx" y="${cy - 3}" text-anchor="middle" font-size="14" font-weight="bold" fill="#0f172a" font-family="sans-serif">${yieldRate.toStringAsFixed(1)}%</text>''');
+    buffer.writeln('''  <text x="$cx" y="${cy + 11}" text-anchor="middle" font-size="8.5" font-weight="600" fill="#64748b" font-family="sans-serif">YIELD RATE</text>''');
 
     // Legend on the right
-    double legendY = 35.0;
-    for (var entry in statusCounts.entries) {
+    double legendY = math.max(28.0, (vbH - (nonZeroEntries.length * 22.0)) / 2);
+    for (var entry in nonZeroEntries) {
       final count = entry.value;
-      if (count <= 0) continue;
       final pct = (count / total * 100).toStringAsFixed(0);
       final color = colors[entry.key] ?? '#64748b';
       final label = entry.key;
 
-      buffer.writeln('''  <rect x="195" y="$legendY" width="10" height="10" rx="2" fill="$color"/>''');
-      buffer.writeln('''  <text x="212" y="${legendY + 9}" font-size="11" font-family="sans-serif" fill="#334155">$label: <tspan font-weight="bold">$count ($pct%)</tspan></text>''');
+      buffer.writeln('''  <rect x="182" y="$legendY" width="10" height="10" rx="2" fill="$color"/>''');
+      buffer.writeln('''  <text x="198" y="${legendY + 9}" font-size="10.5" font-family="sans-serif" fill="#334155">$label: <tspan font-weight="bold">$count ($pct%)</tspan></text>''');
       legendY += 22.0;
     }
 
@@ -82,17 +90,27 @@ class SvgChartGenerator {
     return buffer.toString();
   }
 
-  /// Generates an SVG Bar Chart for Caliber Volumes
+  /// Generates an SVG Bar Chart for Caliber Volumes (normalizing M80 and SS109 variants)
   static String generateCaliberVolumeSvg(
-    Map<String, int> caliberCounts, {
-    double width = 540,
-    double height = 220,
+    Map<String, int> rawCaliberCounts, {
+    double width = 560,
+    double height = 230,
   }) {
+    final double vbW = math.max(width, 540.0);
+    final double vbH = math.max(height, 225.0);
+
+    // Combine M80 variants and SS109 variants
+    final Map<String, int> caliberCounts = {};
+    for (final entry in rawCaliberCounts.entries) {
+      final normKey = ReportGenerator.normalizeCaliberGroup(entry.key);
+      caliberCounts[normKey] = (caliberCounts[normKey] ?? 0) + entry.value;
+    }
+
     if (caliberCounts.isEmpty) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="#f8fafc" rx="8"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Caliber Volume Data</text>
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Caliber Volume Data</text>
       </svg>
       ''';
     }
@@ -100,72 +118,77 @@ class SvgChartGenerator {
     final int maxVal = caliberCounts.values.fold(0, (max, v) => v > max ? v : max);
     final int axisMax = maxVal == 0 ? 100 : ((maxVal + 9) ~/ 10) * 10;
 
-    final padLeft = 50.0;
-    final padRight = 20.0;
-    final padTop = 30.0;
-    final padBottom = 40.0;
-    final chartW = width - padLeft - padRight;
-    final chartH = height - padTop - padBottom;
+    final padLeft = 52.0;
+    final padRight = 24.0;
+    final padTop = 34.0;
+    final padBottom = 46.0;
+    final chartW = vbW - padLeft - padRight;
+    final chartH = vbH - padTop - padBottom;
 
     final keys = caliberCounts.keys.toList();
-    final barSpacing = 16.0;
-    final barW = (chartW - (barSpacing * (keys.length + 1))) / keys.length;
+    final barSpacing = math.min(18.0, (chartW * 0.25) / (keys.length + 1));
+    final barW = ((chartW - (barSpacing * (keys.length + 1))) / keys.length).clamp(14.0, 64.0);
 
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>''');
 
     // Grid lines
     for (int i = 0; i <= 4; i++) {
       final y = padTop + chartH - (i * chartH / 4);
       final val = (i * axisMax ~/ 4);
-      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
-      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="9" fill="#64748b" font-family="sans-serif">$val</text>''');
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${vbW - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9.5" fill="#64748b" font-family="sans-serif">$val</text>''');
     }
 
+    final slotW = chartW / keys.length;
     // Bars
     for (int i = 0; i < keys.length; i++) {
       final cal = keys[i];
       final val = caliberCounts[cal] ?? 0;
       final h = chartH * (val / axisMax);
-      final x = padLeft + barSpacing + i * (barW + barSpacing);
+      final centerX = padLeft + (i * slotW) + (slotW / 2);
+      final x = centerX - (barW / 2);
       final y = padTop + chartH - h;
 
       buffer.writeln('''  <rect x="$x" y="$y" width="$barW" height="$h" rx="4" fill="#06b6d4"/>''');
-      buffer.writeln('''  <text x="${x + barW / 2}" y="${y - 5}" text-anchor="middle" font-size="10" font-weight="bold" fill="#0f172a" font-family="sans-serif">$val</text>''');
+      buffer.writeln('''  <text x="$centerX" y="${math.max(14.0, y - 6)}" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">$val</text>''');
 
       // Caliber label
-      final shortCal = cal.length > 12 ? cal.substring(0, 10) + '..' : cal;
-      buffer.writeln('''  <text x="${x + barW / 2}" y="${padTop + chartH + 16}" text-anchor="middle" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">$shortCal</text>''');
+      final shortCal = cal.length > 15 ? '${cal.substring(0, 13)}..' : cal;
+      buffer.writeln('''  <text x="$centerX" y="${padTop + chartH + 18}" text-anchor="middle" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">$shortCal</text>''');
     }
 
     buffer.writeln('</svg>');
     return buffer.toString();
   }
 
-  /// Generates an SVG Bar Chart for EPVAT test (Chamber P1, Port P2, Velocity)
+  /// Generates an SVG Bar Chart for EPVAT test (Chamber P1 & Port P2 pressures)
   static String generateEpvatChartSvg(
     List<BallisticRecord> records, {
     double width = 560,
-    double height = 230,
+    double height = 240,
   }) {
-    final epv = records.where((r) => r.testName == 'EPVAT test').toList();
+    final double vbW = math.max(width, 560.0);
+    final double vbH = math.max(height, 240.0);
+
+    final epv = records.where((r) => r.testName == 'EPVAT test' || r.testName.toLowerCase().contains('epvat')).toList();
     if (epv.isEmpty) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="#f8fafc" rx="8"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No EPVAT Data</text>
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No EPVAT Data</text>
       </svg>
       ''';
     }
 
-    final display = epv.length > 5 ? epv.sublist(epv.length - 5) : epv;
-    final padLeft = 55.0;
-    final padRight = 20.0;
-    final padTop = 40.0;
-    final padBottom = 40.0;
-    final chartW = width - padLeft - padRight;
-    final chartH = height - padTop - padBottom;
+    final display = epv.length > 6 ? epv.sublist(epv.length - 6) : epv;
+    final padLeft = 56.0;
+    final padRight = 24.0;
+    final padTop = 52.0;
+    final padBottom = 46.0;
+    final chartW = vbW - padLeft - padRight;
+    final chartH = vbH - padTop - padBottom;
 
     // Maximum P1 pressure for axis
     double maxP1 = 0.0;
@@ -177,67 +200,60 @@ class SvgChartGenerator {
     final axisMax = math.max(4500.0, ((maxP1 + 499) ~/ 500) * 500.0);
 
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
-  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>''');
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
 
-    // Legend
+    // Title on row 1, Legend on row 2
+    buffer.writeln('''  <text x="$padLeft" y="20" font-size="11.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">EPVAT Pressure Profile (Chamber P1 &amp; Port P2)</text>''');
     buffer.writeln('''
-  <rect x="60" y="12" width="10" height="10" rx="2" fill="#06b6d4"/>
-  <text x="75" y="20" font-size="10" fill="#334155" font-family="sans-serif">Chamber P1 (Bar)</text>
-  <rect x="190" y="12" width="10" height="10" rx="2" fill="#8b5cf6"/>
-  <text x="205" y="20" font-size="10" fill="#334155" font-family="sans-serif">Port P2 (Bar)</text>
-  <rect x="300" y="12" width="10" height="10" rx="2" fill="#10b981"/>
-  <text x="315" y="20" font-size="10" fill="#334155" font-family="sans-serif">Mean Vel (m/s)</text>
+  <rect x="$padLeft" y="28" width="10" height="10" rx="2" fill="#06b6d4"/>
+  <text x="${padLeft + 15}" y="37" font-size="9.5" font-weight="600" fill="#334155" font-family="sans-serif">Chamber P1 (bar)</text>
+  <rect x="${padLeft + 130}" y="28" width="10" height="10" rx="2" fill="#8b5cf6"/>
+  <text x="${padLeft + 145}" y="37" font-size="9.5" font-weight="600" fill="#334155" font-family="sans-serif">Port P2 (bar)</text>
 ''');
 
     // Y Grid lines
     for (int i = 0; i <= 4; i++) {
       final y = padTop + chartH - (i * chartH / 4);
       final val = (i * axisMax ~/ 4);
-      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
-      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="9" fill="#64748b" font-family="sans-serif">$val</text>''');
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${vbW - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="monospace">$val</text>''');
     }
 
-
-    // Grouped Bars
+    // Grouped Bars (P1 and P2)
     final groupW = chartW / display.length;
-    final barW = math.min(18.0, (groupW - 16) / 3);
+    final barW = math.min(20.0, (groupW - 16) / 2);
 
     for (int i = 0; i < display.length; i++) {
       final r = display[i];
       final p1 = double.tryParse(r.epvatMeanPressure) ?? 0.0;
       final p2 = double.tryParse(r.epvatP2MeanPressure) ?? 0.0;
-      final vel = double.tryParse(r.velMean) ?? 0.0;
 
       final groupCenter = padLeft + (i * groupW) + (groupW / 2);
 
       // P1 bar
       final h1 = chartH * (p1 / axisMax);
-      final x1 = groupCenter - (barW * 1.5) - 2;
+      final x1 = groupCenter - barW - 2;
       final y1 = padTop + chartH - h1;
       if (h1 > 0) {
         buffer.writeln('''  <rect x="$x1" y="$y1" width="$barW" height="$h1" rx="2" fill="#06b6d4"/>''');
+        buffer.writeln('''  <text x="${x1 + barW / 2}" y="${math.max(padTop - 2, y1 - 4)}" text-anchor="middle" font-size="8" font-weight="bold" fill="#0e7490" font-family="monospace">${p1.toInt()}</text>''');
       }
 
       // P2 bar
       final h2 = chartH * (p2 / axisMax);
-      final x2 = groupCenter - (barW * 0.5);
+      final x2 = groupCenter + 2;
       final y2 = padTop + chartH - h2;
       if (h2 > 0) {
         buffer.writeln('''  <rect x="$x2" y="$y2" width="$barW" height="$h2" rx="2" fill="#8b5cf6"/>''');
-      }
-
-      // Vel bar
-      final h3 = chartH * (vel / axisMax);
-      final x3 = groupCenter + (barW * 0.5) + 2;
-      final y3 = padTop + chartH - h3;
-      if (h3 > 0) {
-        buffer.writeln('''  <rect x="$x3" y="$y3" width="$barW" height="$h3" rx="2" fill="#10b981"/>''');
+        buffer.writeln('''  <text x="${x2 + barW / 2}" y="${math.max(padTop - 2, y2 - 4)}" text-anchor="middle" font-size="8" font-weight="bold" fill="#6d28d9" font-family="monospace">${p2.toInt()}</text>''');
       }
 
       // Label (Temperature / Lot)
-      final label = r.cartridgeTemp.isNotEmpty ? '${r.cartridgeTemp}°C' : (r.lotNo.length > 5 ? r.lotNo.substring(r.lotNo.length - 5) : r.lotNo);
-      buffer.writeln('''  <text x="$groupCenter" y="${padTop + chartH + 16}" text-anchor="middle" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">$label</text>''');
+      final tempStr = r.cartridgeTemp.trim().replaceAll('°C', '').trim();
+      final lotStr = r.lotNo.length > 7 ? r.lotNo.substring(r.lotNo.length - 7) : r.lotNo;
+      final label = tempStr.isNotEmpty && tempStr != 'N/A' ? '$lotStr ($tempStr°C)' : lotStr;
+      buffer.writeln('''  <text x="$groupCenter" y="${padTop + chartH + 18}" text-anchor="middle" font-size="8.5" font-weight="600" fill="#475569" font-family="sans-serif">$label</text>''');
     }
 
     buffer.writeln('</svg>');
@@ -248,61 +264,65 @@ class SvgChartGenerator {
   static String generateFunctionTestChartSvg(
     List<BallisticRecord> records, {
     double width = 560,
-    double height = 230,
+    double height = 240,
   }) {
+    final double vbW = math.max(width, 560.0);
+    final double vbH = math.max(height, 240.0);
+
     final fnRecords = records.where((r) => r.testName == 'Function Test').toList();
     if (fnRecords.isEmpty) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="#f8fafc" rx="8"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Function Test Data</text>
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Function Test Data</text>
       </svg>
       ''';
     }
 
     final display = fnRecords.length > 6 ? fnRecords.sublist(fnRecords.length - 6) : fnRecords;
-    final padLeft = 45.0;
-    final padRight = 20.0;
-    final padTop = 40.0;
-    final padBottom = 40.0;
-    final chartW = width - padLeft - padRight;
-    final chartH = height - padTop - padBottom;
+    final padLeft = 52.0;
+    final padRight = 24.0;
+    final padTop = 52.0;
+    final padBottom = 46.0;
+    final chartW = vbW - padLeft - padRight;
+    final chartH = vbH - padTop - padBottom;
 
     int maxDefects = 0;
     for (var r in display) {
       final m = math.max(math.max(r.functionLevel1, r.functionLevel2), math.max(r.functionLevel3, r.functionLevel4));
       if (m > maxDefects) maxDefects = m;
     }
-    if (maxDefects == 0) maxDefects = 5;
+    if (maxDefects == 0) maxDefects = 4;
     final axisMax = ((maxDefects + 3) ~/ 4) * 4;
 
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
-  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>''');
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
 
-    // Legend
+    // Title & Legend
+    buffer.writeln('''  <text x="$padLeft" y="20" font-size="11.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">Function Test Defect Classification</text>''');
     buffer.writeln('''
-  <rect x="50" y="12" width="10" height="10" rx="2" fill="#ef4444"/>
-  <text x="65" y="20" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">Level 1 (Critical)</text>
-  <rect x="170" y="12" width="10" height="10" rx="2" fill="#f59e0b"/>
-  <text x="185" y="20" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">Level 2 (Major)</text>
-  <rect x="280" y="12" width="10" height="10" rx="2" fill="#3b82f6"/>
-  <text x="295" y="20" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">Level 3 (Minor)</text>
-  <rect x="390" y="12" width="10" height="10" rx="2" fill="#10b981"/>
-  <text x="405" y="20" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">Level 4</text>
+  <rect x="$padLeft" y="28" width="10" height="10" rx="2" fill="#ef4444"/>
+  <text x="${padLeft + 14}" y="37" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">L1 (Critical)</text>
+  <rect x="${padLeft + 95}" y="28" width="10" height="10" rx="2" fill="#f59e0b"/>
+  <text x="${padLeft + 109}" y="37" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">L2 (Major)</text>
+  <rect x="${padLeft + 185}" y="28" width="10" height="10" rx="2" fill="#3b82f6"/>
+  <text x="${padLeft + 199}" y="37" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">L3 (Minor)</text>
+  <rect x="${padLeft + 275}" y="28" width="10" height="10" rx="2" fill="#10b981"/>
+  <text x="${padLeft + 289}" y="37" font-size="9" font-weight="bold" fill="#334155" font-family="sans-serif">Level 4</text>
 ''');
 
     // Y Grid lines
     for (int i = 0; i <= 4; i++) {
       final y = padTop + chartH - (i * chartH / 4);
       final val = (i * axisMax ~/ 4);
-      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
-      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="9" fill="#64748b" font-family="sans-serif">$val</text>''');
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${vbW - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="monospace">$val</text>''');
     }
 
     // 4 Grouped bars per batch
     final groupW = chartW / display.length;
-    final barW = math.min(12.0, (groupW - 12) / 4);
+    final barW = math.min(12.0, (groupW - 14) / 4);
 
     for (int i = 0; i < display.length; i++) {
       final r = display[i];
@@ -332,8 +352,8 @@ class SvgChartGenerator {
       final y4 = padTop + chartH - h4;
       if (h4 > 0) buffer.writeln('''  <rect x="$x4" y="$y4" width="$barW" height="$h4" rx="2" fill="#10b981"/>''');
 
-      final label = r.lotNo.length > 6 ? r.lotNo.substring(r.lotNo.length - 6) : r.lotNo;
-      buffer.writeln('''  <text x="$groupCenter" y="${padTop + chartH + 16}" text-anchor="middle" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">$label</text>''');
+      final label = r.lotNo.length > 8 ? r.lotNo.substring(r.lotNo.length - 8) : r.lotNo;
+      buffer.writeln('''  <text x="$groupCenter" y="${padTop + chartH + 18}" text-anchor="middle" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">$label</text>''');
     }
 
     buffer.writeln('</svg>');
@@ -344,35 +364,38 @@ class SvgChartGenerator {
   static String generateTrendLineSvg(
     List<BallisticRecord> records, {
     double width = 560,
-    double height = 200,
+    double height = 220,
   }) {
+    final double vbW = math.max(width, 560.0);
+    final double vbH = math.max(height, 220.0);
+
     if (records.isEmpty) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="#f8fafc" rx="8"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Trend Data</text>
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">No Trend Data</text>
       </svg>
       ''';
     }
 
     final display = records.length > 12 ? records.sublist(records.length - 12) : records;
-    final padLeft = 45.0;
-    final padRight = 20.0;
-    final padTop = 25.0;
-    final padBottom = 30.0;
-    final chartW = width - padLeft - padRight;
-    final chartH = height - padTop - padBottom;
+    final padLeft = 48.0;
+    final padRight = 24.0;
+    final padTop = 28.0;
+    final padBottom = 34.0;
+    final chartW = vbW - padLeft - padRight;
+    final chartH = vbH - padTop - padBottom;
 
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>''');
 
     // Y Grid: 0 to 100%
     for (int i = 0; i <= 4; i++) {
       final y = padTop + chartH - (i * chartH / 4);
       final val = i * 25;
-      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
-      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="9" fill="#64748b" font-family="sans-serif">$val%</text>''');
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${vbW - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="sans-serif">$val%</text>''');
     }
 
     // Points
@@ -400,34 +423,45 @@ class SvgChartGenerator {
     return buffer.toString();
   }
 
-  /// Generates a dedicated Velocity Trend Chart for each test (Test 1, Test 2, Test 3...)
-  /// showing how velocity changes across tests (e.g. Test 1: 915 m/s, Test 2: 920 m/s, Test 3: 890 m/s).
+  /// Generates a dedicated Velocity Trend Chart for Accuracy Test velocity
   static String generateVelocityTrendSvg(
     List<BallisticRecord> records, {
-    double width = 800,
-    double height = 240,
+    double width = 620,
+    double height = 250,
   }) {
-    final validRecords = records.where((r) {
+    final double vbW = math.max(width, 580.0);
+    final double vbH = math.max(height, 250.0);
+
+    // Instruction 6: Velocity must come from Accuracy Test when Accuracy Test records exist
+    final accuracyRecords = records.where((r) {
+      final name = r.testName.toLowerCase();
       final v = double.tryParse(r.velMean);
-      return v != null && v > 0;
+      return (name.contains('accuracy') || name.contains('bullet')) && v != null && v > 0;
     }).toList();
+
+    final validRecords = accuracyRecords.isNotEmpty
+        ? accuracyRecords
+        : records.where((r) {
+            final v = double.tryParse(r.velMean);
+            return v != null && v > 0;
+          }).toList();
 
     if (validRecords.isEmpty) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
         <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No Velocity Data Recorded</text>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No Accuracy Velocity Data Recorded</text>
       </svg>
       ''';
     }
 
-    final display = validRecords.length > 15 ? validRecords.sublist(validRecords.length - 15) : validRecords;
-    final padLeft = 60.0;
-    final padRight = 35.0;
-    final padTop = 35.0;
-    final padBottom = 45.0;
-    final chartW = width - padLeft - padRight;
-    final chartH = height - padTop - padBottom;
+    final display = validRecords.length > 10 ? validRecords.sublist(validRecords.length - 10) : validRecords;
+    final padLeft = 58.0;
+    final padRight = 32.0;
+    final padTop = 52.0;
+    final padBottom = 50.0;
+    final chartW = vbW - padLeft - padRight;
+    final chartH = vbH - padTop - padBottom;
 
     final velocities = display.map((r) => double.parse(r.velMean)).toList();
     double minV = velocities.reduce((a, b) => a < b ? a : b);
@@ -437,30 +471,30 @@ class SvgChartGenerator {
       maxV += 10.0;
     }
     final vRange = maxV - minV;
-    final paddedMin = (minV - vRange * 0.1).floorToDouble();
-    final paddedMax = (maxV + vRange * 0.15).ceilToDouble();
-    final paddedRange = paddedMax - paddedMin;
+    final paddedMin = (minV - vRange * 0.15).floorToDouble();
+    final paddedMax = (maxV + vRange * 0.22).ceilToDouble();
+    final paddedRange = (paddedMax - paddedMin) > 0 ? (paddedMax - paddedMin) : 20.0;
 
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="velGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.3"/>
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.28"/>
       <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.0"/>
     </linearGradient>
   </defs>
-  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>''');
+  <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
 
-    // Title inside SVG
-    buffer.writeln('''  <text x="$padLeft" y="20" font-size="12" font-weight="bold" fill="#0f172a" font-family="sans-serif">Muzzle Velocity Trend Across Tests (m/s)</text>''');
+    // Title inside SVG (Row 1, well above padTop = 52)
+    buffer.writeln('''  <text x="$padLeft" y="22" font-size="11.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">Accuracy Test Velocity Trend (m/s)</text>''');
 
     // Y Grid: 4 horizontal grid lines
     const gridCount = 4;
     for (int i = 0; i <= gridCount; i++) {
       final y = padTop + chartH - (i * chartH / gridCount);
       final val = paddedMin + (i * paddedRange / gridCount);
-      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>''');
-      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" font-size="9.5" fill="#64748b" font-family="monospace">${val.toStringAsFixed(1)}</text>''');
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${vbW - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>''');
+      buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="monospace">${val.toStringAsFixed(1)}</text>''');
     }
 
     // Points calculation
@@ -472,12 +506,13 @@ class SvgChartGenerator {
       final v = double.parse(r.velMean);
       final x = display.length > 1 ? padLeft + i * stepX : padLeft + chartW / 2;
       final y = padTop + chartH - ((v - paddedMin) / paddedRange * chartH);
+      final rawLot = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : ReportGenerator.normalizeCaliberGroup(r.caliber);
       points.add({
         'x': x,
         'y': y,
         'v': v,
         'testNum': i + 1,
-        'lot': r.lotNo.isNotEmpty ? r.lotNo : (r.caliber.length > 10 ? r.caliber.substring(0, 10) : r.caliber),
+        'lot': rawLot.length > 8 ? rawLot.substring(rawLot.length - 8) : rawLot,
       });
     }
 
@@ -493,10 +528,13 @@ class SvgChartGenerator {
 
       // Polyline curve
       final polylinePts = points.map((p) => '${p['x']},${p['y']}').join(' ');
-      buffer.writeln('''  <polyline fill="none" stroke="#06b6d4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="$polylinePts"/>''');
+      buffer.writeln('''  <polyline fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="$polylinePts"/>''');
+
+      final bool densePoints = points.length > 6;
 
       // Points, Callout Badges, and X-axis Labels
-      for (final pt in points) {
+      for (int idx = 0; idx < points.length; idx++) {
+        final pt = points[idx];
         final double x = pt['x'];
         final double y = pt['y'];
         final double v = pt['v'];
@@ -504,20 +542,28 @@ class SvgChartGenerator {
         final String lot = pt['lot'];
 
         // Node circle
-        buffer.writeln('''  <circle cx="$x" cy="$y" r="5" fill="#0891b2" stroke="#ffffff" stroke-width="2"/>''');
+        buffer.writeln('''  <circle cx="$x" cy="$y" r="4.5" fill="#0891b2" stroke="#ffffff" stroke-width="2"/>''');
 
-        // Value callout pill above node (e.g. 915 m/s)
+        // Stagger callout pill above/below when dense so adjacent pills never overlap
         final vStr = v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
-        final pillW = 52.0;
-        final pillH = 18.0;
-        final pillX = x - pillW / 2;
-        final pillY = y - 24;
-        buffer.writeln('''  <rect x="$pillX" y="$pillY" width="$pillW" height="$pillH" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1"/>''');
-        buffer.writeln('''  <text x="$x" y="${pillY + 13}" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#38bdf8" font-family="monospace">$vStr m/s</text>''');
+        final pillW = 46.0;
+        final pillH = 16.0;
+        final pillX = (x - pillW / 2).clamp(padLeft - 10.0, vbW - padRight - pillW + 10.0);
+        double pillY;
+        if (densePoints && idx.isOdd) {
+          pillY = (y + 8.0).clamp(30.0, padTop + chartH - pillH - 2.0);
+        } else {
+          pillY = (y - 22.0).clamp(28.0, padTop + chartH - pillH - 2.0);
+        }
+        buffer.writeln('''  <rect x="$pillX" y="$pillY" width="$pillW" height="$pillH" rx="3.5" fill="#0f172a" stroke="#06b6d4" stroke-width="0.9"/>''');
+        buffer.writeln('''  <text x="${pillX + pillW / 2}" y="${pillY + 11.5}" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#38bdf8" font-family="monospace">$vStr</text>''');
 
-        // X-axis label: "Test 1", "Test 2", etc.
-        buffer.writeln('''  <text x="$x" y="${padTop + chartH + 16}" text-anchor="middle" font-size="10" font-weight="bold" fill="#0f172a" font-family="sans-serif">Test $testNum</text>''');
-        buffer.writeln('''  <text x="$x" y="${padTop + chartH + 28}" text-anchor="middle" font-size="8.5" fill="#64748b" font-family="sans-serif">$lot</text>''');
+        // X-axis label: "T1", "T2" or "Test 1"
+        final testLabel = densePoints ? 'T$testNum' : 'Test $testNum';
+        buffer.writeln('''  <text x="$x" y="${padTop + chartH + 16}" text-anchor="middle" font-size="9" font-weight="bold" fill="#0f172a" font-family="sans-serif">$testLabel</text>''');
+        if (!densePoints || idx.isEven || idx == points.length - 1) {
+          buffer.writeln('''  <text x="$x" y="${padTop + chartH + 29}" text-anchor="middle" font-size="8" fill="#64748b" font-family="sans-serif">$lot</text>''');
+        }
       }
     }
 
@@ -557,7 +603,6 @@ class SvgChartGenerator {
     return double.tryParse(r.velMean) ?? double.tryParse(r.epvatMeanPressure) ?? double.tryParse(r.accMeanRadius);
   }
 
-  /// Generates an SVG Statistical Process Control (SPC) Chart with UCL, CL, and LCL limits
   static int _compareNatural(String a, String b) {
     final regA = RegExp(r'\d+').firstMatch(a);
     final regB = RegExp(r'\d+').firstMatch(b);
@@ -578,15 +623,31 @@ class SvgChartGenerator {
   static String generateSpcChartSvg(
     List<BallisticRecord> records, {
     String param = 'Mean Velocity (m/s)',
-    double width = 800,
-    double height = 230,
+    double width = 620,
+    double height = 250,
   }) {
+    final double vbW = math.max(width, 580.0);
+    final double vbH = math.max(height, 250.0);
+
+    // Instruction 6: When plotting Velocity on SPC, show ONLY velocity from Accuracy Test
+    List<BallisticRecord> sourceRecords = records;
+    if (param.toLowerCase().contains('velocity') || param.toLowerCase().contains('vel')) {
+      final accOnly = records.where((r) {
+        final t = r.testName.toLowerCase();
+        return t.contains('accuracy') || t.contains('bullet');
+      }).toList();
+      if (accOnly.isNotEmpty) {
+        sourceRecords = accOnly;
+      }
+    }
+
     // Sort records strictly by lot number in natural numerical sequence
-    final sortedRecords = List<BallisticRecord>.from(records)..sort((a, b) {
-      final lotA = a.lotNo.trim().isNotEmpty ? a.lotNo.trim() : a.hopperNo.trim();
-      final lotB = b.lotNo.trim().isNotEmpty ? b.lotNo.trim() : b.hopperNo.trim();
-      return _compareNatural(lotA, lotB);
-    });
+    final sortedRecords = List<BallisticRecord>.from(sourceRecords)
+      ..sort((a, b) {
+        final lotA = a.lotNo.trim().isNotEmpty ? a.lotNo.trim() : a.hopperNo.trim();
+        final lotB = b.lotNo.trim().isNotEmpty ? b.lotNo.trim() : b.hopperNo.trim();
+        return _compareNatural(lotA, lotB);
+      });
 
     // 1. Extract values
     final List<Map<String, dynamic>> points = [];
@@ -594,8 +655,15 @@ class SvgChartGenerator {
       final r = sortedRecords[i];
       final double? val = extractParamValue(r, param);
 
-      if (val != null && (val > 0 || param.toLowerCase().contains('leak') || param.toLowerCase().contains('defect') || param.toLowerCase().contains('split') || param.toLowerCase().contains('crack'))) {
-        final lot = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : 'Test ${i + 1}');
+      if (val != null &&
+          (val > 0 ||
+              param.toLowerCase().contains('leak') ||
+              param.toLowerCase().contains('defect') ||
+              param.toLowerCase().contains('split') ||
+              param.toLowerCase().contains('crack'))) {
+        final lot = r.lotNo.trim().isNotEmpty
+            ? r.lotNo.trim()
+            : (r.hopperNo.trim().isNotEmpty ? r.hopperNo.trim() : 'Test ${i + 1}');
         points.add({
           'val': val,
           'label': lot.length > 8 ? lot.substring(lot.length - 8) : lot,
@@ -606,15 +674,15 @@ class SvgChartGenerator {
 
     if (points.isEmpty) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
         <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No SPC Data Available for Evaluation</text>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No SPC Data Available for Evaluation</text>
       </svg>
       ''';
     }
 
-    // Limit to latest 15 points if too many
-    final displayPoints = points.length > 15 ? points.sublist(points.length - 15) : points;
+    // Limit to latest 12 points so X-axis labels never crowd
+    final displayPoints = points.length > 12 ? points.sublist(points.length - 12) : points;
     final values = displayPoints.map((p) => p['val'] as double).toList();
 
     // 2. Compute Mean & SD
@@ -627,50 +695,45 @@ class SvgChartGenerator {
     final double ucl = mean + (3 * sd);
     final double lcl = math.max(0.0, mean - (3 * sd));
 
-    // 3. Layout Dimensions
-    final padLeft = 65.0;
-    final padRight = 35.0;
-    final padTop = 45.0;
-    final padBottom = 40.0;
-    final chartW = width - padLeft - padRight;
-    final chartH = height - padTop - padBottom;
+    // 3. Layout Dimensions (Row 1: Title, Row 2: Badges, Chart starts at padTop = 58)
+    final padLeft = 58.0;
+    final padRight = 44.0;
+    final padTop = 58.0;
+    final padBottom = 46.0;
+    final chartW = vbW - padLeft - padRight;
+    final chartH = vbH - padTop - padBottom;
 
-    // Scale range with 10% breathing room
+    // Scale range with breathing room
     final double minVal = values.reduce(math.min);
     final double maxVal = values.reduce(math.max);
-    final double axisMin = math.min(lcl, minVal) - (sd * 0.8);
-    final double axisMax = math.max(ucl, maxVal) + (sd * 0.8);
+    final double effPad = sd > 0 ? (sd * 0.85) : (mean.abs() * 0.05 + 2.0);
+    final double axisMin = math.min(lcl, minVal) - effPad;
+    final double axisMax = math.max(ucl, maxVal) + effPad;
     final double range = (axisMax - axisMin) > 0 ? (axisMax - axisMin) : 10.0;
 
     double getY(double v) => padTop + chartH - (((v - axisMin) / range) * chartH).clamp(0.0, chartH);
 
-    final bool isCompact = width < 520;
-    final double badgeScale = isCompact ? (width / 520.0).clamp(0.65, 0.95) : 1.0;
-    final double badgeTranslateX = isCompact ? padLeft : (width - padRight - 360);
-    final double titleY = isCompact ? 16 : 22;
-    final double badgeY = isCompact ? 26 : 10;
-
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
 
-    // Title & Badges
-    buffer.writeln('''  <text x="$padLeft" y="$titleY" font-size="11.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">Statistical Process Control (SPC) Chart - $param</text>''');
-    
-    // Limits Badges
+    // Title on Row 1 (y = 20)
+    buffer.writeln('''  <text x="$padLeft" y="20" font-size="11.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">SPC Control Chart — $param</text>''');
+
+    // Limits Badges on Row 2 (y = 28..46), never overlapping Title or Chart
     buffer.writeln('''
-  <g transform="translate($badgeTranslateX, $badgeY) scale($badgeScale)">
-    <rect x="0" y="0" width="75" height="18" rx="3" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8"/>
-    <text x="37" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#b91c1c" font-family="sans-serif">UCL: ${ucl.toStringAsFixed(1)}</text>
+  <g transform="translate($padLeft, 27)">
+    <rect x="0" y="0" width="82" height="18" rx="3" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8"/>
+    <text x="41" y="12.5" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#b91c1c" font-family="sans-serif">UCL: ${ucl.toStringAsFixed(1)}</text>
 
-    <rect x="82" y="0" width="85" height="18" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
-    <text x="124" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#0369a1" font-family="sans-serif">CL: ${mean.toStringAsFixed(1)}</text>
+    <rect x="88" y="0" width="86" height="18" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+    <text x="131" y="12.5" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#0369a1" font-family="sans-serif">CL: ${mean.toStringAsFixed(1)}</text>
 
-    <rect x="174" y="0" width="75" height="18" rx="3" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8"/>
-    <text x="211" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#b91c1c" font-family="sans-serif">LCL: ${lcl.toStringAsFixed(1)}</text>
+    <rect x="180" y="0" width="82" height="18" rx="3" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8"/>
+    <text x="221" y="12.5" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#b91c1c" font-family="sans-serif">LCL: ${lcl.toStringAsFixed(1)}</text>
 
-    <rect x="256" y="0" width="65" height="18" rx="3" fill="#f3e8ff" stroke="#a855f7" stroke-width="0.8"/>
-    <text x="288" y="12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#7e22ce" font-family="sans-serif">σ: ${sd.toStringAsFixed(2)}</text>
+    <rect x="268" y="0" width="72" height="18" rx="3" fill="#f3e8ff" stroke="#a855f7" stroke-width="0.8"/>
+    <text x="304" y="12.5" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#7e22ce" font-family="sans-serif">σ: ${sd.toStringAsFixed(2)}</text>
   </g>''');
 
     // Sigma Bands Shading (3σ and 1σ)
@@ -687,21 +750,26 @@ class SvgChartGenerator {
     for (int i = 0; i <= 4; i++) {
       final y = padTop + chartH - (i * chartH / 4);
       final v = axisMin + (i * range / 4);
-      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${vbW - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
       buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="monospace">${v.toStringAsFixed(1)}</text>''');
     }
 
+    // Prevent right-side UCL / CL / LCL labels from overlapping when SD is very small
+    final double clLabelY = clY + 3.0;
+    final double uclLabelY = math.min(uclY + 3.0, clLabelY - 10.0);
+    final double lclLabelY = math.max(lclY + 3.0, clLabelY + 10.0);
+
     // UCL line
-    buffer.writeln('''  <line x1="$padLeft" y1="$uclY" x2="${width - padRight}" y2="$uclY" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4"/>''');
-    buffer.writeln('''  <text x="${width - padRight + 4}" y="${uclY + 3}" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">UCL</text>''');
+    buffer.writeln('''  <line x1="$padLeft" y1="$uclY" x2="${vbW - padRight}" y2="$uclY" stroke="#ef4444" stroke-width="1.4" stroke-dasharray="5,4"/>''');
+    buffer.writeln('''  <text x="${vbW - padRight + 5}" y="$uclLabelY" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">UCL</text>''');
 
     // CL / Mean line
-    buffer.writeln('''  <line x1="$padLeft" y1="$clY" x2="${width - padRight}" y2="$clY" stroke="#0284c7" stroke-width="1.8" stroke-dasharray="4,3"/>''');
-    buffer.writeln('''  <text x="${width - padRight + 4}" y="${clY + 3}" font-size="8.5" font-weight="bold" fill="#0284c7" font-family="sans-serif">CL</text>''');
+    buffer.writeln('''  <line x1="$padLeft" y1="$clY" x2="${vbW - padRight}" y2="$clY" stroke="#0284c7" stroke-width="1.8" stroke-dasharray="4,3"/>''');
+    buffer.writeln('''  <text x="${vbW - padRight + 5}" y="$clLabelY" font-size="8.5" font-weight="bold" fill="#0284c7" font-family="sans-serif">CL</text>''');
 
     // LCL line
-    buffer.writeln('''  <line x1="$padLeft" y1="$lclY" x2="${width - padRight}" y2="$lclY" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4"/>''');
-    buffer.writeln('''  <text x="${width - padRight + 4}" y="${lclY + 3}" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">LCL</text>''');
+    buffer.writeln('''  <line x1="$padLeft" y1="$lclY" x2="${vbW - padRight}" y2="$lclY" stroke="#ef4444" stroke-width="1.4" stroke-dasharray="5,4"/>''');
+    buffer.writeln('''  <text x="${vbW - padRight + 5}" y="$lclLabelY" font-size="8.5" font-weight="bold" fill="#ef4444" font-family="sans-serif">LCL</text>''');
 
     // Points and polyline
     final stepX = displayPoints.length > 1 ? chartW / (displayPoints.length - 1) : chartW / 2;
@@ -712,18 +780,20 @@ class SvgChartGenerator {
       polyPts.add('$x,$y');
     }
 
-    buffer.writeln('''  <polyline fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${polyPts.join(' ')}"/>''');
+    buffer.writeln('''  <polyline fill="none" stroke="#0284c7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" points="${polyPts.join(' ')}"/>''');
 
+    final bool denseLabels = displayPoints.length > 8;
     for (int i = 0; i < displayPoints.length; i++) {
       final x = displayPoints.length > 1 ? padLeft + (i * stepX) : padLeft + chartW / 2;
       final val = displayPoints[i]['val'] as double;
       final y = getY(val);
       const color = '#0284c7';
-      const radius = 4.5;
+      const radius = 4.2;
       final label = displayPoints[i]['label'] as String;
 
-      buffer.writeln('''  <circle cx="$x" cy="$y" r="$radius" fill="$color" stroke="#ffffff" stroke-width="2"/>''');
-      buffer.writeln('''  <text x="$x" y="${padTop + chartH + 16}" text-anchor="middle" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">$label</text>''');
+      buffer.writeln('''  <circle cx="$x" cy="$y" r="$radius" fill="$color" stroke="#ffffff" stroke-width="1.8"/>''');
+      final double labelY = (denseLabels && i.isOdd) ? (padTop + chartH + 28) : (padTop + chartH + 16);
+      buffer.writeln('''  <text x="$x" y="$labelY" text-anchor="middle" font-size="8.5" font-weight="600" fill="#475569" font-family="sans-serif">$label</text>''');
     }
 
     buffer.writeln('</svg>');
@@ -734,35 +804,57 @@ class SvgChartGenerator {
   static String generateBoxPlotSvg(
     List<BallisticRecord> records, {
     String metric = 'Velocity (m/s)',
-    double width = 800,
-    double height = 230,
+    double width = 620,
+    double height = 250,
   }) {
-    // Group records by lot or caliber
+    final double vbW = math.max(width, 580.0);
+    final double vbH = math.max(height, 250.0);
+
+    // Instruction 6: When plotting Velocity, use Accuracy Test records if available
+    List<BallisticRecord> sourceRecords = records;
+    if (metric.toLowerCase().contains('velocity') || metric.toLowerCase().contains('vel')) {
+      final accOnly = records.where((r) {
+        final t = r.testName.toLowerCase();
+        return t.contains('accuracy') || t.contains('bullet');
+      }).toList();
+      if (accOnly.isNotEmpty) {
+        sourceRecords = accOnly;
+      }
+    }
+
+    // Group records by lot or normalized caliber
     final Map<String, List<double>> groups = {};
-    for (var r in records) {
+    for (var r in sourceRecords) {
       final double? val = extractParamValue(r, metric);
       if (val != null) {
-        final key = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : r.caliber;
+        final normCal = ReportGenerator.normalizeCaliberGroup(r.caliber);
+        final key = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : normCal;
         groups.putIfAbsent(key, () => []).add(val);
       }
     }
 
-    // If fewer than 2 groups, attempt grouping by caliber
+    // If fewer than 2 groups, attempt grouping by normalized caliber
     if (groups.length < 2) {
-      groups.clear();
-      for (var r in records) {
+      final Map<String, List<double>> calGroups = {};
+      for (var r in sourceRecords) {
         final double? val = extractParamValue(r, metric);
         if (val != null) {
-          groups.putIfAbsent(r.caliber, () => []).add(val);
+          final normCal = ReportGenerator.normalizeCaliberGroup(r.caliber);
+          calGroups.putIfAbsent(normCal, () => []).add(val);
         }
+      }
+      if (calGroups.length >= groups.length && calGroups.isNotEmpty) {
+        groups
+          ..clear()
+          ..addAll(calGroups);
       }
     }
 
     if (groups.isEmpty) {
       return '''
-      <svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+      <svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
         <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#e2e8f0" stroke-width="1"/>
-        <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No Data for Box & Whisker Distribution Analysis</text>
+        <text x="${vbW / 2}" y="${vbH / 2}" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="sans-serif">No Data for Box &amp; Whisker Distribution Analysis</text>
       </svg>
       ''';
     }
@@ -812,34 +904,35 @@ class SvgChartGenerator {
       globalMax = 100.0;
     }
 
-    final padLeft = 65.0;
-    final padRight = 35.0;
-    final padTop = 45.0;
-    final padBottom = 40.0;
-    final chartW = width - padLeft - padRight;
-    final chartH = height - padTop - padBottom;
+    // Row 1: Title (y = 20), Row 2: Legend (y = 32), Chart starts at padTop = 56
+    final padLeft = 58.0;
+    final padRight = 30.0;
+    final padTop = 56.0;
+    final padBottom = 46.0;
+    final chartW = vbW - padLeft - padRight;
+    final chartH = vbH - padTop - padBottom;
 
-    final span = globalMax - globalMin;
-    final axisMin = globalMin - (span * 0.1);
-    final axisMax = globalMax + (span * 0.1);
+    final span = (globalMax - globalMin).abs() > 0 ? (globalMax - globalMin) : (globalMax.abs() * 0.05 + 10.0);
+    final axisMin = globalMin - (span * 0.15);
+    final axisMax = globalMax + (span * 0.15);
     final range = (axisMax - axisMin) > 0 ? (axisMax - axisMin) : 10.0;
 
     double getY(double v) => padTop + chartH - (((v - axisMin) / range) * chartH).clamp(0.0, chartH);
 
     final buffer = StringBuffer();
-    buffer.writeln('''<svg width="$width" height="$height" viewBox="0 0 $width $height" xmlns="http://www.w3.org/2000/svg">
+    buffer.writeln('''<svg width="100%" height="auto" viewBox="0 0 $vbW $vbH" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>''');
 
-    // Title & Legend
-    buffer.writeln('''  <text x="$padLeft" y="22" font-size="12" font-weight="bold" fill="#0f172a" font-family="sans-serif">Box & Whisker Distribution Analysis ($metric)</text>''');
+    // Title on Row 1 (y = 20) & Legend on Row 2 (y = 28..42) so they NEVER overlap!
+    buffer.writeln('''  <text x="$padLeft" y="20" font-size="11.5" font-weight="bold" fill="#0f172a" font-family="sans-serif">Box &amp; Whisker Distribution Analysis ($metric)</text>''');
     buffer.writeln('''
-  <g transform="translate(${width - padRight - 320}, 10)">
-    <line x1="0" y1="9" x2="16" y2="9" stroke="#475569" stroke-width="1.8"/>
-    <text x="22" y="12" font-size="9" fill="#475569" font-family="sans-serif">Whiskers (Min/Max)</text>
-    <rect x="120" y="2" width="14" height="14" rx="2" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
-    <text x="140" y="12" font-size="9" fill="#475569" font-family="sans-serif">IQR (Q1 - Q3)</text>
-    <line x1="220" y1="9" x2="236" y2="9" stroke="#f59e0b" stroke-width="2.5"/>
-    <text x="242" y="12" font-size="9" fill="#475569" font-family="sans-serif">Median</text>
+  <g transform="translate($padLeft, 27)">
+    <line x1="0" y1="8" x2="16" y2="8" stroke="#475569" stroke-width="1.8"/>
+    <text x="22" y="11.5" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">Whiskers (Min/Max)</text>
+    <rect x="125" y="1" width="13" height="13" rx="2" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+    <text x="143" y="11.5" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">IQR (Q1 - Q3)</text>
+    <line x1="225" y1="8" x2="241" y2="8" stroke="#f59e0b" stroke-width="2.5"/>
+    <text x="247" y="11.5" font-size="9" font-weight="600" fill="#475569" font-family="sans-serif">Median</text>
   </g>
 ''');
 
@@ -847,13 +940,13 @@ class SvgChartGenerator {
     for (int i = 0; i <= 4; i++) {
       final y = padTop + chartH - (i * chartH / 4);
       final v = axisMin + (i * range / 4);
-      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${width - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
+      buffer.writeln('''  <line x1="$padLeft" y1="$y" x2="${vbW - padRight}" y2="$y" stroke="#e2e8f0" stroke-width="1"/>''');
       buffer.writeln('''  <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748b" font-family="monospace">${v.toStringAsFixed(1)}</text>''');
     }
 
     // Boxes & Whiskers
     final groupW = chartW / stats.length;
-    final boxW = math.min(36.0, groupW * 0.55);
+    final boxW = math.min(36.0, groupW * 0.52);
 
     for (int i = 0; i < stats.length; i++) {
       final s = stats[i];
@@ -872,7 +965,7 @@ class SvgChartGenerator {
 
       // Box (Q1 to Q3)
       final boxTop = math.min(q1Y, q3Y);
-      final boxHeight = math.max(2.0, (q1Y - q3Y).abs());
+      final boxHeight = math.max(3.0, (q1Y - q3Y).abs());
       buffer.writeln('''  <rect x="${cx - boxW / 2}" y="$boxTop" width="$boxW" height="$boxHeight" rx="3" fill="#bae6fd" stroke="#0284c7" stroke-width="1.8"/>''');
 
       // Median Line

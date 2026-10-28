@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/ballistic_record.dart';
+import '../services/report_generator.dart';
 
 // 1. BAR CHART FOR CALIBERS
 class CaliberBarChart extends StatelessWidget {
@@ -1299,7 +1300,9 @@ class CaliberIndividualChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final calRecords = caliber == 'All' ? records : records.where((r) => r.caliber == caliber).toList();
+    final calRecords = caliber == 'All'
+        ? records
+        : records.where((r) => r.caliber == caliber || ReportGenerator.isSameCaliberGroup(r.caliber, caliber)).toList();
     if (calRecords.isEmpty) {
       return const Center(
         child: Text('No logged records for this caliber', style: TextStyle(color: Color(0xFF8E96A3), fontSize: 13.0)),
@@ -1499,9 +1502,13 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
       ]);
     }
     if (hasEpvat || options.isEmpty) {
+      if (!hasAccuracy) {
+        options.addAll([
+          'Mean Velocity (m/s)',
+          'Velocity SD (m/s)',
+        ]);
+      }
       options.addAll([
-        'Mean Velocity (m/s)',
-        'Velocity SD (m/s)',
         'Mean Chamber Pressure (bar)',
         'Pressure SD (bar)',
         'P2 Port Pressure (bar)',
@@ -1626,7 +1633,10 @@ class _BoxPlotChartState extends State<BoxPlotChart> {
 
     final isPrimerMetric = _selectedMetric.startsWith('Primer');
     final isPropellantMetric = _selectedMetric.startsWith('Propellant');
-    final isAccuracyMetric = _selectedMetric == 'Mean Radius (mm)' || _selectedMetric.startsWith('Extreme Spread');
+    final isAccuracyMetric = _selectedMetric == 'Mean Radius (mm)' ||
+        _selectedMetric.startsWith('Extreme Spread') ||
+        ((_selectedMetric == 'Mean Velocity (m/s)' || _selectedMetric == 'Velocity SD (m/s)') &&
+            widget.records.any((r) => r.testName.toLowerCase().contains('accuracy')));
     final isExtractionMetric = _selectedMetric == 'Extraction Force (N)';
     final isFunctionMetric = _selectedMetric.contains('Defect');
     final isWaterproofMetric = _selectedMetric.contains('Leak');

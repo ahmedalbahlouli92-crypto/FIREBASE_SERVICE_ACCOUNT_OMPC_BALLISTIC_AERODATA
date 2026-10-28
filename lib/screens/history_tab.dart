@@ -10,6 +10,7 @@ import '../services/report_helper.dart';
 import '../services/report_generator.dart';
 import '../services/ai_analysis_service.dart';
 import '../services/epvat_formula_helper.dart';
+import 'entry_tab.dart';
 
 class HistoryTab extends StatefulWidget {
   final String currentModule;
@@ -415,10 +416,33 @@ class _HistoryTabState extends State<HistoryTab> {
   ];
 
   List<String> get calibers {
+    final adminCalsRaw = widget.adminRules['calibers_list'];
+    final List<String> adminCals = adminCalsRaw is List
+        ? adminCalsRaw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList()
+        : <String>[];
+
     if (widget.currentModule == 'Component Test') {
-      return const ['5.56', '7.62', '9mm'];
+      final base = <String>['5.56', '7.62', '9mm'];
+      for (final c in adminCals) {
+        if (!defaultCalibers.contains(c) && !base.contains(c)) {
+          base.add(c);
+        }
+      }
+      return base;
     }
-    return defaultCalibers;
+
+    final merged = <String>[...defaultCalibers];
+    for (final c in EntryTab.calibers) {
+      if (c.trim().isNotEmpty && !merged.contains(c.trim())) merged.add(c.trim());
+    }
+    for (final c in adminCals) {
+      if (!merged.contains(c)) merged.add(c);
+    }
+    for (final r in widget.records) {
+      final rc = r.caliber.trim();
+      if (rc.isNotEmpty && !merged.contains(rc)) merged.add(rc);
+    }
+    return merged;
   }
 
   static const List<String> _baseTestNames = [
@@ -1042,6 +1066,41 @@ class _HistoryTabState extends State<HistoryTab> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () async {
+                    String? statsErr;
+                    if (r.testName == 'Accuracy Test') {
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Retest Velocity',
+                        maxStr: velMaxCtrl.text,
+                        minStr: velMinCtrl.text,
+                        meanStr: velMeanCtrl.text,
+                        sdStr: velSDCtrl.text,
+                      );
+                    } else if (r.testName == 'EPVAT test' || r.testName == 'Propellant Test') {
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Retest Chamber P1',
+                        maxStr: epvMaxP1Ctrl.text,
+                        minStr: epvMinP1Ctrl.text,
+                        meanStr: epvMeanP1Ctrl.text,
+                        sdStr: epvSDP1Ctrl.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Retest Port P2',
+                        maxStr: epvMaxP2Ctrl.text,
+                        meanStr: epvMeanP2Ctrl.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Retest Velocity',
+                        meanStr: velMeanCtrl.text,
+                        sdStr: velSDCtrl.text,
+                      );
+                    }
+                    if (statsErr != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(statsErr), backgroundColor: const Color(0xFFEF4444)),
+                      );
+                      return;
+                    }
+
                     final op = retestOpCtrl.text.trim().isNotEmpty ? retestOpCtrl.text.trim() : r.operators;
                     final shift = retestShiftCtrl.text.trim().isNotEmpty ? retestShiftCtrl.text.trim() : r.shift;
                     String newRemarks = retestNotesCtrl.text.trim();
@@ -1632,6 +1691,25 @@ class _HistoryTabState extends State<HistoryTab> {
       allDialogTestTypes.insert(0, editTestName);
     }
 
+    final List<String> dialogCaliberOptions = <String>[...calibers];
+    for (final c in EntryTab.calibers) {
+      if (c.trim().isNotEmpty && !dialogCaliberOptions.contains(c.trim())) {
+        dialogCaliberOptions.add(c.trim());
+      }
+    }
+    final adminCalsRaw = widget.adminRules['calibers_list'];
+    if (adminCalsRaw is List) {
+      for (final c in adminCalsRaw) {
+        final cs = c.toString().trim();
+        if (cs.isNotEmpty && !dialogCaliberOptions.contains(cs)) {
+          dialogCaliberOptions.add(cs);
+        }
+      }
+    }
+    if (editCaliber.trim().isNotEmpty && !dialogCaliberOptions.contains(editCaliber.trim())) {
+      dialogCaliberOptions.insert(0, editCaliber.trim());
+    }
+
     final List<String> dialogSampleLocations = [];
     final adminLocs = widget.adminRules['sample_locations'];
     if (adminLocs is List && adminLocs.isNotEmpty) {
@@ -1928,11 +2006,11 @@ class _HistoryTabState extends State<HistoryTab> {
                         _buildDialogField(
                           label: 'Caliber Specification',
                           child: DropdownButtonFormField<String>(
-                            value: calibers.contains(editCaliber) ? editCaliber : calibers.first,
+                            value: dialogCaliberOptions.contains(editCaliber) ? editCaliber : dialogCaliberOptions.first,
                             dropdownColor: const Color(0xFF1A2035),
                             style: const TextStyle(color: Colors.white, fontSize: 12.5),
                             decoration: _dialogInputDecoration(),
-                            items: calibers.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                            items: dialogCaliberOptions.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
                             onChanged: (v) => setDialogState(() => editCaliber = v!),
                           ),
                         ),
@@ -1949,11 +2027,11 @@ class _HistoryTabState extends State<HistoryTab> {
                               child: _buildDialogField(
                                 label: 'Caliber Specification',
                                 child: DropdownButtonFormField<String>(
-                                  value: calibers.contains(editCaliber) ? editCaliber : calibers.first,
+                                  value: dialogCaliberOptions.contains(editCaliber) ? editCaliber : dialogCaliberOptions.first,
                                   dropdownColor: const Color(0xFF1A2035),
                                   style: const TextStyle(color: Colors.white, fontSize: 12.5),
                                   decoration: _dialogInputDecoration(),
-                                  items: calibers.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                                  items: dialogCaliberOptions.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
                                   onChanged: (v) => setDialogState(() => editCaliber = v!),
                                 ),
                               ),
@@ -2682,6 +2760,111 @@ class _HistoryTabState extends State<HistoryTab> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
+                    String? statsErr;
+                    if (editTestName == 'Accuracy Test' || editTestName.toLowerCase().contains('accuracy')) {
+                      if (!editCaliber.contains('M193')) {
+                        statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                          'X Dispersion',
+                          maxStr: accMaxXController.text,
+                          minStr: accMinXController.text,
+                          meanStr: accMeanXController.text,
+                          sdStr: accSDXController.text,
+                        );
+                        statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                          'Y Dispersion',
+                          maxStr: accMaxYController.text,
+                          minStr: accMinYController.text,
+                          meanStr: accMeanYController.text,
+                          sdStr: accSDYController.text,
+                        );
+                      }
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Velocity',
+                        maxStr: velMaxController.text,
+                        minStr: velMinController.text,
+                        meanStr: velMeanController.text,
+                        sdStr: velSDController.text,
+                      );
+                    } else if (editTestName == 'Extraction Force Test' || editTestName.toLowerCase().contains('extraction')) {
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Extraction Force',
+                        maxStr: extMaxForceController.text,
+                        minStr: extMinForceController.text,
+                        meanStr: extMeanForceController.text,
+                        sdStr: extSDForceController.text,
+                      );
+                    } else if (editTestName == 'EPVAT test' || editTestName.toLowerCase().contains('epvat')) {
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Chamber P1 (+21°C)',
+                        maxStr: epv21MaxP1.text,
+                        minStr: epv21MinP1.text,
+                        meanStr: epv21MeanP1.text,
+                        sdStr: epv21SDP1.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Port P2 (+21°C)',
+                        maxStr: epv21MaxP2.text,
+                        minStr: epv21MinP2.text,
+                        meanStr: epv21MeanP2.text,
+                        sdStr: epv21SDP2.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Velocity (+21°C)',
+                        maxStr: epv21VelMax.text,
+                        minStr: epv21VelMin.text,
+                        meanStr: epv21VelMean.text,
+                        sdStr: epv21VelSD.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Chamber P1 (+52°C)',
+                        maxStr: epv52MaxP1.text,
+                        minStr: epv52MinP1.text,
+                        meanStr: epv52MeanP1.text,
+                        sdStr: epv52SDP1.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Port P2 (+52°C)',
+                        maxStr: epv52MaxP2.text,
+                        minStr: epv52MinP2.text,
+                        meanStr: epv52MeanP2.text,
+                        sdStr: epv52SDP2.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Velocity (+52°C)',
+                        maxStr: epv52VelMax.text,
+                        minStr: epv52VelMin.text,
+                        meanStr: epv52VelMean.text,
+                        sdStr: epv52VelSD.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Chamber P1 (-54°C)',
+                        maxStr: epv54MaxP1.text,
+                        minStr: epv54MinP1.text,
+                        meanStr: epv54MeanP1.text,
+                        sdStr: epv54SDP1.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Port P2 (-54°C)',
+                        maxStr: epv54MaxP2.text,
+                        minStr: epv54MinP2.text,
+                        meanStr: epv54MeanP2.text,
+                        sdStr: epv54SDP2.text,
+                      );
+                      statsErr ??= ReportGenerator.validateStatsNotIdentical(
+                        'Velocity (-54°C)',
+                        maxStr: epv54VelMax.text,
+                        minStr: epv54VelMin.text,
+                        meanStr: epv54VelMean.text,
+                        sdStr: epv54VelSD.text,
+                      );
+                    }
+                    if (statsErr != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(statsErr), backgroundColor: const Color(0xFFEF4444)),
+                      );
+                      return;
+                    }
+
                     final int produced = int.tryParse(producedController.text.trim()) ?? r.produced;
                     int defects = int.tryParse(defectsController.text.trim()) ?? r.defects;
 
@@ -3505,7 +3688,9 @@ class _HistoryTabState extends State<HistoryTab> {
           r.boxNo.toLowerCase().contains(query) ||
           r.notes.toLowerCase().contains(query);
 
-      final matchesCaliber = _caliberFilter == 'All' || r.caliber == _caliberFilter;
+      final matchesCaliber = _caliberFilter == 'All' ||
+          r.caliber == _caliberFilter ||
+          ReportGenerator.isSameCaliberGroup(r.caliber, _caliberFilter);
       final matchesStatus = _statusFilter == 'All' || r.status.trim().toLowerCase() == _statusFilter.trim().toLowerCase();
       final matchesLot = !isLotAcceptance || _lotFilter == 'All' || r.lotNo.trim() == _lotFilter;
       final matchesHopper = isLotAcceptance || _hopperFilter == 'All' || r.hopperNo.trim() == _hopperFilter;
@@ -4319,10 +4504,10 @@ class _HistoryTabState extends State<HistoryTab> {
       );
     }
 
-    // Group records by caliber specification
+    // Group records by caliber specification (normalizing M80 and SS109 variants)
     final Map<String, List<BallisticRecord>> caliberGroups = {};
     for (final r in records) {
-      final cal = r.caliber.trim().isNotEmpty ? r.caliber.trim() : 'Unspecified Caliber';
+      final cal = r.caliber.trim().isNotEmpty ? ReportGenerator.normalizeCaliberGroup(r.caliber) : 'Unspecified Caliber';
       caliberGroups.putIfAbsent(cal, () => []).add(r);
     }
 

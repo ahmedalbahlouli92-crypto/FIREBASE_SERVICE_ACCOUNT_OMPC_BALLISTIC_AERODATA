@@ -48,8 +48,8 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
 
   // SPC & Box-Whisker Tests
   static const List<Map<String, String>> _spcTestOptions = [
-    {'id': 'EPVAT test', 'name': 'EPVAT Test', 'param': 'Mean Velocity (m/s)'},
-    {'id': 'Accuracy Test', 'name': 'Accuracy Test', 'param': 'Mean Radius (mm)'},
+    {'id': 'EPVAT test', 'name': 'EPVAT Test', 'param': 'P1 Chamber Pressure (bar)'},
+    {'id': 'Accuracy Test', 'name': 'Accuracy Test', 'param': 'Mean Velocity (m/s)'},
     {'id': 'Extraction Force Test', 'name': 'Extraction Force Test', 'param': 'Mean Extraction Force (N)'},
     {'id': 'Waterproof Test', 'name': 'Waterproof Test', 'param': 'Waterproof Leaks (Count)'},
     {'id': 'Function Test', 'name': 'Function Test', 'param': 'Function Defects (Count)'},
@@ -925,7 +925,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
           // Adaptive SPC Trend Chart Container
           LayoutBuilder(
             builder: (context, constraints) {
-              final calRecords = records.where((r) => r.caliber.trim() == cal.trim()).toList();
+              final calRecords = records.where((r) => ReportGenerator.isSameCaliberGroup(r.caliber, cal)).toList();
               final testTypes = calRecords.map((r) => r.testName).toSet();
               final numTests = math.max(1, testTypes.length);
               final isWide = constraints.maxWidth >= 800;
@@ -967,10 +967,11 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   }
 
   Widget _buildLotAcceptanceDashboardSection(List<BallisticRecord> records) {
-    // Group by Caliber
+    // Group by Caliber (normalizing M80 and SS109 variants)
     final Map<String, List<BallisticRecord>> caliberGroups = {};
     for (var r in records) {
-      caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+      final normCal = ReportGenerator.normalizeCaliberGroup(r.caliber);
+      caliberGroups.putIfAbsent(normCal, () => []).add(r);
     }
     final sortedCalibers = caliberGroups.keys.toList()..sort();
 
@@ -1144,7 +1145,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                                       DataColumn(label: Text('INSPECTOR')),
                                       DataColumn(label: Text('TEST NAME')),
                                       DataColumn(label: Text('QTY TESTED')),
-                                      DataColumn(label: Text('DEFECTS')),
+                                      DataColumn(label: Text('RESULTS')),
                                       DataColumn(label: Text('STATUS')),
                                       DataColumn(label: Text('REMARKS')),
                                     ],
@@ -1158,7 +1159,17 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                                         DataCell(Text(r.operators)),
                                         DataCell(Text(r.testName, style: const TextStyle(fontWeight: FontWeight.bold))),
                                         DataCell(Text('${r.produced} rds')),
-                                        DataCell(Text('${r.defects}')),
+                                        DataCell(
+                                          ConstrainedBox(
+                                            constraints: const BoxConstraints(maxWidth: 320),
+                                            child: Text(
+                                              ReportGenerator.getRecordResultsSummaryText(r),
+                                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 2,
+                                            ),
+                                          ),
+                                        ),
                                         DataCell(
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
@@ -1195,10 +1206,11 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   }
 
   Widget _buildDailyTestDashboardSection(List<BallisticRecord> records) {
-    // Group by Caliber
+    // Group by Caliber (normalizing M80 and SS109 variants)
     final Map<String, List<BallisticRecord>> caliberGroups = {};
     for (var r in records) {
-      caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+      final normCal = ReportGenerator.normalizeCaliberGroup(r.caliber);
+      caliberGroups.putIfAbsent(normCal, () => []).add(r);
     }
     final sortedCalibers = caliberGroups.keys.toList()..sort();
 
@@ -1336,7 +1348,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                                 DataColumn(label: Text('HOPPER NO.')),
                                 DataColumn(label: Text('TEST NAME')),
                                 DataColumn(label: Text('QTY TESTED')),
-                                DataColumn(label: Text('DEFECTS')),
+                                DataColumn(label: Text('RESULTS')),
                                 DataColumn(label: Text('STATUS')),
                                 DataColumn(label: Text('REMARKS')),
                               ],
@@ -1352,7 +1364,17 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                                   DataCell(Text(hopVal, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF059669)))),
                                   DataCell(Text(r.testName, style: const TextStyle(fontWeight: FontWeight.bold))),
                                   DataCell(Text('${r.produced} rds')),
-                                  DataCell(Text('${r.defects}')),
+                                  DataCell(
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(maxWidth: 320),
+                                      child: Text(
+                                        ReportGenerator.getRecordResultsSummaryText(r),
+                                        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 2,
+                                      ),
+                                    ),
+                                  ),
                                   DataCell(
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
@@ -1388,7 +1410,9 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   Widget _buildComponentTestDashboardSection(List<BallisticRecord> records) {
     final Map<String, List<BallisticRecord>> caliberGroups = {};
     for (var r in records) {
-      final key = r.caliber.trim().isNotEmpty ? r.caliber.trim() : (r.testName.trim().isNotEmpty ? r.testName.trim() : 'General');
+      final key = r.caliber.trim().isNotEmpty
+          ? ReportGenerator.normalizeCaliberGroup(r.caliber)
+          : (r.testName.trim().isNotEmpty ? r.testName.trim() : 'General');
       caliberGroups.putIfAbsent(key, () => []).add(r);
     }
     final sortedCalibers = caliberGroups.keys.toList()..sort();
@@ -1496,7 +1520,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                                       DataColumn(label: Text('DATE & TIME')),
                                       DataColumn(label: Text('TEST NAME')),
                                       DataColumn(label: Text('QTY TESTED')),
-                                      DataColumn(label: Text('DEFECTS')),
+                                      DataColumn(label: Text('RESULTS')),
                                       DataColumn(label: Text('STATUS')),
                                       DataColumn(label: Text('REMARKS')),
                                     ],
@@ -1508,7 +1532,17 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                                         DataCell(Text(r.testTime.isNotEmpty ? r.testTime : r.timestamp)),
                                         DataCell(Text(r.testName)),
                                         DataCell(Text('${r.produced}')),
-                                        DataCell(Text('${r.defects}')),
+                                        DataCell(
+                                          ConstrainedBox(
+                                            constraints: const BoxConstraints(maxWidth: 320),
+                                            child: Text(
+                                              ReportGenerator.getRecordResultsSummaryText(r),
+                                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 2,
+                                            ),
+                                          ),
+                                        ),
                                         DataCell(Text(r.status.toUpperCase(), style: TextStyle(color: stColor, fontWeight: FontWeight.bold, fontSize: 10))),
                                         DataCell(Text(ReportGenerator.cleanRemarks(r.notes))),
                                       ]);
@@ -1894,13 +1928,14 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     buffer.writeln('');
 
     buffer.writeln('SECTION 1: BALLISTIC INSPECTIONS');
-    buffer.writeln('Module,Timestamp,Test Name,Caliber,Lot/Hopper,Quantity Tested,Defects,Status,Remarks');
+    buffer.writeln('Module,Timestamp,Test Name,Caliber,Lot/Hopper,Quantity Tested,Results,Status,Remarks');
     for (var entry in inspections) {
       final m = entry['module'] as String;
       final r = entry['record'] as BallisticRecord;
       final lotOrHopper = m == 'Daily Test' ? r.hopperNo : r.lotNo;
       final cleanNotes = ReportGenerator.cleanRemarks(r.notes);
-      buffer.writeln('"$m","${r.timestamp}","${r.testName}","${r.caliber}","$lotOrHopper","${r.produced}","${r.defects}","${r.status}","${cleanNotes.replaceAll('"', '""')}"');
+      final resultsSummary = ReportGenerator.getRecordResultsSummaryText(r).replaceAll('"', '""');
+      buffer.writeln('"$m","${r.timestamp}","${r.testName}","${ReportGenerator.normalizeCaliberGroup(r.caliber)}","$lotOrHopper","${r.produced}","$resultsSummary","${r.status}","${cleanNotes.replaceAll('"', '""')}"');
     }
     buffer.writeln('');
 
@@ -2299,11 +2334,14 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         ''';
       }
 
-      // Group records by Caliber
+      // Group records by Caliber (normalizing M80 and SS109 variants)
       final Map<String, List<BallisticRecord>> caliberGroups = {};
       for (var entry in moduleInspections) {
         final r = entry['record'] as BallisticRecord;
-        caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+        final normCal = r.caliber.trim().isNotEmpty
+            ? ReportGenerator.normalizeCaliberGroup(r.caliber)
+            : (r.testName.trim().isNotEmpty ? r.testName.trim() : 'General');
+        caliberGroups.putIfAbsent(normCal, () => []).add(r);
       }
 
       final sortedCalibers = caliberGroups.keys.toList()..sort();
@@ -2326,21 +2364,24 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
         final int calPass = calRecords.where((r) => r.status.toLowerCase().contains('approved') || r.status.toLowerCase().contains('pass')).length;
         final int calFail = calRecords.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
 
-        // Caliber-specific Charts (Compact 2-column grid format)
-        final calSpc = SvgChartGenerator.generateSpcChartSvg(calRecords, width: 375, height: 165);
-        final calBox = SvgChartGenerator.generateBoxPlotSvg(calRecords, width: 375, height: 165);
-        final calVelocity = SvgChartGenerator.generateVelocityTrendSvg(calRecords, width: 375, height: 165);
-
+        final bool hasAccuracy = calRecords.any((r) => r.testName.toLowerCase().contains('accuracy') || r.testName.toLowerCase().contains('bullet'));
         final bool hasEpvat = calRecords.any((r) => r.testName.toLowerCase().contains('epvat'));
-        final String calEpvat = hasEpvat ? SvgChartGenerator.generateEpvatChartSvg(calRecords, width: 375, height: 165) : '';
+
+        // Instruction 6: SPC Velocity comes ONLY from Accuracy Test; if only EPVAT exists without Accuracy, SPC shows P1 Chamber Pressure
+        final String spcParam = hasAccuracy ? 'Mean Velocity (m/s)' : (hasEpvat ? 'P1 Chamber Pressure (bar)' : 'Mean Velocity (m/s)');
+        final calSpc = SvgChartGenerator.generateSpcChartSvg(calRecords, param: spcParam, width: 580, height: 250);
+        final calBox = SvgChartGenerator.generateBoxPlotSvg(calRecords, metric: spcParam, width: 580, height: 250);
+        final calVelocity = SvgChartGenerator.generateVelocityTrendSvg(calRecords, width: 580, height: 250);
+
+        final String calEpvat = hasEpvat ? SvgChartGenerator.generateEpvatChartSvg(calRecords, width: 580, height: 250) : '';
 
         final bool hasFunction = calRecords.any((r) => r.testName.toLowerCase().contains('function'));
-        final String calFunction = hasFunction ? SvgChartGenerator.generateFunctionTestChartSvg(calRecords, width: 375, height: 165) : '';
+        final String calFunction = hasFunction ? SvgChartGenerator.generateFunctionTestChartSvg(calRecords, width: 580, height: 250) : '';
 
         moduleBuffer.writeln('''
         <div class="caliber-box" style="margin-top: 14px; margin-bottom: 20px; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #ffffff;">
           <!-- Caliber Header -->
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
             <div>
               <span style="font-size: 14px; font-weight: bold; color: #0284c7;">CALIBER SPECIFICATION: $cal</span>
               <span style="font-size: 11px; color: #64748b; margin-left: 10px;">(${calRecords.length} Tests)</span>
@@ -2369,7 +2410,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             final int lotFail = lotRecs.where((r) => r.status.toLowerCase().contains('reject') || r.status.toLowerCase().contains('fail')).length;
 
             moduleBuffer.writeln('''
-            <div style="margin-top: 12px; margin-bottom: 8px; padding: 6px 10px; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="margin-top: 12px; margin-bottom: 8px; padding: 6px 10px; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
               <div>
                 <strong style="color: #0369a1; font-size: 11.5px; text-transform: uppercase;">Lot Number: $lotKey</strong>
                 <span style="font-size: 10px; color: #64748b; margin-left: 8px;">(${lotRecs.length} Tests)</span>
@@ -2379,12 +2420,20 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               </div>
             </div>
             <table>
+              <colgroup>
+                <col style="width: 13%;">
+                <col style="width: 16%;">
+                <col style="width: 9%;">
+                <col style="width: 35%;">
+                <col style="width: 11%;">
+                <col style="width: 16%;">
+              </colgroup>
               <thead>
                 <tr>
                   <th>Date &amp; Time</th>
                   <th>Test Name</th>
                   <th>Qty Tested</th>
-                  <th>Defects</th>
+                  <th>Results</th>
                   <th>Status</th>
                   <th>Remarks</th>
                 </tr>
@@ -2399,7 +2448,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                       '<td>$dTime</td>'
                       '<td><strong>${r.testName}</strong></td>'
                       '<td>${r.produced} rds</td>'
-                      '<td>${r.defects}</td>'
+                      '<td class="results-cell">${ReportGenerator.getRecordResultsSummaryHtml(r)}</td>'
                       '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
                       '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
                       '</tr>';
@@ -2415,13 +2464,22 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
             &bull; $cal Daily Test Inspection Records:
           </div>
           <table>
+            <colgroup>
+              <col style="width: 12%;">
+              <col style="width: 14%;">
+              <col style="width: 10%;">
+              <col style="width: 9%;">
+              <col style="width: 31%;">
+              <col style="width: 10%;">
+              <col style="width: 14%;">
+            </colgroup>
             <thead>
               <tr>
                 <th>Date &amp; Time</th>
                 <th>Test Name</th>
                 <th>Hopper No.</th>
                 <th>Qty Tested</th>
-                <th>Defects</th>
+                <th>Results</th>
                 <th>Status</th>
                 <th>Remarks</th>
               </tr>
@@ -2438,7 +2496,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                     '<td><strong>${r.testName}</strong></td>'
                     '<td><strong>$hopVal</strong></td>'
                     '<td>${r.produced} rds</td>'
-                    '<td>${r.defects}</td>'
+                    '<td class="results-cell">${ReportGenerator.getRecordResultsSummaryHtml(r)}</td>'
                     '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
                     '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
                     '</tr>';
@@ -2461,12 +2519,20 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               <strong style="color: #b45309; font-size: 11px;">LOT / BATCH: $lotKey</strong> (${lotRecs.length} Tests)
             </div>
             <table>
+              <colgroup>
+                <col style="width: 13%;">
+                <col style="width: 16%;">
+                <col style="width: 9%;">
+                <col style="width: 35%;">
+                <col style="width: 11%;">
+                <col style="width: 16%;">
+              </colgroup>
               <thead>
                 <tr>
                   <th>Date &amp; Time</th>
                   <th>Test Name</th>
                   <th>Qty Tested</th>
-                  <th>Defects</th>
+                  <th>Results</th>
                   <th>Status</th>
                   <th>Remarks</th>
                 </tr>
@@ -2481,7 +2547,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                       '<td>$dTime</td>'
                       '<td><strong>${r.testName}</strong></td>'
                       '<td>${r.produced} rds</td>'
-                      '<td>${r.defects}</td>'
+                      '<td class="results-cell">${ReportGenerator.getRecordResultsSummaryHtml(r)}</td>'
                       '<td><span class="$statusClass">${r.status.toUpperCase()}</span></td>'
                       '<td>${ReportGenerator.cleanRemarks(r.notes)}</td>'
                       '</tr>';
@@ -2492,32 +2558,32 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
           }
         }
 
-        // Caliber Specific Charts & SPC (in balanced 2-column grid)
+        // Caliber Specific Charts & SPC (in balanced 2-column grid with responsive SVGs)
         moduleBuffer.writeln('''
           <div style="margin-top: 12px; background: #f8fafc; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px;">
             <div style="font-size: 11px; font-weight: bold; color: #0284c7; margin-bottom: 8px; text-transform: uppercase;">
               &bull; $cal Visual Analytics &amp; Statistical Process Control:
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 10px;">
-              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+            <div class="charts-grid">
+              <div class="chart-box">
                 <div style="font-size: 9.5px; font-weight: bold; color: #475569; margin-bottom: 4px;">1. Statistical Process Control (SPC) Chart — $cal</div>
                 $calSpc
               </div>
-              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+              <div class="chart-box">
                 <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">2. Box &amp; Whisker Distribution Profile — $cal</div>
                 $calBox
               </div>
-              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
-                <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">3. Muzzle Velocity Progression Trend — $cal</div>
+              <div class="chart-box">
+                <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">3. Accuracy Test Velocity Progression — $cal</div>
                 $calVelocity
               </div>
               ${hasEpvat && calEpvat.isNotEmpty ? '''
-              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+              <div class="chart-box">
                 <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">4. EPVAT Chamber (P1) &amp; Port (P2) Pressure — $cal</div>
                 $calEpvat
               </div>''' : ''}
               ${hasFunction && calFunction.isNotEmpty ? '''
-              <div class="chart-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; page-break-inside: avoid;">
+              <div class="chart-box">
                 <div style="font-size: 9.5px; font-weight: bold; color: #64748b; margin-bottom: 4px;">5. Function Test Defect Classification — $cal</div>
                 $calFunction
               </div>''' : ''}
@@ -2538,22 +2604,27 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   <meta charset="utf-8">
   <title>OMPC Executive Quality Report - $_periodLabel</title>
   <style>
-    @page { size: A4 portrait; margin: 10mm; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; color: #1e293b; background: #fff; font-size: 11px; }
+    @page { size: A4 portrait; margin: 8mm; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 12px; color: #1e293b; background: #fff; font-size: 10.5px; max-width: 100%; overflow-x: hidden; }
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 10px; margin-bottom: 16px; }
-    .title { font-size: 20px; font-weight: bold; color: #0f172a; }
-    .subtitle { font-size: 12px; color: #64748b; margin-top: 3px; }
+    .title { font-size: 19px; font-weight: bold; color: #0f172a; }
+    .subtitle { font-size: 11.5px; color: #64748b; margin-top: 3px; }
     .kpi-row { display: flex; gap: 10px; margin-bottom: 20px; }
     .kpi-card { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; text-align: center; }
     .kpi-val { font-size: 18px; font-weight: bold; margin-top: 3px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10.5px; }
-    th { background: #0f172a; color: #fff; text-align: left; padding: 6px 8px; font-size: 10px; text-transform: uppercase; }
-    td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 14px; font-size: 9.5px; word-wrap: break-word; overflow-wrap: break-word; }
+    th { background: #0f172a; color: #fff; text-align: left; padding: 5px 6px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.2px; }
+    td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; line-height: 1.35; }
+    td.results-cell { font-size: 9px; color: #0f172a; }
     tr { page-break-inside: avoid; }
     tr:nth-child(even) { background: #f8fafc; }
-    .badge-approved { background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-    .badge-rejected { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-    .badge-retest { background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    .badge-approved { display: inline-block; background: #dcfce7; color: #15803d; padding: 2px 5px; border-radius: 4px; font-weight: bold; font-size: 8.5px; }
+    .badge-rejected { display: inline-block; background: #fee2e2; color: #b91c1c; padding: 2px 5px; border-radius: 4px; font-weight: bold; font-size: 8.5px; }
+    .badge-retest { display: inline-block; background: #fef3c7; color: #b45309; padding: 2px 5px; border-radius: 4px; font-weight: bold; font-size: 8.5px; }
+    .charts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+    .chart-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; min-width: 0; width: 100%; overflow: hidden; page-break-inside: avoid; }
+    .chart-box svg { width: 100% !important; height: auto !important; max-width: 100%; display: block; }
     .footer { text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 24px; }
     .module-badge { display: inline-block; background-color: #0284c7; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 6px; }
     .page-break {
@@ -2563,7 +2634,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     }
     
     @media print {
-      body { margin: 8mm 10mm; }
+      body { margin: 4mm 6mm; }
       .page-break {
         display: none !important;
       }
@@ -2790,7 +2861,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
       final Map<String, List<BallisticRecord>> caliberGroups = {};
       for (var e in list) {
         final r = e['record'] as BallisticRecord;
-        caliberGroups.putIfAbsent(r.caliber.trim(), () => []).add(r);
+        final normCal = r.caliber.trim().isNotEmpty
+            ? ReportGenerator.normalizeCaliberGroup(r.caliber)
+            : (r.testName.trim().isNotEmpty ? r.testName.trim() : 'General');
+        caliberGroups.putIfAbsent(normCal, () => []).add(r);
       }
       final sortedCalibers = caliberGroups.keys.toList()..sort();
       final tableBuffer = StringBuffer();
@@ -2819,12 +2893,20 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
               &bull; Lot Number: <strong>$lotKey</strong> (${lotRecs.length} tests)
             </div>
             <table class="report-table">
+              <colgroup>
+                <col style="width: 13%;">
+                <col style="width: 16%;">
+                <col style="width: 8%;">
+                <col style="width: 36%;">
+                <col style="width: 11%;">
+                <col style="width: 16%;">
+              </colgroup>
               <thead>
                 <tr>
                   <th>Date</th>
                   <th>Test Name</th>
                   <th>Sample</th>
-                  <th>Defects</th>
+                  <th>Results</th>
                   <th>Status</th>
                   <th>Remarks</th>
                 </tr>
@@ -2840,7 +2922,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                       '<td>$recDate</td>'
                       '<td><strong>${r.testName}</strong></td>'
                       '<td>${r.produced}</td>'
-                      '<td>${r.defects}</td>'
+                      '<td class="results-cell">${ReportGenerator.getRecordResultsSummaryHtml(r)}</td>'
                       '<td><span style="color: $badgeColor; font-weight: bold;">${r.status}</span></td>'
                       '<td>$recNotes</td>'
                       '</tr>';
@@ -2854,13 +2936,22 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
           final isDaily = lotLabel.contains('Hopper');
           tableBuffer.writeln('''
           <table class="report-table">
+            <colgroup>
+              <col style="width: 12%;">
+              <col style="width: 10%;">
+              <col style="width: 15%;">
+              <col style="width: 8%;">
+              <col style="width: 31%;">
+              <col style="width: 10%;">
+              <col style="width: 14%;">
+            </colgroup>
             <thead>
               <tr>
                 <th>Date</th>
                 <th>${isDaily ? "Hopper No." : "Lot / Batch"}</th>
                 <th>Test Name</th>
                 <th>Sample</th>
-                <th>Defects</th>
+                <th>Results</th>
                 <th>Status</th>
                 <th>Remarks</th>
               </tr>
@@ -2878,7 +2969,7 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
                     '<td><strong>$idVal</strong></td>'
                     '<td><strong>${r.testName}</strong></td>'
                     '<td>${r.produced}</td>'
-                    '<td>${r.defects}</td>'
+                    '<td class="results-cell">${ReportGenerator.getRecordResultsSummaryHtml(r)}</td>'
                     '<td><span style="color: $badgeColor; font-weight: bold;">${r.status}</span></td>'
                     '<td>$recNotes</td>'
                     '</tr>';
@@ -2899,8 +2990,9 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
   <meta charset="utf-8">
   <title>Executive Tabular Report - $_periodLabel</title>
   <style>
-    @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 10px; color: #0f172a; font-size: 11px; line-height: 1.4; }
+    @page { size: A4 portrait; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 10px; color: #0f172a; font-size: 10.5px; line-height: 1.4; max-width: 100%; overflow-x: hidden; }
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 10px; margin-bottom: 14px; }
     .header-left h1 { margin: 0; font-size: 16px; color: #0284c7; text-transform: uppercase; font-weight: 800; }
     .header-left .sub { font-size: 11px; color: #64748b; margin-top: 3px; }
@@ -2912,9 +3004,10 @@ class _ExecutiveReportsTabState extends State<ExecutiveReportsTab> {
     .summary-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; text-align: center; }
     .summary-box .num { font-size: 16px; font-weight: bold; margin-top: 2px; }
     .summary-box .lbl { font-size: 9.5px; color: #64748b; font-weight: 600; text-transform: uppercase; }
-    table.report-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
-    table.report-table th, table.report-table td { border: 1px solid #cbd5e1; padding: 5px 7px; text-align: left; }
-    table.report-table th { background: #f1f5f9; color: #334155; font-weight: bold; text-transform: uppercase; font-size: 9px; }
+    table.report-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 12px; font-size: 9.5px; word-wrap: break-word; overflow-wrap: break-word; }
+    table.report-table th, table.report-table td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: left; vertical-align: middle; }
+    table.report-table td.results-cell { font-size: 9px; color: #0f172a; }
+    table.report-table th { background: #f1f5f9; color: #334155; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
     table.report-table tr:nth-child(even) { background: #f8fafc; }
     .footer { margin-top: 20px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between; }
   </style>

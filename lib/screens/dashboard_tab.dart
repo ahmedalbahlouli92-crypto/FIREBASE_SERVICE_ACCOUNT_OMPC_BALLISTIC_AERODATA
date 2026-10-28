@@ -7,6 +7,7 @@ import '../widgets/modern_analytics_card.dart';
 import '../services/report_helper.dart';
 import '../services/report_generator.dart';
 import '../services/svg_chart_generator.dart';
+import 'entry_tab.dart';
 
 class DashboardTab extends StatefulWidget {
   final String currentModule;
@@ -251,7 +252,7 @@ class _DashboardTabState extends State<DashboardTab> {
     }
 
     if (caliber != 'All') {
-      res = res.where((r) => r.caliber == caliber).toList();
+      res = res.where((r) => r.caliber == caliber || ReportGenerator.isSameCaliberGroup(r.caliber, caliber)).toList();
     }
 
     if (testName != 'All') {
@@ -369,10 +370,11 @@ class _DashboardTabState extends State<DashboardTab> {
     uniqueLots.sort();
 
     final uniqueCalibers = widget.currentModule == 'Component Test'
-        ? baseRecords.map((r) => r.caliber.trim()).where((c) => c.isNotEmpty).toSet().toList()
+        ? baseRecords.map((r) => ReportGenerator.normalizeCaliberGroup(r.caliber)).where((c) => c.isNotEmpty).toSet().toList()
         : {
-            ...baseRecords.map((r) => r.caliber).where((c) => c.isNotEmpty),
-            ...allCaliberSpecifications,
+            ...baseRecords.map((r) => ReportGenerator.normalizeCaliberGroup(r.caliber)).where((c) => c.isNotEmpty),
+            ...allCaliberSpecifications.map((c) => ReportGenerator.normalizeCaliberGroup(c)),
+            ...EntryTab.calibers.map((c) => ReportGenerator.normalizeCaliberGroup(c)),
           }.toList();
     if (widget.currentModule == 'Component Test' && uniqueCalibers.isEmpty) {
       uniqueCalibers.addAll(['9x19 mm', '5.56x45 mm', '7.62x39 mm', '7.62x51 mm', '12.7x99 mm']);
@@ -515,7 +517,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
     // 4. Caliber Filter
     if (_selectedCaliber != 'All') {
-      filtered = filtered.where((r) => r.caliber == _selectedCaliber).toList();
+      filtered = filtered.where((r) => r.caliber == _selectedCaliber || ReportGenerator.isSameCaliberGroup(r.caliber, _selectedCaliber)).toList();
     }
 
     // 5. Test Name Filter
@@ -560,7 +562,7 @@ class _DashboardTabState extends State<DashboardTab> {
       analyticsTotalDefects += r.defects;
       final calKey = widget.currentModule == 'Component Test'
           ? ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule)
-          : r.caliber;
+          : ReportGenerator.normalizeCaliberGroup(r.caliber);
       analyticsCaliberCounts[calKey] = (analyticsCaliberCounts[calKey] ?? 0) + r.produced;
 
       if (r.status == 'Approved') {
@@ -612,7 +614,7 @@ class _DashboardTabState extends State<DashboardTab> {
       overviewTotalDefects += r.defects;
       final calKey = widget.currentModule == 'Component Test'
           ? ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule)
-          : r.caliber;
+          : ReportGenerator.normalizeCaliberGroup(r.caliber);
       overviewCaliberCounts[calKey] = (overviewCaliberCounts[calKey] ?? 0) + r.produced;
       if (overviewStatusCounts.containsKey(r.status)) {
         overviewStatusCounts[r.status] = (overviewStatusCounts[r.status] ?? 0) + 1;
@@ -662,7 +664,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
       final calKey = widget.currentModule == 'Component Test'
           ? ReportGenerator.resolveCaliberVolumeName(r, widget.currentModule)
-          : r.caliber;
+          : ReportGenerator.normalizeCaliberGroup(r.caliber);
       caliberCounts[calKey] = (caliberCounts[calKey] ?? 0) + r.produced;
 
       if (statusCounts.containsKey(r.status)) {
@@ -1752,7 +1754,7 @@ class _DashboardTabState extends State<DashboardTab> {
                             ),
                           ),
                           const DataColumn(label: Text('TESTED', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
-                          const DataColumn(label: Text('DEFECTS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
+                          const DataColumn(label: Text('RESULTS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
                           const DataColumn(label: Text('STATUS', style: TextStyle(color: Color(0xFF4D99DB), fontSize: 10.5, fontWeight: FontWeight.bold, fontFamily: 'sans-serif'))),
                         ],
                         rows: recentRecords.map((r) {
@@ -1770,7 +1772,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                     border: Border.all(color: const Color(0xFF4D99DB).withOpacity(0.35)),
                                   ),
                                   child: Text(
-                                    r.caliber.replaceAll(' NATO', '').replaceAll(' Parabellum', ''),
+                                    ReportGenerator.normalizeCaliberGroup(r.caliber).replaceAll(' NATO', '').replaceAll(' Parabellum', ''),
                                     style: const TextStyle(color: Color(0xFF0284C7), fontFamily: 'JetBrainsMono', fontSize: 10.5, fontWeight: FontWeight.bold),
                                   ),
                                 ),
@@ -1778,13 +1780,18 @@ class _DashboardTabState extends State<DashboardTab> {
                               DataCell(Text(r.lotNo, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.0, color: Color(0xFF0F172A)))),
                               DataCell(Text(r.produced.toString(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontFamily: 'sans-serif'))),
                               DataCell(
-                                Text(
-                                  r.defects.toString(),
-                                  style: TextStyle(
-                                    color: r.defects > 0 ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
-                                    fontWeight: r.defects > 0 ? FontWeight.bold : FontWeight.normal,
-                                    fontSize: 12.5,
-                                    fontFamily: 'sans-serif',
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 320),
+                                  child: Text(
+                                    ReportGenerator.getRecordResultsSummaryText(r),
+                                    style: const TextStyle(
+                                      color: Color(0xFF0F172A),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11.0,
+                                      fontFamily: 'sans-serif',
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
                                   ),
                                 ),
                               ),
@@ -3506,7 +3513,8 @@ class _DashboardTabState extends State<DashboardTab> {
     } else if (scope == 'CaliberVolume') {
       final Map<String, int> counts = {};
       for (var r in exportRecords) {
-        counts[r.caliber] = (counts[r.caliber] ?? 0) + r.produced;
+        final normCal = ReportGenerator.normalizeCaliberGroup(r.caliber);
+        counts[normCal] = (counts[normCal] ?? 0) + r.produced;
       }
       await _exportCaliberVolumeAlone(
         context,
@@ -3537,7 +3545,8 @@ class _DashboardTabState extends State<DashboardTab> {
     for (var r in exportRecords) {
       totalRounds += r.produced;
       totalDefects += r.defects;
-      caliberCounts[r.caliber] = (caliberCounts[r.caliber] ?? 0) + r.produced;
+      final normCal = ReportGenerator.normalizeCaliberGroup(r.caliber);
+      caliberCounts[normCal] = (caliberCounts[normCal] ?? 0) + r.produced;
       statusCounts[r.status] = (statusCounts[r.status] ?? 0) + 1;
 
       if (r.status == 'Approved' || r.status == 'Approved with condition') {
@@ -3694,26 +3703,30 @@ class _DashboardTabState extends State<DashboardTab> {
     }
     table.data-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
-      font-size: 11px;
+      font-size: 10.5px;
       margin-top: 10px;
       margin-bottom: 18px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     table.data-table th {
       background-color: #f1f5f9;
       color: #334155;
       font-weight: 600;
       text-align: left;
-      padding: 7px 10px;
+      padding: 6px 8px;
       border: 1px solid #cbd5e1;
       text-transform: uppercase;
-      font-size: 10px;
+      font-size: 9.5px;
       letter-spacing: 0.3px;
     }
     table.data-table td {
-      padding: 6px 10px;
+      padding: 6px 8px;
       border: 1px solid #e2e8f0;
       color: #334155;
+      vertical-align: middle;
     }
     table.data-table tr:nth-child(even) {
       background-color: #f8fafc;
@@ -3846,10 +3859,11 @@ class _DashboardTabState extends State<DashboardTab> {
 ''');
     }
 
-    // Grouping by Caliber and Test Type
+    // Grouping by Caliber and Test Type (normalizing M80 and SS109 variants)
     final Map<String, List<BallisticRecord>> groups = {};
     for (var r in exportRecords) {
-      final key = '${r.caliber} - ${r.testName}';
+      final normCal = ReportGenerator.normalizeCaliberGroup(r.caliber);
+      final key = '$normCal - ${r.testName}';
       groups.putIfAbsent(key, () => []).add(r);
     }
 
@@ -3927,6 +3941,15 @@ class _DashboardTabState extends State<DashboardTab> {
           buffer.writeln('''
     <!-- Submitted Records Table -->
     <table class="data-table">
+      <colgroup>
+        <col style="width: 14%;">
+        <col style="width: 13%;">
+        <col style="width: 8%;">
+        <col style="width: 13%;">
+        <col style="width: 7%;">
+        <col style="width: 33%;">
+        <col style="width: 12%;">
+      </colgroup>
       <thead>
         <tr>
           <th>Timestamp</th>
@@ -3934,7 +3957,7 @@ class _DashboardTabState extends State<DashboardTab> {
           <th>Shift</th>
           <th>Lot No / Hopper</th>
           <th>Qty</th>
-          <th>Defects</th>
+          <th>Results</th>
           <th>Quality Status</th>
         </tr>
       </thead>
@@ -3950,7 +3973,7 @@ class _DashboardTabState extends State<DashboardTab> {
           <td>${r.shift}</td>
           <td>${r.lotNo}</td>
           <td>${r.produced}</td>
-          <td style="color: ${r.defects > 0 ? '#b91c1c' : '#334155'}; font-weight: ${r.defects > 0 ? 'bold' : 'normal'};">${r.defects}</td>
+          <td>${ReportGenerator.getRecordResultsSummaryHtml(r)}</td>
           <td><span class="badge badge-$statusClass">${r.status.toUpperCase()}</span></td>
         </tr>
 ''');
@@ -4779,18 +4802,18 @@ class _DashboardTabState extends State<DashboardTab> {
     buffer.writeln('$totalRounds,$totalDefects,${yieldRate.toStringAsFixed(1)}%,$passCount,$rejectCount,$retestCount');
     buffer.writeln('');
     buffer.writeln('DETAILED TEST RECORDS');
-    buffer.writeln('Timestamp,Operator,Shift,Caliber,Lot Number,Test Type,Tested Rounds,Defects,Quality Status,Pressure (Bar),Viscosity,Test Time,Location,EPVAT Chamber P1 Mean,EPVAT P1 Max,EPVAT P1 Min,EPVAT P1 SD,EPVAT Port P2 Mean,EPVAT Temp,Mean Velocity (m/s),Min Velocity,Max Velocity,SD Velocity,Mean Radius (mm),Terminal Hole,Terminal Steel,Cyclic Rate Weapon,Cyclic RPM,Notes / Remarks');
+    buffer.writeln('Timestamp,Operator,Shift,Caliber,Lot Number,Test Type,Tested Rounds,Results,Quality Status,Pressure (Bar),Viscosity,Test Time,Location,EPVAT Chamber P1 Mean,EPVAT P1 Max,EPVAT P1 Min,EPVAT P1 SD,EPVAT Port P2 Mean,EPVAT Temp,Mean Velocity (m/s),Min Velocity,Max Velocity,SD Velocity,Mean Radius (mm),Terminal Hole,Terminal Steel,Cyclic Rate Weapon,Cyclic RPM,Notes / Remarks');
 
     for (var r in records) {
       buffer.writeln([
         _csvEscape(r.timestamp),
         _csvEscape(r.operators),
         _csvEscape(r.shift),
-        _csvEscape(r.caliber),
+        _csvEscape(ReportGenerator.normalizeCaliberGroup(r.caliber)),
         _csvEscape(r.lotNo),
         _csvEscape(r.testName),
         r.produced,
-        r.defects,
+        _csvEscape(ReportGenerator.getRecordResultsSummaryText(r)),
         _csvEscape(r.status),
         _csvEscape(r.pressureBar),
         _csvEscape(r.viscosity),

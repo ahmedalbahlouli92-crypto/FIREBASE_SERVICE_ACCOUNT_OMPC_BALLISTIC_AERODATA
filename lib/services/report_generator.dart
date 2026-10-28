@@ -92,6 +92,70 @@ class ReportGenerator {
     return s;
   }
 
+  /// Normalizes M80 variants (M80 ball, M80 Ball linked, M80 4B1T) to '7.62x51 M80'
+  /// and SS109 variants (SS109, SS109 Ball linked, SS109 4B1T) to '5.56x45 SS109'
+  /// so they are grouped together on graphs and tables.
+  static String normalizeCaliberGroup(String caliber) {
+    final c = caliber.replaceAll(';', ' ').trim();
+    if (c.isEmpty) return 'Unspecified Caliber';
+    final lower = c.toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    if (lower.contains('m80') ||
+        (lower.contains('7.62') &&
+            !lower.contains('m82') &&
+            !lower.contains('308') &&
+            (lower.contains('ball') || lower.contains('linked') || lower.contains('4b1t')))) {
+      return '7.62x51 M80';
+    }
+    if (lower.contains('ss109') ||
+        (lower.contains('5.56') &&
+            !lower.contains('m193') &&
+            !lower.contains('m200') &&
+            !lower.contains('223') &&
+            (lower.contains('linked') || lower.contains('4b1t') || lower.contains('ball')))) {
+      return '5.56x45 SS109';
+    }
+    return c;
+  }
+
+  static bool isSameCaliberGroup(String calA, String calB) {
+    if (calA.trim().isEmpty || calB.trim().isEmpty) return false;
+    return normalizeCaliberGroup(calA).toLowerCase() == normalizeCaliberGroup(calB).toLowerCase();
+  }
+
+  /// Validates that entered Max, Min, Mean, and SD values are not identical.
+  /// Returns an error message if invalid, or null if valid.
+  static String? validateStatsNotIdentical(
+    String label, {
+    String? maxStr,
+    String? minStr,
+    String? meanStr,
+    String? sdStr,
+  }) {
+    final maxVal = maxStr != null && maxStr.trim().isNotEmpty ? double.tryParse(maxStr.trim()) : null;
+    final minVal = minStr != null && minStr.trim().isNotEmpty ? double.tryParse(minStr.trim()) : null;
+    final meanVal = meanStr != null && meanStr.trim().isNotEmpty ? double.tryParse(meanStr.trim()) : null;
+    final sdVal = sdStr != null && sdStr.trim().isNotEmpty ? double.tryParse(sdStr.trim()) : null;
+
+    final entries = <String, double>{
+      if (maxVal != null) 'Max': maxVal,
+      if (minVal != null) 'Min': minVal,
+      if (meanVal != null) 'Mean': meanVal,
+      if (sdVal != null) 'SD': sdVal,
+    };
+
+    if (entries.length < 2) return null;
+
+    final keys = entries.keys.toList();
+    for (int i = 0; i < keys.length; i++) {
+      for (int j = i + 1; j < keys.length; j++) {
+        if ((entries[keys[i]]! - entries[keys[j]]!).abs() < 1e-9) {
+          return 'Invalid $label: Max, Min, Mean, and SD cannot be the same (${keys[i]} and ${keys[j]} are both ${entries[keys[i]]}). Please insert the correct value.';
+        }
+      }
+    }
+    return null;
+  }
+
   /// Resolves caliber specification for volume reports across modules.
   /// Handles Component Test module mappings:
   /// - Primed Cases: '5.56 primed cases' (or '5.45 primed cases'), '7.62 primed cases', '9mm primed cases'
@@ -110,9 +174,9 @@ class ReportGenerator {
       if (isPrimer || (!isBullet && !testLower.contains('propellant'))) {
         if (calLower.contains('5.45')) {
           return '5.45 primed cases';
-        } else if (calLower.contains('5.56') || calLower.contains('.223')) {
+        } else if (calLower.contains('5.56') || calLower.contains('.223') || calLower.contains('ss109')) {
           return '5.56 primed cases';
-        } else if (calLower.contains('7.62') || calLower.contains('.308')) {
+        } else if (calLower.contains('7.62') || calLower.contains('.308') || calLower.contains('m80')) {
           return '7.62 primed cases';
         } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
           return '9mm primed cases';
@@ -122,9 +186,9 @@ class ReportGenerator {
       } else if (isBullet) {
         if (calLower.contains('5.45')) {
           return '5.45 bullet';
-        } else if (calLower.contains('5.56') || calLower.contains('.223')) {
+        } else if (calLower.contains('5.56') || calLower.contains('.223') || calLower.contains('ss109')) {
           return '5.56 bullet';
-        } else if (calLower.contains('7.62') || calLower.contains('.308')) {
+        } else if (calLower.contains('7.62') || calLower.contains('.308') || calLower.contains('m80')) {
           return '7.62 bullet';
         } else if (calLower.contains('9mm') || calLower.contains('9x19')) {
           return '9mm bullet';
@@ -133,7 +197,7 @@ class ReportGenerator {
         }
       }
     }
-    return calRaw.isNotEmpty ? calRaw : 'Unspecified Caliber';
+    return calRaw.isNotEmpty ? normalizeCaliberGroup(calRaw) : 'Unspecified Caliber';
   }
 
   static String formatWeapons(String raw) {
@@ -266,6 +330,15 @@ class ReportGenerator {
     return 'Ahmed Al Bahlouli';
   }
 
+  static String getRecordResultsSummaryHtml(BallisticRecord r) => _getRecordMetricsSummary(r);
+
+  static String getRecordResultsSummaryText(BallisticRecord r) {
+    return _getRecordMetricsSummary(r)
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), ' | ')
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .trim();
+  }
+
   static String _getRecordMetricsSummary(BallisticRecord r) {
     final m = r.parsedRetestMetrics;
     if (r.testName == 'Waterproof Test') {
@@ -278,18 +351,18 @@ class ReportGenerator {
         final retStr = retLeaks == 0 ? '0 leak' : '$retLeaks leaks';
         return 'Test: $testStr<br/>Retest: $retStr';
       }
-      return testStr;
+      return 'Leaks: $testStr';
     } else if (r.testName == 'Residual Stress Test') {
       final total = r.neckSlow + r.neckFast + r.shoulderSlow + r.shoulderFast + r.bodySlow + r.bodyFast + r.headSlow + r.headFast;
-      final testStr = total == 0 ? '0 crack' : '$total cracks';
+      final testStr = total == 0 ? '0 crack' : '$total crack${total == 1 ? '' : 's'}';
       if (r.isRetest) {
         final retCracks = m.isNotEmpty
             ? ((m['neckSlow'] as int? ?? 0) + (m['neckFast'] as int? ?? 0) + (m['shoulderSlow'] as int? ?? 0) + (m['shoulderFast'] as int? ?? 0) + (m['bodySlow'] as int? ?? 0) + (m['bodyFast'] as int? ?? 0) + (m['headSlow'] as int? ?? 0) + (m['headFast'] as int? ?? 0))
             : r.retestDefects;
-        final retStr = retCracks == 0 ? '0 crack' : '$retCracks cracks';
+        final retStr = retCracks == 0 ? '0 crack' : '$retCracks crack${retCracks == 1 ? '' : 's'}';
         return 'Test: $testStr<br/>Retest: $retStr';
       }
-      if (total == 0) return '0 crack';
+      if (total == 0) return 'Cracks: 0 crack';
       final zones = <String>[];
       final neck = r.neckSlow + r.neckFast;
       final shoulder = r.shoulderSlow + r.shoulderFast;
@@ -299,25 +372,29 @@ class ReportGenerator {
       if (shoulder > 0) zones.add('Shoulder: $shoulder');
       if (body > 0) zones.add('Body: $body');
       if (head > 0) zones.add('Head: $head');
-      return '$total cracks (${zones.join(", ")})';
-    } else if (r.testName == 'Accuracy Test') {
+      return 'Cracks: $total (${zones.join(", ")})';
+    } else if (r.testName == 'Accuracy Test' || r.testName == 'Bullet components' || r.testName.toLowerCase().contains('bullet')) {
+      final isM193 = r.caliber.toLowerCase().contains('m193');
       if (r.isRetest) {
         final retRadius = m['accMeanRadius']?.toString() ?? '';
         final retSDX = m['accSDX']?.toString() ?? '';
         final retSDY = m['accSDY']?.toString() ?? '';
-        if (r.caliber.toLowerCase().contains('m193') && (r.accMeanRadius.isNotEmpty || retRadius.isNotEmpty)) {
+        if (isM193 && (r.accMeanRadius.isNotEmpty || retRadius.isNotEmpty)) {
           return 'Test MR: ${r.accMeanRadius.isNotEmpty ? r.accMeanRadius : "-"} mm<br/>Retest MR: ${retRadius.isNotEmpty ? retRadius : "-"} mm';
         }
         return 'Test SD: X:${r.accSDX.isNotEmpty ? r.accSDX : "-"} Y:${r.accSDY.isNotEmpty ? r.accSDY : "-"}<br/>Retest SD: X:${retSDX.isNotEmpty ? retSDX : "-"} Y:${retSDY.isNotEmpty ? retSDY : "-"}';
       }
+      if (isM193 && r.accMeanRadius.isNotEmpty) {
+        return 'MR: ${r.accMeanRadius} mm, SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm, SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm, Mean Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
+      }
       return 'SD X: ${r.accSDX.isNotEmpty ? r.accSDX : "-"} mm, SD Y: ${r.accSDY.isNotEmpty ? r.accSDY : "-"} mm, Mean Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
-    } else if (r.testName == 'EPVAT test') {
+    } else if (r.testName == 'EPVAT test' || r.testName == 'Propellant Test') {
       final u = r.epvatPressureUnit.isNotEmpty ? r.epvatPressureUnit : 'bar';
       if (r.isRetest) {
         final retP1 = m['epvatMeanPressure']?.toString() ?? '';
         return 'Test P1: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $u<br/>Retest P1: ${retP1.isNotEmpty ? retP1 : "-"} $u';
       }
-      return 'Mean Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $u, Mean Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $u, Mean Vel (+21 °C): ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
+      return 'Mean Chamber: ${r.epvatMeanPressure.isNotEmpty ? r.epvatMeanPressure : "-"} $u, Mean Port: ${r.epvatP2MeanPressure.isNotEmpty ? r.epvatP2MeanPressure : "-"} $u, Mean Vel: ${r.velMean.isNotEmpty ? r.velMean : "-"} m/s';
     } else if (r.testName == 'Extraction Force Test') {
       if (r.isRetest) {
         final retMin = m['accMinX']?.toString() ?? '';
@@ -340,46 +417,37 @@ class ReportGenerator {
         final retStr = retDef == 0 ? '0 defect' : '$retDef defect${retDef == 1 ? '' : 's'}';
         return 'Test: $testStr<br/>Retest: $retStr';
       }
-      if (totalDefects == 0) return '0 defect';
+      if (totalDefects == 0) return 'Defects: 0 defect';
       final levels = <String>[];
       if (l1 > 0) levels.add('L1: $l1');
       if (l2 > 0) levels.add('L2: $l2');
       if (l3 > 0) levels.add('L3: $l3');
       if (l4 > 0) levels.add('L4: $l4');
-      return '$totalDefects defects (${levels.join(", ")})';
+      return 'Defects: $totalDefects (${levels.join(", ")})';
     } else if (r.testName == 'Firing Rate Cycle Test') {
       if (r.isRetest) {
         final retVal = m['cyclicRateValue']?.toString() ?? '';
         return 'Test Rate: ${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM<br/>Retest Rate: ${retVal.isNotEmpty ? retVal : "-"} RPM';
       }
-      return '${r.cyclicRateValue} RPM (${r.cyclicRateWeaponType})';
+      return 'Rate: ${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM';
     } else if (r.testName == 'Terminal Effect Test') {
-      final holeList = r.terminalHoleDiameter.split(',');
-      final steelList = r.terminalSteelPenetration.split(',');
-      final alumList = r.terminalAluminumPenetration.split(',');
-      final hasFail = holeList.any((s) => s.trim().toLowerCase() == 'no') ||
-          steelList.any((s) => s.trim().toLowerCase() == 'no') ||
-          alumList.any((s) => s.trim().toLowerCase() == 'no');
       if (r.isRetest) {
-        final retHole = m['terminalHoleDiameter']?.toString() ?? '';
-        final retSteel = m['terminalSteelPenetration']?.toString() ?? '';
-        final retAlum = m['terminalAluminumPenetration']?.toString() ?? '';
-        final retFail = retHole.split(',').any((s) => s.trim().toLowerCase() == 'no') ||
-            retSteel.split(',').any((s) => s.trim().toLowerCase() == 'no') ||
-            retAlum.split(',').any((s) => s.trim().toLowerCase() == 'no');
-        return 'Test: ${hasFail ? "Not Comply" : "Comply"}<br/>Retest: ${retFail ? "Not Comply" : "Comply"}';
+        return 'Test Hole: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}<br/>Retest Hole: ${m['terminalHoleDiameter']?.toString() ?? "-"}';
       }
-      return hasFail ? 'Not Comply' : 'Comply';
+      return 'Distance: ${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"} m, Hole Diam: ${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}';
     } else if (r.testName == 'Primer Sensitivity Test') {
       if (r.isRetest) {
         final retH = m['primerHbar']?.toString() ?? '';
         return 'Test H̄: ${r.primerHbar.isNotEmpty ? r.primerHbar : "-"} cm<br/>Retest H̄: ${retH.isNotEmpty ? retH : "-"} cm';
       }
-      return 'H̄: ${r.primerHbar.isNotEmpty ? r.primerHbar : "-"} cm, SD: ${r.primerSD.isNotEmpty ? r.primerSD : "-"} cm, H̄+5SD: ${r.primerAllFireH.isNotEmpty ? r.primerAllFireH : "-"} cm, H̄-2SD: ${r.primerNoFireH.isNotEmpty ? r.primerNoFireH : "-"} cm';
-    } else if (r.testName == 'Propellant Test') {
-      return 'Lot: ${r.propellantLot.isNotEmpty ? r.propellantLot : r.lotNo}, Sup: ${r.propellantSupplier}, Code: ${r.propellantCode}, P1: ${r.epvatMeanPressure} ${r.epvatPressureUnit}, Vel: ${r.velMean} m/s';
+      final hm = double.tryParse(r.primerHbar) ?? 0;
+      final sd = double.tryParse(r.primerSD) ?? 0;
+      final plus5 = r.primerAllFireH.isNotEmpty ? r.primerAllFireH : (hm > 0 ? (hm + 5 * sd).toStringAsFixed(1) : '-');
+      final minus2 = r.primerNoFireH.isNotEmpty ? r.primerNoFireH : (hm > 0 ? (hm - 2 * sd).toStringAsFixed(1) : '-');
+      return 'H̄+5SD: $plus5 cm, H̄-2SD: $minus2 cm';
     }
-    return r.notes;
+    final clean = cleanRemarks(r.notes);
+    return clean.isNotEmpty ? clean : '-';
   }
 
   static String generateCsv(List<BallisticRecord> records, String testName, String moduleName) {
