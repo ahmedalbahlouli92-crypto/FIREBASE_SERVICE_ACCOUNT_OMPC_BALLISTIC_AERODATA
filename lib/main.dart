@@ -1831,6 +1831,7 @@ class _MainShellState extends State<MainShell> {
   bool _isPermissionsCardExpanded = false;
   bool _isEquipmentCardExpanded = false;
   bool _isCaliberCardExpanded = false;
+  bool _isSamplingLocationsCardExpanded = false;
   bool _isRulesCardExpanded = false; // Collapsed by default as requested; admin will open it
   bool _isLotAcceptanceRequiredTestsCardExpanded = false;
   String _selectedReqTestCaliber = '5.56x45 SS109';
@@ -4787,6 +4788,7 @@ class _MainShellState extends State<MainShell> {
                         _isPermissionsCardExpanded = false;
                         _isEquipmentCardExpanded = false;
                         _isCaliberCardExpanded = false;
+                        _isSamplingLocationsCardExpanded = false;
                         _isRulesCardExpanded = false;
                         _isLotAcceptanceRequiredTestsCardExpanded = false;
                         _isCertTemplateCardExpanded = false;
@@ -4810,6 +4812,7 @@ class _MainShellState extends State<MainShell> {
                         _isPermissionsCardExpanded = true;
                         _isEquipmentCardExpanded = true;
                         _isCaliberCardExpanded = true;
+                        _isSamplingLocationsCardExpanded = true;
                         _isRulesCardExpanded = true;
                         _isLotAcceptanceRequiredTestsCardExpanded = true;
                         _isCertTemplateCardExpanded = true;
@@ -4851,10 +4854,12 @@ class _MainShellState extends State<MainShell> {
                 _buildEquipmentFleetCard(double.infinity),
               ],
 
-              // 6. Calibers & Rules Management (Admin only or authorized roles)
+              // 6. Calibers, Sampling Locations & Rules Management (Admin only or authorized roles)
               if (_currentUserRole == UserRole.admin || _hasPermission('can_manage_rules')) ...[
                 const SizedBox(height: 12.0),
                 _buildCaliberManagementCard(double.infinity),
+                const SizedBox(height: 12.0),
+                _buildSamplingLocationsCard(double.infinity),
                 const SizedBox(height: 12.0),
                 _buildRulesManagementCard(double.infinity),
                 const SizedBox(height: 12.0),
@@ -7768,6 +7773,288 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
+  Widget _buildSamplingLocationsCard(double width) {
+    final List<String> defaultLocs = [
+      'After Packing machine',
+      'Priming machine',
+      'PC530',
+      'PB31/14',
+      'PD26',
+      'After visual inspection',
+      'After link machine',
+    ];
+    final rawLocs = _adminRules['sample_locations'];
+    final List<String> locations = (rawLocs is List && rawLocs.isNotEmpty)
+        ? rawLocs.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList()
+        : List<String>.from(defaultLocs);
+
+    return Container(
+      width: width,
+      padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: _isSamplingLocationsCardExpanded ? 20.0 : 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFB8CEE5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A1E3A8A),
+            blurRadius: 14.0,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isSamplingLocationsCardExpanded = !_isSamplingLocationsCardExpanded),
+            borderRadius: BorderRadius.circular(8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8.0),
+                    border: Border.all(color: const Color(0xFF0284C7)),
+                  ),
+                  child: const Icon(Icons.add_location_alt_outlined, color: Color(0xFF0284C7), size: 20.0),
+                ),
+                const SizedBox(width: 12.0),
+                const Expanded(
+                  child: Text(
+                    'Sampling Locations Management',
+                    style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2FE),
+                    borderRadius: BorderRadius.circular(6.0),
+                  ),
+                  child: Text(
+                    '${locations.length} Configured',
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0369A1)),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                Icon(
+                  _isSamplingLocationsCardExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: const Color(0xFF0284C7),
+                  size: 24.0,
+                ),
+              ],
+            ),
+          ),
+          if (_isSamplingLocationsCardExpanded) ...[
+            const SizedBox(height: 12.0),
+            const Text(
+              'Add, rename, or remove sampling locations used during test entries and retests. Changes apply immediately to all Sampling Location dropdowns.',
+              style: TextStyle(fontSize: 12.0, color: Color(0xFF64748B), height: 1.4),
+            ),
+            const SizedBox(height: 14.0),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ruleNewSampleLocationCtrl,
+                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13.0),
+                    decoration: InputDecoration(
+                      labelText: 'New Sampling Location Name',
+                      labelStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.0),
+                      hintText: 'e.g. PC540, Line 3, Warehouse C...',
+                      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10.0),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final newLoc = _ruleNewSampleLocationCtrl.text.trim();
+                    if (newLoc.isEmpty) return;
+                    final updated = List<String>.from(locations);
+                    if (!updated.any((l) => l.toLowerCase() == newLoc.toLowerCase())) {
+                      updated.add(newLoc);
+                      _adminRules['sample_locations'] = updated;
+                      await SupabaseService.addSamplingLocation(newLoc);
+                      await _storageService.saveRules(_adminRules);
+                      setState(() {
+                        _adminRules = Map<String, dynamic>.from(_adminRules);
+                        _ruleNewSampleLocationCtrl.clear();
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Sampling location "$newLoc" added successfully.'),
+                            backgroundColor: const Color(0xFF10B981),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 16.0, color: Colors.white),
+                  label: const Text('Add Location', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14.0),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: locations.length,
+                separatorBuilder: (_, __) => const Divider(height: 1.0, color: Color(0xFFE2E8F0)),
+                itemBuilder: (context, idx) {
+                  final locName = locations[idx];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.place_outlined, color: Color(0xFF0284C7), size: 18.0),
+                    title: Text(
+                      locName,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.0, color: Color(0xFF0F172A)),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18.0, color: Color(0xFF0284C7)),
+                          tooltip: 'Rename Sampling Location',
+                          onPressed: () {
+                            _ruleEditSampleLocationCtrl.text = locName;
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                title: const Text('Rename Sampling Location', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Rename "$locName" to:', style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                                    const SizedBox(height: 12.0),
+                                    TextField(
+                                      controller: _ruleEditSampleLocationCtrl,
+                                      autofocus: true,
+                                      decoration: InputDecoration(
+                                        filled: true,
+                                        fillColor: const Color(0xFFF8FAFC),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      final updatedName = _ruleEditSampleLocationCtrl.text.trim();
+                                      if (updatedName.isNotEmpty && updatedName != locName) {
+                                        final updatedList = List<String>.from(locations);
+                                        updatedList[idx] = updatedName;
+                                        _adminRules['sample_locations'] = updatedList;
+                                        await SupabaseService.renameSamplingLocation(locName, updatedName);
+                                        await _storageService.saveRules(_adminRules);
+                                        setState(() {
+                                          _adminRules = Map<String, dynamic>.from(_adminRules);
+                                        });
+                                        if (mounted) {
+                                          Navigator.pop(ctx);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Sampling location renamed from "$locName" to "$updatedName".'),
+                                              backgroundColor: const Color(0xFF10B981),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+                                    child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18.0, color: Color(0xFFEF4444)),
+                          tooltip: 'Delete Sampling Location',
+                          onPressed: locations.length <= 1
+                              ? null
+                              : () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (delCtx) => AlertDialog(
+                                      backgroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                      title: const Text('Delete Sampling Location?', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
+                                      content: Text('Are you sure you want to delete "$locName"?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(delCtx),
+                                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            final updatedList = List<String>.from(locations)..removeAt(idx);
+                                            _adminRules['sample_locations'] = updatedList;
+                                            await SupabaseService.deleteSamplingLocation(locName);
+                                            await _storageService.saveRules(_adminRules);
+                                            setState(() {
+                                              _adminRules = Map<String, dynamic>.from(_adminRules);
+                                            });
+                                            if (mounted) {
+                                              Navigator.pop(delCtx);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Sampling location "$locName" deleted.'),
+                                                  backgroundColor: const Color(0xFFEF4444),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                                          child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildRulesManagementCard(double width) {
     return Container(
       width: width,
@@ -7872,6 +8159,7 @@ class _MainShellState extends State<MainShell> {
                   'Function Test',
                   'Firing Rate Cycle Test',
                   'Terminal Effect Test',
+                  'Sampling Locations',
                 ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
               ),
             ),

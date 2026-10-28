@@ -9,6 +9,7 @@ import '../models/ballistic_record.dart';
 import '../services/attachment_helper.dart';
 import '../services/epvat_formula_helper.dart';
 import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
 import '../services/report_generator.dart';
 import '../services/report_helper.dart';
 import '../services/test_result_extractor.dart';
@@ -1782,13 +1783,14 @@ class _EntryTabState extends State<EntryTab> {
                   }
                   _locationController.text = val;
                 });
-                // Persist to admin rules
-                final existing = List<dynamic>.from(widget.adminRules['sample_locations'] ?? []);
+                // Persist to admin rules & Supabase
+                final existing = List<String>.from(_allSampleLocations);
                 if (!existing.contains(val)) {
                   existing.add(val);
-                  widget.adminRules['sample_locations'] = existing;
-                  _storageService.saveRules(widget.adminRules);
                 }
+                widget.adminRules['sample_locations'] = existing;
+                _storageService.saveRules(widget.adminRules);
+                SupabaseService.addSamplingLocation(val);
               }
               Navigator.of(ctx).pop();
             },
