@@ -44,6 +44,114 @@ class TestResultExtractor {
     return sb.toString();
   }
 
+  /// Separates concatenated sample numbers and force/measurement values caused by PDF column merging
+  /// (e.g., "Sample 1750" -> "Sample 1 750", "Sample 10750" -> "Sample 10 750", "Minimum643" -> "Minimum 643").
+  static String separateConcatenatedSampleValues(String input) {
+    if (input.isEmpty) return input;
+
+    // 1. Separate glued summary keywords from adjacent numbers (e.g., "Minimum643.0" -> "Minimum 643.0")
+    String result = input.replaceAllMapped(
+      RegExp(
+        r'\b(Minimum|Maximum|Mean|Average|SD|STDEV|Std\.?\s*Dev\.?|Range|BatchID)(-?\d)',
+        caseSensitive: false,
+      ),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+
+    // 2. Separate glued Sample/Round index + value when not already followed by another space-separated number
+    int expectedSample = 1;
+    final sampleConcatPattern = RegExp(
+      r'\b(Sample|Round)\s*(\d{3,})(\.\d+)?(?!\s+[-+]?\d)',
+      caseSensitive: false,
+    );
+
+    result = result.replaceAllMapped(sampleConcatPattern, (m) {
+      final prefix = m.group(1)!;
+      final digits = m.group(2)!;
+      final decimalPart = m.group(3) ?? '';
+
+      String? splitIdx;
+      String? splitVal;
+
+      // Try matching expected sequential sample number first (1..50)
+      final expStr = expectedSample.toString();
+      if (digits.startsWith(expStr) && digits.length > expStr.length) {
+        final rem = digits.substring(expStr.length);
+        final val = double.tryParse('$rem$decimalPart');
+        if (val != null && val >= 20 && val <= 9999) {
+          splitIdx = expStr;
+          splitVal = '$rem$decimalPart';
+          expectedSample++;
+        }
+      }
+
+      // If sequential didn't match, check if resetting to Sample 1 matches (e.g. new table/page)
+      if (splitIdx == null && digits.startsWith('1') && digits.length >= 3) {
+        final rem = digits.substring(1);
+        final val = double.tryParse('$rem$decimalPart');
+        if (val != null && val >= 50 && val <= 2500) {
+          splitIdx = '1';
+          splitVal = '$rem$decimalPart';
+          expectedSample = 2;
+        }
+      }
+
+      // General digit-length fallback for any sample index 1..50
+      if (splitIdx == null) {
+        if (digits.length == 3) {
+          // e.g. "195" -> Sample 1, value 95
+          splitIdx = digits.substring(0, 1);
+          splitVal = '${digits.substring(1)}$decimalPart';
+        } else if (digits.length == 4) {
+          // Could be 1-digit sample + 3-digit value (e.g. "1750" -> 1 & 750)
+          // or 2-digit sample + 2-digit value (e.g. "1095" -> 10 & 95)
+          final twoDigitIdx = int.tryParse(digits.substring(0, 2)) ?? 99;
+          final threeDigitVal = int.tryParse(digits.substring(1)) ?? 0;
+          if (threeDigitVal >= 100 && (twoDigitIdx > 30 || digits.substring(1, 2) != '0')) {
+            splitIdx = digits.substring(0, 1);
+            splitVal = '${digits.substring(1)}$decimalPart';
+          } else if (twoDigitIdx >= 10 && twoDigitIdx <= 50) {
+            splitIdx = digits.substring(0, 2);
+            splitVal = '${digits.substring(2)}$decimalPart';
+          } else {
+            splitIdx = digits.substring(0, 1);
+            splitVal = '${digits.substring(1)}$decimalPart';
+          }
+        } else if (digits.length == 5) {
+          // Typically 2-digit sample + 3-digit value (e.g. "10750" -> 10 & 750)
+          // or 1-digit sample + 4-digit value (e.g. "11050" -> 1 & 1050)
+          final twoDigitIdx = int.tryParse(digits.substring(0, 2)) ?? 99;
+          final fourDigitVal = int.tryParse(digits.substring(1)) ?? 0;
+          if (twoDigitIdx >= 10 && twoDigitIdx <= 50 && int.parse(digits.substring(2)) >= 100) {
+            splitIdx = digits.substring(0, 2);
+            splitVal = '${digits.substring(2)}$decimalPart';
+          } else if (fourDigitVal >= 1000 && fourDigitVal <= 3000) {
+            splitIdx = digits.substring(0, 1);
+            splitVal = '${digits.substring(1)}$decimalPart';
+          } else {
+            splitIdx = digits.substring(0, 2);
+            splitVal = '${digits.substring(2)}$decimalPart';
+          }
+        } else if (digits.length >= 6) {
+          // e.g. "101050" -> 2-digit sample (10) + 4-digit value (1050)
+          splitIdx = digits.substring(0, 2);
+          splitVal = '${digits.substring(2)}$decimalPart';
+        }
+        if (splitIdx != null) {
+          final parsedIdx = int.tryParse(splitIdx);
+          if (parsedIdx != null) expectedSample = parsedIdx + 1;
+        }
+      }
+
+      if (splitIdx != null && splitVal != null) {
+        return '$prefix $splitIdx $splitVal';
+      }
+      return m.group(0)!;
+    });
+
+    return result;
+  }
+
   /// Parses raw file content (CSV, TSV, JSON, or plain text log)
   /// and extracts key ballistic test metrics.
   static ExtractedResults extract({
@@ -60,7 +168,9 @@ class TestResultExtractor {
         .replaceAll('\u00AD', '-')
         .replaceAll('\uFE63', '-')
         .replaceAll('\uFF0D', '-');
-    final normalizedContent = normalizeShiftedText(sanitizedContent);
+    final normalizedContent = separateConcatenatedSampleValues(
+      normalizeShiftedText(sanitizedContent),
+    );
     final trimmed = normalizedContent.trim();
 
     if (trimmed.isEmpty) {
@@ -2412,8 +2522,7 @@ class PdfTextExtractor {
     }
 
     final rawText = buffer.toString().trim();
-    final shifted = TestResultExtractor.normalizeShiftedText(rawText);
-    return shifted
+    final shifted = TestResultExtractor.normalizeShiftedText(rawText)
         .replaceAll('\u2212', '-')
         .replaceAll('\u2013', '-')
         .replaceAll('\u2014', '-')
@@ -2421,6 +2530,7 @@ class PdfTextExtractor {
         .replaceAll('\u00AD', '-')
         .replaceAll('\uFE63', '-')
         .replaceAll('\uFF0D', '-');
+    return TestResultExtractor.separateConcatenatedSampleValues(shifted);
   }
 
   static Map<int, String> _parseCMap(String cmapText) {
@@ -2492,10 +2602,11 @@ class PdfTextExtractor {
       r'|\[([\s\S]*?)\]\s*TJ'
       r'|T\*'
       r'|([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+(?:Td|TD)'
-      r'|(?:[-+]?\d*\.?\d+\s+){5}([-+]?\d*\.?\d+)\s+Tm',
+      r'|(?:[-+]?\d*\.?\d+\s+){4}([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+Tm',
       caseSensitive: false,
     );
 
+    double lastX = double.nan;
     double lastY = double.nan;
     for (final m in opPattern.allMatches(block)) {
       final fullMatch = m.group(0)!;
@@ -2519,22 +2630,29 @@ class PdfTextExtractor {
             sb.write(_decodePdfHexString(im.group(2)!, cMap));
           } else if (im.group(3) != null) {
             final offset = double.tryParse(im.group(3)!) ?? 0;
-            if (offset < -150) sb.write(' ');
+            if (offset < -40) sb.write(' ');
           }
         }
         sb.write(' ');
       } else if (fullMatch.startsWith('T*')) {
         sb.writeln();
       } else if (m.group(7) != null) {
+        final tx = double.tryParse(m.group(6) ?? '') ?? 0;
         final ty = double.tryParse(m.group(7)!) ?? 0;
         if (ty.abs() > 0.01) {
           sb.writeln();
+        } else if (tx.abs() > 0.5) {
+          sb.write(' ');
         }
-      } else if (m.group(8) != null) {
-        final y = double.tryParse(m.group(8)!) ?? 0;
+      } else if (m.group(9) != null) {
+        final x = double.tryParse(m.group(8) ?? '') ?? 0;
+        final y = double.tryParse(m.group(9)!) ?? 0;
         if (!lastY.isNaN && (y - lastY).abs() > 2.0) {
           sb.writeln();
+        } else if (!lastX.isNaN && (x - lastX).abs() > 2.0) {
+          sb.write(' ');
         }
+        lastX = x;
         lastY = y;
       }
     }

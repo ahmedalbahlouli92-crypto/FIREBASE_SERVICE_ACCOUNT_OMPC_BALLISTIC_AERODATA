@@ -3858,7 +3858,7 @@ class ReportGenerator {
     }
     final totalQty = scopedRecords.fold<int>(0, (sum, r) => sum + r.produced + (r.isRetest ? r.retestProduced : 0));
     final logoHtml = base64Logo.isNotEmpty
-        ? '<img src="data:image/png;base64,$base64Logo" width="105" height="44" style="object-fit: contain;" />'
+        ? '<img src="data:image/png;base64,$base64Logo" width="128" height="58" style="object-fit: contain;" />'
         : '';
 
     final inspectorSig = _findSignatureBase64(inspectorName, adminRules);
@@ -3866,14 +3866,14 @@ class ReportGenerator {
     final managerSig = _findSignatureBase64(managerName, adminRules);
 
     final inspectorSigImg = inspectorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 20px; max-width: 90px; object-fit: contain; display: block; margin: 0 auto 1px auto;" />'
-        : '<div style="height: 14px;"></div>';
+        ? '<img src="${_formatImageSrc(inspectorSig)}" style="max-height: 36px; max-width: 115px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
+        : '<div style="height: 28px;"></div>';
     final supervisorSigImg = supervisorSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 20px; max-width: 90px; object-fit: contain; display: block; margin: 0 auto 1px auto;" />'
-        : '<div style="height: 14px;"></div>';
+        ? '<img src="${_formatImageSrc(supervisorSig)}" style="max-height: 36px; max-width: 115px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
+        : '<div style="height: 28px;"></div>';
     final managerSigImg = managerSig.isNotEmpty
-        ? '<img src="${_formatImageSrc(managerSig)}" style="max-height: 20px; max-width: 90px; object-fit: contain; display: block; margin: 0 auto 1px auto;" />'
-        : '<div style="height: 14px;"></div>';
+        ? '<img src="${_formatImageSrc(managerSig)}" style="max-height: 36px; max-width: 115px; object-fit: contain; display: block; margin: 0 auto 3px auto;" />'
+        : '<div style="height: 28px;"></div>';
 
     String formatStatusBadge(String status) {
       final s = status.trim().isEmpty ? '-' : status.trim();
@@ -3885,7 +3885,7 @@ class ReportGenerator {
       final bg = isApproved ? '#dcfce7' : (isRejected ? '#fee2e2' : '#fef3c7');
       final fg = isApproved ? '#15803d' : (isRejected ? '#b91c1c' : '#b45309');
       final border = isApproved ? '#86efac' : (isRejected ? '#fca5a5' : '#fde68a');
-      return '<span style="display: inline-block; padding: 2px 7px; border-radius: 4px; background-color: $bg; color: $fg; font-weight: bold; font-size: 7.5pt; border: 1px solid $border; white-space: nowrap;">$s</span>';
+      return '<span style="display: inline-block; padding: 3.5px 9px; border-radius: 5px; background-color: $bg; color: $fg; font-weight: bold; font-size: 8.5pt; border: 1px solid $border; white-space: nowrap;">$s</span>';
     }
 
     final certRowsBuffer = StringBuffer();
@@ -4011,18 +4011,19 @@ class ReportGenerator {
   <style>
     @page {
       size: A4 portrait;
-      margin: 4mm 6mm !important;
+      margin: 6mm 8mm !important;
     }
     @media print {
       @page {
         size: A4 portrait;
-        margin: 4mm 6mm !important;
+        margin: 6mm 8mm !important;
       }
       html, body {
         margin: 0 !important;
         padding: 0 !important;
-        height: 100% !important;
-        max-height: 278mm !important;
+        width: 100% !important;
+        height: 282mm !important;
+        max-height: 282mm !important;
         overflow: hidden !important;
         page-break-after: avoid !important;
         break-after: avoid !important;
@@ -4032,10 +4033,16 @@ class ReportGenerator {
       .cert-wrapper {
         width: 100% !important;
         max-width: 100% !important;
-        max-height: 276mm !important;
+        min-height: 280mm !important;
+        height: 280mm !important;
+        max-height: 280mm !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
         overflow: hidden !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 2mm 0 !important;
+        box-sizing: border-box !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
@@ -4043,145 +4050,150 @@ class ReportGenerator {
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       margin: 0;
-      padding: 4px 8px;
+      padding: 8px 12px;
       color: #0f172a;
       background-color: #ffffff;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .cert-wrapper {
-      max-width: 860px;
+      max-width: 900px;
+      min-height: 276mm;
       margin: 0 auto;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      border-bottom: 1.5px solid #e2e8f0;
-      margin-bottom: 6px;
-      padding-bottom: 3px;
+      border-bottom: 2px solid #cbd5e1;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
     }
     .header-table td {
       border: none !important;
       background: none !important;
-      padding: 0 !important;
+      padding: 0 0 4px 0 !important;
     }
     .title-section {
       text-align: center;
-      margin-top: 2px;
-      margin-bottom: 6px;
+      margin-top: 4px;
+      margin-bottom: 8px;
     }
     .title-section h1 {
-      font-size: 13pt;
+      font-size: 16pt;
       font-weight: 800;
       color: #000000;
-      letter-spacing: 0.5px;
-      margin: 0 0 2px 0;
+      letter-spacing: 0.6px;
+      margin: 0 0 4px 0;
       text-transform: uppercase;
     }
     .caliber-subtitle {
-      font-size: 10pt;
+      font-size: 12pt;
       font-weight: bold;
       color: #000000;
-      margin-bottom: 1px;
+      margin-bottom: 3px;
     }
     .lot-subtitle {
-      font-size: 9.5pt;
+      font-size: 11pt;
       font-weight: bold;
       color: #000000;
     }
     .title-line {
-      height: 2px;
+      height: 2.5px;
       width: 100%;
       background-color: #06b6d4;
-      margin-top: 3px;
-      margin-bottom: 5px;
+      margin-top: 6px;
+      margin-bottom: 6px;
     }
     .section-title {
-      font-size: 9pt;
-      font-weight: 700;
+      font-size: 10.5pt;
+      font-weight: 800;
       color: #0f172a;
       border-bottom: 1.5px solid #cbd5e1;
-      padding-bottom: 1px;
-      margin-top: 4px;
-      margin-bottom: 3px;
+      padding-bottom: 3px;
+      margin-top: 6px;
+      margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
     .details-table {
       width: 100%;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
       border-collapse: collapse;
     }
     .details-table td {
-      padding: 1px 3px;
-      font-size: 7.5pt;
+      padding: 4px 6px;
+      font-size: 9.5pt;
       border: none !important;
       background: none !important;
     }
     .results-table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #cbd5e1;
-      margin-bottom: 6px;
-      font-size: 7pt;
+      border: 1.2px solid #cbd5e1;
+      margin-bottom: 8px;
+      font-size: 8.5pt;
     }
     .results-table th {
       background-color: #f1f5f9;
       color: #1e293b;
-      font-weight: bold;
+      font-weight: 800;
       text-align: center;
       vertical-align: middle;
-      padding: 2.5px 3px;
+      padding: 6.5px 5px;
       border: 1px solid #cbd5e1;
-      font-size: 6.8pt;
+      font-size: 8.5pt;
       text-transform: uppercase;
-      letter-spacing: 0.2px;
+      letter-spacing: 0.3px;
     }
     .results-table td {
       border: 1px solid #cbd5e1;
-      padding: 1.5px 3px;
+      padding: 6px 5px;
       vertical-align: middle;
-      font-size: 6.8pt;
-      line-height: 1.15;
+      font-size: 8.4pt;
+      line-height: 1.32;
     }
     .test-name-cell {
       color: #0284c7;
       font-weight: bold;
-      font-size: 7.5pt;
+      font-size: 9pt;
       text-align: center;
     }
     .temp-cell {
       color: #0284c7;
       font-weight: bold;
       text-align: center;
-      font-size: 7pt;
+      font-size: 8.5pt;
     }
     .status-cell {
       text-align: center;
       vertical-align: middle;
     }
     .sentence-box {
-      padding: 4px 8px;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
+      padding: 10px 14px;
+      border: 1.2px solid #cbd5e1;
+      border-radius: 5px;
       background-color: #f8fafc;
-      font-size: 8pt;
+      font-size: 9.5pt;
       font-weight: bold;
-      line-height: 1.25;
+      line-height: 1.4;
       color: #1e293b;
       white-space: pre-wrap;
     }
     .signatures-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 4px;
+      margin-top: 12px;
+      margin-bottom: 4px;
       border: none;
       page-break-inside: avoid;
     }
     .ref-footer {
-      margin-top: 4px;
-      font-size: 7.5pt;
+      margin-top: 6px;
+      font-size: 8.5pt;
       font-weight: bold;
       color: #475569;
       text-align: left;
@@ -4194,10 +4206,10 @@ class ReportGenerator {
     <table class="header-table">
       <tr>
         <td style="width: 65%; text-align: left; vertical-align: middle;">
-          <div style="font-size: 14px; font-weight: bold; color: #0f172a; font-family: Arial, sans-serif;">Oman Munition Production Company</div>
-          <div style="font-size: 11px; font-weight: bold; color: #475569; margin-top: 1px;">QC And Engineering Department</div>
-          <div style="font-size: 10px; color: #64748b; margin-top: 1px;">Ballistic Lab Section</div>
-          <div style="font-size: 10px; font-style: italic; color: #64748b; margin-top: 1px; margin-bottom: 2px;">Final Lot Acceptance Certificate</div>
+          <div style="font-size: 16.5px; font-weight: bold; color: #0f172a; font-family: Arial, sans-serif;">Oman Munition Production Company</div>
+          <div style="font-size: 12.5px; font-weight: bold; color: #475569; margin-top: 2px;">QC And Engineering Department</div>
+          <div style="font-size: 11.5px; color: #64748b; margin-top: 1.5px;">Ballistic Lab Section</div>
+          <div style="font-size: 11.5px; font-style: italic; color: #64748b; margin-top: 1.5px; margin-bottom: 2px;">Final Lot Acceptance Certificate</div>
         </td>
         <td style="width: 35%; text-align: right; vertical-align: middle;">
           $logoHtml
@@ -4245,13 +4257,13 @@ ${certRowsBuffer.toString()}        </tbody>
     </div>
 
     <!-- Overall Status Table (Placed ABOVE names and signatures) -->
-    <table style="width: 100%; border-collapse: collapse; margin-top: 4px; margin-bottom: 5px; border: 1.5px solid ${hasRejection ? '#fca5a5' : '#86efac'}; border-radius: 4px; background-color: ${hasRejection ? '#fef2f2' : '#f0fdf4'}; page-break-inside: avoid;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 6px; margin-bottom: 8px; border: 1.5px solid ${hasRejection ? '#fca5a5' : '#86efac'}; border-radius: 5px; background-color: ${hasRejection ? '#fef2f2' : '#f0fdf4'}; page-break-inside: avoid;">
       <tr>
-        <td style="border: none; padding: 3px 8px; font-size: 8.5pt; font-weight: 800; color: #1e293b; text-align: left; text-transform: uppercase; letter-spacing: 0.3px;">
+        <td style="border: none; padding: 7px 12px; font-size: 10pt; font-weight: 800; color: #1e293b; text-align: left; text-transform: uppercase; letter-spacing: 0.4px;">
           Overall Lot Acceptance Status:
         </td>
-        <td style="border: none; padding: 3px 8px; text-align: right;">
-          <span style="display: inline-block; font-size: 9pt; font-weight: 900; color: $overallStatusColor; background-color: ${hasRejection ? '#fee2e2' : '#dcfce7'}; padding: 2px 12px; border-radius: 3px; border: 1px solid ${hasRejection ? '#f87171' : '#4ade80'}; letter-spacing: 0.3px;">
+        <td style="border: none; padding: 7px 12px; text-align: right;">
+          <span style="display: inline-block; font-size: 10pt; font-weight: 900; color: $overallStatusColor; background-color: ${hasRejection ? '#fee2e2' : '#dcfce7'}; padding: 3.5px 14px; border-radius: 4px; border: 1px solid ${hasRejection ? '#f87171' : '#4ade80'}; letter-spacing: 0.3px;">
             $overallStatusText
           </span>
         </td>
@@ -4259,7 +4271,7 @@ ${certRowsBuffer.toString()}        </tbody>
     </table>
 
     <!-- Lot Sentencing & Compliance Evaluation -->
-    <div style="margin-bottom: 4px; page-break-inside: avoid;">
+    <div style="margin-bottom: 8px; page-break-inside: avoid;">
       <h3 class="section-title">Lot Sentencing &amp; Compliance Evaluation</h3>
       <div class="sentence-box">
         $sentenceRequirement
@@ -4267,25 +4279,25 @@ ${certRowsBuffer.toString()}        </tbody>
     </div>
 
     <!-- Signatures Table (Table 1 from Reference Docx) -->
-    <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 3px; border: none; page-break-inside: avoid;">
+    <table class="signatures-table" style="width: 100%; border-collapse: collapse; margin-top: 10px; border: none; page-break-inside: avoid;">
       <tr>
-        <td style="width: 33.33%; border: none; padding: 2px 6px; vertical-align: bottom; text-align: center;">
+        <td style="width: 33.33%; border: none; padding: 4px 8px; vertical-align: bottom; text-align: center;">
           $inspectorSigImg
-          <div style="border-bottom: 1px solid #94a3b8; width: 78%; margin: 0 auto 3px auto;"></div>
-          <div style="font-size: 7.5pt; color: #1e293b; font-weight: bold;">Prepared By: <span style="font-weight: normal;">$inspectorName</span></div>
-          <div style="font-size: 6.8pt; color: #64748b; margin-top: 1px;">Ballistic Technician</div>
+          <div style="border-bottom: 1.2px solid #94a3b8; width: 80%; margin: 0 auto 5px auto;"></div>
+          <div style="font-size: 9pt; color: #1e293b; font-weight: bold;">Prepared By: <span style="font-weight: normal;">$inspectorName</span></div>
+          <div style="font-size: 8pt; color: #64748b; margin-top: 2px;">Ballistic Technician</div>
         </td>
-        <td style="width: 33.33%; border: none; padding: 2px 6px; vertical-align: bottom; text-align: center;">
+        <td style="width: 33.33%; border: none; padding: 4px 8px; vertical-align: bottom; text-align: center;">
           $supervisorSigImg
-          <div style="border-bottom: 1px solid #94a3b8; width: 78%; margin: 0 auto 3px auto;"></div>
-          <div style="font-size: 7.5pt; color: #1e293b; font-weight: bold;">Approved By: <span style="font-weight: normal;">$supervisorName</span></div>
-          <div style="font-size: 6.8pt; color: #64748b; margin-top: 1px;">Action Ballistic &amp; Engineering Supervisor</div>
+          <div style="border-bottom: 1.2px solid #94a3b8; width: 80%; margin: 0 auto 5px auto;"></div>
+          <div style="font-size: 9pt; color: #1e293b; font-weight: bold;">Approved By: <span style="font-weight: normal;">$supervisorName</span></div>
+          <div style="font-size: 8pt; color: #64748b; margin-top: 2px;">Action Ballistic &amp; Engineering Supervisor</div>
         </td>
-        <td style="width: 33.33%; border: none; padding: 2px 6px; vertical-align: bottom; text-align: center;">
+        <td style="width: 33.33%; border: none; padding: 4px 8px; vertical-align: bottom; text-align: center;">
           $managerSigImg
-          <div style="border-bottom: 1px solid #94a3b8; width: 78%; margin: 0 auto 3px auto;"></div>
-          <div style="font-size: 7.5pt; color: #1e293b; font-weight: bold;">Authorized By: <span style="font-weight: normal;">$managerName</span></div>
-          <div style="font-size: 6.8pt; color: #64748b; margin-top: 1px;">Acting QC &amp; Engineering Manager</div>
+          <div style="border-bottom: 1.2px solid #94a3b8; width: 80%; margin: 0 auto 5px auto;"></div>
+          <div style="font-size: 9pt; color: #1e293b; font-weight: bold;">Authorized By: <span style="font-weight: normal;">$managerName</span></div>
+          <div style="font-size: 8pt; color: #64748b; margin-top: 2px;">Acting QC &amp; Engineering Manager</div>
         </td>
       </tr>
     </table>
@@ -4336,28 +4348,28 @@ ${certRowsBuffer.toString()}        </tbody>
       mso-margin-bottom-alt: 0pt;
       mso-line-height-rule: exactly;
     }
-    body { font-family: Calibri, Arial, sans-serif; font-size: 8.5pt; color: #000000; margin: 0; padding: 0; line-height: 1.15; }
+    body { font-family: Calibri, Arial, sans-serif; font-size: 9pt; color: #000000; margin: 0; padding: 0; line-height: 1.25; }
     .cert-wrapper { width: 100%; margin: 0; }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 3pt; }
+    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; }
     .header-table td { border: none !important; padding: 0 !important; }
-    .title-section { text-align: center; margin-bottom: 3pt; }
-    .title-section h1 { font-size: 12pt; font-weight: bold; color: #000000; margin: 0 0 1.5pt 0; text-transform: uppercase; line-height: 1.1; }
-    .caliber-subtitle { font-size: 10pt; font-weight: bold; color: #000000; margin-bottom: 1pt; text-align: center; }
-    .lot-subtitle { font-size: 9pt; font-weight: bold; color: #334155; text-align: center; }
-    .title-line { height: 2px; width: 100%; background-color: #06b6d4; margin-top: 2pt; margin-bottom: 3pt; border-bottom: 2px solid #06b6d4; }
-    .section-title { font-size: 8.5pt; font-weight: bold; color: #0f172a; border-bottom: 1.2px solid #cbd5e1; padding-bottom: 1pt; margin-top: 3pt; margin-bottom: 2pt; text-transform: uppercase; }
-    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 3pt; }
-    .details-table td { border: none !important; padding: 1.5pt 2pt; font-size: 8pt; }
+    .title-section { text-align: center; margin-bottom: 6pt; }
+    .title-section h1 { font-size: 14pt; font-weight: bold; color: #000000; margin: 0 0 2.5pt 0; text-transform: uppercase; line-height: 1.15; }
+    .caliber-subtitle { font-size: 11pt; font-weight: bold; color: #000000; margin-bottom: 2pt; text-align: center; }
+    .lot-subtitle { font-size: 10pt; font-weight: bold; color: #334155; text-align: center; }
+    .title-line { height: 2px; width: 100%; background-color: #06b6d4; margin-top: 4pt; margin-bottom: 6pt; border-bottom: 2px solid #06b6d4; }
+    .section-title { font-size: 9.5pt; font-weight: bold; color: #0f172a; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 2pt; margin-top: 5pt; margin-bottom: 4pt; text-transform: uppercase; }
+    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 5pt; }
+    .details-table td { border: none !important; padding: 3pt 4pt; font-size: 9pt; }
     table { border-collapse: collapse; width: 100%; }
-    table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 3pt; }
-    table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 2.5pt 2pt; font-size: 8pt; text-transform: uppercase; }
-    table.results-table td { border: 1px solid #cbd5e1; padding: 1.8pt 2.5pt; font-size: 8pt; vertical-align: middle; line-height: 1.1; }
-    .test-name-cell { color: #0284c7; font-weight: bold; font-size: 8.2pt; text-align: center; }
-    .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 8pt; }
-    .status-cell { text-align: center; font-size: 8pt; }
-    .sentence-box { padding: 3pt 5pt; border: 1px solid #cbd5e1; border-radius: 3px; background-color: #f8fafc; font-size: 8pt; font-weight: bold; color: #1e293b; line-height: 1.15; margin-bottom: 3pt; }
-    .signatures-table { border: none !important; margin-top: 3pt; width: 100%; }
-    .signatures-table td { border: none !important; padding: 1.5pt 2pt; vertical-align: bottom; text-align: center; font-size: 8pt; }
+    table.results-table { border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin-bottom: 6pt; }
+    table.results-table th { background-color: #f1f5f9; color: #1e293b; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 4.5pt 3pt; font-size: 8.5pt; text-transform: uppercase; }
+    table.results-table td { border: 1px solid #cbd5e1; padding: 4pt 3.5pt; font-size: 8.5pt; vertical-align: middle; line-height: 1.25; }
+    .test-name-cell { color: #0284c7; font-weight: bold; font-size: 8.8pt; text-align: center; }
+    .temp-cell { color: #0284c7; font-weight: bold; text-align: center; font-size: 8.5pt; }
+    .status-cell { text-align: center; font-size: 8.5pt; }
+    .sentence-box { padding: 6pt 8pt; border: 1px solid #cbd5e1; border-radius: 4px; background-color: #f8fafc; font-size: 9pt; font-weight: bold; color: #1e293b; line-height: 1.3; margin-bottom: 6pt; }
+    .signatures-table { border: none !important; margin-top: 8pt; width: 100%; }
+    .signatures-table td { border: none !important; padding: 3pt 4pt; vertical-align: bottom; text-align: center; font-size: 8.5pt; }
     .ref-footer { display: none; }
   </style>
 </head>

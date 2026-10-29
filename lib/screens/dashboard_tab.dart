@@ -57,7 +57,7 @@ class _DashboardTabState extends State<DashboardTab> {
   String _boxTestName = 'All';
   String _boxLot = 'Overall';
 
-  bool _isAnalyticsMinimized = false;
+  bool _isAnalyticsMinimized = true;
   bool _isOverviewChartsMinimized = true;
   bool _isBoxPlotMinimized = true;
   bool _isRecentLogsMinimized = true;
@@ -370,15 +370,12 @@ class _DashboardTabState extends State<DashboardTab> {
     uniqueLots.sort();
 
     final uniqueCalibers = widget.currentModule == 'Component Test'
-        ? baseRecords.map((r) => ReportGenerator.normalizeCaliberGroup(r.caliber)).where((c) => c.isNotEmpty).toSet().toList()
+        ? <String>['5.56', '7.62', '9mm']
         : {
             ...baseRecords.map((r) => ReportGenerator.normalizeCaliberGroup(r.caliber)).where((c) => c.isNotEmpty),
             ...allCaliberSpecifications.map((c) => ReportGenerator.normalizeCaliberGroup(c)),
             ...EntryTab.calibers.map((c) => ReportGenerator.normalizeCaliberGroup(c)),
           }.toList();
-    if (widget.currentModule == 'Component Test' && uniqueCalibers.isEmpty) {
-      uniqueCalibers.addAll(['9x19 mm', '5.56x45 mm', '7.62x39 mm', '7.62x51 mm', '12.7x99 mm']);
-    }
     uniqueCalibers.sort();
 
     final List<String> availableTestTypes = widget.currentModule == 'Component Test'

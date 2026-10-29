@@ -65,8 +65,49 @@ class _HistoryTabState extends State<HistoryTab> {
   String _statusFilter = 'All';
   String _lotFilter = 'All';
   String _hopperFilter = 'All';
+  String _yearFilter = DateTime.now().year.toString();
   String _sortByFilter = 'Date of Inspection';
   int _lotAcceptanceTab = 0; // 0 = Lots Under Process, 1 = Completed Lots
+
+  static const List<String> _majorCalibers = ['5.56', '7.62', '9mm'];
+
+  String _getMajorCaliber(String rawCaliber) {
+    final c = rawCaliber.trim().toLowerCase();
+    if (c.contains('5.56') || c.contains('.223') || c.contains('ss109') || c.contains('m193') || c.contains('m200')) {
+      return '5.56';
+    }
+    if (c.contains('7.62') || c.contains('.308') || c.contains('m80') || c.contains('m82')) {
+      return '7.62';
+    }
+    if (c.contains('9mm') || c.contains('9x19') || c.contains('para') || c.contains('luger') || c.contains('match') || c.contains('cmj')) {
+      return '9mm';
+    }
+    return rawCaliber.trim().isNotEmpty ? rawCaliber.trim() : '5.56';
+  }
+
+  String _getRecordYear(BallisticRecord r) {
+    final lotCandidate = r.lotNo.trim().isNotEmpty ? r.lotNo.trim() : r.hopperNo.trim();
+    if (lotCandidate.isNotEmpty) {
+      // Check /YY or -YY at end or after OMPC (e.g. "010 OMPC/26" -> 2026)
+      final slashMatch = RegExp(r'[/\-](\d{2,4})\b').allMatches(lotCandidate).lastOrNull;
+      if (slashMatch != null) {
+        final yr = int.tryParse(slashMatch.group(1)!);
+        if (yr != null) {
+          final fullYr = yr < 100 ? 2000 + yr : yr;
+          if (fullYr >= 2015 && fullYr <= 2050) return fullYr.toString();
+        }
+      }
+      final yr4Match = RegExp(r'\b(20\d{2})\b').firstMatch(lotCandidate);
+      if (yr4Match != null) {
+        return yr4Match.group(1)!;
+      }
+    }
+    final dt = _parseRecordUserTime(r);
+    if (dt.year > 1970) return dt.year.toString();
+    final ts = DateTime.tryParse(r.timestamp.trim());
+    if (ts != null && ts.year > 1970) return ts.year.toString();
+    return DateTime.now().year.toString();
+  }
 
   List<String> _getRequiredTestsForCaliber(String caliber) {
     final reqMap = widget.adminRules['lot_acceptance_required_tests'];
@@ -422,13 +463,7 @@ class _HistoryTabState extends State<HistoryTab> {
         : <String>[];
 
     if (widget.currentModule == 'Component Test') {
-      final base = <String>['5.56', '7.62', '9mm'];
-      for (final c in adminCals) {
-        if (!defaultCalibers.contains(c) && !base.contains(c)) {
-          base.add(c);
-        }
-      }
-      return base;
+      return <String>['5.56', '7.62', '9mm'];
     }
 
     final merged = <String>[...defaultCalibers];
@@ -1691,18 +1726,31 @@ class _HistoryTabState extends State<HistoryTab> {
       allDialogTestTypes.insert(0, editTestName);
     }
 
-    final List<String> dialogCaliberOptions = <String>[...calibers];
-    for (final c in EntryTab.calibers) {
-      if (c.trim().isNotEmpty && !dialogCaliberOptions.contains(c.trim())) {
-        dialogCaliberOptions.add(c.trim());
+    final bool isComponentRecord = widget.currentModule == 'Component Test' || r.module == 'Component Test';
+    final List<String> dialogCaliberOptions = isComponentRecord
+        ? ((editTestName == 'Accuracy Test' || editTestName == 'Bullet components')
+            ? <String>[
+                '5.56x45 .223 55 grains',
+                '5.56x45 .223 69 grains',
+                '5.56x45 .223 77 grains',
+                '7.62x51 .308',
+                '9x19mm 124 grains CMJ',
+              ]
+            : <String>['5.56', '7.62', '9mm'])
+        : <String>[...calibers];
+    if (!isComponentRecord) {
+      for (final c in EntryTab.calibers) {
+        if (c.trim().isNotEmpty && !dialogCaliberOptions.contains(c.trim())) {
+          dialogCaliberOptions.add(c.trim());
+        }
       }
-    }
-    final adminCalsRaw = widget.adminRules['calibers_list'];
-    if (adminCalsRaw is List) {
-      for (final c in adminCalsRaw) {
-        final cs = c.toString().trim();
-        if (cs.isNotEmpty && !dialogCaliberOptions.contains(cs)) {
-          dialogCaliberOptions.add(cs);
+      final adminCalsRaw = widget.adminRules['calibers_list'];
+      if (adminCalsRaw is List) {
+        for (final c in adminCalsRaw) {
+          final cs = c.toString().trim();
+          if (cs.isNotEmpty && !dialogCaliberOptions.contains(cs)) {
+            dialogCaliberOptions.add(cs);
+          }
         }
       }
     }
@@ -3649,19 +3697,48 @@ class _HistoryTabState extends State<HistoryTab> {
     if (!testNames.contains(_testNameFilter) && _testNameFilter != 'All') {
       _testNameFilter = 'All';
     }
+    const List<String> caliberFilterItems = ['All', ..._majorCalibers];
+    if (!caliberFilterItems.contains(_caliberFilter)) {
+      _caliberFilter = 'All';
+    }
+
+    final int currentYearInt = DateTime.now().year;
+    final Set<String> yearSet = {
+      currentYearInt.toString(),
+      (currentYearInt - 1).toString(),
+      (currentYearInt - 2).toString(),
+      ...widget.records.map(_getRecordYear),
+    };
+    final List<String> sortedYears = yearSet.toList()..sort((a, b) => b.compareTo(a));
+    final List<String> availableYears = [...sortedYears, 'All'];
+    if (!availableYears.contains(_yearFilter)) {
+      _yearFilter = currentYearInt.toString();
+    }
+
+    final List<BallisticRecord> yearScopedRecords = _yearFilter == 'All'
+        ? widget.records
+        : widget.records.where((r) => _getRecordYear(r) == _yearFilter).toList();
+
     final bool isLotAcceptance = widget.currentModule == 'Lot Acceptance Test';
-    final availableLots = {'All', ...(isLotAcceptance && _caliberFilter != 'All'
-        ? widget.records.where((r) => r.caliber.trim() == _caliberFilter.trim())
-        : widget.records)
+    final List<BallisticRecord> caliberAndYearScopedRecords = _caliberFilter == 'All'
+        ? yearScopedRecords
+        : yearScopedRecords.where((r) =>
+            r.caliber.trim() == _caliberFilter.trim() ||
+            _getMajorCaliber(r.caliber) == _caliberFilter ||
+            ReportGenerator.isSameCaliberGroup(r.caliber, _caliberFilter)).toList();
+
+    final availableLots = {'All', ...caliberAndYearScopedRecords
         .map((r) => r.lotNo.trim())
         .where((s) => s.isNotEmpty)}.toList()..sort();
-    final availableHoppers = {'All', ...widget.records.map((r) => r.hopperNo.trim()).where((s) => s.isNotEmpty)}.toList()..sort();
+    final availableHoppers = {'All', ...caliberAndYearScopedRecords
+        .map((r) => r.hopperNo.trim())
+        .where((s) => s.isNotEmpty)}.toList()..sort();
     if (!availableLots.contains(_lotFilter)) _lotFilter = 'All';
     if (!availableHoppers.contains(_hopperFilter)) _hopperFilter = 'All';
 
-    // Calculate lot counts for Lot Acceptance Two-Part workflow
+    // Calculate lot counts for Lot Acceptance Two-Part workflow (scoped to selected year)
     final allLotKeys = isLotAcceptance
-        ? widget.records.where((r) => r.lotNo.trim().isNotEmpty).map((r) => '${r.caliber.trim()}|${r.lotNo.trim()}').toSet()
+        ? yearScopedRecords.where((r) => r.lotNo.trim().isNotEmpty).map((r) => '${r.caliber.trim()}|${r.lotNo.trim()}').toSet()
         : <String>{};
     final completedLotKeys = allLotKeys.where((k) {
       final parts = k.split('|');
@@ -3675,7 +3752,7 @@ class _HistoryTabState extends State<HistoryTab> {
 
     // Apply filters
     final query = _searchController.text.toLowerCase().trim();
-    final filtered = widget.records.where((r) {
+    final filtered = yearScopedRecords.where((r) {
       if (isLotAcceptance) {
         final bool isDone = _isLotCompleted(r.caliber, r.lotNo);
         if (_lotAcceptanceTab == 0 && isDone) return false;
@@ -3690,6 +3767,7 @@ class _HistoryTabState extends State<HistoryTab> {
 
       final matchesCaliber = _caliberFilter == 'All' ||
           r.caliber == _caliberFilter ||
+          _getMajorCaliber(r.caliber) == _caliberFilter ||
           ReportGenerator.isSameCaliberGroup(r.caliber, _caliberFilter);
       final matchesStatus = _statusFilter == 'All' || r.status.trim().toLowerCase() == _statusFilter.trim().toLowerCase();
       final matchesLot = !isLotAcceptance || _lotFilter == 'All' || r.lotNo.trim() == _lotFilter;
@@ -3976,15 +4054,36 @@ class _HistoryTabState extends State<HistoryTab> {
               ],
             );
 
+            final yearField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('YEAR', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6.0),
+                _buildDropdown(
+                  value: _yearFilter,
+                  items: availableYears,
+                  onChanged: (v) => setState(() {
+                    _yearFilter = v!;
+                    _lotFilter = 'All';
+                    _hopperFilter = 'All';
+                  }),
+                ),
+              ],
+            );
+
             final caliberField = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('CALIBER', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                const Text('CALIBER SPECIFICATION', style: TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6.0),
                 _buildDropdown(
                   value: _caliberFilter,
-                  items: ['All', ...calibers],
-                  onChanged: (v) => setState(() => _caliberFilter = v!),
+                  items: caliberFilterItems,
+                  onChanged: (v) => setState(() {
+                    _caliberFilter = v!;
+                    _lotFilter = 'All';
+                    _hopperFilter = 'All';
+                  }),
                 ),
               ],
             );
@@ -4058,9 +4157,9 @@ class _HistoryTabState extends State<HistoryTab> {
                         const SizedBox(height: 10.0),
                         Row(
                           children: [
-                            Expanded(child: caliberField),
+                            Expanded(child: yearField),
                             const SizedBox(width: 10.0),
-                            Expanded(child: testNameField),
+                            Expanded(child: caliberField),
                           ],
                         ),
                         const SizedBox(height: 10.0),
@@ -4068,6 +4167,12 @@ class _HistoryTabState extends State<HistoryTab> {
                           children: [
                             Expanded(child: isLotAcceptance ? lotField : hopperField),
                             const SizedBox(width: 10.0),
+                            Expanded(child: testNameField),
+                          ],
+                        ),
+                        const SizedBox(height: 10.0),
+                        Row(
+                          children: [
                             Expanded(child: statusField),
                           ],
                         ),
@@ -4078,6 +4183,8 @@ class _HistoryTabState extends State<HistoryTab> {
                         Row(
                           children: [
                             Expanded(flex: 2, child: searchField),
+                            const SizedBox(width: 12.0),
+                            Expanded(flex: 1, child: yearField),
                             const SizedBox(width: 12.0),
                             Expanded(flex: 1, child: caliberField),
                             const SizedBox(width: 12.0),
@@ -4504,11 +4611,19 @@ class _HistoryTabState extends State<HistoryTab> {
       );
     }
 
-    // Group records by caliber specification (normalizing M80 and SS109 variants)
+    // Group records into the three major caliber specifications (5.56, 7.62, 9mm)
     final Map<String, List<BallisticRecord>> caliberGroups = {};
+    for (final majorCal in _majorCalibers) {
+      final matching = records.where((r) => _getMajorCaliber(r.caliber) == majorCal).toList();
+      if (matching.isNotEmpty) {
+        caliberGroups[majorCal] = matching;
+      }
+    }
     for (final r in records) {
-      final cal = r.caliber.trim().isNotEmpty ? ReportGenerator.normalizeCaliberGroup(r.caliber) : 'Unspecified Caliber';
-      caliberGroups.putIfAbsent(cal, () => []).add(r);
+      final majorCal = _getMajorCaliber(r.caliber);
+      if (!_majorCalibers.contains(majorCal)) {
+        caliberGroups.putIfAbsent(majorCal, () => []).add(r);
+      }
     }
 
     return Scrollbar(

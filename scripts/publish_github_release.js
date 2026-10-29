@@ -19,8 +19,8 @@ function getGitHubToken() {
 const GITHUB_TOKEN = getGitHubToken();
 const OWNER = 'ahmedalbahlouli92-crypto';
 const REPO = 'FIREBASE_SERVICE_ACCOUNT_OMPC_BALLISTIC_AERODATA';
-const TAG_NAME = 'v2.0.11';
-const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.11 (Executive Report Layout, SPC Velocity & Caliber Grouping)';
+const TAG_NAME = 'v2.0.12';
+const RELEASE_NAME = 'OMPC Ballistic AeroData v2.0.12 (Auto-Extract Fix, Year/Caliber Inspection Log, Component Calibers & Certificate Layout)';
 const BODY = `## OMPC Ballistic AeroData v2.0.9
 
 Enterprise ballistic quality suite update featuring dedicated 3-caliber component volume analytics on dashboard, product-only lot filtering in Lot Acceptance, and caliber volume export de-duplication:
@@ -146,7 +146,7 @@ async function main() {
     { name: 'OMPC_Ballistic_AeroData.exe', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.exe' },
     { name: 'OMPC_Ballistic_AeroData_Portable.zip', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_Portable.zip' },
     { name: 'Force_Unlock_All.bat', path: 'C:\\Users\\user\\Desktop\\Force_Unlock_All.bat' },
-    { name: 'OMPC_Ballistic_AeroData_v2.0.11.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.11.apk' },
+    { name: 'OMPC_Ballistic_AeroData_v2.0.12.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData_v2.0.12.apk' },
     { name: 'OMPC_Ballistic_AeroData.apk', path: 'C:\\Users\\user\\Desktop\\OMPC_Ballistic_AeroData.apk' },
     { name: 'supabase_tables_setup.sql', path: path.join(__dirname, '..', 'supabase_tables_setup.sql') }
   ];

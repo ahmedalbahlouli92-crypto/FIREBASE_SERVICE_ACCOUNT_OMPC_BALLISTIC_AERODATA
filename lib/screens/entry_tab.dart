@@ -2515,27 +2515,22 @@ class _EntryTabState extends State<EntryTab> {
 
   // calibers and testNames are now on EntryTab widget class
   List<String> get calibers {
+    if (widget.currentModule == 'Component Test') {
+      if (_isAccuracyOrBullet) {
+        return <String>[
+          '5.56x45 .223 55 grains',
+          '5.56x45 .223 69 grains',
+          '5.56x45 .223 77 grains',
+          '7.62x51 .308',
+          '9x19mm 124 grains CMJ',
+        ];
+      }
+      return <String>['5.56', '7.62', '9mm'];
+    }
     final adminCalsRaw = widget.adminRules['calibers_list'];
     final List<String> adminCals = adminCalsRaw is List
         ? adminCalsRaw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList()
         : <String>[];
-    if (widget.currentModule == 'Component Test') {
-      final base = _isAccuracyOrBullet
-          ? <String>[
-              '5.56x45 .223 55 grains',
-              '5.56x45 .223 69 grains',
-              '5.56x45 .223 77 grains',
-              '7.62x51 .308',
-              '9x19mm 124 grains CMJ',
-            ]
-          : <String>['5.56', '5.45', '7.62', '9mm'];
-      for (final c in adminCals) {
-        if (!EntryTab.defaultCalibers.contains(c) && !base.contains(c)) {
-          base.add(c);
-        }
-      }
-      return base;
-    }
     final merged = <String>[...EntryTab.calibers];
     for (final c in adminCals) {
       if (!merged.contains(c)) merged.add(c);
