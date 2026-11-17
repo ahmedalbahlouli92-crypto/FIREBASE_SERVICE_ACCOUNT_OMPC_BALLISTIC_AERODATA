@@ -1807,9 +1807,12 @@ class _MainShellState extends State<MainShell> {
   
   // Equipment fleet controllers
   final TextEditingController _newAccuracyBarrelCtrl = TextEditingController();
+  final TextEditingController _newAccuracyBarrelQtyCtrl = TextEditingController(text: '0');
   final TextEditingController _newEpvatBarrelCtrl = TextEditingController();
+  final TextEditingController _newEpvatBarrelQtyCtrl = TextEditingController(text: '0');
   final TextEditingController _newGP6SerialCtrl = TextEditingController();
   final TextEditingController _newGP1TransducerCtrl = TextEditingController();
+  final TextEditingController _newGP1TransducerQtyCtrl = TextEditingController(text: '0');
   final TextEditingController _newPrimerSupplierCtrl = TextEditingController();
   final TextEditingController _newBulletSupplierCtrl = TextEditingController();
   final TextEditingController _newPropellantSupplierCtrl = TextEditingController();
@@ -2179,8 +2182,12 @@ class _MainShellState extends State<MainShell> {
     
     _newOpFullNameController.dispose();
     _newAccuracyBarrelCtrl.dispose();
+    _newAccuracyBarrelQtyCtrl.dispose();
     _newEpvatBarrelCtrl.dispose();
+    _newEpvatBarrelQtyCtrl.dispose();
     _newGP6SerialCtrl.dispose();
+    _newGP1TransducerCtrl.dispose();
+    _newGP1TransducerQtyCtrl.dispose();
     _newPrimerSupplierCtrl.dispose();
     _newBulletSupplierCtrl.dispose();
     _newPropellantSupplierCtrl.dispose();
@@ -6417,11 +6424,37 @@ class _MainShellState extends State<MainShell> {
                   ),
                 ),
                 const SizedBox(width: 8.0),
+                SizedBox(
+                  width: 90.0,
+                  child: TextField(
+                    controller: _newGP1TransducerQtyCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                    decoration: InputDecoration(
+                      hintText: 'Init Qty',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
                 ElevatedButton(
                   onPressed: () async {
                     final serial = _newGP1TransducerCtrl.text.trim();
                     if (serial.isEmpty) return;
                     
+                    final initQty = int.tryParse(_newGP1TransducerQtyCtrl.text.trim()) ?? 0;
+                    if (initQty > 0) {
+                      final mRounds = Map<String, dynamic>.from(_adminRules['asset_manual_rounds'] as Map? ?? {});
+                      mRounds[serial] = initQty;
+                      _adminRules['asset_manual_rounds'] = mRounds;
+                    }
+
                     final gp6Transducers = List<String>.from(_adminRules['gp6_transducers'] as List<dynamic>? ?? []);
                     if (!gp6Transducers.contains(serial)) {
                       gp6Transducers.add(serial);
@@ -6454,6 +6487,7 @@ class _MainShellState extends State<MainShell> {
                     setState(() {
                       _adminRules = Map<String, dynamic>.from(_adminRules);
                       _newGP1TransducerCtrl.clear();
+                      _newGP1TransducerQtyCtrl.text = '0';
                     });
                   },
                   style: ElevatedButton.styleFrom(
@@ -6494,15 +6528,16 @@ class _MainShellState extends State<MainShell> {
 
               return _buildAssetItemList(
                 items: sensorList.map((sn) {
-                  final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                  final rounds = _storageService.calculateAssetRounds(allRecords, sn, _adminRules);
                   return {
                     'label': sn,
                     'serial': sn,
                     'rounds': rounds,
-                    'category': 'GP6 Transducer',
+                    'category': 'Transducer',
                   };
                 }).toList(),
                 accentColor: const Color(0xFF06B6D4),
+                onEdit: (item) => _showEditAssetDialog(context: context, item: item, category: 'Transducer'),
                 onDelete: (item) async {
                   final sn = item['serial'] as String;
                   
@@ -6586,10 +6621,37 @@ class _MainShellState extends State<MainShell> {
                   ),
                 ),
                 const SizedBox(width: 8.0),
+                SizedBox(
+                  width: 90.0,
+                  child: TextField(
+                    controller: _newEpvatBarrelQtyCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                    decoration: InputDecoration(
+                      hintText: 'Init Qty',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF06B6D4))),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
                 ElevatedButton(
                   onPressed: () async {
                     final serial = _newEpvatBarrelCtrl.text.trim();
                     if (serial.isEmpty) return;
+
+                    final initQty = int.tryParse(_newEpvatBarrelQtyCtrl.text.trim()) ?? 0;
+                    if (initQty > 0) {
+                      final mRounds = Map<String, dynamic>.from(_adminRules['asset_manual_rounds'] as Map? ?? {});
+                      mRounds[serial] = initQty;
+                      _adminRules['asset_manual_rounds'] = mRounds;
+                    }
+
                     final byCal = Map<String, dynamic>.from(_adminRules['epvat_barrels_by_caliber'] as Map? ?? {});
                     final list = List<String>.from(byCal[_selectedEpvatBarrelCaliber] as List? ?? []);
                     if (!list.contains(serial)) {
@@ -6611,6 +6673,7 @@ class _MainShellState extends State<MainShell> {
                     setState(() {
                       _adminRules = Map<String, dynamic>.from(_adminRules);
                       _newEpvatBarrelCtrl.clear();
+                      _newEpvatBarrelQtyCtrl.text = '0';
                     });
                   },
                   style: ElevatedButton.styleFrom(
@@ -6629,7 +6692,7 @@ class _MainShellState extends State<MainShell> {
                 final byCal = Map<String, dynamic>.from(_adminRules['epvat_barrels_by_caliber'] as Map? ?? {});
                 final calBarrels = List<String>.from(byCal[_selectedEpvatBarrelCaliber] as List? ?? epvatBarrels);
                 return calBarrels.map((sn) {
-                  final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                  final rounds = _storageService.calculateAssetRounds(allRecords, sn, _adminRules);
                   return {
                     'label': '$sn  ($_selectedEpvatBarrelCaliber)',
                     'serial': sn,
@@ -6639,6 +6702,7 @@ class _MainShellState extends State<MainShell> {
                 }).toList();
               })(),
               accentColor: const Color(0xFF06B6D4),
+              onEdit: (item) => _showEditAssetDialog(context: context, item: item, category: 'EPVAT Barrel'),
               onDelete: (item) async {
                 final sn = item['serial'] as String;
                 final byCal = Map<String, dynamic>.from(_adminRules['epvat_barrels_by_caliber'] as Map? ?? {});
@@ -6719,10 +6783,37 @@ class _MainShellState extends State<MainShell> {
                   ),
                 ),
                 const SizedBox(width: 8.0),
+                SizedBox(
+                  width: 90.0,
+                  child: TextField(
+                    controller: _newAccuracyBarrelQtyCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontFamily: 'JetBrainsMono'),
+                    decoration: InputDecoration(
+                      hintText: 'Init Qty',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFF2C415E),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFFF59E0B))),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
                 ElevatedButton(
                   onPressed: () async {
                     final serial = _newAccuracyBarrelCtrl.text.trim();
                     if (serial.isEmpty) return;
+
+                    final initQty = int.tryParse(_newAccuracyBarrelQtyCtrl.text.trim()) ?? 0;
+                    if (initQty > 0) {
+                      final mRounds = Map<String, dynamic>.from(_adminRules['asset_manual_rounds'] as Map? ?? {});
+                      mRounds[serial] = initQty;
+                      _adminRules['asset_manual_rounds'] = mRounds;
+                    }
+
                     final byCal = Map<String, dynamic>.from(_adminRules['accuracy_barrels_by_caliber'] as Map? ?? {});
                     final list = List<String>.from(byCal[_selectedAccuracyBarrelCaliber] as List? ?? []);
                     if (!list.contains(serial)) {
@@ -6744,6 +6835,7 @@ class _MainShellState extends State<MainShell> {
                     setState(() {
                       _adminRules = Map<String, dynamic>.from(_adminRules);
                       _newAccuracyBarrelCtrl.clear();
+                      _newAccuracyBarrelQtyCtrl.text = '0';
                     });
                   },
                   style: ElevatedButton.styleFrom(
@@ -6762,7 +6854,7 @@ class _MainShellState extends State<MainShell> {
                 final byCal = Map<String, dynamic>.from(_adminRules['accuracy_barrels_by_caliber'] as Map? ?? {});
                 final calBarrels = List<String>.from(byCal[_selectedAccuracyBarrelCaliber] as List? ?? accBarrels);
                 return calBarrels.map((sn) {
-                  final rounds = _storageService.calculateAssetRounds(allRecords, sn);
+                  final rounds = _storageService.calculateAssetRounds(allRecords, sn, _adminRules);
                   return {
                     'label': '$sn  ($_selectedAccuracyBarrelCaliber)',
                     'serial': sn,
@@ -6772,6 +6864,7 @@ class _MainShellState extends State<MainShell> {
                 }).toList();
               })(),
               accentColor: const Color(0xFFF59E0B),
+              onEdit: (item) => _showEditAssetDialog(context: context, item: item, category: 'Accuracy Barrel'),
               onDelete: (item) async {
                 final sn = item['serial'] as String;
                 final byCal = Map<String, dynamic>.from(_adminRules['accuracy_barrels_by_caliber'] as Map? ?? {});
@@ -7129,6 +7222,7 @@ class _MainShellState extends State<MainShell> {
     required List<Map<String, dynamic>> items,
     required Color accentColor,
     required void Function(Map<String, dynamic>) onDelete,
+    void Function(Map<String, dynamic>)? onEdit,
   }) {
     if (items.isEmpty) {
       return Container(
@@ -7189,6 +7283,16 @@ class _MainShellState extends State<MainShell> {
                   ],
                 ),
               ),
+              if (onEdit != null) ...[
+                const SizedBox(width: 6.0),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 15.0),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Admin: Edit Serial & Total Rounds',
+                  onPressed: () => onEdit(item),
+                ),
+              ],
               const SizedBox(width: 8.0),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 15.0),
@@ -7199,6 +7303,155 @@ class _MainShellState extends State<MainShell> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _showEditAssetDialog({
+    required BuildContext context,
+    required Map<String, dynamic> item,
+    required String category,
+  }) {
+    final oldSerial = (item['serial'] ?? '').toString().trim();
+    final serialCtrl = TextEditingController(text: oldSerial);
+    
+    // Look up current manual rounds
+    final manualMap = Map<String, dynamic>.from(_adminRules['asset_manual_rounds'] as Map? ?? {});
+    int currentManual = 0;
+    for (final entry in manualMap.entries) {
+      if (entry.key.toString().trim().toLowerCase() == oldSerial.toLowerCase()) {
+        currentManual = int.tryParse(entry.value.toString()) ?? 0;
+        break;
+      }
+    }
+    final manualRoundsCtrl = TextEditingController(text: currentManual > 0 ? '$currentManual' : '0');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        title: Row(
+          children: [
+            const Icon(Icons.edit_note_rounded, color: Color(0xFF38BDF8), size: 22.0),
+            const SizedBox(width: 8.0),
+            Text('Edit $category', style: const TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Update the serial number or manually set initial/cumulative total rounds for this asset.',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.0),
+            ),
+            const SizedBox(height: 14.0),
+            const Text('Serial Number *', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4.0),
+            TextField(
+              controller: serialCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 13.0, fontFamily: 'JetBrainsMono'),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF2C415E),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+              ),
+            ),
+            const SizedBox(height: 12.0),
+            const Text('Manual Total / Prior Rounds *', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4.0),
+            TextField(
+              controller: manualRoundsCtrl,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white, fontSize: 13.0, fontFamily: 'JetBrainsMono'),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF2C415E),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF1E3A8A))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6.0), borderSide: const BorderSide(color: Color(0xFF38BDF8))),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+            onPressed: () async {
+              final newSerial = serialCtrl.text.trim();
+              if (newSerial.isEmpty) return;
+              final newManual = int.tryParse(manualRoundsCtrl.text.trim()) ?? 0;
+
+              // 1. Update manual rounds map
+              final mRounds = Map<String, dynamic>.from(_adminRules['asset_manual_rounds'] as Map? ?? {});
+              mRounds.remove(oldSerial);
+              mRounds[newSerial] = newManual;
+              _adminRules['asset_manual_rounds'] = mRounds;
+
+              // 2. If serial changed, replace across rules
+              if (newSerial != oldSerial) {
+                void replaceInList(String key) {
+                  final l = List<String>.from(_adminRules[key] as List? ?? []);
+                  final idx = l.indexOf(oldSerial);
+                  if (idx != -1) {
+                    l[idx] = newSerial;
+                    _adminRules[key] = l;
+                  }
+                }
+                replaceInList('barrel_serial_numbers');
+                replaceInList('epvat_barrels');
+                replaceInList('accuracy_barrels');
+                replaceInList('gp6_transducers');
+                replaceInList('gp1_transducers');
+                replaceInList('gp6_serials');
+
+                void replaceInCalMap(String key) {
+                  final m = Map<String, dynamic>.from(_adminRules[key] as Map? ?? {});
+                  m.forEach((calKey, listVal) {
+                    if (listVal is List) {
+                      final l = List<String>.from(listVal);
+                      final idx = l.indexOf(oldSerial);
+                      if (idx != -1) {
+                        l[idx] = newSerial;
+                        m[calKey] = l;
+                      }
+                    }
+                  });
+                  _adminRules[key] = m;
+                }
+                replaceInCalMap('epvat_barrels_by_caliber');
+                replaceInCalMap('accuracy_barrels_by_caliber');
+
+                final gpMap = Map<String, dynamic>.from(_adminRules['gp_transducers'] as Map? ?? {});
+                for (final sub in ['gp1', 'gp2']) {
+                  if (gpMap[sub] is List) {
+                    final l = List<String>.from(gpMap[sub] as List);
+                    final idx = l.indexOf(oldSerial);
+                    if (idx != -1) {
+                      l[idx] = newSerial;
+                      gpMap[sub] = l;
+                    }
+                  }
+                }
+                _adminRules['gp_transducers'] = gpMap;
+              }
+
+              await _storageService.saveRules(_adminRules);
+              Navigator.of(ctx).pop();
+              setState(() => _adminRules = Map<String, dynamic>.from(_adminRules));
+            },
+            child: const Text('Save Changes'),
+          ),
+        ],
       ),
     );
   }

@@ -345,8 +345,21 @@ class TestResultExtractor {
              lLower == 'lot number' ||
              lLower == 'lot no' ||
              lLower == 'batch id' ||
+             lLower == 'barrel' ||
+             lLower == 'barrel s.n.' ||
+             lLower == 'barrel s.n' ||
+             lLower == 'barrel sn' ||
+             lLower == 'barrel no.' ||
+             lLower == 'barrel no' ||
+             lLower == 'barrel number' ||
              lLower == 'transducer 1' ||
              lLower == 'transducer 2' ||
+             lLower == 'transducer' ||
+             lLower == 'chamber transducer' ||
+             lLower == 'port transducer' ||
+             lLower == 'chamber sensor' ||
+             lLower == 'port sensor' ||
+             lLower == 'gp6 transducer' ||
              lLower == 'sensor 1' ||
              lLower == 'sensor 2' ||
              lLower == 'supplier' ||
@@ -736,7 +749,7 @@ class TestResultExtractor {
       }
     }
 
-    final inspector = find(['operator name', 'operator', 'inspector name', 'inspector', 'technician', 'tested by', 'notes']);
+    final inspector = find(['operator name', 'operator', 'inspector name', 'inspector', 'technician', 'tested by']);
     if (inspector != null && inspector.isNotEmpty) {
       final cleanVal = inspector.trim();
       if (!cleanVal.toLowerCase().contains('signature') &&
@@ -807,10 +820,40 @@ class TestResultExtractor {
       }
     }
 
-    final barrel = find(['barrel', 'barrel s.n', 'barrel sn', 'barrel_sn', 'weapon sn']);
+    final barrel = find([
+      'barrel',
+      'barrel s.n.',
+      'barrel s.n',
+      'barrel sn',
+      'barrel_sn',
+      'barrel no.',
+      'barrel no',
+      'barrel number',
+      'barrel id',
+      'weapon sn',
+      'weapon s.n.',
+      'weapon s.n',
+      'lauf',
+      'lauf nr.',
+      'lauf nr',
+    ]);
     if (barrel != null && barrel.isNotEmpty) {
       f['barrelSN'] = barrel;
+      f['barrel_sn'] = barrel;
       s.add('Barrel SN: $barrel');
+    } else if (content.isNotEmpty) {
+      final bMatch = RegExp(
+        r'(?:Barrel\s*(?:S\.?N\.?|No\.?|Number|ID|\#)?|Weapon\s*(?:S\.?N\.?|No\.?|ID|\#)?|Lauf\s*(?:Nr\.?)?)\s*[:=\t\s]*\r?\n?\s*([A-Za-z0-9\-_\#\/.\s]+?)(?=\s*(?:\r?\n|\t|Sensor|Transducer|Date|Time|Temp|Caliber|Batch|Lot|\Z))',
+        caseSensitive: false,
+      ).firstMatch(content);
+      if (bMatch != null) {
+        final bVal = bMatch.group(1)!.trim();
+        if (bVal.isNotEmpty && bVal.toLowerCase() != 'diameter' && bVal.toLowerCase() != 'length') {
+          f['barrelSN'] = bVal;
+          f['barrel_sn'] = bVal;
+          s.add('Barrel SN: $bVal');
+        }
+      }
     }
 
     final temp = find(['temp', 'temperature', 'cartridge temp', 'room temp']);
@@ -847,27 +890,98 @@ class TestResultExtractor {
       }
     }
 
-    final t1 = find(['transducer 1', 'transducer1', 'transducer_1', 'sensor 1', 'sensor1', 'sensor_1', 'transducer', 'channel 1']);
+    final t1 = find([
+      'transducer 1',
+      'transducer1',
+      'transducer_1',
+      'transducer (p1)',
+      'transducer p1',
+      'p1 transducer',
+      'chamber transducer',
+      'chamber sensor',
+      'sensor 1',
+      'sensor1',
+      'sensor_1',
+      'sensor chamber',
+      'gp6 (1)',
+      'gp6 1',
+      'gp6_1',
+      'channel 1',
+      'channel1',
+      'transducer',
+      'gp6 transducer',
+    ]);
     if (t1 != null && t1.isNotEmpty) {
       f['epvatSensor1'] = t1.trim();
+      f['transducer1'] = t1.trim();
+      f['gp6Serial'] = t1.trim();
       s.add('Transducer 1: ${f['epvatSensor1']}');
     } else if (content.isNotEmpty) {
-      final m = RegExp(r'(?:Transducer\s*1|Sensor\s*1|Channel\s*1)\s*[:=\t\s]*\r?\n?\s*([A-Za-z0-9\-]+)', caseSensitive: false).firstMatch(content);
-      if (m != null) {
-        f['epvatSensor1'] = m.group(1)!.trim();
-        s.add('Transducer 1: ${f['epvatSensor1']}');
+      final m1 = RegExp(
+        r'(?:Transducer\s*1|Transducer\s*\(?P1\)?|P1\s*Transducer|Chamber\s*(?:Transducer|Sensor)|Sensor\s*1|Sensor\s*Chamber|Channel\s*1|GP6\s*\(?1\)?)\s*[:=\t\s]*\r?\n?\s*([A-Za-z0-9\-_\#\/.\s]+?)(?=\s*(?:\r?\n|\t|Transducer|Sensor|P2|Channel|Date|Temp|Caliber|Batch|\Z))',
+        caseSensitive: false,
+      ).firstMatch(content);
+      if (m1 != null) {
+        final val = m1.group(1)!.trim();
+        if (val.isNotEmpty) {
+          f['epvatSensor1'] = val;
+          f['transducer1'] = val;
+          f['gp6Serial'] = val;
+          s.add('Transducer 1: $val');
+        }
+      } else {
+        final mGen = RegExp(
+          r'(?:GP6\s*Transducer|Transducer\s*(?:S\.?N\.?|No\.?|Number|\#)?|Sensor\s*(?:S\.?N\.?|No\.?|Number|\#)?)\s*[:=\t\s]*\r?\n?\s*([A-Za-z0-9\-_\#\/.\s]+?)(?=\s*(?:\r?\n|\t|Date|Temp|Caliber|Batch|\Z))',
+          caseSensitive: false,
+        ).firstMatch(content);
+        if (mGen != null) {
+          final val = mGen.group(1)!.trim();
+          if (val.isNotEmpty) {
+            f['epvatSensor1'] = val;
+            f['transducer1'] = val;
+            f['gp6Serial'] = val;
+            s.add('Transducer: $val');
+          }
+        }
       }
     }
 
-    final t2 = find(['transducer 2', 'transducer2', 'transducer_2', 'sensor 2', 'sensor2', 'sensor_2', 'channel 2']);
+    final t2 = find([
+      'transducer 2',
+      'transducer2',
+      'transducer_2',
+      'transducer (p2)',
+      'transducer p2',
+      'p2 transducer',
+      'port transducer',
+      'gas port transducer',
+      'port sensor',
+      'sensor port',
+      'sensor 2',
+      'sensor2',
+      'sensor_2',
+      'gp6 (2)',
+      'gp6 2',
+      'gp6_2',
+      'channel 2',
+      'channel2',
+    ]);
     if (t2 != null && t2.isNotEmpty) {
       f['epvatSensor2'] = t2.trim();
+      f['transducer2'] = t2.trim();
       s.add('Transducer 2: ${f['epvatSensor2']}');
     } else if (content.isNotEmpty) {
-      final m = RegExp(r'(?:Transducer\s*2|Sensor\s*2|Channel\s*2)\s*[:=\t\s]*\r?\n?\s*([A-Za-z0-9\-]+)', caseSensitive: false).firstMatch(content);
-      if (m != null) {
-        f['epvatSensor2'] = m.group(1)!.trim();
-        s.add('Transducer 2: ${f['epvatSensor2']}');
+      final m2 = RegExp(
+        r'(?:Transducer\s*2|Transducer\s*\(?P2\)?|P2\s*Transducer|(?:Gas\s*)?Port\s*(?:Transducer|Sensor)|Sensor\s*2|Sensor\s*Port|Channel\s*2|GP6\s*\(?2\)?)\s*[:=\t\s]*\r?\n?\s*([A-Za-z0-9\-_\#\/.\s]+?)(?=\s*(?:\r?\n|\t|Transducer|Sensor|P1|Channel|Date|Temp|Caliber|Batch|\Z))',
+        caseSensitive: false,
+      ).firstMatch(content);
+      if (m2 != null) {
+        final val = m2.group(1)!.trim();
+        if (val.isNotEmpty) {
+          f['epvatSensor2'] = val;
+          f['transducer2'] = val;
+          s.add('Transducer 2: $val');
+        }
       }
     }
   }
@@ -875,8 +989,12 @@ class TestResultExtractor {
   static void _extractAccuracy(Map<String, String> kv, List<List<String>> table, Map<String, dynamic> f, List<String> s, [String content = '']) {
     double? parseNum(String? val) {
       if (val == null) return null;
-      final match = RegExp(r'[-+]?\d*\.?\d+').firstMatch(val);
-      return match != null ? double.tryParse(match.group(0)!) : null;
+      final cleaned = val.replaceAll('\u2212', '-').replaceAll('\u2013', '-').replaceAll('\u2014', '-');
+      final match = RegExp(r'([-+]?)\s*(\d+(?:[.,]\d+)?)').firstMatch(cleaned);
+      if (match == null) return null;
+      final sign = match.group(1) == '-' ? '-' : '';
+      final numStr = match.group(2)!.replaceAll(',', '.');
+      return double.tryParse('$sign$numStr');
     }
 
     // 1. Direct Regex Parser for Statistic table in report text:
@@ -887,20 +1005,20 @@ class TestResultExtractor {
       for (final stat in statRows) {
         // Try same line with any separator (space, tab, pipe, colon, comma, semicolon)
         RegExpMatch? reg = RegExp(
-          '''(?:\\b|^)$stat\\b[^0-9\\-+\\r\\n]*?([-+]?\\d*\\.?\\d+)[^0-9\\-+\\r\\n]+([-+]?\\d*\\.?\\d+)[^0-9\\-+\\r\\n]+([-+]?\\d*\\.?\\d+)''',
+          '''(?:\\b|^)$stat\\b[\\s:\\t|,;]+([-+]?\\s*\\d+(?:[.,]\\d+)?)[\\s:\\t|,;]+([-+]?\\s*\\d+(?:[.,]\\d+)?)[\\s:\\t|,;]+([-+]?\\s*\\d+(?:[.,]\\d+)?)''',
           caseSensitive: false,
         ).firstMatch(content);
 
         // Fallback: multiline where numbers might be on following lines
         reg ??= RegExp(
-          '''(?:\\b|^)$stat\\b[\\s:\\t|,;]+([-+]?\\d*\\.?\\d+)[\\s:\\t|,;]+([-+]?\\d*\\.?\\d+)[\\s:\\t|,;]+([-+]?\\d*\\.?\\d+)''',
+          '''(?:\\b|^)$stat\\b[^0-9\\-+\\r\\n]*?([-+]?\\s*\\d+(?:[.,]\\d+)?)[^0-9\\-+\\r\\n]+([-+]?\\s*\\d+(?:[.,]\\d+)?)[^0-9\\-+\\r\\n]+([-+]?\\s*\\d+(?:[.,]\\d+)?)''',
           caseSensitive: false,
         ).firstMatch(content);
 
         if (reg != null) {
-          final x = reg.group(1)!;
-          final y = reg.group(2)!;
-          final v = reg.group(3)!;
+          final x = reg.group(1)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+          final y = reg.group(2)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+          final v = reg.group(3)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
           if (stat == 'MEAN') {
             f['accMeanX'] ??= x;
             f['accMeanY'] ??= y;
@@ -932,9 +1050,9 @@ class TestResultExtractor {
         final vColMatch = RegExp(r'V\d+(?:\.\d+)?(?:_\d+)?\s*(?:\[m/s\])?[\s\S]*?(?=x_1|y_1|\$)', caseSensitive: false).firstMatch(content);
 
         if (xColMatch != null && yColMatch != null) {
-          final xNums = RegExp(r'[-+]?\d*\.?\d+').allMatches(xColMatch.group(0)!).map((m) => m.group(0)!).toList();
-          final yNums = RegExp(r'[-+]?\d*\.?\d+').allMatches(yColMatch.group(0)!).map((m) => m.group(0)!).toList();
-          final vNums = vColMatch != null ? RegExp(r'[-+]?\d*\.?\d+').allMatches(vColMatch.group(0)!).map((m) => m.group(0)!).toList() : <String>[];
+          final xNums = RegExp(r'[-+]?\s*\d+(?:[.,]\d+)?').allMatches(xColMatch.group(0)!).map((m) => m.group(0)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.')).toList();
+          final yNums = RegExp(r'[-+]?\s*\d+(?:[.,]\d+)?').allMatches(yColMatch.group(0)!).map((m) => m.group(0)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.')).toList();
+          final vNums = vColMatch != null ? RegExp(r'[-+]?\s*\d+(?:[.,]\d+)?').allMatches(vColMatch.group(0)!).map((m) => m.group(0)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.')).toList() : <String>[];
 
           if (xNums.length >= 5 && yNums.length >= 5) {
             f['accMeanX'] ??= xNums[0];
@@ -981,14 +1099,14 @@ class TestResultExtractor {
         }
       }
 
-      final impXMatch = RegExp(r'(?:Impact\s*Mean\s*Point\s*X|Mean\s*Point\s*X)[^0-9\r\n\-+]*?([-+]?[0-9]+(?:\.[0-9]+)?)', caseSensitive: false).firstMatch(content);
+      final impXMatch = RegExp(r'(?:Impact\s*Mean\s*Point\s*X|Mean\s*Point\s*X)[^0-9\r\n\-+]*?([-+]?\s*[0-9]+(?:\.[0-9]+)?)', caseSensitive: false).firstMatch(content);
       if (impXMatch != null) {
-        f['accMeanX'] ??= impXMatch.group(1)!;
+        f['accMeanX'] ??= impXMatch.group(1)!.replaceAll(RegExp(r'\s+'), '');
       }
 
-      final impYMatch = RegExp(r'(?:Impact\s*Mean\s*Point\s*Y|Mean\s*Point\s*Y)[^0-9\r\n\-+]*?([-+]?[0-9]+(?:\.[0-9]+)?)', caseSensitive: false).firstMatch(content);
+      final impYMatch = RegExp(r'(?:Impact\s*Mean\s*Point\s*Y|Mean\s*Point\s*Y)[^0-9\r\n\-+]*?([-+]?\s*[0-9]+(?:\.[0-9]+)?)', caseSensitive: false).firstMatch(content);
       if (impYMatch != null) {
-        f['accMeanY'] ??= impYMatch.group(1)!;
+        f['accMeanY'] ??= impYMatch.group(1)!.replaceAll(RegExp(r'\s+'), '');
       }
 
       final sumHWMatch = RegExp(r'(?:Sum\s*H\+W|H\+W)[^0-9\r\n]*?([0-9]+(?:\.[0-9]+)?)', caseSensitive: false).firstMatch(content);
@@ -1035,14 +1153,17 @@ class TestResultExtractor {
     final shotList = <Map<String, double>>[];
     if (content.isNotEmpty) {
       final roundMatches = RegExp(
-        r'^\s*(\d{1,3})\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+(\d*\.?\d+)',
+        r'^\s*(\d{1,3})\s+([-+]?\s*\d*(?:[.,]\d+)?)\s+([-+]?\s*\d*(?:[.,]\d+)?)\s+(\d*(?:[.,]\d+)?)',
         multiLine: true,
       ).allMatches(content);
       for (final rm in roundMatches) {
         final r = int.tryParse(rm.group(1)!);
-        final x = double.tryParse(rm.group(2)!);
-        final y = double.tryParse(rm.group(3)!);
-        final v = double.tryParse(rm.group(4)!);
+        final xStr = rm.group(2)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+        final yStr = rm.group(3)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+        final vStr = rm.group(4)!.replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+        final x = double.tryParse(xStr);
+        final y = double.tryParse(yStr);
+        final v = double.tryParse(vStr);
         if (r != null && x != null && y != null && v != null && r <= 200) {
           shotList.add({'no': r.toDouble(), 'x': x, 'y': y, 'v': v});
         }
@@ -1067,6 +1188,12 @@ class TestResultExtractor {
       final count = shotList.length;
       f['produced'] ??= '$count';
       s.add('Tested Rounds: $count');
+
+      // Populate velocities for Terminal Effect velocity extraction
+      final vList = shotList.map((s) => s['v']!.toStringAsFixed(2)).toList();
+      f['shot_velocities'] = vList;
+      f['terminal_velocity_rounds'] = vList.join(',');
+      f['terminalVelocity'] = vList.join(',');
 
       // Calculate ballistic statistics from round coordinates and velocities if not present
       final xVals = shotList.map((s) => s['x']!).toList();
@@ -1685,6 +1812,8 @@ class TestResultExtractor {
           s.add('BatchID: $bVal');
         }
       }
+      // Per Requirement 4: Remarks/notes kept empty until user fills the field
+      /*
       final notesMatch = RegExp(r'(?:Notes|Comments|Remarks)\s*[:=\t\s]*\r?\n?\s*([^\r\n]+(?:\r?\n[^\r\n]+)*?)(?=\b(?:Calculation|Units|Sample|Overall\s*result|Minimum|Maximum|\Z))', caseSensitive: false).firstMatch(content);
       if (notesMatch != null && (f['notes'] == null || f['notes'].toString().isEmpty)) {
         final nVal = notesMatch.group(1)!.trim();
@@ -1693,6 +1822,7 @@ class TestResultExtractor {
           s.add('Notes: $nVal');
         }
       }
+      */
     }
 
     // 2. Extract Sample / Round forces directly from content
@@ -2106,6 +2236,8 @@ class TestResultExtractor {
         r'(?:Comments|Notes|Remarks)\s*[:=\t\s]*\r?\n?\s*([^\r\n]+(?:\r?\n[^\r\n]+)*?)(?=\b(?:HM\s*\+\s*5\s*SD|HM\s*-\s*2\s*SD|Approved|Rejected|H\b|\Z))',
         caseSensitive: false,
       ).firstMatch(content);
+      // Per Requirement 4: Remarks/notes kept empty until user fills the field
+      /*
       if (commMatch != null && (f['notes'] == null || f['notes'].toString().isEmpty)) {
         final cVal = commMatch.group(1)!.trim();
         if (cVal.isNotEmpty) {
@@ -2113,6 +2245,7 @@ class TestResultExtractor {
           s.add('Comments: $cVal');
         }
       }
+      */
     }
 
     // 3. Statistical Metrics: HM, SD, HM+5SD, HM-2SD, Alpha3, Emax, Emin

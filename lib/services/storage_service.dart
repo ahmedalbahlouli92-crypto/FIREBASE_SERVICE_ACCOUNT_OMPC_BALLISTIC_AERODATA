@@ -995,11 +995,20 @@ class StorageService {
     }
   }
 
-  // Calculate cumulative rounds fired across all tests for a specific asset serial
-  int calculateAssetRounds(List<BallisticRecord> records, String assetSerial) {
+  // Calculate cumulative rounds fired across all tests for a specific asset serial (including any manual/prior rounds)
+  int calculateAssetRounds(List<BallisticRecord> records, String assetSerial, [Map<String, dynamic>? rules]) {
     if (assetSerial.isEmpty) return 0;
     final cleanSerial = assetSerial.trim().toLowerCase();
     int total = 0;
+    if (rules != null && rules['asset_manual_rounds'] is Map) {
+      final manualMap = rules['asset_manual_rounds'] as Map;
+      for (final entry in manualMap.entries) {
+        if (entry.key.toString().trim().toLowerCase() == cleanSerial) {
+          total += int.tryParse(entry.value.toString()) ?? 0;
+          break;
+        }
+      }
+    }
     for (var r in records) {
       final bSn = r.barrelSN.trim().toLowerCase();
       final gSn = r.gp6Serial.trim().toLowerCase();
@@ -1015,10 +1024,10 @@ class StorageService {
   }
 
   // Build a summary map of rounds used for all known asset serials
-  Map<String, int> getAssetRoundCounts(List<BallisticRecord> records, List<String> allSerials) {
+  Map<String, int> getAssetRoundCounts(List<BallisticRecord> records, List<String> allSerials, [Map<String, dynamic>? rules]) {
     final Map<String, int> counts = {};
     for (var serial in allSerials) {
-      counts[serial] = calculateAssetRounds(records, serial);
+      counts[serial] = calculateAssetRounds(records, serial, rules);
     }
     return counts;
   }

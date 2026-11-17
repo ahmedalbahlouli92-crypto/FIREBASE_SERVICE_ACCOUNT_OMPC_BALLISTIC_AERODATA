@@ -13,6 +13,8 @@ import '../services/supabase_service.dart';
 import '../services/report_generator.dart';
 import '../services/report_helper.dart';
 import '../services/test_result_extractor.dart';
+import '../services/docx_text_extractor.dart';
+import '../services/image_text_extractor.dart';
 
 /// Formatter restricting Action Time inputs to at most 2 digits before decimal (supports 00.000, 1.5, 12.345)
 class ActionTimeInputFormatter extends TextInputFormatter {
@@ -2615,16 +2617,16 @@ class _EntryTabState extends State<EntryTab> {
     }
 
     if (test == 'Function Test') {
+      final is762or9mm = c.contains('7.62') || c.contains('m80') || c.contains('.308') || c.contains('m82') || c.contains('9mm') || c.contains('9x19') || c.contains('para') || c.contains('luger');
       if (isThreeTemp) {
+        if (is762or9mm) return 315;
         if (isDaily) {
-          if (c.contains('m80') || c.contains('para')) return 200;
           if (c.contains('ss109')) return 180;
           if (c.contains('m193')) return 180;
           if (c.contains('m200')) return 180;
           return 180;
         } else {
           // Lot Acceptance or Component module
-          if (c.contains('m80') || c.contains('para')) return 315;
           if (c.contains('ss109')) return 500;
           if (c.contains('m193')) return 1500;
           if (c.contains('m200')) return 240;
@@ -2711,9 +2713,18 @@ class _EntryTabState extends State<EntryTab> {
           _epvatOverallRoundCount['+52'] = perTemp;
           _epvatOverallRoundCount['-54'] = perTemp;
         } else if (_testName == 'Function Test') {
-          final perTemp = (defCount / 3).round();
-          for (var t in _functionTempList) {
-            _funcAllProducedControllers[t]?.text = '$perTemp';
+          final is762or9mm = _caliber.contains('7.62') || _caliber.contains('M80') || _caliber.contains('.308') || _caliber.contains('M82') || _caliber.contains('9mm') || _caliber.contains('9x19') || _caliber.contains('Para') || _caliber.contains('Luger');
+          if (is762or9mm) {
+            _producedController.text = '315';
+            _funcAllProducedControllers['+21']?.text = '155';
+            _funcAllProducedControllers['+52']?.text = '80';
+            _funcAllProducedControllers['-54']?.text = '80';
+            _funcAllProducedControllers['-32']?.text = '80';
+          } else {
+            final perTemp = (defCount / 3).round();
+            for (var t in _functionTempList) {
+              _funcAllProducedControllers[t]?.text = '$perTemp';
+            }
           }
         }
       } else {
@@ -2784,6 +2795,36 @@ class _EntryTabState extends State<EntryTab> {
         isThreeTemp: _isThreeTemperatureMode,
       );
       _producedController.text = '$sampleSize';
+      if (_testName == 'Function Test' && _isThreeTemperatureMode) {
+        final is762or9mm = _caliber.contains('7.62') || _caliber.contains('M80') || _caliber.contains('.308') || _caliber.contains('M82') || _caliber.contains('9mm') || _caliber.contains('9x19') || _caliber.contains('Para') || _caliber.contains('Luger');
+        if (is762or9mm) {
+          _producedController.text = '315';
+          _funcAllProducedControllers['+21']?.text = '155';
+          _funcAllProducedControllers['+52']?.text = '80';
+          _funcAllProducedControllers['-54']?.text = '80';
+          _funcAllProducedControllers['-32']?.text = '80';
+        } else {
+          final perTemp = (sampleSize / 3).round();
+          for (var t in _functionTempList) {
+            _funcAllProducedControllers[t]?.text = '$perTemp';
+          }
+        }
+      }
+      if (_testName == 'Function Test' && _isThreeTemperatureMode) {
+        final is762or9mm = _caliber.contains('7.62') || _caliber.contains('M80') || _caliber.contains('.308') || _caliber.contains('M82') || _caliber.contains('9mm') || _caliber.contains('9x19') || _caliber.contains('Para') || _caliber.contains('Luger');
+        if (is762or9mm) {
+          _producedController.text = '315';
+          _funcAllProducedControllers['+21']?.text = '155';
+          _funcAllProducedControllers['+52']?.text = '80';
+          _funcAllProducedControllers['-54']?.text = '80';
+          _funcAllProducedControllers['-32']?.text = '80';
+        } else {
+          final perTemp = (sampleSize / 3).round();
+          for (var t in _functionTempList) {
+            _funcAllProducedControllers[t]?.text = '$perTemp';
+          }
+        }
+      }
       _updateDefaultDistance();
       _updateEpvatSampleSizeForCaliber(_caliber);
       if (_testName == 'Primer Sensitivity Test') {
@@ -2940,6 +2981,21 @@ class _EntryTabState extends State<EntryTab> {
         isThreeTemp: _isThreeTemperatureMode,
       );
       _producedController.text = '$sampleSize';
+      if (_testName == 'Function Test' && _isThreeTemperatureMode) {
+        final is762or9mm = _caliber.contains('7.62') || _caliber.contains('M80') || _caliber.contains('.308') || _caliber.contains('M82') || _caliber.contains('9mm') || _caliber.contains('9x19') || _caliber.contains('Para') || _caliber.contains('Luger');
+        if (is762or9mm) {
+          _producedController.text = '315';
+          _funcAllProducedControllers['+21']?.text = '155';
+          _funcAllProducedControllers['+52']?.text = '80';
+          _funcAllProducedControllers['-54']?.text = '80';
+          _funcAllProducedControllers['-32']?.text = '80';
+        } else {
+          final perTemp = (sampleSize / 3).round();
+          for (var t in _functionTempList) {
+            _funcAllProducedControllers[t]?.text = '$perTemp';
+          }
+        }
+      }
       _autoGenerateTime();
       _updateDefaultDistance();
       if (_testName == 'EPVAT test' || _testName == 'Propellant Test') {
@@ -4553,7 +4609,7 @@ class _EntryTabState extends State<EntryTab> {
       return;
     }
 
-    // Item 9: Warn user if a report with the same lot number and test type has already been submitted
+    // Requirement 11: Block submission if a report for this lot, test, and caliber is already submitted
     final String currentLot = _lotController.text.trim();
     if (currentLot.isNotEmpty) {
       final existing = widget.records.where((r) {
@@ -4566,7 +4622,7 @@ class _EntryTabState extends State<EntryTab> {
 
       if (existing.isNotEmpty) {
         final prevRecord = existing.first;
-        final confirmed = await showDialog<bool>(
+        await showDialog<void>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
@@ -4574,34 +4630,28 @@ class _EntryTabState extends State<EntryTab> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
             title: Row(
               children: const [
-                Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 24.0),
+                Icon(Icons.block_rounded, color: Color(0xFFEF4444), size: 24.0),
                 SizedBox(width: 8.0),
-                Text('Duplicate Submission Warning', style: TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
+                Text('Submission Blocked: Duplicate Report', style: TextStyle(color: Colors.white, fontSize: 15.0, fontWeight: FontWeight.bold)),
               ],
             ),
             content: Text(
-              'A report for Lot "$currentLot" and Test "$_testName" ($_caliber) has already been submitted on ${prevRecord.testTime.isNotEmpty ? prevRecord.testTime : prevRecord.timestamp}.\n\nAre you sure you want to proceed and submit another report for this lot?',
+              'A report for Lot "$currentLot" and Test "$_testName" ($_caliber) has already been submitted on ${prevRecord.testTime.isNotEmpty ? prevRecord.testTime : prevRecord.timestamp}.\n\nDuplicate report submission is blocked to avoid repeating reports for the same lot.',
               style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.0, height: 1.4),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
-              ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0284C7),
+                  backgroundColor: const Color(0xFFEF4444),
                   foregroundColor: Colors.white,
                 ),
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Confirm & Submit'),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
               ),
             ],
           ),
         );
-        if (confirmed != true) {
-          return;
-        }
+        return;
       }
     }
 
@@ -4632,9 +4682,11 @@ class _EntryTabState extends State<EntryTab> {
       ).toString();
       _primerInsertionDepthController.clear();
       _primerLotController.clear();
+      _propellantSupplier = '';
+      _selectedComponentPropellantLot = null;
       _propellantLotController.clear();
       _propellantChargeController.clear();
-      _propellantCodeController.text = 'D-073.4';
+      _propellantCodeController.clear();
       _defectsController.text = '0';
       _functionLevel1Controller.text = '0';
       _functionLevel2Controller.text = '0';
@@ -4850,11 +4902,22 @@ class _EntryTabState extends State<EntryTab> {
                           rawData = rawData.replaceAll(RegExp(r'\s+'), '');
                           final bytes = base64Decode(rawData);
                           final filename = res['name']?.toString() ?? '';
-                          final isPdf = filename.toLowerCase().endsWith('.pdf') ||
+                          final fnLower = filename.toLowerCase();
+                          final isPdf = fnLower.endsWith('.pdf') ||
                               (bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46);
+                          final isDocx = fnLower.endsWith('.docx') || fnLower.endsWith('.doc') ||
+                              (bytes.length >= 4 && bytes[0] == 0x50 && bytes[1] == 0x4B && bytes[2] == 0x03 && bytes[3] == 0x04);
+                          final isImage = fnLower.endsWith('.png') || fnLower.endsWith('.jpg') || fnLower.endsWith('.jpeg') || fnLower.endsWith('.bmp') || fnLower.endsWith('.webp');
+
                           if (isPdf) {
                             final pdfText = PdfTextExtractor.extractText(bytes);
                             textController.text = pdfText;
+                          } else if (isDocx) {
+                            final docxText = DocxTextExtractor.extractText(bytes);
+                            textController.text = docxText;
+                          } else if (isImage) {
+                            final imgText = await ImageTextExtractor.extractText(bytes, filename);
+                            textController.text = imgText;
                           } else {
                             final text = utf8.decode(bytes, allowMalformed: true);
                             textController.text = text;
@@ -4866,7 +4929,7 @@ class _EntryTabState extends State<EntryTab> {
                       }
                     },
                     icon: const Icon(Icons.file_upload, size: 16),
-                    label: const Text('Choose File to Upload (PDF/CSV/TSV/JSON/TXT)'),
+                    label: const Text('Choose File to Upload (PDF/Word DOCX/Images/CSV/TXT)'),
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
                   ),
                   const SizedBox(height: 10),
@@ -4916,8 +4979,8 @@ class _EntryTabState extends State<EntryTab> {
       preferredTestName: (_testName.isNotEmpty && _testName != 'Ballistic Tests') ? _testName : null,
     );
     final parsed = extractionRes.fields;
-    dynamic getVal(String k1, [String? k2, String? k3, String? k4, String? k5, String? k6]) {
-      for (final k in [k1, k2, k3, k4, k5, k6]) {
+    dynamic getVal(String k1, [String? k2, String? k3, String? k4, String? k5, String? k6, String? k7, String? k8]) {
+      for (final k in [k1, k2, k3, k4, k5, k6, k7, k8]) {
         if (k != null && parsed.containsKey(k) && parsed[k] != null) return parsed[k];
       }
       return null;
@@ -5217,15 +5280,34 @@ class _EntryTabState extends State<EntryTab> {
         count++;
       }
 
-      final sensor1 = getVal('epvat_sensor1', 'epvatSensor1', 'transducer1', 'transducer_1')?.toString().trim();
+      final sensor1 = getVal('epvat_sensor1', 'epvatSensor1', 'transducer1', 'transducer_1', 'gp6Serial', 'gp6_serial', 'sensor1')?.toString().trim();
       if (sensor1 != null && sensor1.isNotEmpty) {
         _epvatSensor1Controller.text = sensor1;
+        _gp6SerialController.text = sensor1;
         count++;
       }
-      final sensor2 = getVal('epvat_sensor2', 'epvatSensor2', 'transducer2', 'transducer_2')?.toString().trim();
+      final sensor2 = getVal('epvat_sensor2', 'epvatSensor2', 'transducer2', 'transducer_2', 'sensor2')?.toString().trim();
       if (sensor2 != null && sensor2.isNotEmpty) {
         _epvatSensor2Controller.text = sensor2;
         count++;
+      }
+
+      // Terminal Effect velocities extraction from accuracy / velocity reports
+      final termVelsRaw = getVal('terminal_velocity_rounds', 'terminalVelocity', 'shot_velocities');
+      if (termVelsRaw != null) {
+        final List<String> vList = (termVelsRaw is List)
+            ? termVelsRaw.map((e) => e.toString()).toList()
+            : termVelsRaw.toString().split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+        if (vList.isNotEmpty) {
+          _syncTerminalRoundsControllers(vList.length);
+          for (int i = 0; i < vList.length && i < _terminalVelocityRoundsControllers.length; i++) {
+            _terminalVelocityRoundsControllers[i].text = vList[i];
+          }
+          if (_testName == 'Terminal Effect Test') {
+            _producedController.text = '${vList.length}';
+          }
+          count++;
+        }
       }
 
       final unitVal = getVal('epvat_pressure_unit', 'epvatPressureUnit')?.toString().trim();
@@ -5486,9 +5568,14 @@ class _EntryTabState extends State<EntryTab> {
         _cartridgeTempController.text = cartridgeTemp.toString();
         count++;
       }
-      final barrelSn = getVal('barrel_sn', 'barrelSn');
-      if (barrelSn != null && _barrelSNController.text.isEmpty) {
-        _barrelSNController.text = barrelSn.toString();
+      final barrelSn = getVal('barrel_sn', 'barrelSn', 'barrel_s_n', 'barrel_no', 'barrel');
+      if (barrelSn != null && barrelSn.toString().trim().isNotEmpty) {
+        final bVal = barrelSn.toString().trim();
+        _barrelSNController.text = bVal;
+        _terminalBarrelSNController.text = bVal;
+        if (!_barrelSerialNumbers.contains(bVal)) {
+          _barrelSerialNumbers.add(bVal);
+        }
         count++;
       }
       final lotDigits = getVal('lotDigits', 'lot_digits')?.toString().trim();
@@ -5529,11 +5616,14 @@ class _EntryTabState extends State<EntryTab> {
         _operatorsController.text = opVal;
         count++;
       }
+      // Per Requirement 4: Remarks / notes kept empty till the user fills the field
+      /*
       final extractedNotes = getVal('notes', 'comments', 'comment');
       if (extractedNotes != null && extractedNotes.toString().isNotEmpty && _notesController.text.isEmpty) {
         _notesController.text = extractedNotes.toString();
         count++;
       }
+      */
     });
 
     if (count > 0) {
@@ -5573,7 +5663,7 @@ class _EntryTabState extends State<EntryTab> {
     }
   }
 
-  void _autoExtractFromAttachment(String filename, String rawBase64) {
+  void _autoExtractFromAttachment(String filename, String rawBase64) async {
     try {
       if (rawBase64.isEmpty) return;
       String cleanBase64 = rawBase64.trim();
@@ -5582,17 +5672,25 @@ class _EntryTabState extends State<EntryTab> {
       }
       cleanBase64 = cleanBase64.replaceAll(RegExp(r'\s+'), '');
       final bytes = base64Decode(cleanBase64);
-      final isPdf = filename.toLowerCase().endsWith('.pdf') ||
+      final fnLower = filename.toLowerCase();
+      final isPdf = fnLower.endsWith('.pdf') ||
           (bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46);
+      final isDocx = fnLower.endsWith('.docx') || fnLower.endsWith('.doc') ||
+          (bytes.length >= 4 && bytes[0] == 0x50 && bytes[1] == 0x4B && bytes[2] == 0x03 && bytes[3] == 0x04);
+      final isImage = fnLower.endsWith('.png') || fnLower.endsWith('.jpg') || fnLower.endsWith('.jpeg') || fnLower.endsWith('.bmp') || fnLower.endsWith('.webp');
 
       String content = '';
       if (isPdf) {
         content = PdfTextExtractor.extractText(bytes);
-      } else if (filename.toLowerCase().endsWith('.csv') ||
-          filename.toLowerCase().endsWith('.tsv') ||
-          filename.toLowerCase().endsWith('.txt') ||
-          filename.toLowerCase().endsWith('.json') ||
-          filename.toLowerCase().endsWith('.log')) {
+      } else if (isDocx) {
+        content = DocxTextExtractor.extractText(bytes);
+      } else if (isImage) {
+        content = await ImageTextExtractor.extractText(bytes, filename);
+      } else if (fnLower.endsWith('.csv') ||
+          fnLower.endsWith('.tsv') ||
+          fnLower.endsWith('.txt') ||
+          fnLower.endsWith('.json') ||
+          fnLower.endsWith('.log')) {
         content = utf8.decode(bytes, allowMalformed: true);
       }
 
@@ -6625,10 +6723,22 @@ class _EntryTabState extends State<EntryTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.gps_fixed_outlined, color: Color(0xFF0284C7), size: 16.0),
-                              SizedBox(width: 6.0),
-                              Text('Terminal Effect Test', style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+                            children: [
+                              const Icon(Icons.gps_fixed_outlined, color: Color(0xFF0284C7), size: 16.0),
+                              const SizedBox(width: 6.0),
+                              const Text('Terminal Effect Test', style: TextStyle(color: Color(0xFF0F172A), fontSize: 12.5, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+                              const Spacer(),
+                              ElevatedButton.icon(
+                                onPressed: () => _showAutoExtractModal(),
+                                icon: const Icon(Icons.file_upload_outlined, size: 14),
+                                label: const Text('Extract Velocities from Report', style: TextStyle(fontSize: 11.0, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0284C7),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  minimumSize: const Size(0, 28),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 4.0),
@@ -10144,14 +10254,15 @@ class _EntryTabState extends State<EntryTab> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8.0),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 540),
-            child: SizedBox(
-              width: 620,
-              child: Column(
-                children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final tableWidth = constraints.maxWidth > 580 ? constraints.maxWidth : 580.0;
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: tableWidth,
+                child: Column(
+                  children: [
                   // Header Row
                   Container(
                     color: const Color(0xFF0F172A),
@@ -10313,10 +10424,11 @@ class _EntryTabState extends State<EntryTab> {
                 ],
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildEpvatTableHeader() {
@@ -12652,17 +12764,16 @@ class _EntryTabState extends State<EntryTab> {
                   : _buildDropdownField(
                       value: _propellantSuppliers.contains(_propellantSupplier)
                           ? _propellantSupplier
-                          : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
+                          : null,
+                      allowEmpty: true,
+                      hintText: 'Select Supplier...',
                       items: _propellantSuppliers,
                       onChanged: (v) {
                         if (v != null) {
                           setState(() {
                             _propellantSupplier = v;
                             _epvatAdminPropellantSupplierController.text = v;
-                            final codes = _currentSupplierPropellantCodes;
-                            if (codes.isNotEmpty && codes.first != 'Other') {
-                              _propellantCodeController.text = codes.first;
-                            }
+                            _propellantCodeController.clear();
                           });
                         }
                       },
@@ -12680,7 +12791,9 @@ class _EntryTabState extends State<EntryTab> {
                   : _buildDropdownField(
                       value: _currentSupplierPropellantCodes.contains(_propellantCodeController.text.trim())
                           ? _propellantCodeController.text.trim()
-                          : (_currentSupplierPropellantCodes.isNotEmpty ? _currentSupplierPropellantCodes.first : 'Other'),
+                          : null,
+                      allowEmpty: true,
+                      hintText: 'Select Code...',
                       items: _currentSupplierPropellantCodes,
                       onChanged: (v) {
                         if (v != null && v != 'Other') {
@@ -12702,7 +12815,8 @@ class _EntryTabState extends State<EntryTab> {
                   : DropdownButtonFormField<String>(
                       value: propellantLotOptions.contains(_propellantLotController.text.trim())
                           ? _propellantLotController.text.trim()
-                          : propellantLotOptions.first,
+                          : null,
+                      hint: const Text('Select Lot...', style: TextStyle(color: Color(0xFF6495BF), fontSize: 12.0)),
                       isExpanded: true,
                       dropdownColor: const Color(0xFFE0F2FE),
                       style: const TextStyle(color: Color(0xFF0C2A4D), fontSize: 13.0, fontWeight: FontWeight.w600),
@@ -13305,16 +13419,15 @@ class _EntryTabState extends State<EntryTab> {
                       child: _buildDropdownField(
                         value: _propellantSuppliers.contains(_propellantSupplier)
                             ? _propellantSupplier
-                            : (_propellantSuppliers.isNotEmpty ? _propellantSuppliers.first : ''),
+                            : null,
+                        allowEmpty: true,
+                        hintText: 'Select Supplier...',
                         items: _propellantSuppliers,
                         onChanged: (v) {
                           if (v != null) {
                             setState(() {
                               _propellantSupplier = v;
-                              final codes = _currentSupplierPropellantCodes;
-                              if (codes.isNotEmpty && codes.first != 'Other') {
-                                _propellantCodeController.text = codes.first;
-                              }
+                              _propellantCodeController.clear();
                             });
                             _scheduleAutoSave();
                           }
@@ -13351,7 +13464,9 @@ class _EntryTabState extends State<EntryTab> {
                     _buildDropdownField(
                       value: _currentSupplierPropellantCodes.contains(_propellantCodeController.text.trim())
                           ? _propellantCodeController.text.trim()
-                          : (_currentSupplierPropellantCodes.isNotEmpty ? _currentSupplierPropellantCodes.first : 'Other'),
+                          : null,
+                      allowEmpty: true,
+                      hintText: 'Select Code...',
                       items: _currentSupplierPropellantCodes,
                       onChanged: (v) {
                         if (v != null) {

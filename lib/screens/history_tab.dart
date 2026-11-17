@@ -69,10 +69,13 @@ class _HistoryTabState extends State<HistoryTab> {
   String _sortByFilter = 'Date of Inspection';
   int _lotAcceptanceTab = 0; // 0 = Lots Under Process, 1 = Completed Lots
 
-  static const List<String> _majorCalibers = ['5.56', '7.62', '9mm'];
+  static const List<String> _majorCalibers = ['5.56', '5.45', '7.62', '9mm'];
 
   String _getMajorCaliber(String rawCaliber) {
     final c = rawCaliber.trim().toLowerCase();
+    if (c.contains('5.45')) {
+      return '5.45';
+    }
     if (c.contains('5.56') || c.contains('.223') || c.contains('ss109') || c.contains('m193') || c.contains('m200')) {
       return '5.56';
     }
@@ -137,8 +140,8 @@ class _HistoryTabState extends State<HistoryTab> {
     final sA = a.trim();
     final sB = b.trim();
     if (sA == sB) return 0;
-    final regA = RegExp(r'(\d+)\s*(?:OMPC/)?(\d+)?', caseSensitive: false).firstMatch(sA);
-    final regB = RegExp(r'(\d+)\s*(?:OMPC/)?(\d+)?', caseSensitive: false).firstMatch(sB);
+    final regA = RegExp(r'(\d+)\s*(?:OMPC[/\s]*)?(\d+)?', caseSensitive: false).firstMatch(sA);
+    final regB = RegExp(r'(\d+)\s*(?:OMPC[/\s]*)?(\d+)?', caseSensitive: false).firstMatch(sB);
 
     if (regA != null && regB != null) {
       final yrA = int.tryParse(regA.group(2) ?? '') ?? 0;
@@ -153,6 +156,28 @@ class _HistoryTabState extends State<HistoryTab> {
       }
     }
     return sB.compareTo(sA);
+  }
+
+  int _compareLotNumbersAscending(String a, String b) {
+    final sA = a.trim();
+    final sB = b.trim();
+    if (sA == sB) return 0;
+    final regA = RegExp(r'(\d+)\s*(?:OMPC[/\s]*)?(\d+)?', caseSensitive: false).firstMatch(sA);
+    final regB = RegExp(r'(\d+)\s*(?:OMPC[/\s]*)?(\d+)?', caseSensitive: false).firstMatch(sB);
+
+    if (regA != null && regB != null) {
+      final yrA = int.tryParse(regA.group(2) ?? '') ?? 0;
+      final yrB = int.tryParse(regB.group(2) ?? '') ?? 0;
+      if (yrA != yrB) {
+        return yrA.compareTo(yrB);
+      }
+      final numA = int.tryParse(regA.group(1) ?? '') ?? 0;
+      final numB = int.tryParse(regB.group(1) ?? '') ?? 0;
+      if (numA != numB) {
+        return numA.compareTo(numB);
+      }
+    }
+    return sA.compareTo(sB);
   }
 
   bool _isLotCompleted(String caliber, String lotNo) {
@@ -3491,25 +3516,17 @@ class _HistoryTabState extends State<HistoryTab> {
         content = _buildParamValueSpan('Rate', '${r.cyclicRateValue.isNotEmpty ? r.cyclicRateValue : "-"} RPM');
       }
     } else if (r.testName == 'Terminal Effect Test') {
-      if (r.isRetest) {
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildParamValueSpan('Test Hole', '${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}'),
-            _buildParamValueSpan('Retest Hole', '${m['terminalHoleDiameter']?.toString() ?? "-"}'),
-          ],
-        );
-      } else {
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildParamValueSpan('Distance', '${r.velocityDistance.isNotEmpty ? r.velocityDistance : "-"} m'),
-            _buildParamValueSpan('Hole Diam', '${r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : "-"}'),
-          ],
-        );
-      }
+      final stats = _calculateTerminalEffectStats(r);
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildParamValueSpan('Avg Velocity', stats['avgVel']!),
+          _buildParamValueSpan('Hole > Dia', stats['hole']!),
+          _buildParamValueSpan('Steel Pen.', stats['steel']!),
+          _buildParamValueSpan('Alum Pen.', stats['aluminum']!),
+        ],
+      );
     } else {
       final clean = ReportGenerator.cleanRemarks(r.notes);
       content = Text(
@@ -4638,11 +4655,18 @@ class _HistoryTabState extends State<HistoryTab> {
           final calRecords = entry.value;
           final isExpanded = _expandedCalibers.contains(cal);
 
-          // Group lots under this caliber
-          final Map<String, List<BallisticRecord>> lotMap = {};
+          // Group by exact specification (e.g. 5.56x45 SS109, 5.56x45 .223 55 grains, 5.56x45 .223 69 grains)
+          final Map<String, List<BallisticRecord>> specMap = {};
           for (final r in calRecords) {
-            lotMap.putIfAbsent(r.lotNo.trim(), () => []).add(r);
+            final spec = r.caliber.trim().isNotEmpty ? r.caliber.trim() : cal;
+            specMap.putIfAbsent(spec, () => []).add(r);
           }
+
+          final sortedSpecs = specMap.keys.toList()..sort();
+          final int totalLotsCount = specMap.values.fold<int>(
+            0,
+            (sum, list) => sum + list.map((r) => r.lotNo.trim()).toSet().length,
+          );
 
           return Container(
             margin: const EdgeInsets.only(bottom: 12.0),
@@ -4701,7 +4725,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               ),
                               const SizedBox(height: 2.0),
                               Text(
-                                '${lotMap.length} Completed Lot${lotMap.length == 1 ? '' : 's'} • ${calRecords.length} Total Inspection Tests',
+                                '$totalLotsCount Completed Lot${totalLotsCount == 1 ? '' : 's'} across ${specMap.length} Specification${specMap.length == 1 ? '' : 's'} • ${calRecords.length} Total Tests',
                                 style: const TextStyle(fontSize: 12.0, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                               ),
                             ],
@@ -4720,7 +4744,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               const Icon(Icons.check_circle_rounded, size: 13.0, color: Color(0xFF10B981)),
                               const SizedBox(width: 5.0),
                               Text(
-                                '${lotMap.length} Certified',
+                                '$totalLotsCount Certified',
                                 style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
                               ),
                             ],
@@ -4737,43 +4761,93 @@ class _HistoryTabState extends State<HistoryTab> {
                   ),
                 ),
 
-                // Expanded Section: Displays each completed lot with banner and test records table
+                // Expanded Section: Displays each specification separately, then lots in ascending order
                 if (isExpanded) ...[
                   const Divider(height: 1, color: Color(0xFFE2E8F0)),
                   Padding(
                     padding: const EdgeInsets.all(10.0),
                     child: Column(
-                      children: lotMap.entries.map((lotEntry) {
-                        final lotNo = lotEntry.key;
-                        final lotRecords = lotEntry.value;
+                      children: sortedSpecs.map((spec) {
+                        final specRecords = specMap[spec]!;
+                        final Map<String, List<BallisticRecord>> lotMap = {};
+                        for (final r in specRecords) {
+                          lotMap.putIfAbsent(r.lotNo.trim(), () => []).add(r);
+                        }
+                        // Sort lot numbers ascending (Lot 001, 002, 003...) per Requirement 9
+                        final sortedLotEntries = lotMap.entries.toList()
+                          ..sort((a, b) => _compareLotNumbersAscending(a.key, b.key));
+
                         return Container(
-                          margin: const EdgeInsets.only(bottom: 12.0),
+                          margin: const EdgeInsets.only(bottom: 14.0),
+                          padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFAFAFA),
+                            color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(8.0),
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _buildLotGroupBanner(cal, lotNo),
-                              Padding(
-                                padding: const EdgeInsets.all(6.0),
-                                child: LayoutBuilder(
-                                  builder: (ctx, constraints) {
-                                    if (constraints.maxWidth < 768.0) {
-                                      return SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: SizedBox(
-                                          width: 768.0,
-                                          child: _buildLotTestRecordsTable(lotRecords),
-                                        ),
-                                      );
-                                    }
-                                    return _buildLotTestRecordsTable(lotRecords);
-                                  },
+                              // Specification Sub-Banner
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                margin: const EdgeInsets.only(bottom: 8.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0284C7).withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.2)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.label_important_outline, size: 16.0, color: Color(0xFF0284C7)),
+                                    const SizedBox(width: 8.0),
+                                    Text(
+                                      'Specification: $spec',
+                                      style: const TextStyle(fontSize: 13.0, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${sortedLotEntries.length} Lot${sortedLotEntries.length == 1 ? '' : 's'}',
+                                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0284C7)),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              ...sortedLotEntries.map((lotEntry) {
+                                final lotNo = lotEntry.key;
+                                final lotRecords = lotEntry.value;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      _buildLotGroupBanner(spec, lotNo),
+                                      Padding(
+                                        padding: const EdgeInsets.all(6.0),
+                                        child: LayoutBuilder(
+                                          builder: (ctx, constraints) {
+                                            if (constraints.maxWidth < 768.0) {
+                                              return SingleChildScrollView(
+                                                scrollDirection: Axis.horizontal,
+                                                child: SizedBox(
+                                                  width: 768.0,
+                                                  child: _buildLotTestRecordsTable(lotRecords),
+                                                ),
+                                              );
+                                            }
+                                            return _buildLotTestRecordsTable(lotRecords);
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
                             ],
                           ),
                         );
@@ -6812,17 +6886,77 @@ class _HistoryTabState extends State<HistoryTab> {
         _buildMetricTile('Allowed Rate Range', 'Min: ${r.cyclicRateMin.isNotEmpty ? r.cyclicRateMin : "-"} RPM | Max: ${r.cyclicRateMax.isNotEmpty ? r.cyclicRateMax : "No limit"}'),
       ];
     } else if (tName == 'Terminal Effect Test') {
+      final stats = _calculateTerminalEffectStats(r);
       return [
         _buildMetricTile('Barrel S.N.', r.barrelSN.isNotEmpty ? r.barrelSN : '-'),
         _buildMetricTile('Velocity Distance', r.velocityDistance.isNotEmpty ? '${r.velocityDistance} m' : '-'),
-        _buildMetricTile('Terminal Velocity', r.terminalVelocity.isNotEmpty ? '${r.terminalVelocity} m/s' : (r.velMean.isNotEmpty ? '${r.velMean} m/s' : '-')),
-        _buildMetricTile('Target Hole Diameter', r.terminalHoleDiameter.isNotEmpty ? r.terminalHoleDiameter : '-'),
-        _buildMetricTile('Steel Plate Penetration', r.terminalSteelPenetration.isNotEmpty ? r.terminalSteelPenetration : '-'),
+        _buildMetricTile('Avg Velocity', stats['avgVel']!),
+        _buildMetricTile('Hole > Bullet Dia', stats['hole']!),
+        _buildMetricTile('Steel Penetration', stats['steel']!),
+        _buildMetricTile('Aluminum Penetration', stats['aluminum']!),
       ];
     }
     return [
       _buildMetricTile('Test Parameters', ReportGenerator.cleanRemarks(r.notes).isNotEmpty ? ReportGenerator.cleanRemarks(r.notes) : '-'),
     ];
+  }
+
+  Map<String, String> _calculateTerminalEffectStats(BallisticRecord r) {
+    // 1. Average Velocity
+    String avgVelStr = '-';
+    if (r.terminalVelocity.isNotEmpty) {
+      final vParts = r.terminalVelocity
+          .split(',')
+          .map((s) => double.tryParse(s.trim()))
+          .whereType<double>()
+          .toList();
+      if (vParts.isNotEmpty) {
+        final avg = vParts.reduce((a, b) => a + b) / vParts.length;
+        avgVelStr = '${avg.toStringAsFixed(1)} m/s';
+      } else {
+        avgVelStr = '${r.terminalVelocity} m/s';
+      }
+    } else if (r.velMean.isNotEmpty) {
+      avgVelStr = '${r.velMean} m/s';
+    }
+
+    final int totalRounds = r.produced > 0 ? r.produced : 30;
+
+    String calcPct(String raw) {
+      if (raw.isEmpty) return '-';
+      final clean = raw.trim();
+      if (clean.contains(',')) {
+        final items = clean.split(',').map((s) => s.trim().toLowerCase()).toList();
+        final count = items.length;
+        final passCount = items.where((s) => s == 'yes' || s == 'pass' || s == '1' || s == 'true').length;
+        final pct = count > 0 ? ((passCount / count) * 100).toStringAsFixed(1) : '0';
+        final pctDisplay = pct.endsWith('.0') ? pct.substring(0, pct.length - 2) : pct;
+        return '$pctDisplay% ($passCount/$count)';
+      }
+      if (clean.toLowerCase() == 'yes' || clean.toLowerCase() == 'pass') {
+        return '100% ($totalRounds/$totalRounds)';
+      }
+      if (clean.toLowerCase() == 'no' || clean.toLowerCase() == 'fail') {
+        return '0% (0/$totalRounds)';
+      }
+      final fracMatch = RegExp(r'(\d+)\s*/\s*(\d+)').firstMatch(clean);
+      if (fracMatch != null) {
+        final numVal = double.tryParse(fracMatch.group(1)!) ?? 0;
+        final denVal = double.tryParse(fracMatch.group(2)!) ?? totalRounds.toDouble();
+        final pct = denVal > 0 ? ((numVal / denVal) * 100).toStringAsFixed(1) : '0';
+        final pctDisplay = pct.endsWith('.0') ? pct.substring(0, pct.length - 2) : pct;
+        return '$pctDisplay% (${fracMatch.group(1)}/${fracMatch.group(2)})';
+      }
+      if (clean.contains('%')) return clean;
+      return clean;
+    }
+
+    return {
+      'avgVel': avgVelStr,
+      'hole': calcPct(r.terminalHoleDiameter),
+      'steel': calcPct(r.terminalSteelPenetration),
+      'aluminum': calcPct(r.terminalAluminumPenetration),
+    };
   }
 
   List<Widget> _buildRetestMetricTiles(BallisticRecord r) {
